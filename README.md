@@ -1,2 +1,7 @@
 # maddy
-Fast, cross-platform mail server
+
+Fast, cross-platform mail server.
+
+## License
+
+MIT
