@@ -1,14 +1,17 @@
 package maddy
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
 
 	"github.com/mholt/caddy/caddyfile"
-	imapserver "github.com/emersion/go-imap/server"
-	"github.com/emersion/go-smtp"
 )
+
+type server interface {
+	Serve(net.Listener) error
+}
 
 var Directives = []string{
 	"bind",
@@ -21,6 +24,8 @@ var Directives = []string{
 }
 
 func Start(blocks []caddyfile.ServerBlock) error {
+	done := make(chan error, 1)
+
 	for _, block := range blocks {
 		var proto string
 		var adresses []Address
@@ -40,37 +45,43 @@ func Start(blocks []caddyfile.ServerBlock) error {
 			adresses = append(adresses, addr)
 		}
 
-		// TODO: parse directives
-
+		var s server
 		switch proto {
 		case "imap":
-			s := imapserver.New(nil) // TODO
-
-			for _, addr := range adresses {
-				l, err := net.Listen("tcp", fmt.Sprintf("%s:%s", addr.Host, addr.Port))
-				if err != nil {
-					return fmt.Errorf("Cannot listen: %v", err)
-				}
-
-				log.Println("IMAP server listening on", l.Addr().String())
-				go s.Serve(l)
-			}
+			s = newIMAPServer(block.Tokens)
 		case "smtp":
-			s := smtp.NewServer(nil) // TODO
-
-			for _, addr := range adresses {
-				l, err := net.Listen("tcp", fmt.Sprintf("%s:%s", addr.Host, addr.Port))
-				if err != nil {
-					return fmt.Errorf("Cannot listen: %v", err)
-				}
-
-				log.Println("SMTP server listening on", l.Addr().String())
-				go s.Serve(l)
-			}
+			s = newSMTPServer(block.Tokens)
 		default:
 			return fmt.Errorf("Unsupported protocol %q", proto)
 		}
+
+		var tlsConfig *tls.Config
+		if tokens, ok := block.Tokens["tls"]; ok {
+			var err error
+			tlsConfig, err = getTLSConfig(caddyfile.NewDispenserTokens("", tokens))
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, addr := range adresses {
+			var l net.Listener
+			var err error
+			l, err = net.Listen("tcp", fmt.Sprintf("%s:%s", addr.Host, addr.Port))
+			if err != nil {
+				return fmt.Errorf("Cannot listen: %v", err)
+			}
+
+			if tlsConfig != nil {
+				l = tls.NewListener(l, tlsConfig)
+			}
+
+			log.Printf("%s server listening on %s\n", proto, l.Addr().String())
+			go func() {
+				done <- s.Serve(l)
+			}()
+		}
 	}
 
-	select {}
+	return <-done
 }
