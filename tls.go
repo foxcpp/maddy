@@ -1,39 +1,77 @@
 package maddy
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
-	"fmt"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
+	"net"
+	"time"
 
 	"github.com/mholt/caddy/caddyfile"
 )
 
-func getTLSConfig(d caddyfile.Dispenser) (*tls.Config, error) {
-	config := new(tls.Config)
-
+func setupTLSConfig(config **tls.Config, d caddyfile.Dispenser) error {
 	for d.Next() {
 		args := d.RemainingArgs()
 		switch len(args) {
 		case 1:
 			switch args[0] {
 			case "off":
-				return nil, nil
+				*config = nil
+				return nil
 			case "self_signed":
-				if err := makeSelfSignedCert(config); err != nil {
-					return nil, err
+				if err := makeSelfSignedCert(*config); err != nil {
+					return err
 				}
 			}
 		case 2:
 			if cert, err := tls.LoadX509KeyPair(args[0], args[1]); err != nil {
-				return nil, err
+				return err
 			} else {
-				config.Certificates = append(config.Certificates, cert)
+				(*config).Certificates = append((*config).Certificates, cert)
 			}
 		}
 	}
 
-	return config, nil
+	return nil
 }
 
 func makeSelfSignedCert(config *tls.Config) error {
-	return fmt.Errorf("Not yet implemented")
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return err
+	}
+
+	notBefore := time.Now()
+	notAfter := notBefore.Add(24 * time.Hour * 7)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	cert := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      pkix.Name{Organization: []string{"Maddy Self-Signed"}},
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	if ip := net.ParseIP(config.ServerName); ip != nil {
+		cert.IPAddresses = append(cert.IPAddresses, ip)
+	} else {
+		cert.DNSNames = append(cert.DNSNames, config.ServerName)
+	}
+	derBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privKey.PublicKey, privKey)
+	if err != nil {
+		return err
+	}
+
+	config.Certificates = append(config.Certificates, tls.Certificate{
+		Certificate: [][]byte{derBytes},
+		PrivateKey:  privKey,
+		Leaf:        cert,
+	})
+	return nil
 }

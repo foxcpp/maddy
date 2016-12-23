@@ -27,8 +27,9 @@ func Start(blocks []caddyfile.ServerBlock) error {
 	done := make(chan error, 1)
 
 	for _, block := range blocks {
-		var proto string
 		var adresses []Address
+		var proto string
+		tlsConfig := new(tls.Config)
 		for _, k := range block.Keys {
 			addr, err := standardizeAddress(k)
 			if err != nil {
@@ -40,6 +41,10 @@ func Start(blocks []caddyfile.ServerBlock) error {
 				proto = p
 			} else if proto != p {
 				return fmt.Errorf("Block contains incompatible protocols: %s and %s", proto, p)
+			}
+
+			if addr.IsTLS() && tlsConfig.ServerName == "" {
+				tlsConfig.ServerName = addr.Host
 			}
 
 			adresses = append(adresses, addr)
@@ -55,13 +60,12 @@ func Start(blocks []caddyfile.ServerBlock) error {
 			return fmt.Errorf("Unsupported protocol %q", proto)
 		}
 
-		var tlsConfig *tls.Config
 		if tokens, ok := block.Tokens["tls"]; ok {
-			var err error
-			tlsConfig, err = getTLSConfig(caddyfile.NewDispenserTokens("", tokens))
-			if err != nil {
+			if err := setupTLSConfig(&tlsConfig, caddyfile.NewDispenserTokens("", tokens)); err != nil {
 				return err
 			}
+		} else {
+			tlsConfig = nil
 		}
 
 		for _, addr := range adresses {
@@ -72,11 +76,11 @@ func Start(blocks []caddyfile.ServerBlock) error {
 				return fmt.Errorf("Cannot listen: %v", err)
 			}
 
-			if tlsConfig != nil {
+			if addr.IsTLS() {
 				l = tls.NewListener(l, tlsConfig)
 			}
 
-			log.Printf("%s server listening on %s\n", proto, l.Addr().String())
+			log.Printf("%s server listening on %s\n", addr.Scheme, l.Addr().String())
 			go func() {
 				done <- s.Serve(l)
 			}()

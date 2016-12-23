@@ -58,6 +58,10 @@ func (a Address) Protocol() string {
 	}
 }
 
+func (a Address) IsTLS() bool {
+	return a.Scheme == "imaps" || a.Scheme == "smtps"
+}
+
 // standardizeAddress parses an address string into a structured format with separate
 // scheme, host, port, and path portions, as well as the original input string.
 func standardizeAddress(str string) (Address, error) {
