@@ -14,7 +14,7 @@ import (
 	"github.com/mholt/caddy/caddyfile"
 )
 
-func setupTLSConfig(config **tls.Config, d caddyfile.Dispenser) error {
+func setTLS(d caddyfile.Dispenser, config **tls.Config) error {
 	for d.Next() {
 		args := d.RemainingArgs()
 		switch len(args) {

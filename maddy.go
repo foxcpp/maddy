@@ -21,6 +21,7 @@ var Directives = []string{
 	"errors",
 	"compress",
 	"proxy",
+	"pgp",
 }
 
 func Start(blocks []caddyfile.ServerBlock) error {
@@ -51,17 +52,21 @@ func Start(blocks []caddyfile.ServerBlock) error {
 		}
 
 		var s server
+		var err error
 		switch proto {
 		case "imap":
-			s = newIMAPServer(block.Tokens)
+			s, err = newIMAPServer(block.Tokens)
 		case "smtp":
-			s = newSMTPServer(block.Tokens)
+			s, err = newSMTPServer(block.Tokens)
 		default:
 			return fmt.Errorf("Unsupported protocol %q", proto)
 		}
+		if err != nil {
+			return err
+		}
 
 		if tokens, ok := block.Tokens["tls"]; ok {
-			if err := setupTLSConfig(&tlsConfig, caddyfile.NewDispenserTokens("", tokens)); err != nil {
+			if err := setTLS(caddyfile.NewDispenserTokens("", tokens), &tlsConfig); err != nil {
 				return err
 			}
 		} else {
