@@ -21,6 +21,14 @@ func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
 		}
 	}
 
+	if tokens, ok := tokens["pgp"]; ok {
+		var err error
+		be, err = newSMTPPGP(caddyfile.NewDispenserTokens("", tokens), be)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	s := smtp.NewServer(be)
 	return s, nil
 }
@@ -30,8 +38,17 @@ func newSMTPProxy(d caddyfile.Dispenser) (smtp.Backend, error) {
 		args := d.RemainingArgs()
 
 		if len(args) == 1 {
-			// TODO: parse args[0] as an Address
-			return smtpproxy.NewTLS(args[0], nil), nil
+			addr, err := standardizeAddress(args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			target := addr.Host + ":" + addr.Port
+			if addr.IsTLS() {
+				return smtpproxy.NewTLS(target, nil), nil
+			} else {
+				return smtpproxy.New(target), nil
+			}
 		}
 	}
 
