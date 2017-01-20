@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"io"
 	"log"
 	"os"
 
@@ -78,12 +79,22 @@ func setIMAPErrors(d caddyfile.Dispenser, s *imapserver.Server) error {
 		args := d.RemainingArgs()
 
 		if len(args) == 1 {
-			f, err := os.OpenFile(args[0], os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-			if err != nil {
-				return err
+			output := args[0]
+			var w io.Writer
+			switch output {
+			case "stdout":
+				w = os.Stdout
+			case "stderr":
+				w = os.Stderr
+			default:
+				f, err := os.OpenFile(output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+				if err != nil {
+					return err
+				}
+				w = f
 			}
 
-			s.ErrorLog = log.New(f, "imap", log.LstdFlags)
+			s.ErrorLog = log.New(w, "imap", log.LstdFlags)
 		}
 	}
 
