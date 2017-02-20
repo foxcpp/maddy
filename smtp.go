@@ -85,7 +85,7 @@ func newRelay(be smtp.Backend) smtp.Backend {
 				received += " by " + hostname
 			}
 			received += " with ESMTP"
-			received += "; "+time.Now().Format(time.RFC1123Z)
+			received += "; "+time.Now().Format(time.RFC1123Z) + "\r\n"
 
 			r = io.MultiReader(strings.NewReader(received), r)
 			return from, to, r
