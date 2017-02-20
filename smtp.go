@@ -1,8 +1,13 @@
 package maddy
 
 import (
+	"io"
+	"strings"
+	"time"
+
 	"github.com/mholt/caddy/caddyfile"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/go-smtp/backendutil"
 	smtpproxy "github.com/emersion/go-smtp-proxy"
 	smtppgp "github.com/emersion/go-pgpmail/smtp"
 	pgplocal "github.com/emersion/go-pgpmail/local"
@@ -29,7 +34,7 @@ func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
 		}
 	}
 
-	s := smtp.NewServer(be)
+	s := smtp.NewServer(newRelay(be))
 	return s, nil
 }
 
@@ -67,4 +72,23 @@ func newSMTPPGP(d caddyfile.Dispenser, be smtp.Backend) (smtp.Backend, error) {
 	kr := &keyRing{pgppubkeylocal.New()}
 	pgpbe := smtppgp.New(be, kr)
 	return pgpbe, nil
+}
+
+func newRelay(be smtp.Backend) smtp.Backend {
+	hostname := "" // TODO
+
+	return &backendutil.TransformBackend{
+		Backend: be,
+		Transform: func(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+			received := "Received:"
+			if hostname != "" {
+				received += " by " + hostname
+			}
+			received += " with ESMTP"
+			received += "; "+time.Now().Format(time.RFC1123Z)
+
+			r = io.MultiReader(strings.NewReader(received), r)
+			return from, to, r
+		},
+	}
 }
