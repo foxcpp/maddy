@@ -5,13 +5,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/mholt/caddy/caddyfile"
+	imapcompress "github.com/emersion/go-imap-compress"
+	imapproxy "github.com/emersion/go-imap-proxy"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
-	imapproxy "github.com/emersion/go-imap-proxy"
-	imapcompress "github.com/emersion/go-imap-compress"
 	imappgp "github.com/emersion/go-pgpmail/imap"
 	pgplocal "github.com/emersion/go-pgpmail/local"
+	"github.com/mholt/caddy/caddyfile"
 )
 
 func newIMAPServer(tokens map[string][]caddyfile.Token) (server, error) {

@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mholt/caddy/caddyfile"
-	"github.com/emersion/go-smtp"
-	"github.com/emersion/go-smtp/backendutil"
-	smtpproxy "github.com/emersion/go-smtp-proxy"
-	smtppgp "github.com/emersion/go-pgpmail/smtp"
-	pgplocal "github.com/emersion/go-pgpmail/local"
 	pgppubkey "github.com/emersion/go-pgp-pubkey"
 	pgppubkeylocal "github.com/emersion/go-pgp-pubkey/local"
+	pgplocal "github.com/emersion/go-pgpmail/local"
+	smtppgp "github.com/emersion/go-pgpmail/smtp"
+	"github.com/emersion/go-smtp"
+	smtpproxy "github.com/emersion/go-smtp-proxy"
+	"github.com/emersion/go-smtp/backendutil"
+	"github.com/mholt/caddy/caddyfile"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -85,7 +85,7 @@ func newRelay(be smtp.Backend) smtp.Backend {
 				received += " by " + hostname
 			}
 			received += " with ESMTP"
-			received += "; "+time.Now().Format(time.RFC1123Z) + "\r\n"
+			received += "; " + time.Now().Format(time.RFC1123Z) + "\r\n"
 
 			r = io.MultiReader(strings.NewReader(received), r)
 			return from, to, r
