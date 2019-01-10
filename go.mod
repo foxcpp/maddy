@@ -8,8 +8,8 @@ require (
 	github.com/emersion/go-message v0.9.1 // indirect
 	github.com/emersion/go-pgp-pubkey v0.0.0-20160719110822-73ab0acdede5
 	github.com/emersion/go-pgpmail v0.0.0-20171212131820-03c895a79e3f
-	github.com/emersion/go-smtp v0.0.0-20190109230510-8e9d4c51745b
-	github.com/emersion/go-smtp-proxy v0.0.0-20190109233021-ae614f8f729d
+	github.com/emersion/go-smtp v0.0.0-20190109233547-5011911b9c3c
+	github.com/emersion/go-smtp-proxy v0.0.0-20190110212928-7f11ac451931
 	github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe // indirect
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/mholt/caddy v0.11.1
