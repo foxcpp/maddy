@@ -48,6 +48,10 @@ func newSMTPProxy(d caddyfile.Dispenser) (smtp.Backend, error) {
 				return nil, err
 			}
 
+			if addr.Scheme == "lmtp" {
+				return smtpproxy.NewLMTP("unix://" + addr.Path, "localhost"), nil
+			}
+
 			target := addr.Host + ":" + addr.Port
 			if addr.IsTLS() {
 				return smtpproxy.NewTLS(target, nil), nil

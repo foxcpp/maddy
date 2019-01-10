@@ -18,6 +18,10 @@ type Address struct {
 
 // String returns a human-friendly print of the address.
 func (a Address) String() string {
+	if a.Scheme == "lmtp" {
+		return "lmtp://" + a.Path
+	}
+
 	if a.Host == "" && a.Port == "" {
 		return ""
 	}
@@ -51,10 +55,10 @@ func (a Address) Protocol() string {
 	switch a.Scheme {
 	case "imap", "imaps":
 		return "imap"
-	case "smtp", "smtps":
+	case "smtp", "smtps", "lmtp":
 		return "smtp"
 	default:
-		return "imap"
+		return ""
 	}
 }
 
@@ -74,6 +78,15 @@ func standardizeAddress(str string) (Address, error) {
 	u, err := url.Parse(str)
 	if err != nil {
 		return Address{}, err
+	}
+
+	switch u.Scheme {
+	case "imap", "imaps", "smtp", "smtps":
+		// ALL GREEN
+	case "lmtp":
+		return Address{Original: input, Scheme: u.Scheme, Path: u.Path}, err
+	default:
+		return Address{}, fmt.Errorf("[%s] unsupported scheme", input)
 	}
 
 	// separate host and port
@@ -106,7 +119,7 @@ func standardizeAddress(str string) (Address, error) {
 
 	// error if scheme and port combination violate convention
 	if (u.Scheme == "imap" && port == "993") || (u.Scheme == "imaps" && port == "143") ||
-		(u.Scheme == "smtp" && port == "465") || (u.Scheme == "smtps" && port == "25") {
+			(u.Scheme == "smtp" && port == "465") || (u.Scheme == "smtps" && port == "25") {
 		return Address{}, fmt.Errorf("[%s] scheme and port violate convention", input)
 	}
 
