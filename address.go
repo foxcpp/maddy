@@ -18,8 +18,8 @@ type Address struct {
 
 // String returns a human-friendly print of the address.
 func (a Address) String() string {
-	if a.Scheme == "lmtp" {
-		return "lmtp://" + a.Path
+	if a.Scheme == "lmtp+unix" {
+		return "lmtp+unix://" + a.Path
 	}
 
 	if a.Host == "" && a.Port == "" {
@@ -55,7 +55,7 @@ func (a Address) Protocol() string {
 	switch a.Scheme {
 	case "imap", "imaps":
 		return "imap"
-	case "smtp", "smtps", "lmtp":
+	case "smtp", "smtps", "lmtp+unix":
 		return "smtp"
 	default:
 		return ""
@@ -63,7 +63,7 @@ func (a Address) Protocol() string {
 }
 
 func (a Address) Network() string {
-	if a.Scheme == "lmtp" {
+	if a.Scheme == "lmtp+unix" {
 		return "unix"
 	} else {
 		return "tcp"
@@ -71,7 +71,7 @@ func (a Address) Network() string {
 }
 
 func (a Address) Address() string {
-	if a.Scheme == "lmtp" {
+	if a.Scheme == "lmtp+unix" {
 		return a.Path
 	} else {
 		return a.Host + ":" + a.Port
@@ -99,7 +99,7 @@ func standardizeAddress(str string) (Address, error) {
 	switch u.Scheme {
 	case "imap", "imaps", "smtp", "smtps":
 		// ALL GREEN
-	case "lmtp":
+	case "lmtp+unix":
 		return Address{Original: input, Scheme: u.Scheme, Path: u.Path}, err
 	default:
 		return Address{}, fmt.Errorf("[%s] unsupported scheme", input)
