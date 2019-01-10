@@ -13,7 +13,7 @@ Inspired from [Caddy](https://github.com/mholt/caddy).
 ## Usage
 
 ```shell
-go get github.com/emersion/maddy/maddy
+go get github.com/emersion/maddy/...
 ```
 
 Create a file named `Maddyfile`:
