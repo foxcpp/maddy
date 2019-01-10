@@ -7,7 +7,8 @@ Inspired from [Caddy](https://github.com/mholt/caddy).
 ## Features
 
 * Easy configuration with Maddyfile (same as Caddyfile)
-* Automatic PGP support
+* Automatic TLS and DKIM support
+* Transparent PGP support
 * Runs anywhere with no external dependencies (not even libc)
 
 ## Usage
