@@ -62,6 +62,22 @@ func (a Address) Protocol() string {
 	}
 }
 
+func (a Address) Network() string {
+	if a.Scheme == "lmtp" {
+		return "unix"
+	} else {
+		return "tcp"
+	}
+}
+
+func (a Address) Address() string {
+	if a.Scheme == "lmtp" {
+		return a.Path
+	} else {
+		return a.Host + ":" + a.Port
+	}
+}
+
 func (a Address) IsTLS() bool {
 	return a.Scheme == "imaps" || a.Scheme == "smtps"
 }

@@ -76,7 +76,7 @@ func Start(blocks []caddyfile.ServerBlock) error {
 		for _, addr := range adresses {
 			var l net.Listener
 			var err error
-			l, err = net.Listen("tcp", fmt.Sprintf("%s:%s", addr.Host, addr.Port))
+			l, err = net.Listen(addr.Network(), addr.Address())
 			if err != nil {
 				return fmt.Errorf("Cannot listen: %v", err)
 			}
