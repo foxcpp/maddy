@@ -22,22 +22,9 @@ import (
 )
 
 func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
-	// TODO: disallow both proxy and debug to be specified at the same time
-	var be smtp.Backend
-	if tokens, ok := tokens["proxy"]; ok {
-		var err error
-		be, err = newSMTPProxy(caddyfile.NewDispenserTokens("", tokens))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if tokens, ok := tokens["debug"]; ok {
-		var err error
-		be, err = newSMTPDebug(caddyfile.NewDispenserTokens("", tokens))
-		if err != nil {
-			return nil, err
-		}
+	be, err := newUpstream(tokens)
+	if err != nil {
+		return nil, err
 	}
 
 	if tokens, ok := tokens["auth"]; ok {
@@ -56,12 +43,41 @@ func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
 		}
 	}
 
+	s := smtp.NewServer(newVerifier(newRelay(be)))
+	return s, nil
+}
+
+type newUpstreamFunc func(d caddyfile.Dispenser) (smtp.Backend, error)
+
+func newUpstream(tokens map[string][]caddyfile.Token) (smtp.Backend, error) {
+	upstreams := map[string]newUpstreamFunc{
+		"proxy": newSMTPProxy,
+		"debug": newSMTPDebug,
+	}
+
+	var be smtp.Backend
+	for name, newUpstream := range upstreams {
+		tokens, ok := tokens[name]
+		if !ok {
+			continue
+		}
+
+		if be != nil {
+			return nil, errors.New("multiple SMTP upstreams specified")
+		}
+
+		var err error
+		be, err = newUpstream(caddyfile.NewDispenserTokens("", tokens))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create `%v` upstream: %v", name, err)
+		}
+	}
+
 	if be == nil {
 		return nil, errors.New("missing SMTP upstream")
 	}
 
-	s := smtp.NewServer(newVerifier(newRelay(be)))
-	return s, nil
+	return be, nil
 }
 
 func newSMTPProxy(d caddyfile.Dispenser) (smtp.Backend, error) {
@@ -97,6 +113,7 @@ func (u debugUser) Send(from string, to []string, r io.Reader) error {
 		fmt.Println("RCPT TO:", addr)
 	}
 	io.Copy(os.Stdout, r)
+	fmt.Println("")
 	return nil
 }
 
