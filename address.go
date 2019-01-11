@@ -134,8 +134,7 @@ func standardizeAddress(str string) (Address, error) {
 	}
 
 	// error if scheme and port combination violate convention
-	if (u.Scheme == "imap" && port == "993") || (u.Scheme == "imaps" && port == "143") ||
-			(u.Scheme == "smtp" && port == "465") || (u.Scheme == "smtps" && port == "25") {
+	if (u.Scheme == "imap" && port == "993") || (u.Scheme == "imaps" && port == "143") || (u.Scheme == "smtp" && port == "465") || (u.Scheme == "smtps" && port == "25") {
 		return Address{}, fmt.Errorf("[%s] scheme and port violate convention", input)
 	}
 

@@ -1,10 +1,13 @@
 package maddy
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"time"
 
+	"github.com/emersion/go-msgauth"
 	pgppubkey "github.com/emersion/go-pgp-pubkey"
 	pgppubkeylocal "github.com/emersion/go-pgp-pubkey/local"
 	pgplocal "github.com/emersion/go-pgpmail/local"
@@ -14,6 +17,9 @@ import (
 	"github.com/emersion/go-smtp/backendutil"
 	"github.com/mholt/caddy/caddyfile"
 	"golang.org/x/crypto/openpgp"
+
+	"fmt"
+	"os"
 )
 
 func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
@@ -34,7 +40,11 @@ func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
 		}
 	}
 
-	s := smtp.NewServer(newRelay(be))
+	if be == nil {
+		return nil, errors.New("missing SMTP upstream")
+	}
+
+	s := smtp.NewServer(newVerifier(newRelay(be)))
 	return s, nil
 }
 
@@ -77,21 +87,51 @@ func newSMTPPGP(d caddyfile.Dispenser, be smtp.Backend) (smtp.Backend, error) {
 	return pgpbe, nil
 }
 
-func newRelay(be smtp.Backend) smtp.Backend {
-	hostname := "" // TODO
+func newVerifier(be smtp.Backend) smtp.Backend {
+	identity := "localhost"
 
 	return &backendutil.TransformBackend{
 		Backend: be,
-		Transform: func(from string, to []string, r io.Reader) (string, []string, io.Reader) {
-			received := "Received:"
-			if hostname != "" {
-				received += " by " + hostname
+		Transform: func(from string, to []string, r io.Reader) (string, []string, io.Reader, error) {
+			var b bytes.Buffer
+			if _, err := io.Copy(&b, r); err != nil {
+				return "", nil, nil, err
 			}
+
+			results, err := verifyDKIM(bytes.NewReader(b.Bytes()))
+			if err != nil {
+				return "", nil, nil, err
+			}
+
+			// TODO: strip existing Authentication-Results header fields with our identity
+
+			// TODO: don't print Authentication-Results on a single line
+			authRes := "Authentication-Results: " + msgauth.Format(identity, results) + "\r\n"
+			fmt.Println(authRes)
+			r = io.MultiReader(strings.NewReader(authRes), &b)
+			return from, to, r, nil
+		},
+	}
+}
+
+func newRelay(be smtp.Backend) smtp.Backend {
+	hostname := "localhost" // TODO
+
+	return &backendutil.TransformBackend{
+		Backend: be,
+		Transform: func(from string, to []string, r io.Reader) (string, []string, io.Reader, error) {
+			// TODO: don't print Received on a single line
+			received := "Received:"
+			// TODO: from
+			received += " by " + hostname
 			received += " with ESMTP"
+			// TODO: for
 			received += "; " + time.Now().Format(time.RFC1123Z) + "\r\n"
+			// TODO: add comments with TLS information
 
 			r = io.MultiReader(strings.NewReader(received), r)
-			return from, to, r
+			io.Copy(os.Stdout, r)
+			return from, to, r, nil
 		},
 	}
 }
