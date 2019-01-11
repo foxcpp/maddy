@@ -3,7 +3,9 @@ package maddy
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -17,16 +19,30 @@ import (
 	"github.com/emersion/go-smtp/backendutil"
 	"github.com/mholt/caddy/caddyfile"
 	"golang.org/x/crypto/openpgp"
-
-	"fmt"
-	"os"
 )
 
 func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
+	// TODO: disallow both proxy and debug to be specified at the same time
 	var be smtp.Backend
 	if tokens, ok := tokens["proxy"]; ok {
 		var err error
 		be, err = newSMTPProxy(caddyfile.NewDispenserTokens("", tokens))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if tokens, ok := tokens["debug"]; ok {
+		var err error
+		be, err = newSMTPDebug(caddyfile.NewDispenserTokens("", tokens))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if tokens, ok := tokens["auth"]; ok {
+		var err error
+		be, err = newSMTPAuth(caddyfile.NewDispenserTokens("", tokens), be)
 		if err != nil {
 			return nil, err
 		}
@@ -73,6 +89,39 @@ func newSMTPProxy(d caddyfile.Dispenser) (smtp.Backend, error) {
 	return nil, nil
 }
 
+type debugUser struct{}
+
+func (u debugUser) Send(from string, to []string, r io.Reader) error {
+	fmt.Println("MAIL FROM:", from)
+	for _, addr := range to {
+		fmt.Println("RCPT TO:", addr)
+	}
+	io.Copy(os.Stdout, r)
+	return nil
+}
+
+func (u debugUser) Logout() error {
+	return nil
+}
+
+type debugBackend struct{}
+
+func (be debugBackend) Login(username, password string) (smtp.User, error) {
+	return debugUser{}, nil
+}
+
+func (be debugBackend) AnonymousLogin() (smtp.User, error) {
+	return debugUser{}, nil
+}
+
+func newSMTPDebug(d caddyfile.Dispenser) (smtp.Backend, error) {
+	return debugBackend{}, nil
+}
+
+func newSMTPAuth(d caddyfile.Dispenser, be smtp.Backend) (smtp.Backend, error) {
+	return nil, nil // TODO
+}
+
 type keyRing struct {
 	pgppubkey.Source
 }
@@ -107,7 +156,6 @@ func newVerifier(be smtp.Backend) smtp.Backend {
 
 			// TODO: don't print Authentication-Results on a single line
 			authRes := "Authentication-Results: " + msgauth.Format(identity, results) + "\r\n"
-			fmt.Println(authRes)
 			r = io.MultiReader(strings.NewReader(authRes), &b)
 			return from, to, r, nil
 		},
@@ -130,7 +178,6 @@ func newRelay(be smtp.Backend) smtp.Backend {
 			// TODO: add comments with TLS information
 
 			r = io.MultiReader(strings.NewReader(received), r)
-			io.Copy(os.Stdout, r)
 			return from, to, r, nil
 		},
 	}

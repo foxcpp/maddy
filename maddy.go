@@ -22,6 +22,8 @@ var Directives = []string{
 	"compress",
 	"proxy",
 	"pgp",
+	"debug",
+	"auth",
 }
 
 func Start(blocks []caddyfile.ServerBlock) error {
