@@ -21,9 +21,7 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
-func newSMTPServer(tokens map[string][]caddyfile.Token, hostname string) (server, error) {
-	// TODO: use hostname
-
+func newSMTPServer(tokens map[string][]caddyfile.Token, hostname string, lmtp bool) (server, error) {
 	be, err := newUpstream(tokens)
 	if err != nil {
 		return nil, err
@@ -46,6 +44,8 @@ func newSMTPServer(tokens map[string][]caddyfile.Token, hostname string) (server
 	}
 
 	s := smtp.NewServer(newVerifier(newRelay(be)))
+	s.LMTP = lmtp
+	s.Domain = hostname
 	return s, nil
 }
 
@@ -90,6 +90,13 @@ func newSMTPProxy(d caddyfile.Dispenser) (smtp.Backend, error) {
 			addr, err := standardizeAddress(args[0])
 			if err != nil {
 				return nil, err
+			}
+
+			switch addr.Protocol() {
+			case "smtp", "lmtp":
+				// All green
+			default:
+				return nil, fmt.Errorf("unsupported upstream protocol for SMTP: `%v`", addr.Protocol())
 			}
 
 			if addr.Scheme == "lmtp+unix" {

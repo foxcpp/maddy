@@ -55,8 +55,10 @@ func (a Address) Protocol() string {
 	switch a.Scheme {
 	case "imap", "imaps":
 		return "imap"
-	case "smtp", "smtps", "lmtp+unix":
+	case "smtp", "smtps":
 		return "smtp"
+	case "lmtp+unix":
+		return "lmtp"
 	default:
 		return ""
 	}

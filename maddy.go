@@ -70,8 +70,8 @@ func Start(blocks []caddyfile.ServerBlock) error {
 		switch proto {
 		case "imap":
 			s, err = newIMAPServer(block.Tokens)
-		case "smtp":
-			s, err = newSMTPServer(block.Tokens, hostname)
+		case "smtp", "lmtp":
+			s, err = newSMTPServer(block.Tokens, hostname, proto == "lmtp")
 		default:
 			return fmt.Errorf("unsupported protocol %q", proto)
 		}
