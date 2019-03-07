@@ -21,7 +21,9 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
-func newSMTPServer(tokens map[string][]caddyfile.Token) (server, error) {
+func newSMTPServer(tokens map[string][]caddyfile.Token, hostname string) (server, error) {
+	// TODO: use hostname
+
 	be, err := newUpstream(tokens)
 	if err != nil {
 		return nil, err
