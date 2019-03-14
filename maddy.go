@@ -1,110 +1,121 @@
 package maddy
 
 import (
-	"crypto/tls"
+	"errors"
 	"fmt"
+	"io"
 	"log"
-	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/emersion/maddy/module"
 	"github.com/mholt/caddy/caddyfile"
 )
 
-type server interface {
-	Serve(net.Listener) error
-}
+var Directives []string
 
-var Directives = []string{
-	"bind",
-	"tls",
-
-	"log",
-	"errors",
-	"compress",
-	"proxy",
-	"pgp",
-	"debug",
-	"auth",
-	"hostname",
-}
-
-func Start(blocks []caddyfile.ServerBlock) error {
-	done := make(chan error, 1)
-
-	for _, block := range blocks {
-		var adresses []Address
-		var proto string
-		tlsConfig := new(tls.Config)
-		for _, k := range block.Keys {
-			addr, err := standardizeAddress(k)
-			if err != nil {
-				return fmt.Errorf("cannot parse block key %q: %v", k, err)
-			}
-
-			p := addr.Protocol()
-			if proto == "" {
-				proto = p
-			} else if proto != p {
-				return fmt.Errorf("block contains incompatible protocols: %s and %s", proto, p)
-			}
-
-			if addr.IsTLS() && tlsConfig.ServerName == "" {
-				tlsConfig.ServerName = addr.Host
-			}
-
-			adresses = append(adresses, addr)
+func Start(cfg []caddyfile.ServerBlock) error {
+	var instances []module.Module
+	for _, block := range cfg {
+		if len(block.Keys) != 2 {
+			return fmt.Errorf("wanted 2 keys in module instance definition, got %d (%v)", len(block.Keys), block.Keys)
 		}
 
-		hostname := "localhost" // TODO: from addresses
-		if tokens, ok := block.Tokens["hostname"]; ok {
-			d := caddyfile.NewDispenserTokens("", tokens)
-			d.Next()
-			args := d.RemainingArgs()
-			if len(args) != 1 {
-				return fmt.Errorf("hostname: expected one argument")
-			}
-			hostname = args[0]
+		modName := block.Keys[0]
+		instName := block.Keys[1]
+
+		factory := module.GetMod(modName)
+		if factory == nil {
+			return fmt.Errorf("unknown module: %s", modName)
 		}
 
-		var s server
-		var err error
-		switch proto {
-		case "imap":
-			s, err = newIMAPServer(block.Tokens)
-		case "smtp", "lmtp":
-			s, err = newSMTPServer(block.Tokens, hostname, proto == "lmtp")
-		default:
-			return fmt.Errorf("unsupported protocol %q", proto)
+		if module.GetInstance(instName) != nil {
+			return fmt.Errorf("module instance named %s already exists", instName)
 		}
+
+		inst, err := factory(instName, block.Tokens)
 		if err != nil {
-			return err
+			return fmt.Errorf("module instance %s initialization failed: %v", instName, err)
 		}
 
-		if tokens, ok := block.Tokens["tls"]; ok {
-			if err := setTLS(caddyfile.NewDispenserTokens("", tokens), &tlsConfig); err != nil {
-				return err
-			}
-		} else {
-			tlsConfig = nil
-		}
-
-		for _, addr := range adresses {
-			var l net.Listener
-			var err error
-			l, err = net.Listen(addr.Network(), addr.Address())
-			if err != nil {
-				return fmt.Errorf("cannot listen: %v", err)
-			}
-
-			if addr.IsTLS() {
-				l = tls.NewListener(l, tlsConfig)
-			}
-
-			log.Printf("%s server listening on %s\n", addr.Scheme, l.Addr().String())
-			go func() {
-				done <- s.Serve(l)
-			}()
-		}
+		module.RegisterInstance(inst)
+		instances = append(instances, inst)
 	}
 
-	return <-done
+	sig := make(chan os.Signal, 5)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
+
+	s := <-sig
+	log.Printf("signal received (%v), next signal will force immediate shutdown.\n", s)
+	go func() {
+		s := <-sig
+		log.Printf("forced shutdown due to signal (%v)!\n", s)
+		os.Exit(1)
+	}()
+
+	for _, inst := range instances {
+		if closer, ok := inst.(io.Closer); ok {
+			closer.Close()
+		}
+	}
+	module.WaitGroup.Wait()
+
+	return nil
+}
+
+func authProvider(tokens []caddyfile.Token) (module.AuthProvider, error) {
+	var authName string
+	var ok bool
+	d := caddyfile.NewDispenserTokens("", tokens)
+	d.Next()
+	args := d.RemainingArgs()
+	if len(args) != 1 {
+		return nil, errors.New("auth: expected 1 argument")
+	}
+
+	authName = args[0]
+	authMod := module.GetInstance(authName)
+	if authMod == nil {
+		return nil, fmt.Errorf("unknown auth. provider instance: %s", authName)
+	}
+
+	provider, ok := authMod.(module.AuthProvider)
+	if !ok {
+		return nil, fmt.Errorf("module %s doesn't implements auth. provider interface", authMod.Name())
+	}
+	return provider, nil
+}
+
+func storageBackend(tokens []caddyfile.Token) (module.Storage, error) {
+	var authName string
+	var ok bool
+	d := caddyfile.NewDispenserTokens("", tokens)
+	d.Next()
+	args := d.RemainingArgs()
+	if len(args) != 1 {
+		return nil, errors.New("storage: expected 1 argument")
+	}
+
+	authName = args[0]
+	authMod := module.GetInstance(authName)
+	if authMod == nil {
+		return nil, fmt.Errorf("unknown storage backend instance: %s", authName)
+	}
+
+	provider, ok := authMod.(module.Storage)
+	if !ok {
+		return nil, fmt.Errorf("module %s doesn't implements storage interface", authMod.Name())
+	}
+	return provider, nil
+}
+
+func oneStringValue(tokens []caddyfile.Token) string {
+	d := caddyfile.NewDispenserTokens("", tokens)
+	d.Next()
+	args := d.RemainingArgs()
+	if len(args) == 0 {
+		return ""
+	}
+	return args[0]
 }

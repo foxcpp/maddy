@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/emersion/maddy"
+	"github.com/emersion/maddy/module"
 	"github.com/mholt/caddy/caddyfile"
 )
 
@@ -20,6 +21,7 @@ func main() {
 	}
 	defer f.Close()
 
+	maddy.Directives = append(maddy.Directives, module.ModuleDirectives...)
 	config, err := caddyfile.Parse(configpath, f, maddy.Directives)
 	if err != nil {
 		log.Fatalf("Cannot parse %q: %v", configpath, err)
