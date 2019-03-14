@@ -14,7 +14,11 @@
 // configuration.
 package module
 
-import "github.com/mholt/caddy/caddyfile"
+import (
+	"sync"
+
+	"github.com/mholt/caddy/caddyfile"
+)
 
 // Module is the interface implemented by all maddy module instances.
 //
@@ -33,4 +37,14 @@ type Module interface {
 }
 
 // NewModule is function that creates new instance of module with specified name.
-type NewModule func(name string, cfg map[string]caddyfile.Token) (Module, error)
+type NewModule func(name string, cfg map[string][]caddyfile.Token) (Module, error)
+
+// Global WaitGroup instance is used to ensure graceful shutdown of server.
+// Whenever module starts goroutine (except when it is short-lived) - it should
+// increment WaitGroup counter by 1. Correspondingly, it should call Done when goroutine
+// finishes execution.
+//
+// If module requires special clean-up on shutdown - it should implement io.Closer interface
+// for this. Close() method will be called on server shutdown in this case. This method
+// should tell all module-created goroutines to stop.
+var WaitGroup sync.WaitGroup
