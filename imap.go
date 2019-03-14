@@ -1,80 +1,130 @@
 package maddy
 
 import (
+	"crypto/tls"
+	"errors"
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 
-	imapcompress "github.com/emersion/go-imap-compress"
-	imapproxy "github.com/emersion/go-imap-proxy"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
-	imappgp "github.com/emersion/go-pgpmail/imap"
-	pgplocal "github.com/emersion/go-pgpmail/local"
+	"github.com/emersion/maddy/module"
 	"github.com/mholt/caddy/caddyfile"
 )
 
-func newIMAPServer(tokens map[string][]caddyfile.Token) (server, error) {
-	var be imapbackend.Backend
-	if tokens, ok := tokens["proxy"]; ok {
+type IMAPEndpoint struct {
+	name  string
+	serv  *imapserver.Server
+	Auth  module.AuthProvider
+	Store module.Storage
+}
+
+func NewIMAPEndpoint(instName string, cfg map[string][]caddyfile.Token) (module.Module, error) {
+	var err error
+	endp := new(IMAPEndpoint)
+	endp.name = instName
+
+	if tokens, ok := cfg["auth"]; ok {
+		endp.Auth, err = authProvider(tokens)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("auth. provider is not set")
+	}
+
+	if tokens, ok := cfg["storage"]; ok {
+		endp.Store, err = storageBackend(tokens)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("storage backend is not set")
+	}
+
+	var tlsConf *tls.Config
+	if tokens, ok := cfg["tls"]; ok {
+		if err := setTLS(caddyfile.NewDispenserTokens("", tokens), &tlsConf); err != nil {
+			return nil, err
+		}
+	}
+
+	// TODO: Should we special-case endpoint modules for sake of mode caddy-like
+	// syntax for multiple listen addresses?
+	addr, err := standardizeAddress(instName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid address: %s", instName)
+	}
+	addresses := []Address{addr}
+
+	endp.serv = imapserver.New(endp)
+
+	if _, ok := cfg["insecureauth"]; ok {
+		log.Printf("imap %v: insecure auth is on!\n", instName)
+		endp.serv.AllowInsecureAuth = true
+	}
+	if _, ok := cfg["iodebug"]; ok {
+		log.Printf("imap %v: I/O debugging is on!\n", instName)
+		endp.serv.Debug = os.Stderr
+	}
+	if tokens, ok := cfg["errors"]; ok {
+		err := setIMAPErrors(instName, caddyfile.NewDispenserTokens("", tokens), endp.serv)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// TODO: Enable extensions here.
+
+	for _, addr := range addresses {
+		var l net.Listener
 		var err error
-		be, err = newIMAPProxy(caddyfile.NewDispenserTokens("", tokens))
+		l, err = net.Listen(addr.Network(), addr.Address())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
-	}
 
-	if tokens, ok := tokens["pgp"]; ok {
-		var err error
-		be, err = newIMAPPGP(caddyfile.NewDispenserTokens("", tokens), be)
-		if err != nil {
-			return nil, err
+		if addr.IsTLS() {
+			l = tls.NewListener(l, tlsConf)
 		}
+
+		go func() {
+			endp.serv.Serve(l)
+		}()
+		log.Printf("imap: listening on %v\n", addr)
 	}
 
-	s := imapserver.New(be)
-
-	if tokens, ok := tokens["errors"]; ok {
-		err := setIMAPErrors(caddyfile.NewDispenserTokens("", tokens), s)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if _, ok := tokens["compress"]; ok {
-		s.Enable(imapcompress.NewExtension())
-	}
-
-	return s, nil
+	return endp, nil
 }
 
-func newIMAPProxy(d caddyfile.Dispenser) (imapbackend.Backend, error) {
-	for d.Next() {
-		args := d.RemainingArgs()
+func (endp *IMAPEndpoint) Name() string {
+	return "imap"
+}
 
-		if len(args) == 1 {
-			addr, err := standardizeAddress(args[0])
-			if err != nil {
-				return nil, err
-			}
+func (endp *IMAPEndpoint) InstanceName() string {
+	return endp.name
+}
 
-			target := addr.Host + ":" + addr.Port
-			if addr.IsTLS() {
-				return imapproxy.NewTLS(target, nil), nil
-			} else {
-				return imapproxy.New(target), nil
-			}
-		}
+func (endp *IMAPEndpoint) Version() string {
+	return "0.0"
+}
+
+func (endp *IMAPEndpoint) Close() error {
+	return endp.serv.Close()
+}
+
+func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, error) {
+	if !endp.Auth.CheckPlain(username, password) {
+		return nil, imapbackend.ErrInvalidCredentials
 	}
 
-	return nil, nil
+	return endp.Store.GetUser(username)
 }
 
-func newIMAPPGP(d caddyfile.Dispenser, be imapbackend.Backend) (imapbackend.Backend, error) {
-	pgpbe := imappgp.New(be, pgplocal.Unlock)
-	return pgpbe, nil
-}
-
-func setIMAPErrors(d caddyfile.Dispenser, s *imapserver.Server) error {
+func setIMAPErrors(instName string, d caddyfile.Dispenser, s *imapserver.Server) error {
 	for d.Next() {
 		args := d.RemainingArgs()
 
@@ -94,9 +144,13 @@ func setIMAPErrors(d caddyfile.Dispenser, s *imapserver.Server) error {
 				w = f
 			}
 
-			s.ErrorLog = log.New(w, "imap", log.LstdFlags)
+			s.ErrorLog = log.New(w, "imap "+instName+" ", log.LstdFlags)
 		}
 	}
 
 	return nil
+}
+
+func init() {
+	module.Register("imap", NewIMAPEndpoint, []string{"auth", "storage", "tls", "iodebug", "errors", "insecureauth"})
 }
