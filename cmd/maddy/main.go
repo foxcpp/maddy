@@ -4,10 +4,10 @@ import (
 	"flag"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/emersion/maddy"
-	"github.com/emersion/maddy/module"
-	"github.com/mholt/caddy/caddyfile"
+	"github.com/emersion/maddy/config"
 )
 
 func main() {
@@ -15,14 +15,18 @@ func main() {
 	flag.StringVar(&configpath, "config", "Maddyfile", "path to Maddyfile")
 	flag.Parse()
 
-	f, err := os.Open(configpath)
+	absCfg, err := filepath.Abs(configpath)
+	if err != nil {
+		log.Fatalf("Failed to resolve path to config: %v", err)
+	}
+
+	f, err := os.Open(absCfg)
 	if err != nil {
 		log.Fatalf("Cannot open %q: %v", configpath, err)
 	}
 	defer f.Close()
 
-	maddy.Directives = append(maddy.Directives, module.ModuleDirectives...)
-	config, err := caddyfile.Parse(configpath, f, maddy.Directives)
+	config, err := config.ReadCfgTree(f, absCfg)
 	if err != nil {
 		log.Fatalf("Cannot parse %q: %v", configpath, err)
 	}

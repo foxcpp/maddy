@@ -10,30 +10,25 @@ import (
 	"math/big"
 	"net"
 	"time"
-
-	"github.com/mholt/caddy/caddyfile"
 )
 
-func setTLS(d caddyfile.Dispenser, config **tls.Config) error {
-	for d.Next() {
-		args := d.RemainingArgs()
-		switch len(args) {
-		case 1:
-			switch args[0] {
-			case "off":
-				*config = nil
-				return nil
-			case "self_signed":
-				if err := makeSelfSignedCert(*config); err != nil {
-					return err
-				}
-			}
-		case 2:
-			if cert, err := tls.LoadX509KeyPair(args[0], args[1]); err != nil {
+func setTLS(args []string, config **tls.Config) error {
+	switch len(args) {
+	case 1:
+		switch args[0] {
+		case "off":
+			*config = nil
+			return nil
+		case "self_signed":
+			if err := makeSelfSignedCert(*config); err != nil {
 				return err
-			} else {
-				(*config).Certificates = append((*config).Certificates, cert)
 			}
+		}
+	case 2:
+		if cert, err := tls.LoadX509KeyPair(args[0], args[1]); err != nil {
+			return err
+		} else {
+			(*config).Certificates = append((*config).Certificates, cert)
 		}
 	}
 

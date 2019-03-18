@@ -35,6 +35,6 @@ func (d Dummy) InstanceName() string {
 }
 
 func init() {
-	module.Register("dummy", nil, []string{})
+	module.Register("dummy", nil)
 	module.RegisterInstance(&Dummy{instName: "dummy"})
 }
