@@ -1,8 +1,8 @@
 package module
 
 import (
-	"bytes"
 	"errors"
+	"io"
 	"net"
 )
 
@@ -19,6 +19,10 @@ type DeliveryContext struct {
 	// Pipeline steps are allowed to modify this field.
 	To []string
 
+	// Set to true if message is received over SMTP and client is authenticated
+	// anonymously.
+	Anonymous bool
+
 	// If message is received over SMTP and client is authenticated
 	// non-anonymously - this field contains used username.
 	AuthUser string
@@ -28,7 +32,10 @@ type DeliveryContext struct {
 	SrcHostname string
 	// If message is received over SMTP - this field contains
 	// network address of client.
-	SrcIP net.Addr
+	SrcAddr net.Addr
+
+	// Our domain.
+	OurHostname string
 
 	// Arbitrary context meta-data that can be modified by any module in
 	// pipeline. It is passed unchanged to next module in chain.
@@ -38,7 +45,7 @@ type DeliveryContext struct {
 	Ctx map[string]interface{}
 
 	// Custom options passed to filter from server configuration.
-	Opts map[string]interface{}
+	Opts map[string]string
 }
 
 var ErrSilentDrop = errors.New("message is dropped by filter")
@@ -49,11 +56,15 @@ type Filter interface {
 	// Apply is called for each message that should be processed by module
 	// instance.
 	//
+	// If Filter returns non-nil io.Writer - then its contents will replace
+	// message body. If Filter returns nil io.Writer - message body will
+	// not be changed.
+	//
 	// If it returns non-nil error - message processing stops and error will be
 	// returned to message source.  However, if Apply returns ErrSilentDrop
 	// error value - message processing stops and message source will be told
 	// that message is processed successfully.
-	Apply(ctx *DeliveryContext, rcpt *bytes.Buffer) error
+	Apply(ctx *DeliveryContext, msg io.Reader) (io.Reader, error)
 }
 
 // DeliveryTarget is a special versionof Filter tht can't mutate message or its
@@ -64,5 +75,5 @@ type DeliveryTarget interface {
 	//
 	// If it returns non-nil error - message processing stops and error will be
 	// returned to message source.
-	Deliver(ctx DeliveryContext, rcpt bytes.Buffer) error
+	Deliver(ctx DeliveryContext, msg io.Reader) error
 }
