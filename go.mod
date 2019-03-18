@@ -9,7 +9,7 @@ require (
 	github.com/emersion/go-msgauth v0.0.0-20180104172905-3707cece5cdb
 	github.com/emersion/go-pgp-pubkey v0.0.0-20160719110822-73ab0acdede5
 	github.com/emersion/go-pgpmail v0.0.0-20171212131820-03c895a79e3f
-	github.com/emersion/go-smtp v0.0.0-20190111112644-81d5952b6339
+	github.com/emersion/go-smtp v0.10.0
 	github.com/emersion/go-smtp-proxy v0.0.0-20190110212928-7f11ac451931
 	github.com/foxcpp/go-sqlmail v0.0.0
 	github.com/go-sql-driver/mysql v1.4.1
