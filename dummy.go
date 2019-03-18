@@ -27,7 +27,7 @@ func (d Dummy) Name() string {
 }
 
 func (d Dummy) Version() string {
-	return "0.0"
+	return VersionStr
 }
 
 func (d Dummy) InstanceName() string {

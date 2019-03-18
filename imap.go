@@ -23,14 +23,16 @@ type IMAPEndpoint struct {
 }
 
 func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, error) {
-	var err error
 	endp := new(IMAPEndpoint)
 	endp.name = instName
-	var tlsConf *tls.Config
+	var (
+		err          error
+		tlsConf      *tls.Config
+		errorArgs    []string
+		insecureAuth bool
+		ioDebug      bool
+	)
 
-	insecureAuth := false
-	ioDebug := false
-	var errorArgs []string
 	for _, entry := range cfg.Childrens {
 		switch entry.Name {
 		case "auth":
@@ -91,6 +93,9 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		if err != nil {
 			return nil, fmt.Errorf("invalid address: %s", instName)
 		}
+		if saddr.Scheme != "imap" && saddr.Scheme != "imaps" {
+			return nil, fmt.Errorf("imap %s: imap or imaps scheme must be used, got %s", instName, saddr.Scheme)
+		}
 		addresses = append(addresses, saddr)
 	}
 
@@ -140,7 +145,7 @@ func (endp *IMAPEndpoint) InstanceName() string {
 }
 
 func (endp *IMAPEndpoint) Version() string {
-	return "0.0"
+	return VersionStr
 }
 
 func (endp *IMAPEndpoint) Close() error {
