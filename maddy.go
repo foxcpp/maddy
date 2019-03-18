@@ -9,21 +9,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
-	"github.com/mholt/caddy/caddyfile"
 )
 
-var Directives []string
-
-func Start(cfg []caddyfile.ServerBlock) error {
+func Start(cfg []config.CfgTreeNode) error {
 	var instances []module.Module
 	for _, block := range cfg {
-		if len(block.Keys) != 2 {
-			return fmt.Errorf("wanted 2 keys in module instance definition, got %d (%v)", len(block.Keys), block.Keys)
+		if len(block.Args) != 1 {
+			return fmt.Errorf("wanted 1 argument in module instance definition, got %d (%v)", len(block.Args), block.Args)
 		}
 
-		modName := block.Keys[0]
-		instName := block.Keys[1]
+		modName := block.Name
+		instName := block.Args[0]
 
 		factory := module.GetMod(modName)
 		if factory == nil {
@@ -34,7 +32,7 @@ func Start(cfg []caddyfile.ServerBlock) error {
 			return fmt.Errorf("module instance named %s already exists", instName)
 		}
 
-		inst, err := factory(instName, block.Tokens)
+		inst, err := factory(instName, block)
 		if err != nil {
 			return fmt.Errorf("module instance %s initialization failed: %v", instName, err)
 		}
@@ -64,12 +62,9 @@ func Start(cfg []caddyfile.ServerBlock) error {
 	return nil
 }
 
-func authProvider(tokens []caddyfile.Token) (module.AuthProvider, error) {
+func authProvider(args []string) (module.AuthProvider, error) {
 	var authName string
 	var ok bool
-	d := caddyfile.NewDispenserTokens("", tokens)
-	d.Next()
-	args := d.RemainingArgs()
 	if len(args) != 1 {
 		return nil, errors.New("auth: expected 1 argument")
 	}
@@ -87,12 +82,9 @@ func authProvider(tokens []caddyfile.Token) (module.AuthProvider, error) {
 	return provider, nil
 }
 
-func storageBackend(tokens []caddyfile.Token) (module.Storage, error) {
+func storageBackend(args []string) (module.Storage, error) {
 	var authName string
 	var ok bool
-	d := caddyfile.NewDispenserTokens("", tokens)
-	d.Next()
-	args := d.RemainingArgs()
 	if len(args) != 1 {
 		return nil, errors.New("storage: expected 1 argument")
 	}
@@ -108,14 +100,4 @@ func storageBackend(tokens []caddyfile.Token) (module.Storage, error) {
 		return nil, fmt.Errorf("module %s doesn't implements storage interface", authMod.Name())
 	}
 	return provider, nil
-}
-
-func oneStringValue(tokens []caddyfile.Token) string {
-	d := caddyfile.NewDispenserTokens("", tokens)
-	d.Next()
-	args := d.RemainingArgs()
-	if len(args) == 0 {
-		return ""
-	}
-	return args[0]
 }

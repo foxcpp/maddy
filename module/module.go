@@ -17,7 +17,7 @@ package module
 import (
 	"sync"
 
-	"github.com/mholt/caddy/caddyfile"
+	"github.com/emersion/maddy/config"
 )
 
 // Module is the interface implemented by all maddy module instances.
@@ -37,7 +37,7 @@ type Module interface {
 }
 
 // NewModule is function that creates new instance of module with specified name.
-type NewModule func(name string, cfg map[string][]caddyfile.Token) (Module, error)
+type NewModule func(name string, cfg config.CfgTreeNode) (Module, error)
 
 // Global WaitGroup instance is used to ensure graceful shutdown of server.
 // Whenever module starts goroutine (except when it is short-lived) - it should

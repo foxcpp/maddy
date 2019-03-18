@@ -2,12 +2,13 @@ package maddy
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
+	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 	"github.com/foxcpp/go-sqlmail"
 	imapsqlmail "github.com/foxcpp/go-sqlmail/imap"
-	"github.com/mholt/caddy/caddyfile"
 )
 
 type SQLMail struct {
@@ -27,40 +28,47 @@ func (sqlm *SQLMail) Version() string {
 	return sqlmail.VersionStr
 }
 
-func NewSQLMail(instName string, cfg map[string][]caddyfile.Token) (module.Module, error) {
-	tokens, ok := cfg["driver"]
-	if !ok {
-		return nil, errors.New("no driver set")
-	}
-	driver := oneStringValue(tokens)
-	if driver == "" {
-		return nil, errors.New("driver: expected 1 argument")
-	}
-
-	tokens, ok = cfg["dsn"]
-	if !ok {
-		return nil, errors.New("no dsn set")
-	}
-	dsn := oneStringValue(tokens)
-	if driver == "" {
-		return nil, errors.New("dsn: expected 1 argument")
-	}
+func NewSQLMail(instName string, cfg config.CfgTreeNode) (module.Module, error) {
+	var driver string
+	var dsn string
+	var appendlimitSet bool
 
 	opts := imapsqlmail.Opts{}
-	if tokens, ok := cfg["appendlimit"]; ok {
-		d := caddyfile.NewDispenserTokens("", tokens)
-		args := d.RemainingArgs()
-		if len(args) != 1 {
-			return nil, errors.New("appendlimit: expected 1 argument")
-		}
+	for _, entry := range cfg.Childrens {
+		switch entry.Name {
+		case "driver":
+			if len(entry.Args) != 1 {
+				return nil, fmt.Errorf("driver: expected 1 argument")
+			}
+			driver = entry.Args[0]
+		case "dsn":
+			if len(entry.Args) != 1 {
+				return nil, fmt.Errorf("dsn: expected 1 argument")
+			}
+			dsn = entry.Args[0]
+		case "appendlimit":
+			if len(entry.Args) != 1 {
+				return nil, errors.New("appendlimit: expected 1 argument")
+			}
 
-		lim, err := strconv.Atoi(args[0])
-		lim32 := uint32(lim)
-		if err != nil {
-			return nil, errors.New("appendlimit: invalid value")
+			lim, err := strconv.Atoi(entry.Args[0])
+			if lim == -1 {
+				continue
+			}
+
+			lim32 := uint32(lim)
+			if err != nil {
+				return nil, errors.New("appendlimit: invalid value")
+			}
+			opts.MaxMsgBytes = &lim32
+
+			appendlimitSet = true
+		default:
+			return nil, fmt.Errorf("unknown directive: %s", entry.Name)
 		}
-		opts.MaxMsgBytes = &lim32
-	} else {
+	}
+
+	if !appendlimitSet {
 		lim := uint32(32 * 1024 * 1024) // 32 MiB
 		opts.MaxMsgBytes = &lim
 	}
@@ -80,5 +88,5 @@ func NewSQLMail(instName string, cfg map[string][]caddyfile.Token) (module.Modul
 }
 
 func init() {
-	module.Register("sqlmail", NewSQLMail, []string{"dsn", "driver", "appendlimit"})
+	module.Register("sqlmail", NewSQLMail)
 }

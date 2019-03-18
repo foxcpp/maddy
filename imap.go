@@ -2,7 +2,6 @@ package maddy
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,8 +10,8 @@ import (
 
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
+	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
-	"github.com/mholt/caddy/caddyfile"
 )
 
 type IMAPEndpoint struct {
@@ -22,62 +21,62 @@ type IMAPEndpoint struct {
 	Store module.Storage
 }
 
-func NewIMAPEndpoint(instName string, cfg map[string][]caddyfile.Token) (module.Module, error) {
+func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, error) {
 	var err error
 	endp := new(IMAPEndpoint)
 	endp.name = instName
-
-	if tokens, ok := cfg["auth"]; ok {
-		endp.Auth, err = authProvider(tokens)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, errors.New("auth. provider is not set")
-	}
-
-	if tokens, ok := cfg["storage"]; ok {
-		endp.Store, err = storageBackend(tokens)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, errors.New("storage backend is not set")
-	}
-
 	var tlsConf *tls.Config
-	if tokens, ok := cfg["tls"]; ok {
-		if err := setTLS(caddyfile.NewDispenserTokens("", tokens), &tlsConf); err != nil {
-			return nil, err
+
+	insecureAuth := false
+	ioDebug := false
+	var errorArgs []string
+	for _, entry := range cfg.Childrens {
+		switch entry.Name {
+		case "auth":
+			endp.Auth, err = authProvider(entry.Args)
+			if err != nil {
+				return nil, err
+			}
+		case "storage":
+			endp.Store, err = storageBackend(entry.Args)
+			if err != nil {
+				return nil, err
+			}
+		case "tls":
+			if err := setTLS(entry.Args, &tlsConf); err != nil {
+				return nil, err
+			}
+		case "insecureauth":
+			log.Printf("imap %v: insecure auth is on!\n", instName)
+			insecureAuth = true
+		case "iodebug":
+			log.Printf("imap %v: I/O debugging is on!\n", instName)
+			ioDebug = true
+		case "errors":
+			errorArgs = entry.Args
 		}
 	}
 
-	// TODO: Should we special-case endpoint modules for sake of mode caddy-like
-	// syntax for multiple listen addresses?
-	addr, err := standardizeAddress(instName)
-	if err != nil {
-		return nil, fmt.Errorf("invalid address: %s", instName)
+	var addresses []Address
+	for _, addr := range cfg.Args {
+		saddr, err := standardizeAddress(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address: %s", instName)
+		}
+		addresses = append(addresses, saddr)
 	}
-	addresses := []Address{addr}
 
 	endp.serv = imapserver.New(endp)
-
-	if _, ok := cfg["insecureauth"]; ok {
-		log.Printf("imap %v: insecure auth is on!\n", instName)
-		endp.serv.AllowInsecureAuth = true
-	}
-	if _, ok := cfg["iodebug"]; ok {
-		log.Printf("imap %v: I/O debugging is on!\n", instName)
+	endp.serv.AllowInsecureAuth = insecureAuth
+	if ioDebug {
 		endp.serv.Debug = os.Stderr
 	}
-	if tokens, ok := cfg["errors"]; ok {
-		err := setIMAPErrors(instName, caddyfile.NewDispenserTokens("", tokens), endp.serv)
+	if errorArgs != nil {
+		err := setIMAPErrors(instName, errorArgs, endp.serv)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	// TODO: Enable extensions here.
 
 	for _, addr := range addresses {
 		var l net.Listener
@@ -92,9 +91,14 @@ func NewIMAPEndpoint(instName string, cfg map[string][]caddyfile.Token) (module.
 		}
 
 		go func() {
-			endp.serv.Serve(l)
+			module.WaitGroup.Add(1)
+			if err := endp.serv.Serve(l); err != nil {
+				log.Printf("imap: failed to listen on %v: %v\n", addr, err)
+			} else {
+				log.Printf("imap: listening on %v\n", addr)
+			}
+			module.WaitGroup.Done()
 		}()
-		log.Printf("imap: listening on %v\n", addr)
 	}
 
 	return endp, nil
@@ -124,33 +128,31 @@ func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, er
 	return endp.Store.GetUser(username)
 }
 
-func setIMAPErrors(instName string, d caddyfile.Dispenser, s *imapserver.Server) error {
-	for d.Next() {
-		args := d.RemainingArgs()
-
-		if len(args) == 1 {
-			output := args[0]
-			var w io.Writer
-			switch output {
-			case "stdout":
-				w = os.Stdout
-			case "stderr":
-				w = os.Stderr
-			default:
-				f, err := os.OpenFile(output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-				if err != nil {
-					return err
-				}
-				w = f
-			}
-
-			s.ErrorLog = log.New(w, "imap "+instName+" ", log.LstdFlags)
-		}
+func setIMAPErrors(instName string, args []string, s *imapserver.Server) error {
+	if len(args) != 1 {
+		return fmt.Errorf("missing errors directive values")
 	}
+
+	output := args[0]
+	var w io.Writer
+	switch output {
+	case "stdout":
+		w = os.Stdout
+	case "stderr":
+		w = os.Stderr
+	default:
+		f, err := os.OpenFile(output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			return err
+		}
+		w = f
+	}
+
+	s.ErrorLog = log.New(w, "imap "+instName+" ", log.LstdFlags)
 
 	return nil
 }
 
 func init() {
-	module.Register("imap", NewIMAPEndpoint, []string{"auth", "storage", "tls", "iodebug", "errors", "insecureauth"})
+	module.Register("imap", NewIMAPEndpoint)
 }
