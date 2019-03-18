@@ -2,6 +2,7 @@ package maddy
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -57,6 +58,33 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		}
 	}
 
+	if endp.Auth == nil {
+		endp.Auth, err = authProvider([]string{"default-auth"})
+		if err != nil {
+			endp.Auth, err = authProvider([]string{"default"})
+			if err != nil {
+				return nil, errors.New("missing default auth. provider, must set custom")
+			}
+		}
+		log.Printf("imap %s: using %s auth. provider (%s %s)",
+			instName, endp.Auth.(module.Module).InstanceName(),
+			endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).Version(),
+		)
+	}
+	if endp.Store == nil {
+		endp.Store, err = storageBackend([]string{"default-storage"})
+		if err != nil {
+			endp.Store, err = storageBackend([]string{"default"})
+			if err != nil {
+				return nil, errors.New("missing default storage backend, must set custom")
+			}
+		}
+		log.Printf("imap %s: using %s storage backend (%s %s)",
+			instName, endp.Store.(module.Module).InstanceName(),
+			endp.Store.(module.Module).Name(), endp.Store.(module.Module).Version(),
+		)
+	}
+
 	var addresses []Address
 	for _, addr := range cfg.Args {
 		saddr, err := standardizeAddress(addr)
@@ -85,6 +113,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		if err != nil {
 			return nil, fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
+		log.Printf("imap: listening on %v\n", addr)
 
 		if addr.IsTLS() {
 			l = tls.NewListener(l, tlsConf)
@@ -94,8 +123,6 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			module.WaitGroup.Add(1)
 			if err := endp.serv.Serve(l); err != nil {
 				log.Printf("imap: failed to listen on %v: %v\n", addr, err)
-			} else {
-				log.Printf("imap: listening on %v\n", addr)
 			}
 			module.WaitGroup.Done()
 		}()
