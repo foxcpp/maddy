@@ -63,8 +63,10 @@ func Start(cfg []config.CfgTreeNode) error {
 }
 
 func authProvider(args []string) (module.AuthProvider, error) {
-	var authName string
-	var ok bool
+	var (
+		authName string
+		ok       bool
+	)
 	if len(args) != 1 {
 		return nil, errors.New("auth: expected 1 argument")
 	}
@@ -83,8 +85,10 @@ func authProvider(args []string) (module.AuthProvider, error) {
 }
 
 func storageBackend(args []string) (module.Storage, error) {
-	var authName string
-	var ok bool
+	var (
+		authName string
+		ok       bool
+	)
 	if len(args) != 1 {
 		return nil, errors.New("storage: expected 1 argument")
 	}
