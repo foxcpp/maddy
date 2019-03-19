@@ -59,6 +59,8 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			ioDebug = true
 		case "errors":
 			errorArgs = entry.Args
+		default:
+			return nil, fmt.Errorf("unknown config directive: %s", entry.Name)
 		}
 	}
 
