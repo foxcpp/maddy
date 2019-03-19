@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/emersion/maddy/config"
@@ -55,6 +56,7 @@ type matchStep struct {
 	field    string
 	pattern  string
 	inverted bool
+	regexp   *regexp.Regexp
 	substeps []SMTPPipelineStep
 }
 
@@ -103,11 +105,19 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 }
 
 func (step matchStep) matches(s string) bool {
-	// TODO: RegExp.
-	if step.inverted {
-		return step.pattern != s
+	match := false
+
+	if step.regexp != nil {
+		match = step.regexp.MatchString(s)
+	} else {
+		match = strings.Contains(s, step.pattern)
 	}
-	return step.pattern == s
+
+	if step.inverted {
+		return !match
+	} else {
+		return match
+	}
 }
 
 type stopStep struct{}
@@ -188,6 +198,14 @@ func matchStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 
 	res.field = node.Args[0]
 	res.pattern = node.Args[1]
+	if strings.HasPrefix(res.pattern, "/") && strings.HasSuffix(res.pattern, "/") {
+		res.pattern = res.pattern[1 : len(res.pattern)-1]
+		var err error
+		res.regexp, err = regexp.Compile(res.pattern)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	for _, child := range node.Childrens {
 		step, err := StepFromCfg(child)
