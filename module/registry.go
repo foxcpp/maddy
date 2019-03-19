@@ -37,19 +37,13 @@ func GetMod(name string) NewModule {
 var instances = make(map[string]Module)
 var instancesLck sync.RWMutex
 
-// Register adds module factory function to global registry.
+// Register adds module instance to global registry.
 //
-// name must be unique. Register will panic if module with specified name
-// already exists in registry.
-//
-// You probably want to call this function from func init() of module package.
+// Instnace name must be unique. Second RegisterInstance with same instance
+// name will replace previous.
 func RegisterInstance(inst Module) {
 	instancesLck.Lock()
 	defer instancesLck.Unlock()
-
-	if _, ok := instances[inst.InstanceName()]; ok {
-		panic("RegisterInstance: instance with specified name is already registered: " + inst.InstanceName())
-	}
 
 	instances[inst.InstanceName()] = inst
 }
