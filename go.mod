@@ -11,7 +11,7 @@ require (
 	github.com/emersion/go-pgpmail v0.0.0-20171212131820-03c895a79e3f
 	github.com/emersion/go-smtp v0.10.0
 	github.com/emersion/go-smtp-proxy v0.0.0-20190110212928-7f11ac451931
-	github.com/foxcpp/go-sqlmail v0.0.0
+	github.com/foxcpp/go-sqlmail v0.0.0-20190319173524-e2a302b97a9f
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/lib/pq v1.0.0
