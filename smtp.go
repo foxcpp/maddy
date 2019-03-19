@@ -164,13 +164,13 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		if err != nil {
 			localDelivery, err = deliveryTarget([]string{"default"})
 			if err != nil {
-				return nil, errors.New("missing default local delivery target, must set custom")
+				return nil, err
 			}
 		}
 
 		remoteDelivery, err := deliveryTarget([]string{"default-remote-delivery"})
 		if err != nil {
-			return nil, errors.New("missing default remote delivery target, must set custom")
+			return nil, err
 		}
 
 		endp.pipeline = append(endp.pipeline,
