@@ -47,6 +47,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				return nil, err
 			}
 		case "tls":
+			tlsConf = new(tls.Config)
 			if err := setTLS(entry.Args, &tlsConf); err != nil {
 				return nil, err
 			}
