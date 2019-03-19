@@ -1,10 +1,15 @@
 package maddy
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 	"github.com/foxcpp/go-sqlmail"
@@ -85,6 +90,65 @@ func NewSQLMail(instName string, cfg config.CfgTreeNode) (module.Module, error) 
 	}
 
 	return &mod, nil
+}
+
+func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, msg); err != nil {
+		return err
+	}
+	for _, rcpt := range ctx.To {
+		parts := strings.Split(rcpt, "@")
+		if len(parts) != 2 {
+			return errors.New("Deliver: missing domain part")
+		}
+
+		if _, ok := ctx.Opts["local-only"]; ok {
+			hostname := ctx.Opts["hostname"]
+			if hostname == "" {
+				hostname = ctx.OurHostname
+			}
+
+			if parts[1] != hostname {
+				continue
+			}
+		}
+		if _, ok := ctx.Opts["remote-only"]; ok {
+			hostname := ctx.Opts["hostname"]
+			if hostname == "" {
+				hostname = ctx.OurHostname
+			}
+
+			if parts[1] == hostname {
+				continue
+			}
+		}
+
+		u, err := sqlm.GetExistingUser(parts[0])
+		if err != nil {
+			return err
+		}
+
+		// TODO: We need to handle Ctx["spam"] here.
+		tgtMbox := "INBOX"
+
+		mbox, err := u.GetMailbox(tgtMbox)
+		if err != nil {
+			if err == backend.ErrNoSuchMailbox {
+				if err := u.CreateMailbox(tgtMbox); err != nil {
+					return err
+				}
+				mbox, err = u.GetMailbox(tgtMbox)
+				if err != nil {
+					return err
+				}
+			}
+			return err
+		}
+
+		mbox.CreateMessage([]string{}, time.Now(), &buf)
+	}
+	return nil
 }
 
 func init() {
