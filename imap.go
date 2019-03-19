@@ -28,6 +28,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	var (
 		err          error
 		tlsConf      *tls.Config
+		tlsSet       bool
 		errorArgs    []string
 		insecureAuth bool
 		ioDebug      bool
@@ -49,6 +50,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			if err := setTLS(entry.Args, &tlsConf); err != nil {
 				return nil, err
 			}
+			tlsSet = true
 		case "insecureauth":
 			log.Printf("imap %v: insecure auth is on!\n", instName)
 			insecureAuth = true
@@ -58,6 +60,10 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		case "errors":
 			errorArgs = entry.Args
 		}
+	}
+
+	if !tlsSet {
+		return nil, fmt.Errorf("TLS is not configured")
 	}
 
 	if endp.Auth == nil {

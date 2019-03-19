@@ -87,6 +87,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	var (
 		err     error
 		tlsConf *tls.Config
+		tlsSet  bool
 	)
 	maxIdle := -1
 	maxMsgBytes := -1
@@ -125,6 +126,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			if err := setTLS(entry.Args, &tlsConf); err != nil {
 				return nil, err
 			}
+			tlsSet = true
 		case "insecureauth":
 			log.Printf("smtp %v: insecure auth is on!\n", instName)
 			insecureAuth = true
@@ -140,6 +142,10 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		default:
 			return nil, fmt.Errorf("unknown config directive: %v", entry.Name)
 		}
+	}
+
+	if !tlsSet {
+		return nil, errors.New("TLS is not configured")
 	}
 
 	if endp.domain == "" {
