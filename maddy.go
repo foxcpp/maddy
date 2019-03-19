@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/emersion/maddy/config"
@@ -16,8 +17,8 @@ import (
 func Start(cfg []config.CfgTreeNode) error {
 	var instances []module.Module
 	for _, block := range cfg {
-		if len(block.Args) != 1 {
-			return fmt.Errorf("wanted 1 argument in module instance definition, got %d (%v)", len(block.Args), block.Args)
+		if len(block.Args) == 0 {
+			return fmt.Errorf("wanted at least 1 argument in module instance definition")
 		}
 
 		modName := block.Name
@@ -28,8 +29,15 @@ func Start(cfg []config.CfgTreeNode) error {
 			return fmt.Errorf("unknown module: %s", modName)
 		}
 
-		if module.GetInstance(instName) != nil {
-			return fmt.Errorf("module instance named %s already exists", instName)
+		if mod := module.GetInstance(instName); mod != nil {
+			if !strings.HasPrefix(instName, "default") {
+				return fmt.Errorf("module instance named %s already exists", instName)
+			}
+
+			// Clean up default module before replacing it.
+			if closer, ok := mod.(io.Closer); ok {
+				closer.Close()
+			}
 		}
 
 		inst, err := factory(instName, block)
