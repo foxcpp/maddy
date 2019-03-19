@@ -62,11 +62,12 @@ func (u SMTPUser) Logout() error {
 }
 
 type SMTPEndpoint struct {
-	Auth     module.AuthProvider
-	serv     *smtp.Server
-	name     string
-	domain   string
-	pipeline []SMTPPipelineStep
+	Auth      module.AuthProvider
+	serv      *smtp.Server
+	name      string
+	domain    string
+	listeners []net.Listener
+	pipeline  []SMTPPipelineStep
 }
 
 func (endp *SMTPEndpoint) Name() string {
@@ -228,6 +229,8 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			l = tls.NewListener(l, tlsConf)
 		}
 
+		endp.listeners = append(endp.listeners, l)
+
 		go func() {
 			module.WaitGroup.Add(1)
 			if err := endp.serv.Serve(l); err != nil {
@@ -261,6 +264,9 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User
 }
 
 func (endp *SMTPEndpoint) Close() error {
+	for _, l := range endp.listeners {
+		l.Close()
+	}
 	endp.serv.Close()
 	return nil
 }
