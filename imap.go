@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -187,6 +188,8 @@ func setIMAPErrors(instName string, args []string, s *imapserver.Server) error {
 	output := args[0]
 	var w io.Writer
 	switch output {
+	case "off":
+		w = ioutil.Discard
 	case "stdout":
 		w = os.Stdout
 	case "stderr":
