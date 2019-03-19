@@ -51,11 +51,15 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				return nil, err
 			}
 			tlsSet = true
+			if tlsConf == nil {
+				log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", instName)
+				insecureAuth = true
+			}
 		case "insecureauth":
-			log.Printf("imap %v: insecure auth is on!\n", instName)
+			log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
 			insecureAuth = true
 		case "iodebug":
-			log.Printf("imap %v: I/O debugging is on!\n", instName)
+			log.Printf("imap %s: I/O debugging is on!", instName)
 			ioDebug = true
 		case "errors":
 			errorArgs = entry.Args

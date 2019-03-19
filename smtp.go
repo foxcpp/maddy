@@ -127,8 +127,12 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				return nil, err
 			}
 			tlsSet = true
+			if tlsConf == nil {
+				log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", instName)
+				insecureAuth = true
+			}
 		case "insecureauth":
-			log.Printf("smtp %v: insecure auth is on!\n", instName)
+			log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
 			insecureAuth = true
 		case "iodebug":
 			log.Printf("smtp %v: I/O debugging is on!\n", instName)
