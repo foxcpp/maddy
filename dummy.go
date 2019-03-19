@@ -1,7 +1,7 @@
 package maddy
 
 import (
-	"bytes"
+	"io"
 
 	"github.com/emersion/maddy/module"
 )
@@ -10,15 +10,15 @@ import (
 // interfaces but does nothing. Useful for testing.
 type Dummy struct{ instName string }
 
-func (d Dummy) CheckPlain(username, password string) bool {
+func (d Dummy) CheckPlain(_, _ string) bool {
 	return true
 }
 
-func (d Dummy) Apply(ctx *module.DeliveryContext, msg *bytes.Buffer) error {
-	return nil
+func (d Dummy) Apply(_ *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
+	return nil, nil
 }
 
-func (d Dummy) Deliver(ctx module.DeliveryContext, msg bytes.Buffer) error {
+func (d Dummy) Deliver(_ module.DeliveryContext, _ io.Reader) error {
 	return nil
 }
 
