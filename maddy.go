@@ -63,15 +63,11 @@ func Start(cfg []config.CfgTreeNode) error {
 }
 
 func authProvider(args []string) (module.AuthProvider, error) {
-	var (
-		authName string
-		ok       bool
-	)
 	if len(args) != 1 {
 		return nil, errors.New("auth: expected 1 argument")
 	}
 
-	authName = args[0]
+	authName := args[0]
 	authMod := module.GetInstance(authName)
 	if authMod == nil {
 		return nil, fmt.Errorf("unknown auth. provider instance: %s", authName)
@@ -85,15 +81,11 @@ func authProvider(args []string) (module.AuthProvider, error) {
 }
 
 func storageBackend(args []string) (module.Storage, error) {
-	var (
-		authName string
-		ok       bool
-	)
 	if len(args) != 1 {
 		return nil, errors.New("storage: expected 1 argument")
 	}
 
-	authName = args[0]
+	authName := args[0]
 	authMod := module.GetInstance(authName)
 	if authMod == nil {
 		return nil, fmt.Errorf("unknown storage backend instance: %s", authName)
@@ -104,4 +96,22 @@ func storageBackend(args []string) (module.Storage, error) {
 		return nil, fmt.Errorf("module %s doesn't implements storage interface", authMod.Name())
 	}
 	return provider, nil
+}
+
+func deliveryTarget(args []string) (module.DeliveryTarget, error) {
+	if len(args) != 1 {
+		return nil, errors.New("delivery: expected 1 argument")
+	}
+
+	modName := args[0]
+	mod := module.GetInstance(modName)
+	if mod == nil {
+		return nil, fmt.Errorf("unknown storage backend instance: %s", modName)
+	}
+
+	target, ok := mod.(module.DeliveryTarget)
+	if !ok {
+		return nil, fmt.Errorf("module %s doesn't implements delivery target interface", mod.Name())
+	}
+	return target, nil
 }
