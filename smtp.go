@@ -123,6 +123,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				return nil, errors.New("maxmsgbytes: invalid integer value")
 			}
 		case "tls":
+			tlsConf = new(tls.Config)
 			if err := setTLS(entry.Args, &tlsConf); err != nil {
 				return nil, err
 			}
@@ -157,7 +158,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	}
 
 	if len(endp.pipeline) == 0 {
-		log.Printf("smtp %s: using default pipeline configuration")
+		log.Printf("smtp %s: using default pipeline configuration", instName)
 
 		localDelivery, err := deliveryTarget([]string{"default-local-delivery"})
 		if err != nil {
