@@ -16,10 +16,11 @@ import (
 )
 
 type IMAPEndpoint struct {
-	name  string
-	serv  *imapserver.Server
-	Auth  module.AuthProvider
-	Store module.Storage
+	name      string
+	serv      *imapserver.Server
+	listeners []net.Listener
+	Auth      module.AuthProvider
+	Store     module.Storage
 }
 
 func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, error) {
@@ -137,6 +138,8 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			l = tls.NewListener(l, tlsConf)
 		}
 
+		endp.listeners = append(endp.listeners, l)
+
 		go func() {
 			module.WaitGroup.Add(1)
 			if err := endp.serv.Serve(l); err != nil {
@@ -162,6 +165,9 @@ func (endp *IMAPEndpoint) Version() string {
 }
 
 func (endp *IMAPEndpoint) Close() error {
+	for _, l := range endp.listeners {
+		l.Close()
+	}
 	return endp.serv.Close()
 }
 
