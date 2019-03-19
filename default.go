@@ -35,4 +35,5 @@ func init() {
 	}
 
 	module.RegisterInstance(mod)
+	module.RegisterInstance(Dummy{instName: "default-remote-delivery"})
 }

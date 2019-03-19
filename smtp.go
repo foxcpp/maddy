@@ -142,6 +142,32 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		}
 	}
 
+	if endp.domain == "" {
+		return nil, fmt.Errorf("hostname is not set")
+	}
+
+	if len(endp.pipeline) == 0 {
+		log.Printf("smtp %s: using default pipeline configuration")
+
+		localDelivery, err := deliveryTarget([]string{"default-local-delivery"})
+		if err != nil {
+			localDelivery, err = deliveryTarget([]string{"default"})
+			if err != nil {
+				return nil, errors.New("missing default local delivery target, must set custom")
+			}
+		}
+
+		remoteDelivery, err := deliveryTarget([]string{"default-remote-delivery"})
+		if err != nil {
+			return nil, errors.New("missing default remote delivery target, must set custom")
+		}
+
+		endp.pipeline = append(endp.pipeline,
+			deliveryStep{t: localDelivery, opts: map[string]string{"local-only": ""}},
+			deliveryStep{t: remoteDelivery, opts: map[string]string{"remote-only": ""}},
+		)
+	}
+
 	if endp.Auth == nil {
 		endp.Auth, err = authProvider([]string{"default-auth"})
 		if err != nil {
