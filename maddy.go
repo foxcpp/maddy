@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -15,12 +14,12 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-func Start(cfg []config.CfgTreeNode) error {
-	var instances []module.Module
+func Start(cfg []config.Node) error {
+	instances := make([]module.Module, 0, len(cfg))
 	for _, block := range cfg {
 		var instName string
 		if len(block.Args) == 0 {
-			instName = implicitInstanceName(block.Name)
+			instName = block.Name
 		} else {
 			instName = block.Args[0]
 		}
@@ -68,7 +67,6 @@ func Start(cfg []config.CfgTreeNode) error {
 			closer.Close()
 		}
 	}
-	module.WaitGroup.Wait()
 
 	return nil
 }
@@ -125,14 +123,4 @@ func deliveryTarget(args []string) (module.DeliveryTarget, error) {
 		return nil, fmt.Errorf("module %s doesn't implements delivery target interface", mod.Name())
 	}
 	return target, nil
-}
-
-func implicitInstanceName(modName string) string {
-	if mod := module.GetInstance(modName); mod == nil {
-		return modName
-	}
-	i := 1
-	for ; module.GetInstance(modName+strconv.Itoa(i)) != nil; i++ {
-	}
-	return modName + strconv.Itoa(i)
 }

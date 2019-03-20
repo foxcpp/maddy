@@ -15,14 +15,16 @@
 package module
 
 import (
-	"sync"
-
 	"github.com/emersion/maddy/config"
 )
 
 // Module is the interface implemented by all maddy module instances.
 //
 // It defines basic methods used to identify instances.
+//
+// Additionally, module can implement io.Closer if it needs to perform clean-up
+// on shutdown. If module starts long-lived goroutines - they should be stopped
+// *before* Close method returns to ensure graceful shutdown.
 type Module interface {
 	// Name method reports module name.
 	//
@@ -36,15 +38,5 @@ type Module interface {
 	Version() string
 }
 
-// NewModule is function that creates new instance of module with specified name.
-type NewModule func(name string, cfg config.CfgTreeNode) (Module, error)
-
-// Global WaitGroup instance is used to ensure graceful shutdown of server.
-// Whenever module starts goroutine (except when it is short-lived) - it should
-// increment WaitGroup counter by 1. Correspondingly, it should call Done when goroutine
-// finishes execution.
-//
-// If module requires special clean-up on shutdown - it should implement io.Closer interface
-// for this. Close() method will be called on server shutdown in this case. This method
-// should tell all module-created goroutines to stop.
-var WaitGroup sync.WaitGroup
+// FuncNewModule is function that creates new instance of module with specified name.
+type FuncNewModule func(name string, cfg config.Node) (Module, error)

@@ -26,7 +26,7 @@ func main() {
 	}
 	defer f.Close()
 
-	config, err := config.ReadCfgTree(f, absCfg)
+	config, err := config.ReadConfig(f, absCfg)
 	if err != nil {
 		log.Fatalf("Cannot parse %q: %v", configpath, err)
 	}

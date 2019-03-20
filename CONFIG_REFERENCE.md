@@ -32,11 +32,11 @@ Valid configuration directives and their forms:
   default. `instance_name` is the name of the corresponding configuration
   block.
 
-* `insecureauth`
+* `insecure_auth`
   Allow plaintext authentication over unprotected (unencrypted) connections.
   Use only for testing!
 
-* `iodebug`
+* `io_debug`
   Write all protocol commands from clients and responses to stderr.
 
 * `errors stderr`
@@ -52,7 +52,7 @@ Valid configuration directives and their forms:
 imap imap://0.0.0.0 imaps://0.0.0.0:993 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     auth pam
-    insecureauth
+    insecure_auth
     errors /var/lob/imap-errs.log
     storage spool
 }
@@ -88,22 +88,28 @@ Valid configuration directives and their forms:
   default. `instance_name` is the name of the corresponding configuration
   block.
 
-* `insecureauth`
+* `insecure_auth`
   Allow plaintext authentication over unprotected (unencrypted)
   connections. Use only for testing!
 
-* `iodebug`
+* `io_debug`
   Write all protocol commands from clients and responses to stderr.
 
 * `hostname <domain>`
   Set server domain name to advertise in EHLO/HELO response and for matching
   during delivery. Required.
 
-* `local-delivery <instance_name> [opts]`
+* `max_idle <value>` 
+  Connections timeout in seconds. Default is no timeout.
+
+* `max_message_size <value>`
+  Limit size of incoming messages to `value` bytes. Default is 32 MiB.
+
+* `local_delivery <instance_name> [opts]`
   Replace delivery target for local email without replace the whole pipeline
   (with DKIM and stuff).
 
-* `remote-delivery <instance_name> [opts]`
+* `remote_delivery <instance_name> [opts]`
   Replace delivery target for non-local email without replace the whole pipeline
   (with DKIM and stuff).
 
@@ -121,14 +127,14 @@ SMTP module does have a flexible mechanism that allows you to define a custom
 sequence of actions to apply on each incoming message.
 
 By default, it just passes emails with recipients with domain same as the
-specified hostname to default-delivery or default delivery target (usually IMAP
+specified hostname to `default_delivery` or `default` delivery target (usually IMAP
 mailbox). If the message does have non-local recipients it will be passed to
 message queue for outgoing transfer.
 
 Here are configuration directives doing the same (almost):
 ```
-deliver default local-only
-deliver out-queue remote-only
+deliver default local_only
+deliver out_queue remote_only
 ```
 
 You can add any number of steps you want using following directives (note that
@@ -152,7 +158,7 @@ specify them explicitly!)
 * `stop` 
   Stops processing.
 
-* `require-auth`
+* `require_auth`
   Stop processing with "access denied" error if the client is not authenticated
   non-anonymously.
 
@@ -171,9 +177,9 @@ specify them explicitly!)
     recipient matches.
   - `from`
     Message sender address.
-  - `src-addr`
+  - `src_addr`
     IP of the client who submitted the message.
-  - `src-hostname`
+  - `src_hostname`
     Hostname reported by the client in the EHLO/HELO command.
 
   See below for example.
@@ -191,7 +197,7 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
         deliver local
     }
     match no rcpt "/@emersion.fr$/" {
-        require-auth
+        require_auth
         filter dkim sign
         deliver out-queue
     }
@@ -216,6 +222,9 @@ Valid configuration directives:
   For SQLite3 this is just a file path.
   For MySQL: https://github.com/go-sql-driver/mysql#dsn-data-source-name
   For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
+
+* `appendlimit <value>`
+  Refuse to accept messages larger than `value` bytes. Default is 32 MiB.
 
 ### 'dummy' module
 

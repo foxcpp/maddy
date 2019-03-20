@@ -33,13 +33,13 @@ func (sqlm *SQLMail) Version() string {
 	return sqlmail.VersionStr
 }
 
-func NewSQLMail(instName string, cfg config.CfgTreeNode) (module.Module, error) {
+func NewSQLMail(instName string, cfg config.Node) (module.Module, error) {
 	var driver string
 	var dsn string
 	var appendlimitSet bool
 
 	opts := imapsqlmail.Opts{}
-	for _, entry := range cfg.Childrens {
+	for _, entry := range cfg.Children {
 		switch entry.Name {
 		case "driver":
 			if len(entry.Args) != 1 {
@@ -103,7 +103,7 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 			return errors.New("Deliver: missing domain part")
 		}
 
-		if _, ok := ctx.Opts["local-only"]; ok {
+		if _, ok := ctx.Opts["local_only"]; ok {
 			hostname := ctx.Opts["hostname"]
 			if hostname == "" {
 				hostname = ctx.OurHostname
@@ -113,7 +113,7 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 				continue
 			}
 		}
-		if _, ok := ctx.Opts["remote-only"]; ok {
+		if _, ok := ctx.Opts["remote_only"]; ok {
 			hostname := ctx.Opts["hostname"]
 			if hostname == "" {
 				hostname = ctx.OurHostname
@@ -135,6 +135,7 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 		mbox, err := u.GetMailbox(tgtMbox)
 		if err != nil {
 			if err == backend.ErrNoSuchMailbox {
+				// Create INBOX if it doesn't exists.
 				if err := u.CreateMailbox(tgtMbox); err != nil {
 					return err
 				}
@@ -142,11 +143,14 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 				if err != nil {
 					return err
 				}
+			} else {
+				return err
 			}
-			return err
 		}
 
-		mbox.CreateMessage([]string{}, time.Now(), &buf)
+		if err := mbox.CreateMessage([]string{}, time.Now(), &buf); err != nil {
+			return err
+		}
 	}
 	return nil
 }

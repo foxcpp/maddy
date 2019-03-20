@@ -17,10 +17,10 @@ func init() {
 		defaultDsn = "maddy.db"
 	}
 
-	mod, err := NewSQLMail("default", config.CfgTreeNode{
+	mod, err := NewSQLMail("default", config.Node{
 		Name: "sqlmail",
 		Args: []string{"default"},
-		Childrens: []config.CfgTreeNode{
+		Children: []config.Node{
 			{
 				Name: "driver",
 				Args: []string{defaultDriver},
@@ -38,5 +38,5 @@ func init() {
 	}
 
 	module.RegisterInstance(mod)
-	module.RegisterInstance(Dummy{instName: "default-remote-delivery"})
+	module.RegisterInstance(Dummy{instName: "default_remote_delivery"})
 }
