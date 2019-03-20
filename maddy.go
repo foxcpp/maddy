@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -17,12 +18,14 @@ import (
 func Start(cfg []config.CfgTreeNode) error {
 	var instances []module.Module
 	for _, block := range cfg {
+		var instName string
 		if len(block.Args) == 0 {
-			return fmt.Errorf("wanted at least 1 argument in module instance definition")
+			instName = implicitInstanceName(block.Name)
+		} else {
+			instName = block.Args[0]
 		}
 
 		modName := block.Name
-		instName := block.Args[0]
 
 		factory := module.GetMod(modName)
 		if factory == nil {
@@ -122,4 +125,14 @@ func deliveryTarget(args []string) (module.DeliveryTarget, error) {
 		return nil, fmt.Errorf("module %s doesn't implements delivery target interface", mod.Name())
 	}
 	return target, nil
+}
+
+func implicitInstanceName(modName string) string {
+	if mod := module.GetInstance(modName); mod == nil {
+		return modName
+	}
+	i := 1
+	for ; module.GetInstance(modName+strconv.Itoa(i)) != nil; i++ {
+	}
+	return modName + strconv.Itoa(i)
 }

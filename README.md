@@ -44,6 +44,11 @@ module_name instance_name {
 you need to refer to the module from different place in configuration (e.g.
 configure SMTP to deliver mail to certain specific storage)
 
+You can omit `instance_name`. If there is only one module config. block - it
+will get name the same as `module_name`. If there are multiple config blocks
+for one module - they will get names `module_name`, `module_name1`,
+`module_name2` and so on.
+
 #### Defaults
 
 Maddy provides reasonable defaults so you can start using it without spending
