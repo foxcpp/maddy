@@ -114,7 +114,7 @@ func deliveryTarget(args []string) (module.DeliveryTarget, error) {
 	modName := args[0]
 	mod := module.GetInstance(modName)
 	if mod == nil {
-		return nil, fmt.Errorf("unknown storage backend instance: %s", modName)
+		return nil, fmt.Errorf("unknown delivery target instance: %s", modName)
 	}
 
 	target, ok := mod.(module.DeliveryTarget)
