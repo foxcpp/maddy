@@ -1,4 +1,4 @@
-// +build sqlite3
+// +build !nosqlite3,cgo
 
 package maddy
 

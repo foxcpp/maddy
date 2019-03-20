@@ -16,6 +16,15 @@ Inspired from [Caddy](https://github.com/mholt/caddy).
 go get github.com/emersion/maddy/cmd/maddy
 ```
 
+Build tags:
+* `nosqlite3`
+  Disable SQLite3 support in go-sqlmail (enabled by default). Saves around 9
+  MiB of binary size.
+* `mysql`
+  Include support for MySQL driver in go-sqlmail.
+* `postgresql`
+  Include support for PostgreSQL driver in go-sqlmail.
+
 ## Configuration
 
 #### Syntax
@@ -94,6 +103,12 @@ DSN is a driver-specific value that describes the database to use.
 For SQLite3 this is just a file path.
 For MySQL: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
+
+Note that you can also change default DSN or SQL driver during compilation
+by building maddy using following command:
+```shell
+go build -ldflags "-X github,com/emersion/maddy.defaultDriver=DRIVER -X github.com/emersion/maddy.defaultDsn=DSN"
+```
 
 #### TLS
 

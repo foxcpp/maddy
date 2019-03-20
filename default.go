@@ -5,15 +5,18 @@ import (
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
-	_ "github.com/mattn/go-sqlite3"
 )
 
-// TODO: We need a good way to set these on compile-time.
-
-const defaultDriver = "sqlite3"
-const defaultDsn = "maddy.db"
+var defaultDriver, defaultDsn string
 
 func init() {
+	if defaultDriver == "" {
+		defaultDriver = "sqlite3"
+	}
+	if defaultDsn == "" {
+		defaultDsn = "maddy.db"
+	}
+
 	mod, err := NewSQLMail("default", config.CfgTreeNode{
 		Name: "sqlmail",
 		Args: []string{"default"},
@@ -30,7 +33,7 @@ func init() {
 	})
 
 	if err != nil {
-		log.Println("failed to initialize default (go-sqlmail) backend: %v", err)
+		log.Println("failed to initialize default (go-sqlmail) backend:", err)
 		return
 	}
 
