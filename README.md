@@ -4,12 +4,6 @@ Fast, cross-platform mail server.
 
 Inspired from [Caddy](https://github.com/mholt/caddy).
 
-## Features
-
-* Easy configuration with Maddyfile (same as Caddyfile)
-* Transparent PGP support
-* Runs anywhere with no external dependencies (not even libc)
-
 ## Installation
 
 ```shell
@@ -27,7 +21,7 @@ Build tags:
 
 ## Configuration
 
-#### Syntax
+### Syntax
 
 Maddy uses configuration format similar (but not the same!) to Caddy's
 Caddyfile.  You may want to read [Caddyfile page from Caddy docs](https://caddyserver.com/docs/caddyfile).
@@ -37,7 +31,7 @@ Notable differences from Caddy's format:
 * Environmental variables are not expanded
 * You can't omit braces if you have only one configuration block
 
-#### Modularity
+### Modularity
 
 Maddy does have a module-based design and you specify in configuration modules
 you want to use and how you want them to work.
@@ -54,11 +48,10 @@ you need to refer to the module from different place in configuration (e.g.
 configure SMTP to deliver mail to certain specific storage)
 
 You can omit `instance_name`. If there is only one module config. block - it
-will get name the same as `module_name`. If there are multiple config blocks
-for one module - they will get names `module_name`, `module_name1`,
-`module_name2` and so on.
+will get name the same as `module_name`. However, you can't define multiple
+config. blocks this way because names should be unique.
 
-#### Defaults
+### Defaults
 
 Maddy provides reasonable defaults so you can start using it without spending
 hours writing configuration files. All you need it so define smtp and imap
@@ -80,7 +73,7 @@ Don't forget to use actual values instead of placeholders.
 With this configuration, maddy will create an SQLite3 database for messages in
 current directory and use it to store all messages.
 
-#### go-sqlmail: Database location
+### go-sqlmail: Database location
 
 If you don't like SQLite3 or don't want to have it in the current directory,
 you can override the configuration of the default module.
@@ -110,7 +103,7 @@ by building maddy using following command:
 go build -ldflags "-X github,com/emersion/maddy.defaultDriver=DRIVER -X github.com/emersion/maddy.defaultDsn=DSN"
 ```
 
-#### TLS
+### TLS
 
 Currently, maddy doesn't implement any form of automatic TLS like Caddy. But
 since we don't want to have insecure defaults we require users to either
@@ -120,12 +113,12 @@ Valid variants of TLS config directive:
 
 Disable TLS:
 ```
-tls off
+tls off  # this is insecure!
 ```
 
 Use temporary self-signed certificate (useful for testing):
 ```
-tls self_signed
+tls self_signed   # this is insecure too!
 ```
 
 Use specified certificate and private key:
@@ -133,7 +126,7 @@ Use specified certificate and private key:
 tls cert_file pkey_file
 ```
 
-#### SMTP pipeline & other customization options 
+### SMTP pipeline & other customization options 
 
 List of all configuration options and all modules you can use is in
 [CONFIG_REFERENCE.md](CONFIG_REFERENCE.md) file.

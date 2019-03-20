@@ -45,6 +45,9 @@ func makeSelfSignedCert(config *tls.Config) error {
 	notAfter := notBefore.Add(24 * time.Hour * 7)
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return err
+	}
 	cert := &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject:      pkix.Name{Organization: []string{"Maddy Self-Signed"}},

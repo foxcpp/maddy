@@ -9,6 +9,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
+	"sync"
 
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
@@ -22,9 +24,11 @@ type IMAPEndpoint struct {
 	listeners []net.Listener
 	Auth      module.AuthProvider
 	Store     module.Storage
+
+	listenersWg sync.WaitGroup
 }
 
-func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, error) {
+func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 	endp := new(IMAPEndpoint)
 	endp.name = instName
 	var (
@@ -36,7 +40,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		ioDebug      bool
 	)
 
-	for _, entry := range cfg.Childrens {
+	for _, entry := range cfg.Children {
 		switch entry.Name {
 		case "auth":
 			endp.Auth, err = authProvider(entry.Args)
@@ -58,10 +62,10 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", instName)
 				insecureAuth = true
 			}
-		case "insecureauth":
+		case "insecure_auth":
 			log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
 			insecureAuth = true
-		case "iodebug":
+		case "io_debug":
 			log.Printf("imap %s: I/O debugging is on!", instName)
 			ioDebug = true
 		case "errors":
@@ -76,7 +80,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	}
 
 	if endp.Auth == nil {
-		endp.Auth, err = authProvider([]string{"default-auth"})
+		endp.Auth, err = authProvider([]string{"default_auth"})
 		if err != nil {
 			endp.Auth, err = authProvider([]string{"default"})
 			if err != nil {
@@ -89,7 +93,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		)
 	}
 	if endp.Store == nil {
-		endp.Store, err = storageBackend([]string{"default-storage"})
+		endp.Store, err = storageBackend([]string{"default_storage"})
 		if err != nil {
 			endp.Store, err = storageBackend([]string{"default"})
 			if err != nil {
@@ -102,7 +106,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		)
 	}
 
-	var addresses []Address
+	addresses := make([]Address, 0, len(cfg.Args))
 	for _, addr := range cfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
@@ -127,6 +131,7 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	}
 
 	for _, addr := range addresses {
+
 		var l net.Listener
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
@@ -141,12 +146,13 @@ func NewIMAPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 
 		endp.listeners = append(endp.listeners, l)
 
+		endp.listenersWg.Add(1)
+		addr := addr
 		go func() {
-			module.WaitGroup.Add(1)
-			if err := endp.serv.Serve(l); err != nil {
-				log.Printf("imap: failed to listen on %v: %v\n", addr, err)
+			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+				log.Printf("imap: failed to serve %s: %s\n", addr, err)
 			}
-			module.WaitGroup.Done()
+			endp.listenersWg.Done()
 		}()
 	}
 
@@ -169,7 +175,11 @@ func (endp *IMAPEndpoint) Close() error {
 	for _, l := range endp.listeners {
 		l.Close()
 	}
-	return endp.serv.Close()
+	if err := endp.serv.Close(); err != nil {
+		return err
+	}
+	endp.listenersWg.Wait()
+	return nil
 }
 
 func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, error) {

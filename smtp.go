@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
@@ -24,18 +26,26 @@ type SMTPUser struct {
 }
 
 func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
-	ctx := module.DeliveryContext{}
-	ctx.From = from
-	ctx.To = to
-	ctx.Anonymous = u.anonymous
-	ctx.AuthUser = u.username
-	ctx.SrcHostname = u.state.Hostname
-	ctx.SrcAddr = u.state.RemoteAddr
-	ctx.OurHostname = u.endp.domain
-	ctx.Ctx = make(map[string]interface{})
+	ctx := module.DeliveryContext{
+		From:        from,
+		To:          to,
+		Anonymous:   u.anonymous,
+		AuthUser:    u.username,
+		SrcHostname: u.state.Hostname,
+		SrcAddr:     u.state.RemoteAddr,
+		OurHostname: u.endp.domain,
+		Ctx:         make(map[string]interface{}),
+	}
 
-	currentMsg := r
+	// TODO: Execute pipeline steps in parallel.
+	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
+
 	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		return err
+	}
+	currentMsg := bytes.NewReader(buf.Bytes())
+
 	for _, step := range u.endp.pipeline {
 		r, cont, err := step.Pass(&ctx, currentMsg)
 		if !cont {
@@ -43,16 +53,20 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 				return nil
 			}
 			if err != nil {
+				log.Printf("smtp %s: step failed: %v", u.endp.name, err)
 				return err
 			}
 		}
 
-		if r != nil {
+		if r != nil && r != io.Reader(currentMsg) {
+			buf.Reset()
 			if _, err := io.Copy(&buf, r); err != nil {
+				log.Printf("smtp %s: failed to buffer message: %v", u.endp.name, err)
 				return err
 			}
-			currentMsg = &buf
+			currentMsg.Reset(buf.Bytes())
 		}
+		currentMsg.Seek(0, io.SeekStart)
 	}
 	return nil
 }
@@ -68,6 +82,8 @@ type SMTPEndpoint struct {
 	domain    string
 	listeners []net.Listener
 	pipeline  []SMTPPipelineStep
+
+	listenersWg sync.WaitGroup
 }
 
 func (endp *SMTPEndpoint) Name() string {
@@ -82,7 +98,7 @@ func (endp *SMTPEndpoint) Version() string {
 	return VersionStr
 }
 
-func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, error) {
+func NewSMTPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 	endp := new(SMTPEndpoint)
 	endp.name = instName
 	var (
@@ -100,7 +116,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 
 	insecureAuth := false
 	ioDebug := false
-	for _, entry := range cfg.Childrens {
+	for _, entry := range cfg.Children {
 		switch entry.Name {
 		case "auth":
 			endp.Auth, err = authProvider(entry.Args)
@@ -112,21 +128,21 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				return nil, errors.New("hostname: expected 1 argument")
 			}
 			endp.domain = entry.Args[0]
-		case "maxidle":
+		case "max_idle":
 			if len(entry.Args) != 1 {
-				return nil, errors.New("maxidle: expected 1 argument")
+				return nil, errors.New("max_idle: expected 1 argument")
 			}
 			maxIdle, err = strconv.Atoi(entry.Args[0])
 			if err != nil {
-				return nil, errors.New("maxidle: invalid integer value")
+				return nil, errors.New("max_idle: invalid integer value")
 			}
-		case "maxmsgbytes":
+		case "max_message_size":
 			if len(entry.Args) != 1 {
-				return nil, errors.New("maxmsgbytes: expected 1 argument")
+				return nil, errors.New("max_message_size: expected 1 argument")
 			}
 			maxMsgBytes, err = strconv.Atoi(entry.Args[0])
 			if err != nil {
-				return nil, errors.New("maxmsgbytes: invalid integer value")
+				return nil, errors.New("max_message_size: invalid integer value")
 			}
 		case "tls":
 			tlsConf = new(tls.Config)
@@ -138,35 +154,35 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 				log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", instName)
 				insecureAuth = true
 			}
-		case "insecureauth":
+		case "insecure_auth":
 			log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
 			insecureAuth = true
-		case "iodebug":
+		case "io_debug":
 			log.Printf("smtp %v: I/O debugging is on!\n", instName)
 			ioDebug = true
-		case "local-delivery":
+		case "local_delivery":
 			if len(entry.Args) == 0 {
-				return nil, errors.New("local-delivery: expected at least 1 argument")
+				return nil, errors.New("local_delivery: expected at least 1 argument")
 			}
 			if len(endp.pipeline) != 0 {
-				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+				return nil, errors.New("can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			localDeliveryDefault = entry.Args[0]
 			localDeliveryOpts = readOpts(entry.Args[1:])
-		case "remote-delivery":
+		case "remote_delivery":
 			if len(entry.Args) == 0 {
-				return nil, errors.New("remote-delivery: expected at least 1 argument")
+				return nil, errors.New("remote_delivery: expected at least 1 argument")
 			}
 			if len(endp.pipeline) != 0 {
-				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+				return nil, errors.New("can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			remoteDeliveryDefault = entry.Args[0]
 			remoteDeliveryOpts = readOpts(entry.Args[1:])
-		case "filter", "delivery", "match", "stop", "require-auth":
-			if localDeliveryDefault == "" || remoteDeliveryDefault == "" {
-				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+		case "filter", "delivery", "match", "stop", "require_auth":
+			if localDeliveryDefault != "" || remoteDeliveryDefault != "" {
+				return nil, errors.New("can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			step, err := StepFromCfg(entry)
@@ -195,7 +211,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	}
 
 	if endp.Auth == nil {
-		endp.Auth, err = authProvider([]string{"default-auth"})
+		endp.Auth, err = authProvider([]string{"default_auth"})
 		if err != nil {
 			endp.Auth, err = authProvider([]string{"default"})
 			if err != nil {
@@ -208,7 +224,7 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		)
 	}
 
-	var addresses []Address
+	addresses := make([]Address, 0, len(cfg.Args))
 	for _, addr := range cfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
@@ -252,12 +268,13 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Confi
 
 		endp.listeners = append(endp.listeners, l)
 
+		endp.listenersWg.Add(1)
+		addr := addr
 		go func() {
-			module.WaitGroup.Add(1)
-			if err := endp.serv.Serve(l); err != nil {
-				log.Printf("smtp: failed to serve %v: %v\n", addr, err)
+			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+				log.Printf("smtp: failed to serve %s: %s\n", addr, err)
 			}
-			module.WaitGroup.Done()
+			endp.listenersWg.Done()
 		}()
 	}
 	return nil
@@ -269,14 +286,14 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 	var err error
 	var localDelivery module.DeliveryTarget
 	if localDeliveryName == "" {
-		localDelivery, err = deliveryTarget([]string{"default-local-delivery"})
+		localDelivery, err = deliveryTarget([]string{"default_local_delivery"})
 		if err != nil {
 			localDelivery, err = deliveryTarget([]string{"default"})
 			if err != nil {
 				return err
 			}
 		}
-		localOpts = map[string]string{"local-only": ""}
+		localOpts = map[string]string{"local_only": ""}
 	} else {
 		localDelivery, err = deliveryTarget([]string{localDeliveryName})
 		if err != nil {
@@ -285,8 +302,8 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 	}
 
 	if remoteDeliveryName == "" {
-		remoteDeliveryName = "default-remote-delivery"
-		remoteOpts = map[string]string{"remote-only": ""}
+		remoteDeliveryName = "default_remote_delivery"
+		remoteOpts = map[string]string{"remote_only": ""}
 	}
 
 	remoteDelivery, err := deliveryTarget([]string{remoteDeliveryName})
@@ -327,6 +344,7 @@ func (endp *SMTPEndpoint) Close() error {
 		l.Close()
 	}
 	endp.serv.Close()
+	endp.listenersWg.Wait()
 	return nil
 }
 

@@ -10,23 +10,23 @@ import (
 	"github.com/mholt/caddy/caddyfile"
 )
 
-type CfgTreeNode struct {
-	Name      string
-	Args      []string
-	Childrens []CfgTreeNode
-	Snippet   bool
+type Node struct {
+	Name     string
+	Args     []string
+	Children []Node
+	Snippet  bool
 }
 
 type parseContext struct {
 	caddyfile.Dispenser
 	parens   int
-	snippets map[string][]CfgTreeNode
+	snippets map[string][]Node
 
 	fileLocation string
 }
 
-func (ctx *parseContext) readCfgNode() (CfgTreeNode, error) {
-	node := CfgTreeNode{}
+func (ctx *parseContext) readCfgNode() (Node, error) {
+	node := Node{}
 	if ctx.Val() == "{" {
 		ctx.parens++
 		return node, ctx.SyntaxErr("block header")
@@ -41,7 +41,7 @@ func (ctx *parseContext) readCfgNode() (CfgTreeNode, error) {
 		if ctx.Val() == "{" {
 			ctx.parens++
 			var err error
-			node.Childrens, err = ctx.readCfgNodes()
+			node.Children, err = ctx.readCfgNodes()
 			if err != nil {
 				return node, err
 			}
@@ -61,9 +61,9 @@ func (ctx *parseContext) readCfgNode() (CfgTreeNode, error) {
 	return node, nil
 }
 
-func (ctx *parseContext) expandImports(node *CfgTreeNode, expansionDepth int) error {
-	newChildrens := make([]CfgTreeNode, 0, len(node.Childrens))
-	for _, child := range node.Childrens {
+func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
+	newChildrens := make([]Node, 0, len(node.Children))
+	for _, child := range node.Children {
 		if child.Name == "import" {
 			if len(child.Args) != 1 {
 				return ctx.Err("import directive requires exactly 1 argument")
@@ -83,11 +83,11 @@ func (ctx *parseContext) expandImports(node *CfgTreeNode, expansionDepth int) er
 			newChildrens = append(newChildrens, child)
 		}
 	}
-	node.Childrens = newChildrens
+	node.Children = newChildrens
 	return nil
 }
 
-func (ctx *parseContext) resolveImport(name string, depth int) ([]CfgTreeNode, error) {
+func (ctx *parseContext) resolveImport(name string, depth int) ([]Node, error) {
 	if subtree, ok := ctx.snippets[name]; ok {
 		return subtree, nil
 	}
@@ -118,8 +118,8 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 	return false, ""
 }
 
-func (ctx *parseContext) readCfgNodes() ([]CfgTreeNode, error) {
-	res := []CfgTreeNode{}
+func (ctx *parseContext) readCfgNodes() ([]Node, error) {
+	res := []Node{}
 	if ctx.parens > 255 {
 		return res, ctx.Err("Nesting limit reached")
 	}
@@ -154,7 +154,7 @@ func (ctx *parseContext) readCfgNodes() ([]CfgTreeNode, error) {
 				return res, ctx.Err("Snippet declarations can't have arguments")
 			}
 
-			ctx.snippets[node.Name] = node.Childrens
+			ctx.snippets[node.Name] = node.Children
 			continue
 		}
 
@@ -166,32 +166,32 @@ func (ctx *parseContext) readCfgNodes() ([]CfgTreeNode, error) {
 	return res, nil
 }
 
-func readCfgTree(r io.Reader, location string, depth int) (nodes []CfgTreeNode, snips map[string][]CfgTreeNode, err error) {
+func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips map[string][]Node, err error) {
 	ctx := parseContext{
 		Dispenser:    caddyfile.NewDispenser(location, r),
-		snippets:     make(map[string][]CfgTreeNode),
+		snippets:     make(map[string][]Node),
 		fileLocation: location,
 	}
-	root := CfgTreeNode{}
-	root.Childrens, err = ctx.readCfgNodes()
+	root := Node{}
+	root.Children, err = ctx.readCfgNodes()
 	if err != nil {
-		return root.Childrens, ctx.snippets, err
+		return root.Children, ctx.snippets, err
 	}
 	if ctx.parens < 0 {
-		return root.Childrens, ctx.snippets, ctx.Err("Unexpected }")
+		return root.Children, ctx.snippets, ctx.Err("Unexpected }")
 	}
 	if ctx.parens > 0 {
-		return root.Childrens, ctx.snippets, ctx.Err("Unexpected {")
+		return root.Children, ctx.snippets, ctx.Err("Unexpected {")
 	}
 
 	if err := ctx.expandImports(&root, depth); err != nil {
-		return root.Childrens, ctx.snippets, err
+		return root.Children, ctx.snippets, err
 	}
 
-	return root.Childrens, ctx.snippets, nil
+	return root.Children, ctx.snippets, nil
 }
 
-func ReadCfgTree(r io.Reader, location string) (nodes []CfgTreeNode, err error) {
+func ReadConfig(r io.Reader, location string) (nodes []Node, err error) {
 	nodes, _, err = readCfgTree(r, location, 1)
 	return
 }

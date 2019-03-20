@@ -4,8 +4,8 @@ import (
 	"sync"
 )
 
-var modules = make(map[string]NewModule)
-var modulesLck sync.RWMutex
+var modules = make(map[string]FuncNewModule)
+var modulesLock sync.RWMutex
 
 // Register adds module factory function to global registry.
 //
@@ -13,9 +13,9 @@ var modulesLck sync.RWMutex
 // already exists in registry.
 //
 // You probably want to call this function from func init() of module package.
-func Register(name string, factory NewModule) {
-	modulesLck.Lock()
-	defer modulesLck.Unlock()
+func Register(name string, factory FuncNewModule) {
+	modulesLock.Lock()
+	defer modulesLock.Unlock()
 
 	if _, ok := modules[name]; ok {
 		panic("Register: module with specified name is already registered: " + name)
@@ -27,9 +27,9 @@ func Register(name string, factory NewModule) {
 // GetMod returns module from global registry.
 //
 // Nil is returned if no module with specified name is registered.
-func GetMod(name string) NewModule {
-	modulesLck.RLock()
-	defer modulesLck.RUnlock()
+func GetMod(name string) FuncNewModule {
+	modulesLock.RLock()
+	defer modulesLock.RUnlock()
 
 	return modules[name]
 }

@@ -72,9 +72,9 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 		}
 	case "from":
 		match = step.matches(ctx.From)
-	case "src-addr":
+	case "src_addr":
 		match = step.matches(ctx.SrcAddr.String())
-	case "src-hostname":
+	case "src_hostname":
 		match = step.matches(ctx.SrcHostname)
 	}
 
@@ -105,8 +105,7 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 }
 
 func (step matchStep) matches(s string) bool {
-	match := false
-
+	var match bool
 	if step.regexp != nil {
 		match = step.regexp.MatchString(s)
 	} else {
@@ -126,7 +125,7 @@ func (stopStep) Pass(_ *module.DeliveryContext, _ io.Reader) (io.Reader, bool, e
 	return nil, false, nil
 }
 
-func filterStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
+func filterStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) == 0 {
 		return nil, errors.New("filter: expected at least one argument")
 	}
@@ -147,7 +146,7 @@ func filterStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 	}, nil
 }
 
-func deliveryStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
+func deliveryStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) == 0 {
 		return nil, errors.New("delivery: expected at least one argument")
 	}
@@ -169,6 +168,7 @@ func deliveryStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 }
 
 func readOpts(args []string) (res map[string]string) {
+	res = make(map[string]string)
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 1)
 		if len(parts) == 1 {
@@ -181,7 +181,7 @@ func readOpts(args []string) (res map[string]string) {
 	return
 }
 
-func matchStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
+func matchStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) != 3 && len(node.Args) != 2 {
 		return nil, errors.New("match: expected 3 or 2 arguments")
 	}
@@ -207,7 +207,7 @@ func matchStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 		}
 	}
 
-	for _, child := range node.Childrens {
+	for _, child := range node.Children {
 		step, err := StepFromCfg(child)
 		if err != nil {
 			return nil, err
@@ -218,7 +218,7 @@ func matchStepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 	return res, nil
 }
 
-func StepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
+func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	switch node.Name {
 	case "filter":
 		return filterStepFromCfg(node)
@@ -228,7 +228,7 @@ func StepFromCfg(node config.CfgTreeNode) (SMTPPipelineStep, error) {
 		return matchStepFromCfg(node)
 	case "stop":
 		return stopStep{}, nil
-	case "require-auth":
+	case "require_auth":
 		return requireAuthStep{}, nil
 	default:
 		return nil, fmt.Errorf("unknown pipeline step: %s", node.Name)
