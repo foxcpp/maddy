@@ -89,6 +89,11 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		err     error
 		tlsConf *tls.Config
 		tlsSet  bool
+
+		localDeliveryDefault  string
+		localDeliveryOpts     map[string]string
+		remoteDeliveryDefault string
+		remoteDeliveryOpts    map[string]string
 	)
 	maxIdle := -1
 	maxMsgBytes := -1
@@ -139,7 +144,31 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		case "iodebug":
 			log.Printf("smtp %v: I/O debugging is on!\n", instName)
 			ioDebug = true
+		case "local-delivery":
+			if len(entry.Args) == 0 {
+				return nil, errors.New("local-delivery: expected at least 1 argument")
+			}
+			if len(endp.pipeline) != 0 {
+				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+			}
+
+			localDeliveryDefault = entry.Args[0]
+			localDeliveryOpts = readOpts(entry.Args[1:])
+		case "remote-delivery":
+			if len(entry.Args) == 0 {
+				return nil, errors.New("remote-delivery: expected at least 1 argument")
+			}
+			if len(endp.pipeline) != 0 {
+				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+			}
+
+			remoteDeliveryDefault = entry.Args[0]
+			remoteDeliveryOpts = readOpts(entry.Args[1:])
 		case "filter", "delivery", "match", "stop", "require-auth":
+			if localDeliveryDefault == "" || remoteDeliveryDefault == "" {
+				return nil, errors.New("can't use custom pipeline with local-delivery or remote-delivery")
+			}
+
 			step, err := StepFromCfg(entry)
 			if err != nil {
 				return nil, err
@@ -159,25 +188,10 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 	}
 
 	if len(endp.pipeline) == 0 {
-		log.Printf("smtp %s: using default pipeline configuration", instName)
-
-		localDelivery, err := deliveryTarget([]string{"default-local-delivery"})
-		if err != nil {
-			localDelivery, err = deliveryTarget([]string{"default"})
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		remoteDelivery, err := deliveryTarget([]string{"default-remote-delivery"})
+		err := endp.setDefaultPipeline(localDeliveryDefault, remoteDeliveryDefault, localDeliveryOpts, remoteDeliveryOpts)
 		if err != nil {
 			return nil, err
 		}
-
-		endp.pipeline = append(endp.pipeline,
-			deliveryStep{t: localDelivery, opts: map[string]string{"local-only": ""}},
-			deliveryStep{t: remoteDelivery, opts: map[string]string{"remote-only": ""}},
-		)
 	}
 
 	if endp.Auth == nil {
@@ -216,12 +230,19 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 		endp.serv.Debug = os.Stderr
 	}
 
+	if err := endp.setupListeners(addresses, tlsConf); err != nil {
+		return nil, err
+	}
+	return endp, nil
+}
+
+func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Config) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
 		if err != nil {
-			return nil, fmt.Errorf("failed to bind on %v: %v", addr, err)
+			return fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
 		log.Printf("smtp: listening on %v\n", addr)
 
@@ -239,8 +260,46 @@ func NewSMTPEndpoint(instName string, cfg config.CfgTreeNode) (module.Module, er
 			module.WaitGroup.Done()
 		}()
 	}
+	return nil
+}
 
-	return endp, nil
+func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryName string, localOpts, remoteOpts map[string]string) error {
+	log.Printf("smtp %s: using default pipeline configuration", endp.InstanceName())
+
+	var err error
+	var localDelivery module.DeliveryTarget
+	if localDeliveryName == "" {
+		localDelivery, err = deliveryTarget([]string{"default-local-delivery"})
+		if err != nil {
+			localDelivery, err = deliveryTarget([]string{"default"})
+			if err != nil {
+				return err
+			}
+		}
+		localOpts = map[string]string{"local-only": ""}
+	} else {
+		localDelivery, err = deliveryTarget([]string{localDeliveryName})
+		if err != nil {
+			return err
+		}
+	}
+
+	if remoteDeliveryName == "" {
+		remoteDeliveryName = "default-remote-delivery"
+		remoteOpts = map[string]string{"remote-only": ""}
+	}
+
+	remoteDelivery, err := deliveryTarget([]string{remoteDeliveryName})
+	if err != nil {
+		return err
+	}
+
+	endp.pipeline = append(endp.pipeline,
+		deliveryStep{t: localDelivery, opts: localOpts},
+		deliveryStep{t: remoteDelivery, opts: remoteOpts},
+	)
+
+	return nil
 }
 
 func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.User, error) {

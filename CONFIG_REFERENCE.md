@@ -99,6 +99,14 @@ Valid configuration directives and their forms:
   Set server domain name to advertise in EHLO/HELO response and for matching
   during delivery. Required.
 
+* `local-delivery <instance_name> [opts]`
+  Replace delivery target for local email without replace the whole pipeline
+  (with DKIM and stuff).
+
+* `remote-delivery <instance_name> [opts]`
+  Replace delivery target for non-local email without replace the whole pipeline
+  (with DKIM and stuff).
+
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
