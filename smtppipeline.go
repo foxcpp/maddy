@@ -49,6 +49,14 @@ type deliveryStep struct {
 	opts map[string]string
 }
 
+func LookupAddr(ip net.IP) (string, error) {
+	names, err := net.LookupAddr(ip.String())
+	if err != nil || len(names) == 0 {
+		return "", err
+	}
+	return strings.TrimRight(names[0], "."), nil
+}
+
 func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
 	// We can safetly assume at least one recipient.
 	to := formatAddr(ctx.To[0])
@@ -56,7 +64,12 @@ func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Re
 	// TODO: Include reverse DNS information.
 	received := "Received: from " + ctx.SrcHostname
 	if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
-		received += fmt.Sprintf(" ([%s])", tcpAddr.IP)
+		domain, err := LookupAddr(tcpAddr.IP)
+		if err != nil {
+			received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
+		} else {
+			received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
+		}
 	}
 	// TODO: Include our public IP address.
 	received += fmt.Sprintf("\r\n\tby %s with %s", ctx.OurHostname, ctx.SrcProto)
