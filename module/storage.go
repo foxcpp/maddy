@@ -9,4 +9,7 @@ type Storage interface {
 	//
 	// If it doesn't exists - it should be created.
 	GetUser(username string) (imapbackend.User, error)
+
+	// Extensions returns list of IMAP extensions supported by backend.
+	Extensions() []string
 }

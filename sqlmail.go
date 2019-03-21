@@ -92,6 +92,10 @@ func NewSQLMail(instName string, cfg config.Node) (module.Module, error) {
 	return &mod, nil
 }
 
+func (sqlm *SQLMail) Extensions() []string {
+	return []string{"APPENDLIMIT", "MOVE", "CHILDREN"}
+}
+
 func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, msg); err != nil {
