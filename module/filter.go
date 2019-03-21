@@ -1,6 +1,7 @@
 package module
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -13,10 +14,12 @@ import (
 // Apply function returns.
 type DeliveryContext struct {
 	// Message sender address.
+	// Note that addresses may contain unescaped Unicode characters.
 	From string
 
 	// Recipient addresses as specified by message sender.
 	// Pipeline steps are allowed to modify this field.
+	// Note that addresses may contain unescaped Unicode characters.
 	To []string
 
 	// Set to true if message is received over SMTP and client is authenticated
@@ -26,7 +29,14 @@ type DeliveryContext struct {
 	// If message is received over SMTP and client is authenticated
 	// non-anonymously - this field contains used username.
 	AuthUser string
+	// If message is received over SMTP and client is authenticated
+	// non-anonymously - this field contains used password.
+	AuthPassword string
 
+	// IANA protocol name (SMTP, ESMTP, ESMTPS, etc)
+	SrcProto string
+	// If message is received over SMTPS - TLS connection state.
+	SrcTLSState tls.ConnectionState
 	// If message is received over SMTP - this field contains
 	// FQDN sent by client in EHLO/HELO command.
 	SrcHostname string

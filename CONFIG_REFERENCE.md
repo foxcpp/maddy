@@ -151,9 +151,9 @@ specify them explicitly!)
   (no further pipeline steps will be run).
 
 * `deliver <instance_name> [opts]`
-  Very close to the `filter` directive but the target module is not allowed to
-  modify the message or associated context values. Exists purely to make
-  configuration easier to understand.
+  Same as the the `filter` directive, but also executes certain pre-delivery
+  operations required by RFC 5321 (SMTP), i.e. it adds Received header to
+  message. 
 
 * `stop` 
   Stops processing.
