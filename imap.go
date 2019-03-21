@@ -12,10 +12,13 @@ import (
 	"strings"
 	"sync"
 
+	appendlimit "github.com/emersion/go-imap-appendlimit"
+	move "github.com/emersion/go-imap-move"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/go-sqlmail/imap/children"
 )
 
 type IMAPEndpoint struct {
@@ -130,8 +133,11 @@ func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 		}
 	}
 
-	for _, addr := range addresses {
+	if err := endp.enableExtensions(); err != nil {
+		return nil, err
+	}
 
+	for _, addr := range addresses {
 		var l net.Listener
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
@@ -188,6 +194,25 @@ func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, er
 	}
 
 	return endp.Store.GetUser(username)
+}
+
+func (endp *IMAPEndpoint) EnableChildrenExt() bool {
+	return endp.Store.(children.Backend).EnableChildrenExt()
+}
+
+func (endp *IMAPEndpoint) enableExtensions() error {
+	exts := endp.Store.Extensions()
+	for _, ext := range exts {
+		switch ext {
+		case "APPENDLIMIT":
+			endp.serv.Enable(appendlimit.NewExtension())
+		case "CHILDREN":
+			endp.serv.Enable(children.NewExtension())
+		case "MOVE":
+			endp.serv.Enable(move.NewExtension())
+		}
+	}
+	return nil
 }
 
 func setIMAPErrors(instName string, args []string, s *imapserver.Server) error {
