@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
@@ -31,10 +32,19 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 		To:          to,
 		Anonymous:   u.anonymous,
 		AuthUser:    u.username,
+		SrcTLSState: u.state.TLS,
 		SrcHostname: u.state.Hostname,
 		SrcAddr:     u.state.RemoteAddr,
 		OurHostname: u.endp.domain,
 		Ctx:         make(map[string]interface{}),
+	}
+
+	// Check if TLS connection state struct is poplated.
+	// If it is - we are using TLS.
+	if u.state.TLS.Version != 0 {
+		ctx.SrcProto = "ESMTPS"
+	} else {
+		ctx.SrcProto = "ESMTP"
 	}
 
 	// TODO: Execute pipeline steps in parallel.
@@ -337,6 +347,16 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User
 		anonymous: true,
 		state:     state,
 	}, nil
+}
+
+func formatAddr(raw string) string {
+	addr := mail.Address{Address: raw}
+	return addr.String()
+}
+
+func addReturnPath(ctx module.DeliveryContext, msg io.Reader) io.Reader {
+	hdr := "Return-Path: " + formatAddr(ctx.From) + "\r\n"
+	return io.MultiReader(strings.NewReader(hdr), msg)
 }
 
 func (endp *SMTPEndpoint) Close() error {

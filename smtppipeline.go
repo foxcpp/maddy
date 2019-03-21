@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
@@ -48,6 +50,20 @@ type deliveryStep struct {
 }
 
 func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
+	// We can safetly assume at least one recipient.
+	to := formatAddr(ctx.To[0])
+
+	// TODO: Include reverse DNS information.
+	received := "Received: from " + ctx.SrcHostname
+	if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
+		received += fmt.Sprintf(" ([%s])", tcpAddr.IP)
+	}
+	// TODO: Include our public IP address.
+	received += fmt.Sprintf("\r\n\tby %s with %s", ctx.OurHostname, ctx.SrcProto)
+	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
+
+	msg = io.MultiReader(strings.NewReader(received), msg)
+
 	err := step.t.Deliver(*ctx, msg)
 	return nil, err == nil, err
 }
