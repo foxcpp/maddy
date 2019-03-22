@@ -175,8 +175,13 @@ specify them explicitly!)
   - `rcpt`
     Message recipient addresses, the condition is true if at least one
     recipient matches.
+  - `rcpt_domain`
+    Message recipient domain, the condition is true if at least one
+    recipient matches.
   - `from`
     Message sender address.
+  - `from_domain`
+    Domain part of message sender address.
   - `src_addr`
     IP of the client who submitted the message.
   - `src_hostname`
