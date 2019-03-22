@@ -92,6 +92,10 @@ Valid configuration directives and their forms:
   Allow plaintext authentication over unprotected (unencrypted)
   connections. Use only for testing!
 
+* `submission`
+  When no pipeline is specified - use submission pipeline instead of relay.
+  You should use it for Submission protocol endpoints.
+
 * `io_debug`
   Write all protocol commands from clients and responses to stderr.
 
