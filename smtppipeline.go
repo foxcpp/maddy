@@ -99,8 +99,28 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 				break
 			}
 		}
+	case "rcpt_domain":
+		for _, rcpt := range ctx.To {
+			parts := strings.Split(rcpt, "@")
+			if len(parts) != 2 {
+				continue
+			}
+			if step.matches(parts[1]) {
+				match = true
+				break
+			}
+		}
 	case "from":
 		match = step.matches(ctx.From)
+	case "from_domain":
+		parts := strings.Split(ctx.From, "@")
+		if len(parts) != 2 {
+			match = false
+		}
+		if step.matches(parts[1]) {
+			match = true
+			break
+		}
 	case "src_addr":
 		match = step.matches(ctx.SrcAddr.String())
 	case "src_hostname":
