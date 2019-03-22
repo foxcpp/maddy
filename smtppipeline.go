@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
@@ -24,7 +25,10 @@ func (requireAuthStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader
 	if ctx.AuthUser != "" {
 		return nil, true, nil
 	}
-	return nil, false, errors.New("non-anonymous authentication required")
+	return nil, false, &smtp.SMTPError{
+		Code:    550,
+		Message: "Authentication is required for delivery to remote or from local mailboxes.",
+	}
 }
 
 type filterStep struct {
