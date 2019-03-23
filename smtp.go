@@ -259,6 +259,9 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 			return err
 		}
 	}
+	if endp.submission {
+		endp.pipeline = append([]SMTPPipelineStep{submissionPrepareStep{}, requireAuthStep{}}, endp.pipeline...)
+	}
 
 	if endp.Auth == nil {
 		endp.Auth, err = authProvider([]string{"default_auth"})
@@ -352,8 +355,7 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 		}
 
 		endp.pipeline = append(endp.pipeline,
-			requireAuthStep{},
-			//TODO: Step for message preparation.
+			// require_auth and submission_check are always prepended to pipeline
 			//TODO: DKIM sign
 			deliveryStep{t: localDelivery, opts: localOpts},
 			deliveryStep{t: remoteDelivery, opts: remoteOpts},
@@ -370,7 +372,7 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 
 func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.User, error) {
 	if !endp.Auth.CheckPlain(username, password) {
-		return nil, errors.New("smtp: invalid credentials")
+		return nil, errors.New("Invalid credentials")
 	}
 
 	return SMTPUser{
@@ -407,12 +409,6 @@ func (endp *SMTPEndpoint) Close() error {
 	return nil
 }
 
-func NewSubmissionEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
-	cfg.Children = append(cfg.Children, config.Node{Name: "submission"})
-	return NewSMTPEndpoint(instName, globalCfg, cfg)
-}
-
 func init() {
 	module.Register("smtp", NewSMTPEndpoint)
-	module.Register("submission", NewSubmissionEndpoint)
 }
