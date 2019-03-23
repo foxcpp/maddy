@@ -28,17 +28,17 @@ type IMAPEndpoint struct {
 	Auth      module.AuthProvider
 	Store     module.Storage
 
+	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
 }
 
-func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
+func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
 	endp := new(IMAPEndpoint)
 	endp.name = instName
 	var (
 		err          error
-		tlsConf      *tls.Config
-		tlsSet       bool
 		errorArgs    []string
+		tlsArgs      []string
 		insecureAuth bool
 		ioDebug      bool
 	)
@@ -56,15 +56,7 @@ func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 				return nil, err
 			}
 		case "tls":
-			tlsConf = new(tls.Config)
-			if err := setTLS(entry.Args, &tlsConf); err != nil {
-				return nil, err
-			}
-			tlsSet = true
-			if tlsConf == nil {
-				log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", instName)
-				insecureAuth = true
-			}
+			tlsArgs = entry.Args
 		case "insecure_auth":
 			log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
 			insecureAuth = true
@@ -78,8 +70,21 @@ func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 		}
 	}
 
-	if !tlsSet {
-		return nil, fmt.Errorf("TLS is not configured")
+	if globalTls, ok := globalCfg["tls"]; tlsArgs == nil && ok {
+		tlsArgs = globalTls
+	}
+	if tlsArgs == nil {
+		return nil, errors.New("TLS is not configured")
+	}
+	endp.tlsConfig = new(tls.Config)
+	if err := setTLS(tlsArgs, &endp.tlsConfig); err != nil {
+		return nil, err
+	}
+	// Print warning only if TLS is in per-module configuration.
+	// Otherwise we will print it when reading global config.
+	if endp.tlsConfig == nil && globalCfg["tls"] == nil {
+		log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		insecureAuth = true
 	}
 
 	if endp.Auth == nil {
@@ -147,7 +152,7 @@ func NewIMAPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 		log.Printf("imap: listening on %v\n", addr)
 
 		if addr.IsTLS() {
-			l = tls.NewListener(l, tlsConf)
+			l = tls.NewListener(l, endp.tlsConfig)
 		}
 
 		endp.listeners = append(endp.listeners, l)

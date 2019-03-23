@@ -17,7 +17,7 @@ func init() {
 		defaultDsn = "maddy.db"
 	}
 
-	mod, err := NewSQLMail("default", config.Node{
+	mod, err := NewSQLMail("default", nil, config.Node{
 		Name: "sqlmail",
 		Args: []string{"default"},
 		Children: []config.Node{

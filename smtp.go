@@ -111,11 +111,11 @@ func (endp *SMTPEndpoint) Version() string {
 	return VersionStr
 }
 
-func NewSMTPEndpoint(instName string, cfg config.Node) (module.Module, error) {
+func NewSMTPEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
 	endp := new(SMTPEndpoint)
 	endp.name = instName
 	endp.serv = smtp.NewServer(endp)
-	if err := endp.setConfig(cfg); err != nil {
+	if err := endp.setConfig(globalCfg, cfg); err != nil {
 		return nil, err
 	}
 
@@ -138,11 +138,10 @@ func NewSMTPEndpoint(instName string, cfg config.Node) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *SMTPEndpoint) setConfig(cfg config.Node) error {
+func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.Node) error {
 	var (
 		err     error
-		tlsConf *tls.Config
-		tlsSet  bool
+		tlsArgs []string
 
 		localDeliveryDefault  string
 		localDeliveryOpts     map[string]string
@@ -183,15 +182,7 @@ func (endp *SMTPEndpoint) setConfig(cfg config.Node) error {
 				return errors.New("max_message_size: invalid integer value")
 			}
 		case "tls":
-			endp.tlsConfig = new(tls.Config)
-			if err := setTLS(entry.Args, &endp.tlsConfig); err != nil {
-				return err
-			}
-			tlsSet = true
-			if tlsConf == nil {
-				log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
-				insecureAuth = true
-			}
+			tlsArgs = entry.Args
 		case "insecure_auth":
 			log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
 			insecureAuth = true
@@ -235,10 +226,29 @@ func (endp *SMTPEndpoint) setConfig(cfg config.Node) error {
 		}
 	}
 
-	if !tlsSet {
+	if globalTls, ok := globalCfg["tls"]; tlsArgs == nil && ok {
+		tlsArgs = globalTls
+	}
+	if tlsArgs == nil {
 		return errors.New("TLS is not configured")
 	}
+	endp.tlsConfig = new(tls.Config)
+	if err := setTLS(tlsArgs, &endp.tlsConfig); err != nil {
+		return err
+	}
+	// Print warning only if TLS is in per-module configuration.
+	// Otherwise we will print it when reading global config.
+	if endp.tlsConfig == nil && globalCfg["tls"] == nil {
+		log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		insecureAuth = true
+	}
 
+	if globalDomain, ok := globalCfg["hostname"]; endp.domain == "" && ok {
+		if len(globalDomain) != 1 {
+			return errors.New("hostname: expected 1 argument")
+		}
+		endp.domain = globalDomain[0]
+	}
 	if endp.domain == "" {
 		return fmt.Errorf("hostname is not set")
 	}
@@ -321,11 +331,11 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 			}
 		}
 		localOpts = map[string]string{"local_only": ""}
-
-	}
-	localDelivery, err = deliveryTarget([]string{localDeliveryName})
-	if err != nil {
-		return err
+	} else {
+		localDelivery, err = deliveryTarget([]string{localDeliveryName})
+		if err != nil {
+			return err
+		}
 	}
 
 	if endp.submission {
@@ -346,7 +356,6 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 			deliveryStep{t: remoteDelivery, opts: remoteOpts},
 		)
 	} else {
-
 		endp.pipeline = append(endp.pipeline,
 			//TODO: DKIM verify
 			deliveryStep{t: localDelivery, opts: localOpts},
@@ -395,9 +404,9 @@ func (endp *SMTPEndpoint) Close() error {
 	return nil
 }
 
-func NewSubmissionEndpoint(instName string, cfg config.Node) (module.Module, error) {
+func NewSubmissionEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
 	cfg.Children = append(cfg.Children, config.Node{Name: "submission"})
-	return NewSMTPEndpoint(instName, cfg)
+	return NewSMTPEndpoint(instName, globalCfg, cfg)
 }
 
 func init() {
