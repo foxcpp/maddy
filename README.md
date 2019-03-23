@@ -59,19 +59,12 @@ modules in your configuration, configure TLS (see below) and set domain name.
 
 Here is the minimal example to get you started:
 ```
-imap imap://0.0.0.0 imaps://0.0.0.0 {
-    tls cert_file pkey_file
-}
+tls cert_file pkey_file
+hostname emersion.fr
 
-smtp smtp://0.0.0.0:25 {
-    tls cert_file pkey_file
-    hostname emersion.fr
-}
-
-submission smtp://0.0.0.0:587 smtps://0.0.0.0:465 {
-    tls cert_file pkey_file
-    hostname emersion.fr
-}
+imap imap://0.0.0.0 imaps://0.0.0.0
+smtp smtp://0.0.0.0:25
+submission smtp://0.0.0.0:587 smtps://0.0.0.0:465
 ```
 Don't forget to use actual values instead of placeholders.
 
