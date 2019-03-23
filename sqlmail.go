@@ -33,7 +33,7 @@ func (sqlm *SQLMail) Version() string {
 	return sqlmail.VersionStr
 }
 
-func NewSQLMail(instName string, cfg config.Node) (module.Module, error) {
+func NewSQLMail(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
 	var driver string
 	var dsn string
 	var appendlimitSet bool

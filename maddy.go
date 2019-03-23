@@ -16,7 +16,19 @@ import (
 
 func Start(cfg []config.Node) error {
 	instances := make([]module.Module, 0, len(cfg))
+	globalCfg := make(map[string][]string)
 	for _, block := range cfg {
+		switch block.Name {
+		case "tls":
+			if len(block.Args) == 1 && block.Args[0] == "off" {
+				log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
+			}
+			fallthrough
+		case "hostname":
+			globalCfg[block.Name] = block.Args
+			continue
+		}
+
 		var instName string
 		if len(block.Args) == 0 {
 			instName = block.Name
@@ -42,7 +54,7 @@ func Start(cfg []config.Node) error {
 			}
 		}
 
-		inst, err := factory(instName, block)
+		inst, err := factory(instName, globalCfg, block)
 		if err != nil {
 			return fmt.Errorf("module instance %s initialization failed: %v", instName, err)
 		}
