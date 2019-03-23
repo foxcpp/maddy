@@ -152,6 +152,9 @@ func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.
 		log.Printf("imap: listening on %v\n", addr)
 
 		if addr.IsTLS() {
+			if endp.tlsConfig == nil {
+				return nil, errors.New("can't bind on IMAPS endpoint without TLS configuration")
+			}
 			l = tls.NewListener(l, endp.tlsConfig)
 		}
 
