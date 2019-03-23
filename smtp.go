@@ -300,6 +300,9 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Confi
 		log.Printf("smtp: listening on %v\n", addr)
 
 		if addr.IsTLS() {
+			if endp.tlsConfig == nil {
+				return errors.New("can't bind on SMTPS endpoint without TLS configuration")
+			}
 			l = tls.NewListener(l, tlsConf)
 		}
 
