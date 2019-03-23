@@ -395,6 +395,12 @@ func (endp *SMTPEndpoint) Close() error {
 	return nil
 }
 
+func NewSubmissionEndpoint(instName string, cfg config.Node) (module.Module, error) {
+	cfg.Children = append(cfg.Children, config.Node{Name: "submission"})
+	return NewSMTPEndpoint(instName, cfg)
+}
+
 func init() {
 	module.Register("smtp", NewSMTPEndpoint)
+	module.Register("submission", NewSubmissionEndpoint)
 }

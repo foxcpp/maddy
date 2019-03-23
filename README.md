@@ -63,7 +63,12 @@ imap imap://0.0.0.0 imaps://0.0.0.0 {
     tls cert_file pkey_file
 }
 
-smtp smtp://0.0.0.0 smtps://0.0.0.0:587 {
+smtp smtp://0.0.0.0:25 {
+    tls cert_file pkey_file
+    hostname emersion.fr
+}
+
+submission smtp://0.0.0.0:587 smtps://0.0.0.0:465 {
     tls cert_file pkey_file
     hostname emersion.fr
 }

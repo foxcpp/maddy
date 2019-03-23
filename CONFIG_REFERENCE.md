@@ -125,6 +125,10 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
 }
 ```
 
+### 'submission' module
+
+Alias to smtp module with submission pipeline used by default.
+
 ##### SMTP pipeline
 
 SMTP module does have a flexible mechanism that allows you to define a custom
