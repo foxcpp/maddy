@@ -27,7 +27,7 @@ func (requireAuthStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader
 	}
 	return nil, false, &smtp.SMTPError{
 		Code:    550,
-		Message: "Authentication is required for delivery to remote or from local mailboxes.",
+		Message: "Authentication is required",
 	}
 }
 
