@@ -295,7 +295,21 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 }
 
 func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Config) error {
+	var smtpUsed, lmtpUsed bool
 	for _, addr := range addresses {
+		if addr.Scheme == "smtp" || addr.Scheme == "smtps" {
+			if lmtpUsed {
+				return errors.New("can't mix LMTP with SMTP in one endpoint block")
+			}
+			smtpUsed = true
+		}
+		if addr.Scheme == "lmtp+unix" || addr.Scheme == "lmtp" {
+			if smtpUsed {
+				return errors.New("can't mix LMTP with SMTP in one endpoint block")
+			}
+			lmtpUsed = true
+		}
+
 		var l net.Listener
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
@@ -322,6 +336,11 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Confi
 			endp.listenersWg.Done()
 		}()
 	}
+
+	if lmtpUsed {
+		endp.serv.LMTP = true
+	}
+
 	return nil
 }
 
