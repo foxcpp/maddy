@@ -17,6 +17,8 @@ import (
 func Start(cfg []config.Node) error {
 	instances := make([]module.Module, 0, len(cfg))
 	globalCfg := make(map[string][]string)
+
+	defaultPresent := false
 	for _, block := range cfg {
 		switch block.Name {
 		case "tls":
@@ -26,6 +28,21 @@ func Start(cfg []config.Node) error {
 			fallthrough
 		case "hostname":
 			globalCfg[block.Name] = block.Args
+			continue
+		default:
+			if len(block.Args) != 0 && block.Args[0] == "default" {
+				defaultPresent = true
+			}
+		}
+	}
+
+	if !defaultPresent {
+		initDefaultStorage(globalCfg)
+	}
+
+	for _, block := range cfg {
+		switch block.Name {
+		case "hostname", "tls":
 			continue
 		}
 

@@ -9,7 +9,7 @@ import (
 
 var defaultDriver, defaultDsn string
 
-func init() {
+func initDefaultStorage(globalCfg map[string][]string) {
 	if defaultDriver == "" {
 		defaultDriver = "sqlite3"
 	}
@@ -17,7 +17,7 @@ func init() {
 		defaultDsn = "maddy.db"
 	}
 
-	mod, err := NewSQLMail("default", nil, config.Node{
+	mod, err := NewSQLMail("default", globalCfg, config.Node{
 		Name: "sqlmail",
 		Args: []string{"default"},
 		Children: []config.Node{
