@@ -63,7 +63,7 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 				return nil
 			}
 			if err != nil {
-				log.Printf("smtp %s: step failed: %v", u.endp.name, err)
+				log.Printf("smtp %s: %T failed: %v", u.endp.name, step, err)
 				return err
 			}
 		}
@@ -243,6 +243,8 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 	}
 	if endp.tlsConfig == nil {
 		insecureAuth = true
+	} else {
+		endp.serv.TLSConfig = endp.tlsConfig
 	}
 
 	if globalDomain, ok := globalCfg["hostname"]; endp.domain == "" && ok {

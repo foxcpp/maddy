@@ -130,6 +130,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.
 
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
+	endp.serv.TLSConfig = endp.tlsConfig
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
 	}
