@@ -240,6 +240,8 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 	// Otherwise we will print it when reading global config.
 	if endp.tlsConfig == nil && globalCfg["tls"] == nil {
 		log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+	}
+	if endp.tlsConfig == nil {
 		insecureAuth = true
 	}
 
