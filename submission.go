@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewSubmissionEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
+func NewSubmissionEndpoint(instName string, globalCfg map[string]config.Node, cfg config.Node) (module.Module, error) {
 	cfg.Children = append(cfg.Children, config.Node{Name: "submission"})
 	return NewSMTPEndpoint(instName, globalCfg, cfg)
 }

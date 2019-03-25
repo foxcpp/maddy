@@ -10,29 +10,35 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/emersion/maddy/config"
 )
 
-func setTLS(args []string, config **tls.Config) error {
-	switch len(args) {
+func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	switch len(node.Args) {
 	case 1:
-		switch args[0] {
+		switch node.Args[0] {
 		case "off":
-			*config = nil
-			return nil
+			return nil, nil
 		case "self_signed":
-			if err := makeSelfSignedCert(*config); err != nil {
-				return err
+			cfg := &tls.Config{}
+			if err := makeSelfSignedCert(cfg); err != nil {
+				return nil, err
 			}
+			return &cfg, nil
 		}
 	case 2:
-		if cert, err := tls.LoadX509KeyPair(args[0], args[1]); err != nil {
-			return err
+		cfg := tls.Config{}
+		if cert, err := tls.LoadX509KeyPair(node.Args[0], node.Args[1]); err != nil {
+			return nil, err
 		} else {
-			(*config).Certificates = append((*config).Certificates, cert)
+			cfg.Certificates = append(cfg.Certificates, cert)
 		}
+	default:
+		return nil, m.MatchErr("expected 1 or 2 arguments")
 	}
 
-	return nil
+	return nil, nil
 }
 
 func makeSelfSignedCert(config *tls.Config) error {

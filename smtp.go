@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/mail"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -35,7 +34,7 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 		SrcTLSState: u.state.TLS,
 		SrcHostname: u.state.Hostname,
 		SrcAddr:     u.state.RemoteAddr,
-		OurHostname: u.endp.domain,
+		OurHostname: u.endp.serv.Domain,
 		Ctx:         make(map[string]interface{}),
 	}
 
@@ -89,12 +88,10 @@ type SMTPEndpoint struct {
 	Auth      module.AuthProvider
 	serv      *smtp.Server
 	name      string
-	domain    string
 	listeners []net.Listener
 	pipeline  []SMTPPipelineStep
 
 	submission bool
-	tlsConfig  *tls.Config
 
 	listenersWg sync.WaitGroup
 }
@@ -111,7 +108,7 @@ func (endp *SMTPEndpoint) Version() string {
 	return VersionStr
 }
 
-func NewSMTPEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
+func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg config.Node) (module.Module, error) {
 	endp := new(SMTPEndpoint)
 	endp.name = instName
 	endp.serv = smtp.NewServer(endp)
@@ -129,68 +126,54 @@ func NewSMTPEndpoint(instName string, globalCfg map[string][]string, cfg config.
 		addresses = append(addresses, saddr)
 	}
 
-	if err := endp.setupListeners(addresses, endp.tlsConfig); err != nil {
+	if err := endp.setupListeners(addresses); err != nil {
 		for _, l := range endp.listeners {
 			l.Close()
 		}
 		return nil, err
 	}
+
+	if endp.serv.AllowInsecureAuth {
+		log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
+	}
+	if endp.serv.TLSConfig == nil && !endp.serv.LMTP {
+		log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.serv.AllowInsecureAuth = true
+	}
+
 	return endp, nil
 }
 
-func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.Node) error {
+func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg config.Node) error {
 	var (
 		err     error
-		tlsArgs []string
+		ioDebug bool
 
 		localDeliveryDefault  string
 		localDeliveryOpts     map[string]string
 		remoteDeliveryDefault string
 		remoteDeliveryOpts    map[string]string
 	)
-	maxIdle := -1
-	maxMsgBytes := -1
 
-	insecureAuth := false
-	ioDebug := false
-	for _, entry := range cfg.Children {
+	cfg := config.Map{}
+	cfg.Custom("auth", false, true, defaultAuthProvider, authDirective, &endp.Auth)
+	cfg.String("hostname", true, true, "", &endp.serv.Domain)
+	cfg.Int("max_idle", false, false, 60, &endp.serv.MaxIdleSeconds)
+	cfg.Int("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
+	cfg.Int("max_recipients", false, false, 255, &endp.serv.MaxRecipients)
+	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.serv.TLSConfig)
+	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
+	cfg.Bool("io_debug", false, &ioDebug)
+	cfg.Bool("submission", false, &endp.submission)
+	cfg.AllowUnknown()
+
+	remainingDirs, err := cfg.Process(globalCfg, &rawCfg)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range remainingDirs {
 		switch entry.Name {
-		case "auth":
-			endp.Auth, err = authProvider(entry.Args)
-			if err != nil {
-				return err
-			}
-		case "hostname":
-			if len(entry.Args) != 1 {
-				return errors.New("hostname: expected 1 argument")
-			}
-			endp.domain = entry.Args[0]
-		case "max_idle":
-			if len(entry.Args) != 1 {
-				return errors.New("max_idle: expected 1 argument")
-			}
-			maxIdle, err = strconv.Atoi(entry.Args[0])
-			if err != nil {
-				return errors.New("max_idle: invalid integer value")
-			}
-		case "max_message_size":
-			if len(entry.Args) != 1 {
-				return errors.New("max_message_size: expected 1 argument")
-			}
-			maxMsgBytes, err = strconv.Atoi(entry.Args[0])
-			if err != nil {
-				return errors.New("max_message_size: invalid integer value")
-			}
-		case "tls":
-			tlsArgs = entry.Args
-		case "insecure_auth":
-			log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
-			insecureAuth = true
-		case "io_debug":
-			log.Printf("smtp %v: I/O debugging is on!\n", endp.name)
-			ioDebug = true
-		case "submission":
-			endp.submission = true
 		case "local_delivery":
 			if len(entry.Args) == 0 {
 				return errors.New("local_delivery: expected at least 1 argument")
@@ -226,37 +209,6 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 		}
 	}
 
-	if globalTls, ok := globalCfg["tls"]; tlsArgs == nil && ok {
-		tlsArgs = globalTls
-	}
-	if tlsArgs == nil {
-		return errors.New("TLS is not configured")
-	}
-	endp.tlsConfig = new(tls.Config)
-	if err := setTLS(tlsArgs, &endp.tlsConfig); err != nil {
-		return err
-	}
-	// Print warning only if TLS is in per-module configuration.
-	// Otherwise we will print it when reading global config.
-	if endp.tlsConfig == nil && globalCfg["tls"] == nil {
-		log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
-	}
-	if endp.tlsConfig == nil {
-		insecureAuth = true
-	} else {
-		endp.serv.TLSConfig = endp.tlsConfig
-	}
-
-	if globalDomain, ok := globalCfg["hostname"]; endp.domain == "" && ok {
-		if len(globalDomain) != 1 {
-			return errors.New("hostname: expected 1 argument")
-		}
-		endp.domain = globalDomain[0]
-	}
-	if endp.domain == "" {
-		return fmt.Errorf("hostname is not set")
-	}
-
 	if len(endp.pipeline) == 0 {
 		err := endp.setDefaultPipeline(localDeliveryDefault, remoteDeliveryDefault, localDeliveryOpts, remoteDeliveryOpts)
 		if err != nil {
@@ -267,28 +219,6 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 		endp.pipeline = append([]SMTPPipelineStep{submissionPrepareStep{}, requireAuthStep{}}, endp.pipeline...)
 	}
 
-	if endp.Auth == nil {
-		endp.Auth, err = authProvider([]string{"default_auth"})
-		if err != nil {
-			endp.Auth, err = authProvider([]string{"default"})
-			if err != nil {
-				return errors.New("missing default auth. provider, must set custom")
-			}
-		}
-		log.Printf("smtp %s: using %s auth. provider (%s %s)",
-			endp.name, endp.Auth.(module.Module).InstanceName(),
-			endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).Version(),
-		)
-	}
-
-	endp.serv.AllowInsecureAuth = insecureAuth
-	endp.serv.Domain = endp.domain
-	if maxMsgBytes != -1 {
-		endp.serv.MaxMessageBytes = maxMsgBytes
-	}
-	if maxIdle != -1 {
-		endp.serv.MaxIdleSeconds = maxIdle
-	}
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
 	}
@@ -296,7 +226,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string][]string, cfg config.No
 	return nil
 }
 
-func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Config) error {
+func (endp *SMTPEndpoint) setupListeners(addresses []Address) error {
 	var smtpUsed, lmtpUsed bool
 	for _, addr := range addresses {
 		if addr.Scheme == "smtp" || addr.Scheme == "smtps" {
@@ -321,10 +251,10 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Confi
 		log.Printf("smtp: listening on %v\n", addr)
 
 		if addr.IsTLS() {
-			if endp.tlsConfig == nil {
+			if endp.serv.TLSConfig == nil {
 				return errors.New("can't bind on SMTPS endpoint without TLS configuration")
 			}
-			l = tls.NewListener(l, tlsConf)
+			l = tls.NewListener(l, endp.serv.TLSConfig)
 		}
 
 		endp.listeners = append(endp.listeners, l)
@@ -347,21 +277,19 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address, tlsConf *tls.Confi
 }
 
 func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryName string, localOpts, remoteOpts map[string]string) error {
-	log.Printf("smtp %s: using default pipeline configuration (submission=%v)", endp.InstanceName(), endp.submission)
-
 	var err error
 	var localDelivery module.DeliveryTarget
 	if localDeliveryName == "" {
-		localDelivery, err = deliveryTarget([]string{"default_local_delivery"})
+		localDelivery, err = deliveryTarget("default_local_delivery")
 		if err != nil {
-			localDelivery, err = deliveryTarget([]string{"default"})
+			localDelivery, err = deliveryTarget("default")
 			if err != nil {
 				return err
 			}
 		}
 		localOpts = map[string]string{"local_only": ""}
 	} else {
-		localDelivery, err = deliveryTarget([]string{localDeliveryName})
+		localDelivery, err = deliveryTarget(localDeliveryName)
 		if err != nil {
 			return err
 		}
@@ -372,7 +300,7 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 			remoteDeliveryName = "default_remote_delivery"
 			remoteOpts = map[string]string{"remote_only": ""}
 		}
-		remoteDelivery, err := deliveryTarget([]string{remoteDeliveryName})
+		remoteDelivery, err := deliveryTarget(remoteDeliveryName)
 		if err != nil {
 			return err
 		}

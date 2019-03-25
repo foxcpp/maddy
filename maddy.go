@@ -1,13 +1,11 @@
 package maddy
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/emersion/maddy/config"
@@ -16,18 +14,13 @@ import (
 
 func Start(cfg []config.Node) error {
 	instances := make([]module.Module, 0, len(cfg))
-	globalCfg := make(map[string][]string)
+	globalCfg := make(map[string]config.Node)
 
 	defaultPresent := false
 	for _, block := range cfg {
 		switch block.Name {
-		case "tls":
-			if len(block.Args) == 1 && block.Args[0] == "off" {
-				log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
-			}
-			fallthrough
-		case "hostname":
-			globalCfg[block.Name] = block.Args
+		case "tls", "hostname":
+			globalCfg[block.Name] = block
 			continue
 		default:
 			if len(block.Args) != 0 && block.Args[0] == "default" {
@@ -57,18 +50,11 @@ func Start(cfg []config.Node) error {
 
 		factory := module.GetMod(modName)
 		if factory == nil {
-			return fmt.Errorf("unknown module: %s", modName)
+			return fmt.Errorf("%s:%d: unknown module: %s", block.File, block.Line, modName)
 		}
 
 		if mod := module.GetInstance(instName); mod != nil {
-			if !strings.HasPrefix(instName, "default") {
-				return fmt.Errorf("module instance named %s already exists", instName)
-			}
-
-			// Clean up default module before replacing it.
-			if closer, ok := mod.(io.Closer); ok {
-				closer.Close()
-			}
+			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
 		}
 
 		inst, err := factory(instName, globalCfg, block)
@@ -98,58 +84,4 @@ func Start(cfg []config.Node) error {
 	}
 
 	return nil
-}
-
-func authProvider(args []string) (module.AuthProvider, error) {
-	if len(args) != 1 {
-		return nil, errors.New("auth: expected 1 argument")
-	}
-
-	authName := args[0]
-	authMod := module.GetInstance(authName)
-	if authMod == nil {
-		return nil, fmt.Errorf("unknown auth. provider instance: %s", authName)
-	}
-
-	provider, ok := authMod.(module.AuthProvider)
-	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements auth. provider interface", authMod.Name())
-	}
-	return provider, nil
-}
-
-func storageBackend(args []string) (module.Storage, error) {
-	if len(args) != 1 {
-		return nil, errors.New("storage: expected 1 argument")
-	}
-
-	authName := args[0]
-	authMod := module.GetInstance(authName)
-	if authMod == nil {
-		return nil, fmt.Errorf("unknown storage backend instance: %s", authName)
-	}
-
-	provider, ok := authMod.(module.Storage)
-	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements storage interface", authMod.Name())
-	}
-	return provider, nil
-}
-
-func deliveryTarget(args []string) (module.DeliveryTarget, error) {
-	if len(args) != 1 {
-		return nil, errors.New("delivery: expected 1 argument")
-	}
-
-	modName := args[0]
-	mod := module.GetInstance(modName)
-	if mod == nil {
-		return nil, fmt.Errorf("unknown delivery target instance: %s", modName)
-	}
-
-	target, ok := mod.(module.DeliveryTarget)
-	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements delivery target interface", mod.Name())
-	}
-	return target, nil
 }
