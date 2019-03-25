@@ -3,10 +3,6 @@ package maddy
 import (
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
@@ -122,32 +118,4 @@ func defaultStorage() (interface{}, error) {
 		}
 	}
 	return res, nil
-}
-
-func errorsDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) != 1 {
-		return nil, m.MatchErr("expected 1 argument")
-	}
-	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
-	}
-
-	output := node.Args[0]
-	var w io.Writer
-	switch output {
-	case "off":
-		w = ioutil.Discard
-	case "stdout":
-		w = os.Stdout
-	case "stderr":
-		w = os.Stderr
-	default:
-		f, err := os.OpenFile(output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-		if err != nil {
-			return nil, err
-		}
-		w = f
-	}
-
-	return log.New(w, "imap ", log.LstdFlags), nil
 }

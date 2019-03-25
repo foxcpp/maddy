@@ -3,12 +3,12 @@ package maddy
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
@@ -19,7 +19,7 @@ func Start(cfg []config.Node) error {
 	defaultPresent := false
 	for _, block := range cfg {
 		switch block.Name {
-		case "tls", "hostname":
+		case "tls", "hostname", "debug":
 			globalCfg[block.Name] = block
 			continue
 		default:
@@ -33,9 +33,13 @@ func Start(cfg []config.Node) error {
 		initDefaultStorage(globalCfg)
 	}
 
+	if _, ok := globalCfg["debug"]; ok {
+		log.DefaultLogger.Debug = true
+	}
+
 	for _, block := range cfg {
 		switch block.Name {
-		case "hostname", "tls":
+		case "hostname", "tls", "debug":
 			continue
 		}
 
@@ -57,9 +61,10 @@ func Start(cfg []config.Node) error {
 			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
 		}
 
+		log.Debugln("init for module", modName, instName)
 		inst, err := factory(instName, globalCfg, block)
 		if err != nil {
-			return fmt.Errorf("module instance %s initialization failed: %v", instName, err)
+			return err
 		}
 
 		module.RegisterInstance(inst)
@@ -70,15 +75,16 @@ func Start(cfg []config.Node) error {
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 
 	s := <-sig
-	log.Printf("signal received (%v), next signal will force immediate shutdown.\n", s)
+	log.Printf("signal received (%v), next signal will force immediate shutdown.", s)
 	go func() {
 		s := <-sig
-		log.Printf("forced shutdown due to signal (%v)!\n", s)
+		log.Printf("forced shutdown due to signal (%v)!", s)
 		os.Exit(1)
 	}()
 
 	for _, inst := range instances {
 		if closer, ok := inst.(io.Closer); ok {
+			log.Debugln("clean-up for module", inst.Name(), inst.InstanceName())
 			closer.Close()
 		}
 	}

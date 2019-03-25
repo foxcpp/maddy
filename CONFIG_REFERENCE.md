@@ -39,21 +39,14 @@ Valid configuration directives and their forms:
 * `io_debug`
   Write all protocol commands from clients and responses to stderr.
 
-* `errors stderr`
-  Write protocol errors log to stderr (default).
-
-* `errors stdout`
-  Write protocol errors log to stdout.
-
-* `errors <file>` 
-   Write the protocol error log to the specified file (deprecated).
+* `debug`
+  Verbose log only for this module.
 
 ```
 imap imap://0.0.0.0 imaps://0.0.0.0:993 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     auth pam
     insecure_auth
-    errors /var/lob/imap-errs.log
     storage spool
 }
 ```
@@ -98,6 +91,9 @@ Valid configuration directives and their forms:
 
 * `io_debug`
   Write all protocol commands from clients and responses to stderr.
+
+* `debug`
+  Verbose log only for this module.
 
 * `hostname <domain>`
   Set server domain name to advertise in EHLO/HELO response and for matching
@@ -238,6 +234,9 @@ Valid configuration directives:
 
 * `appendlimit <value>`
   Refuse to accept messages larger than `value` bytes. Default is 32 MiB.
+
+* `debug`
+  Verbose log only for this module.
 
 ### 'dummy' module
 

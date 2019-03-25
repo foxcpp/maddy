@@ -1,9 +1,8 @@
 package maddy
 
 import (
-	"log"
-
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
