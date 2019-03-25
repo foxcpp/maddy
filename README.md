@@ -42,6 +42,10 @@ module_name instance_name {
     configuration_directives
 }
 ```
+You can omit braces if there is no configuration directives in block:
+```
+module_name instance_name
+```
 
 `instance_name` is the unique name of the configuration block. It is used when
 you need to refer to the module from different place in configuration (e.g.
@@ -50,6 +54,19 @@ configure SMTP to deliver mail to certain specific storage)
 You can omit `instance_name`. If there is only one module config. block - it
 will get name the same as `module_name`. However, you can't define multiple
 config. blocks this way because names should be unique.
+
+### Global options
+
+Certain options can be specified outside of any configuration block. They
+specify defaults for all configuration blocks unless they override them. Below
+are options that can be used like that:
+
+* `hostname <domain>`
+  Specify local hostname for all modules. Relevant for SMTP endpoints and queues.
+
+* `tls <cert_file> <pkey_file>`
+  Default TLS certificate to use. See
+  [CONFIG_REFERENCE.md](CONFIG_REFERENCE.md) for details.
 
 ### Defaults
 
