@@ -4,8 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -32,92 +30,31 @@ type IMAPEndpoint struct {
 	listenersWg sync.WaitGroup
 }
 
-func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
+func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg config.Node) (module.Module, error) {
 	endp := new(IMAPEndpoint)
 	endp.name = instName
 	var (
-		err          error
-		errorArgs    []string
-		tlsArgs      []string
+		errorLog     *log.Logger
 		insecureAuth bool
 		ioDebug      bool
 	)
 
-	for _, entry := range cfg.Children {
-		switch entry.Name {
-		case "auth":
-			endp.Auth, err = authProvider(entry.Args)
-			if err != nil {
-				return nil, err
-			}
-		case "storage":
-			endp.Store, err = storageBackend(entry.Args)
-			if err != nil {
-				return nil, err
-			}
-		case "tls":
-			tlsArgs = entry.Args
-		case "insecure_auth":
-			log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", instName)
-			insecureAuth = true
-		case "io_debug":
-			log.Printf("imap %s: I/O debugging is on!", instName)
-			ioDebug = true
-		case "errors":
-			errorArgs = entry.Args
-		default:
-			return nil, fmt.Errorf("unknown config directive: %s", entry.Name)
-		}
-	}
+	cfg := config.Map{}
+	cfg.Custom("auth", false, true, defaultAuthProvider, authDirective, &endp.Auth)
+	cfg.Custom("storage", false, true, defaultStorage, storageDirective, &endp.Store)
+	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
+	cfg.Bool("insecure_auth", false, &insecureAuth)
+	cfg.Bool("io_debug", false, &insecureAuth)
+	cfg.Custom("errors", false, false, func() (interface{}, error) {
+		return log.New(os.Stderr, "imap ", log.LstdFlags), nil
+	}, errorsDirective, &errorLog)
 
-	if globalTls, ok := globalCfg["tls"]; tlsArgs == nil && ok {
-		tlsArgs = globalTls
-	}
-	if tlsArgs == nil {
-		return nil, errors.New("TLS is not configured")
-	}
-	endp.tlsConfig = new(tls.Config)
-	if err := setTLS(tlsArgs, &endp.tlsConfig); err != nil {
+	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
 		return nil, err
 	}
-	// Print warning only if TLS is in per-module configuration.
-	// Otherwise we will print it when reading global config.
-	if endp.tlsConfig == nil && globalCfg["tls"] == nil {
-		log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
-	}
-	if endp.tlsConfig == nil {
-		insecureAuth = true
-	}
 
-	if endp.Auth == nil {
-		endp.Auth, err = authProvider([]string{"default_auth"})
-		if err != nil {
-			endp.Auth, err = authProvider([]string{"default"})
-			if err != nil {
-				return nil, errors.New("missing default auth. provider, must set custom")
-			}
-		}
-		log.Printf("imap %s: using %s auth. provider (%s %s)",
-			instName, endp.Auth.(module.Module).InstanceName(),
-			endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).Version(),
-		)
-	}
-	if endp.Store == nil {
-		endp.Store, err = storageBackend([]string{"default_storage"})
-		if err != nil {
-			endp.Store, err = storageBackend([]string{"default"})
-			if err != nil {
-				return nil, errors.New("missing default storage backend, must set custom")
-			}
-		}
-		log.Printf("imap %s: using %s storage backend (%s %s)",
-			instName, endp.Store.(module.Module).InstanceName(),
-			endp.Store.(module.Module).Name(), endp.Store.(module.Module).Version(),
-		)
-	}
-
-	addresses := make([]Address, 0, len(cfg.Args))
-	for _, addr := range cfg.Args {
+	addresses := make([]Address, 0, len(rawCfg.Args))
+	for _, addr := range rawCfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid address: %s", instName)
@@ -133,12 +70,6 @@ func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.
 	endp.serv.TLSConfig = endp.tlsConfig
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
-	}
-	if errorArgs != nil {
-		err := setIMAPErrors(instName, errorArgs, endp.serv)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if err := endp.enableExtensions(); err != nil {
@@ -171,6 +102,14 @@ func NewIMAPEndpoint(instName string, globalCfg map[string][]string, cfg config.
 			}
 			endp.listenersWg.Done()
 		}()
+	}
+
+	if endp.serv.AllowInsecureAuth {
+		log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
+	}
+	if endp.serv.TLSConfig == nil {
+		log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.serv.AllowInsecureAuth = true
 	}
 
 	return endp, nil
@@ -223,33 +162,6 @@ func (endp *IMAPEndpoint) enableExtensions() error {
 			endp.serv.Enable(move.NewExtension())
 		}
 	}
-	return nil
-}
-
-func setIMAPErrors(instName string, args []string, s *imapserver.Server) error {
-	if len(args) != 1 {
-		return fmt.Errorf("missing errors directive values")
-	}
-
-	output := args[0]
-	var w io.Writer
-	switch output {
-	case "off":
-		w = ioutil.Discard
-	case "stdout":
-		w = os.Stdout
-	case "stderr":
-		w = os.Stderr
-	default:
-		f, err := os.OpenFile(output, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-		if err != nil {
-			return err
-		}
-		w = f
-	}
-
-	s.ErrorLog = log.New(w, "imap "+instName+" ", log.LstdFlags)
-
 	return nil
 }
 

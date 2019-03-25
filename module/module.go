@@ -39,4 +39,4 @@ type Module interface {
 }
 
 // FuncNewModule is function that creates new instance of module with specified name.
-type FuncNewModule func(name string, globalCfg map[string][]string, cfg config.Node) (Module, error)
+type FuncNewModule func(name string, globalCfg map[string]config.Node, cfg config.Node) (Module, error)

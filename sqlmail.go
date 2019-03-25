@@ -3,9 +3,7 @@ package maddy
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,51 +31,28 @@ func (sqlm *SQLMail) Version() string {
 	return sqlmail.VersionStr
 }
 
-func NewSQLMail(instName string, globalCfg map[string][]string, cfg config.Node) (module.Module, error) {
+func NewSQLMail(instName string, globalCfg map[string]config.Node, rawCfg config.Node) (module.Module, error) {
 	var driver string
 	var dsn string
-	var appendlimitSet bool
+	appendlimitVal := int64(-1)
 
 	opts := imapsqlmail.Opts{}
-	for _, entry := range cfg.Children {
-		switch entry.Name {
-		case "driver":
-			if len(entry.Args) != 1 {
-				return nil, fmt.Errorf("driver: expected 1 argument")
-			}
-			driver = entry.Args[0]
-		case "dsn":
-			if len(entry.Args) != 1 {
-				return nil, fmt.Errorf("dsn: expected 1 argument")
-			}
-			dsn = entry.Args[0]
-		case "appendlimit":
-			if len(entry.Args) != 1 {
-				return nil, errors.New("appendlimit: expected 1 argument")
-			}
 
-			lim, err := strconv.Atoi(entry.Args[0])
-			if lim == -1 {
-				continue
-			}
+	cfg := config.Map{}
+	cfg.String("driver", false, true, "", &driver)
+	cfg.String("dsn", false, true, "", &dsn)
+	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 
-			lim32 := uint32(lim)
-			if err != nil {
-				return nil, errors.New("appendlimit: invalid value")
-			}
-			opts.MaxMsgBytes = &lim32
-
-			appendlimitSet = true
-		default:
-			return nil, fmt.Errorf("unknown directive: %s", entry.Name)
-		}
+	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
+		return nil, err
 	}
 
-	if !appendlimitSet {
-		lim := uint32(32 * 1024 * 1024) // 32 MiB
-		opts.MaxMsgBytes = &lim
+	if appendlimitVal == -1 {
+		opts.MaxMsgBytes = nil
+	} else {
+		opts.MaxMsgBytes = new(uint32)
+		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-
 	sqlm, err := imapsqlmail.NewBackend(driver, dsn, opts)
 
 	mod := SQLMail{

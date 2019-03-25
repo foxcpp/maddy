@@ -10,11 +10,25 @@ import (
 	"github.com/mholt/caddy/caddyfile"
 )
 
+// name arg0 arg1 {
+//  children0
+//  children1
+// }
 type Node struct {
-	Name     string
-	Args     []string
+	// First string at node's line.
+	Name string
+	// Any strings placed after node name.
+	Args []string
+
+	// If node is a block - all nodes inside the block. Can be nil.
 	Children []Node
-	Snippet  bool
+
+	// Whether current parsed node is a snippet. Always false for all nodes
+	// returned from Read because snippets are expanded before it returns.
+	Snippet bool
+
+	File string
+	Line int
 }
 
 type parseContext struct {
@@ -27,6 +41,8 @@ type parseContext struct {
 
 func (ctx *parseContext) readCfgNode() (Node, error) {
 	node := Node{}
+	node.File = ctx.File()
+	node.Line = ctx.Line()
 	if ctx.Val() == "{" {
 		ctx.parens++
 		return node, ctx.SyntaxErr("block header")
@@ -191,7 +207,7 @@ func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips m
 	return root.Children, ctx.snippets, nil
 }
 
-func ReadConfig(r io.Reader, location string) (nodes []Node, err error) {
+func Read(r io.Reader, location string) (nodes []Node, err error) {
 	nodes, _, err = readCfgTree(r, location, 1)
 	return
 }
