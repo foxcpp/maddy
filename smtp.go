@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/mail"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
@@ -62,7 +62,7 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 				return nil
 			}
 			if err != nil {
-				log.Printf("smtp %s: %T failed: %v", u.endp.name, step, err)
+				u.endp.Log.Printf("%T failed: %v", step, err)
 				return err
 			}
 		}
@@ -70,13 +70,16 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 		if r != nil && r != io.Reader(currentMsg) {
 			buf.Reset()
 			if _, err := io.Copy(&buf, r); err != nil {
-				log.Printf("smtp %s: failed to buffer message: %v", u.endp.name, err)
+				u.endp.Log.Printf("failed to buffer message: %v", err)
 				return err
 			}
 			currentMsg.Reset(buf.Bytes())
 		}
 		currentMsg.Seek(0, io.SeekStart)
 	}
+
+	u.endp.Log.Printf("accepted incoming message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
+
 	return nil
 }
 
@@ -94,6 +97,9 @@ type SMTPEndpoint struct {
 	submission bool
 
 	listenersWg sync.WaitGroup
+
+	debug bool
+	Log   log.Logger
 }
 
 func (endp *SMTPEndpoint) Name() string {
@@ -109,18 +115,25 @@ func (endp *SMTPEndpoint) Version() string {
 }
 
 func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg config.Node) (module.Module, error) {
-	endp := new(SMTPEndpoint)
+	endp := &SMTPEndpoint{
+		name: instName,
+		Log:  log.Logger{Out: log.StderrLog, Name: "smtp"},
+	}
+	endp.serv = smtp.NewServer(endp)
 	endp.name = instName
 	endp.serv = smtp.NewServer(endp)
 	if err := endp.setConfig(globalCfg, cfg); err != nil {
 		return nil, err
 	}
 
+	endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
+	endp.Log.Debugf("pipeline: %#v", endp.pipeline)
+
 	addresses := make([]Address, 0, len(cfg.Args))
 	for _, addr := range cfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid address: %s", instName)
+			return nil, fmt.Errorf("smtp: invalid address: %s", addr)
 		}
 
 		addresses = append(addresses, saddr)
@@ -134,10 +147,10 @@ func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg conf
 	}
 
 	if endp.serv.AllowInsecureAuth {
-		log.Printf("smtp %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
 	}
 	if endp.serv.TLSConfig == nil && !endp.serv.LMTP {
-		log.Printf("smtp %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
 		endp.serv.AllowInsecureAuth = true
 	}
 
@@ -164,6 +177,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
+	cfg.Bool("debug", true, &endp.Log.Debug)
 	cfg.Bool("submission", false, &endp.submission)
 	cfg.AllowUnknown()
 
@@ -176,27 +190,27 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 		switch entry.Name {
 		case "local_delivery":
 			if len(entry.Args) == 0 {
-				return errors.New("local_delivery: expected at least 1 argument")
+				return errors.New("smtp: local_delivery: expected at least 1 argument")
 			}
 			if len(endp.pipeline) != 0 {
-				return errors.New("can't use custom pipeline with local_delivery or remote_delivery")
+				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			localDeliveryDefault = entry.Args[0]
 			localDeliveryOpts = readOpts(entry.Args[1:])
 		case "remote_delivery":
 			if len(entry.Args) == 0 {
-				return errors.New("remote_delivery: expected at least 1 argument")
+				return errors.New("smtp: remote_delivery: expected at least 1 argument")
 			}
 			if len(endp.pipeline) != 0 {
-				return errors.New("can't use custom pipeline with local_delivery or remote_delivery")
+				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			remoteDeliveryDefault = entry.Args[0]
 			remoteDeliveryOpts = readOpts(entry.Args[1:])
 		case "filter", "delivery", "match", "stop", "require_auth":
 			if localDeliveryDefault != "" || remoteDeliveryDefault != "" {
-				return errors.New("can't use custom pipeline with local_delivery or remote_delivery")
+				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
 			}
 
 			step, err := StepFromCfg(entry)
@@ -205,7 +219,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 			}
 			endp.pipeline = append(endp.pipeline, step)
 		default:
-			return fmt.Errorf("unknown config directive: %v", entry.Name)
+			return fmt.Errorf("smtp: unknown config directive: %v", entry.Name)
 		}
 	}
 
@@ -231,13 +245,13 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address) error {
 	for _, addr := range addresses {
 		if addr.Scheme == "smtp" || addr.Scheme == "smtps" {
 			if lmtpUsed {
-				return errors.New("can't mix LMTP with SMTP in one endpoint block")
+				return errors.New("smtp: can't mix LMTP with SMTP in one endpoint block")
 			}
 			smtpUsed = true
 		}
 		if addr.Scheme == "lmtp+unix" || addr.Scheme == "lmtp" {
 			if smtpUsed {
-				return errors.New("can't mix LMTP with SMTP in one endpoint block")
+				return errors.New("smtp: can't mix LMTP with SMTP in one endpoint block")
 			}
 			lmtpUsed = true
 		}
@@ -248,11 +262,11 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address) error {
 		if err != nil {
 			return fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
-		log.Printf("smtp: listening on %v\n", addr)
+		endp.Log.Printf("listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.serv.TLSConfig == nil {
-				return errors.New("can't bind on SMTPS endpoint without TLS configuration")
+				return errors.New("smtp: can't bind on SMTPS endpoint without TLS configuration")
 			}
 			l = tls.NewListener(l, endp.serv.TLSConfig)
 		}
@@ -263,7 +277,7 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address) error {
 		addr := addr
 		go func() {
 			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-				log.Printf("smtp: failed to serve %s: %s\n", addr, err)
+				endp.Log.Printf("failed to serve %s: %s", addr, err)
 			}
 			endp.listenersWg.Done()
 		}()

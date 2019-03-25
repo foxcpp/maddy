@@ -4,18 +4,19 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 
-	appendlimit "github.com/emersion/go-imap-appendlimit"
-	move "github.com/emersion/go-imap-move"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
+
+	appendlimit "github.com/emersion/go-imap-appendlimit"
+	move "github.com/emersion/go-imap-move"
 	"github.com/foxcpp/go-sqlmail/imap/children"
 )
 
@@ -28,13 +29,17 @@ type IMAPEndpoint struct {
 
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
+
+	Log log.Logger
 }
 
 func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg config.Node) (module.Module, error) {
-	endp := new(IMAPEndpoint)
+	endp := &IMAPEndpoint{
+		name: instName,
+		Log:  log.Logger{Out: log.StderrLog, Name: "imap"},
+	}
 	endp.name = instName
 	var (
-		errorLog     *log.Logger
 		insecureAuth bool
 		ioDebug      bool
 	)
@@ -45,10 +50,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, &insecureAuth)
 	cfg.Bool("io_debug", false, &insecureAuth)
-	cfg.Custom("errors", false, false, func() (interface{}, error) {
-		return log.New(os.Stderr, "imap ", log.LstdFlags), nil
-	}, errorsDirective, &errorLog)
-
+	cfg.Bool("debug", true, &endp.Log.Debug)
 	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
 		return nil, err
 	}
@@ -57,10 +59,10 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 	for _, addr := range rawCfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid address: %s", instName)
+			return nil, fmt.Errorf("imap: invalid address: %s", instName)
 		}
 		if saddr.Scheme != "imap" && saddr.Scheme != "imaps" {
-			return nil, fmt.Errorf("imap %s: imap or imaps scheme must be used, got %s", instName, saddr.Scheme)
+			return nil, fmt.Errorf("imap: imap or imaps scheme must be used, got %s", saddr.Scheme)
 		}
 		addresses = append(addresses, saddr)
 	}
@@ -68,6 +70,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
 	endp.serv.TLSConfig = endp.tlsConfig
+	endp.serv.ErrorLog = endp.Log.DebugWriter()
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
 	}
@@ -83,7 +86,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 		if err != nil {
 			return nil, fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
-		log.Printf("imap: listening on %v\n", addr)
+		endp.Log.Printf("imap: listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.tlsConfig == nil {
@@ -98,17 +101,17 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 		addr := addr
 		go func() {
 			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-				log.Printf("imap: failed to serve %s: %s\n", addr, err)
+				endp.Log.Printf("imap: failed to serve %s: %s", addr, err)
 			}
 			endp.listenersWg.Done()
 		}()
 	}
 
 	if endp.serv.AllowInsecureAuth {
-		log.Printf("imap %s: authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
 	}
 	if endp.serv.TLSConfig == nil {
-		log.Printf("imap %s: TLS is disabled, this is insecure configuration and should be used only for testing!", endp.name)
+		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
 		endp.serv.AllowInsecureAuth = true
 	}
 

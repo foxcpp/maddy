@@ -11,6 +11,7 @@ import (
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 	"github.com/google/uuid"
 )
@@ -33,6 +34,7 @@ func (step submissionPrepareStep) Pass(ctx *module.DeliveryContext, msg io.Reade
 		if err != nil {
 			return nil, false, errors.New("Message-ID generation failed")
 		}
+		log.Debugf("adding missing Message-ID header to message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
 		parsed.Header.Set("Message-ID", "<"+msgId.String()+"@"+ctx.OurHostname+">")
 	}
 
@@ -90,6 +92,7 @@ func (step submissionPrepareStep) Pass(ctx *module.DeliveryContext, msg io.Reade
 			}
 		}
 	} else {
+		log.Debugf("adding missing Date header to message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
 		parsed.Header.Set("Date", time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 
