@@ -114,16 +114,19 @@ func (endp *SMTPEndpoint) Version() string {
 	return VersionStr
 }
 
-func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg config.Node) (module.Module, error) {
+func NewSMTPEndpoint(modName, instName string) (module.Module, error) {
 	endp := &SMTPEndpoint{
-		name: instName,
-		Log:  log.Logger{Out: log.StderrLog, Name: "smtp"},
+		name:       instName,
+		submission: modName == "submission",
+		Log:        log.Logger{Out: log.StderrLog, Name: "smtp"},
 	}
-	endp.serv = smtp.NewServer(endp)
-	endp.name = instName
+	return endp, nil
+}
+
+func (endp *SMTPEndpoint) Init(globalCfg map[string]config.Node, cfg config.Node) error {
 	endp.serv = smtp.NewServer(endp)
 	if err := endp.setConfig(globalCfg, cfg); err != nil {
-		return nil, err
+		return err
 	}
 
 	endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
@@ -133,7 +136,7 @@ func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg conf
 	for _, addr := range cfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
-			return nil, fmt.Errorf("smtp: invalid address: %s", addr)
+			return fmt.Errorf("smtp: invalid address: %s", addr)
 		}
 
 		addresses = append(addresses, saddr)
@@ -143,7 +146,7 @@ func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg conf
 		for _, l := range endp.listeners {
 			l.Close()
 		}
-		return nil, err
+		return err
 	}
 
 	if endp.serv.AllowInsecureAuth {
@@ -154,13 +157,14 @@ func NewSMTPEndpoint(instName string, globalCfg map[string]config.Node, cfg conf
 		endp.serv.AllowInsecureAuth = true
 	}
 
-	return endp, nil
+	return nil
 }
 
 func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg config.Node) error {
 	var (
-		err     error
-		ioDebug bool
+		err        error
+		ioDebug    bool
+		submission bool
 
 		localDeliveryDefault  string
 		localDeliveryOpts     map[string]string
@@ -178,12 +182,20 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
-	cfg.Bool("submission", false, &endp.submission)
+	cfg.Bool("submission", false, &submission)
 	cfg.AllowUnknown()
 
 	remainingDirs, err := cfg.Process(globalCfg, &rawCfg)
 	if err != nil {
 		return err
+	}
+
+	// If endp.submission is set by NewSMTPEndpoint because module name is "submission"
+	// - don't use value from configuration.
+	if !endp.submission {
+		endp.submission = submission
+	} else if submission {
+		endp.Log.Println("redundant submission statement")
 	}
 
 	for _, entry := range remainingDirs {
@@ -376,4 +388,5 @@ func (endp *SMTPEndpoint) Close() error {
 
 func init() {
 	module.Register("smtp", NewSMTPEndpoint)
+	module.Register("submission", NewSMTPEndpoint)
 }

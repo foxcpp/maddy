@@ -57,3 +57,12 @@ func GetInstance(name string) Module {
 
 	return instances[name]
 }
+
+// UnregisterInstance undoes effect of RegisterInstance, removing instance from
+// global registry.
+func UnregisterInstance(name string) {
+	instancesLck.Lock()
+	defer instancesLck.Unlock()
+
+	delete(instances, name)
+}

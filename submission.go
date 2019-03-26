@@ -10,16 +10,10 @@ import (
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
-	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 	"github.com/google/uuid"
 )
-
-func NewSubmissionEndpoint(instName string, globalCfg map[string]config.Node, cfg config.Node) (module.Module, error) {
-	cfg.Children = append(cfg.Children, config.Node{Name: "submission"})
-	return NewSMTPEndpoint(instName, globalCfg, cfg)
-}
 
 type submissionPrepareStep struct{}
 
@@ -106,8 +100,4 @@ func (step submissionPrepareStep) Pass(ctx *module.DeliveryContext, msg io.Reade
 	}
 
 	return &buf, true, nil
-}
-
-func init() {
-	module.Register("submission", NewSubmissionEndpoint)
 }

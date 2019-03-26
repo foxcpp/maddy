@@ -3,6 +3,7 @@ package maddy
 import (
 	"io"
 
+	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
 
@@ -32,6 +33,10 @@ func (d Dummy) Version() string {
 
 func (d Dummy) InstanceName() string {
 	return d.instName
+}
+
+func (d Dummy) Init(_ map[string]config.Node, _ config.Node) error {
+	return nil
 }
 
 func init() {
