@@ -51,8 +51,8 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 	)
 
 	cfg := config.Map{}
-	cfg.Custom("auth", false, true, defaultAuthProvider, authDirective, &endp.Auth)
-	cfg.Custom("storage", false, true, defaultStorage, storageDirective, &endp.Store)
+	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
+	cfg.Custom("storage", false, false, defaultStorage, storageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, &insecureAuth)
 	cfg.Bool("io_debug", false, &insecureAuth)

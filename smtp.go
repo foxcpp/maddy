@@ -173,8 +173,8 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	)
 
 	cfg := config.Map{}
-	cfg.Custom("auth", false, true, defaultAuthProvider, authDirective, &endp.Auth)
-	cfg.String("hostname", true, true, "", &endp.serv.Domain)
+	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
+	cfg.String("hostname", true, false, "", &endp.serv.Domain)
 	cfg.Int("max_idle", false, false, 60, &endp.serv.MaxIdleSeconds)
 	cfg.Int("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 255, &endp.serv.MaxRecipients)
