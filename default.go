@@ -1,14 +1,16 @@
 package maddy
 
 import (
+	"database/sql"
+	"fmt"
+
 	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
 var defaultDriver, defaultDsn string
 
-func initDefaultStorage(globalCfg map[string]config.Node) {
+func createDefaultStorage(_ string) (module.Module, error) {
 	if defaultDriver == "" {
 		defaultDriver = "sqlite3"
 	}
@@ -16,9 +18,24 @@ func initDefaultStorage(globalCfg map[string]config.Node) {
 		defaultDsn = "maddy.db"
 	}
 
-	mod, err := NewSQLMail("default", globalCfg, config.Node{ //TODO!
+	driverSupported := false
+	for _, driver := range sql.Drivers() {
+		if driver == defaultDriver {
+			driverSupported = true
+		}
+	}
+
+	if !driverSupported {
+		return nil, fmt.Errorf("maddy is not compiled with %s support", defaultDriver)
+	}
+
+	return NewSQLMail("sqlmail", "default")
+}
+
+func defaultStorageConfig(name string) config.Node {
+	return config.Node{
 		Name: "sqlmail",
-		Args: []string{"default"},
+		Args: []string{name},
 		Children: []config.Node{
 			{
 				Name: "driver",
@@ -29,13 +46,9 @@ func initDefaultStorage(globalCfg map[string]config.Node) {
 				Args: []string{defaultDsn},
 			},
 		},
-	})
-
-	if err != nil {
-		log.Println("failed to initialize default (go-sqlmail) backend:", err)
-		return
 	}
+}
 
-	module.RegisterInstance(mod)
-	module.RegisterInstance(Dummy{instName: "default_remote_delivery"})
+func createDefaultRemoteDelivery(name string) (module.Module, error) {
+	return Dummy{instName: name}, nil
 }

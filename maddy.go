@@ -12,25 +12,21 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
+type modInfo struct {
+	instance module.Module
+	cfg      config.Node
+}
+
 func Start(cfg []config.Node) error {
-	instances := make([]module.Module, 0, len(cfg))
+	instances := make(map[string]modInfo)
 	globalCfg := make(map[string]config.Node)
 
-	defaultPresent := false
 	for _, block := range cfg {
 		switch block.Name {
 		case "tls", "hostname", "debug":
 			globalCfg[block.Name] = block
 			continue
-		default:
-			if len(block.Args) != 0 && block.Args[0] == "default" {
-				defaultPresent = true
-			}
 		}
-	}
-
-	if !defaultPresent {
-		initDefaultStorage(globalCfg)
 	}
 
 	if _, ok := globalCfg["debug"]; ok {
@@ -61,14 +57,24 @@ func Start(cfg []config.Node) error {
 			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
 		}
 
-		log.Debugln("init for module", modName, instName)
-		inst, err := factory(instName, globalCfg, block)
+		log.Debugln("module create", modName, instName)
+		inst, err := factory(modName, instName)
 		if err != nil {
 			return err
 		}
 
 		module.RegisterInstance(inst)
-		instances = append(instances, inst)
+		instances[instName] = modInfo{instance: inst, cfg: block}
+	}
+
+	addDefaultModule(instances, "default", createDefaultStorage, defaultStorageConfig)
+	addDefaultModule(instances, "default_remote_delivery", createDefaultRemoteDelivery, nil)
+
+	for _, inst := range instances {
+		log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName())
+		if err := inst.instance.Init(globalCfg, inst.cfg); err != nil {
+			return err
+		}
 	}
 
 	sig := make(chan os.Signal, 5)
@@ -83,11 +89,29 @@ func Start(cfg []config.Node) error {
 	}()
 
 	for _, inst := range instances {
-		if closer, ok := inst.(io.Closer); ok {
-			log.Debugln("clean-up for module", inst.Name(), inst.InstanceName())
+		if closer, ok := inst.instance.(io.Closer); ok {
+			log.Debugln("clean-up for module", inst.instance.Name(), inst.instance.InstanceName())
 			closer.Close()
 		}
 	}
 
 	return nil
+}
+
+func addDefaultModule(insts map[string]modInfo, name string, factory func(string) (module.Module, error), cfgFactory func(string) config.Node) {
+	if _, ok := insts[name]; !ok {
+		if mod, err := factory(name); err != nil {
+			log.Printf("failed to register %s: %v", name, err)
+		} else {
+			log.Debugf("module create %s %s (built-in)", mod.Name(), name)
+			module.RegisterInstance(mod)
+			info := modInfo{instance: mod}
+			if cfgFactory != nil {
+				info.cfg = cfgFactory(name)
+			}
+			insts[name] = info
+		}
+	} else {
+		log.Debugf("module create %s (built-in) skipped because user-defined exists", name)
+	}
 }

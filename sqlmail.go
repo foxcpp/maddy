@@ -3,6 +3,7 @@ package maddy
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -33,25 +34,27 @@ func (sqlm *SQLMail) Version() string {
 	return sqlmail.VersionStr
 }
 
-func NewSQLMail(instName string, globalCfg map[string]config.Node, rawCfg config.Node) (module.Module, error) {
+func NewSQLMail(_, instName string) (module.Module, error) {
+	return &SQLMail{
+		instName: instName,
+		Log:      log.Logger{Out: log.StderrLog, Name: "sqlmail"},
+	}, nil
+}
+
+func (sqlm *SQLMail) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
 	var driver string
 	var dsn string
 	appendlimitVal := int64(-1)
 
 	opts := imapsqlmail.Opts{}
-	mod := SQLMail{
-		instName: instName,
-		Log:      log.Logger{Out: log.StderrLog, Name: "sqlmail"},
-	}
-
 	cfg := config.Map{}
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
-	cfg.Bool("debug", true, &mod.Log.Debug)
+	cfg.Bool("debug", true, &sqlm.Log.Debug)
 
 	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
-		return nil, err
+		return err
 	}
 
 	if appendlimitVal == -1 {
@@ -60,14 +63,13 @@ func NewSQLMail(instName string, globalCfg map[string]config.Node, rawCfg config
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-	sqlm, err := imapsqlmail.NewBackend(driver, dsn, opts)
-	mod.Backend = sqlm
-
+	back, err := imapsqlmail.NewBackend(driver, dsn, opts)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("sqlmail: %s", err)
 	}
+	sqlm.Backend = back
 
-	return &mod, nil
+	return nil
 }
 
 func (sqlm *SQLMail) Extensions() []string {

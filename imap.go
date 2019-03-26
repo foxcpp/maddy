@@ -34,12 +34,17 @@ type IMAPEndpoint struct {
 	Log log.Logger
 }
 
-func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg config.Node) (module.Module, error) {
+func NewIMAPEndpoint(_, instName string) (module.Module, error) {
 	endp := &IMAPEndpoint{
 		name: instName,
 		Log:  log.Logger{Out: log.StderrLog, Name: "imap"},
 	}
 	endp.name = instName
+
+	return endp, nil
+}
+
+func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
 	var (
 		insecureAuth bool
 		ioDebug      bool
@@ -53,17 +58,17 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 	cfg.Bool("io_debug", false, &insecureAuth)
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
-		return nil, err
+		return err
 	}
 
 	addresses := make([]Address, 0, len(rawCfg.Args))
 	for _, addr := range rawCfg.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
-			return nil, fmt.Errorf("imap: invalid address: %s", instName)
+			return fmt.Errorf("imap: invalid address: %s", endp.name)
 		}
 		if saddr.Scheme != "imap" && saddr.Scheme != "imaps" {
-			return nil, fmt.Errorf("imap: imap or imaps scheme must be used, got %s", saddr.Scheme)
+			return fmt.Errorf("imap: imap or imaps scheme must be used, got %s", saddr.Scheme)
 		}
 		addresses = append(addresses, saddr)
 	}
@@ -77,7 +82,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 	}
 
 	if err := endp.enableExtensions(); err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, addr := range addresses {
@@ -85,13 +90,13 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
 		if err != nil {
-			return nil, fmt.Errorf("failed to bind on %v: %v", addr, err)
+			return fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
 		endp.Log.Printf("imap: listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.tlsConfig == nil {
-				return nil, errors.New("can't bind on IMAPS endpoint without TLS configuration")
+				return errors.New("can't bind on IMAPS endpoint without TLS configuration")
 			}
 			l = tls.NewListener(l, endp.tlsConfig)
 		}
@@ -116,7 +121,7 @@ func NewIMAPEndpoint(instName string, globalCfg map[string]config.Node, rawCfg c
 		endp.serv.AllowInsecureAuth = true
 	}
 
-	return endp, nil
+	return nil
 }
 
 func (endp *IMAPEndpoint) Name() string {

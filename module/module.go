@@ -26,6 +26,14 @@ import (
 // on shutdown. If module starts long-lived goroutines - they should be stopped
 // *before* Close method returns to ensure graceful shutdown.
 type Module interface {
+	// Init performs actual initalization of the module.
+	//
+	// It is not done in FuncNewModule so all module instances are
+	// registered at time of initialization, thus initialization does not
+	// depends on ordering of configuration blocks and modules can reference
+	// each other without any problems.
+	Init(globalCfg map[string]config.Node, cfg config.Node) error
+
 	// Name method reports module name.
 	//
 	// It is used to reference module in the configuration and in logs.
@@ -39,4 +47,5 @@ type Module interface {
 }
 
 // FuncNewModule is function that creates new instance of module with specified name.
-type FuncNewModule func(name string, globalCfg map[string]config.Node, cfg config.Node) (Module, error)
+// Note that this function should not do any form of initialization.
+type FuncNewModule func(modName, instanceName string) (Module, error)
