@@ -16,6 +16,7 @@ import (
 	"github.com/emersion/maddy/module"
 
 	appendlimit "github.com/emersion/go-imap-appendlimit"
+	compress "github.com/emersion/go-imap-compress"
 	move "github.com/emersion/go-imap-move"
 	"github.com/foxcpp/go-sqlmail/imap/children"
 )
@@ -165,6 +166,9 @@ func (endp *IMAPEndpoint) enableExtensions() error {
 			endp.serv.Enable(move.NewExtension())
 		}
 	}
+
+	endp.serv.Enable(compress.NewExtension())
+
 	return nil
 }
 
