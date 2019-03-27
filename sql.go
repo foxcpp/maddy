@@ -12,12 +12,12 @@ import (
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
-	"github.com/foxcpp/go-sqlmail"
-	imapsqlmail "github.com/foxcpp/go-sqlmail/imap"
+	sqlstore "github.com/foxcpp/go-imap-sql"
+	imapsql "github.com/foxcpp/go-imap-sql/imap"
 )
 
-type SQLMail struct {
-	*imapsqlmail.Backend
+type SQLStorage struct {
+	*imapsql.Backend
 	instName string
 	Log      log.Logger
 }
@@ -31,27 +31,27 @@ func (l Literal) Len() int {
 	return l.length
 }
 
-func (sqlm *SQLMail) Name() string {
-	return "sqlmail"
+func (sqlm *SQLStorage) Name() string {
+	return "sql"
 }
 
-func (sqlm *SQLMail) InstanceName() string {
+func (sqlm *SQLStorage) InstanceName() string {
 	return sqlm.instName
 }
 
-func NewSQLMail(_, instName string) (module.Module, error) {
-	return &SQLMail{
+func NewSQLStorage(_, instName string) (module.Module, error) {
+	return &SQLStorage{
 		instName: instName,
-		Log:      log.Logger{Out: log.StderrLog, Name: "sqlmail"},
+		Log:      log.Logger{Out: log.StderrLog, Name: "sql"},
 	}, nil
 }
 
-func (sqlm *SQLMail) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
+func (sqlm *SQLStorage) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
 	var driver string
 	var dsn string
 	appendlimitVal := int64(-1)
 
-	opts := imapsqlmail.Opts{}
+	opts := imapsql.Opts{}
 	cfg := config.Map{}
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
@@ -68,22 +68,22 @@ func (sqlm *SQLMail) Init(globalCfg map[string]config.Node, rawCfg config.Node) 
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-	back, err := imapsqlmail.NewBackend(driver, dsn, opts)
+	back, err := imapsql.NewBackend(driver, dsn, opts)
 	if err != nil {
-		return fmt.Errorf("sqlmail: %s", err)
+		return fmt.Errorf("sql: %s", err)
 	}
 	sqlm.Backend = back
 
-	sqlm.Log.Debugln("go-sqlmail version", sqlmail.VersionStr)
+	sqlm.Log.Debugln("go-imap-sql version", sqlstore.VersionStr)
 
 	return nil
 }
 
-func (sqlm *SQLMail) IMAPExtensions() []string {
+func (sqlm *SQLStorage) IMAPExtensions() []string {
 	return []string{"APPENDLIMIT", "MOVE", "CHILDREN"}
 }
 
-func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
+func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, msg); err != nil {
 		return err
@@ -162,5 +162,5 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 }
 
 func init() {
-	module.Register("sqlmail", NewSQLMail)
+	module.Register("sql", NewSQLStorage)
 }

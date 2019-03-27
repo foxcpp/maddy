@@ -29,12 +29,12 @@ func createDefaultStorage(_ string) (module.Module, error) {
 		return nil, fmt.Errorf("maddy is not compiled with %s support", defaultDriver)
 	}
 
-	return NewSQLMail("sqlmail", "default")
+	return NewSQLStorage("sql", "default")
 }
 
 func defaultStorageConfig(name string) config.Node {
 	return config.Node{
-		Name: "sqlmail",
+		Name: "sql",
 		Args: []string{name},
 		Children: []config.Node{
 			{

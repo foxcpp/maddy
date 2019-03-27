@@ -12,12 +12,12 @@ go get github.com/emersion/maddy/cmd/maddy
 
 Build tags:
 * `nosqlite3`
-  Disable SQLite3 support in go-sqlmail (enabled by default). Saves around 9
+  Disable SQLite3 support in go-imap-sql (enabled by default). Saves around 9
   MiB of binary size.
 * `mysql`
-  Include support for MySQL driver in go-sqlmail.
+  Include support for MySQL driver in go-imap-sql.
 * `postgresql`
-  Include support for PostgreSQL driver in go-sqlmail.
+  Include support for PostgreSQL driver in go-imap-sql.
 
 ## Configuration
 
@@ -88,16 +88,16 @@ Don't forget to use actual values instead of placeholders.
 With this configuration, maddy will create an SQLite3 database for messages in
 current directory and use it to store all messages.
 
-### go-sqlmail: Database location
+### go-imap-sql: Database location
 
 If you don't like SQLite3 or don't want to have it in the current directory,
 you can override the configuration of the default module.
 
-See [go-sqlmail repository](https://github.com/foxcpp/go-sqlmail) for
+See [go-imap-sql repository](https://github.com/foxcpp/go-imap-sql) for
 information on RDBMS support.
 
 ```
-sqlmail default {
+sql default {
     driver sqlite3
     dsn file_path
 }
