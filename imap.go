@@ -18,7 +18,7 @@ import (
 	appendlimit "github.com/emersion/go-imap-appendlimit"
 	compress "github.com/emersion/go-imap-compress"
 	move "github.com/emersion/go-imap-move"
-	"github.com/foxcpp/go-sqlmail/imap/children"
+	"github.com/foxcpp/go-imap-sql/imap/children"
 )
 
 type IMAPEndpoint struct {

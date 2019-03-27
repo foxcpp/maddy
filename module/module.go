@@ -8,7 +8,7 @@
 // be IMAP storage backend, SMTP upstream and authentication provider at the
 // same moment.
 //
-// Each module gets its own unique name (sqlmail for go-sqlmail, proxy for
+// Each module gets its own unique name (sql for go-imap-sql, proxy for
 // proxy module, local for local delivery perhaps, etc). Each module instance
 // also gets its own (unique too) name which is used to refer to it in
 // configuration.

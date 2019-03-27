@@ -213,7 +213,7 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
 }
 ```
 
-### 'sqlmail' module
+### 'sql' module
 
 SQL-based storage backend.  Can be used as a storage backend (for IMAP),
 authentication provider (IMAP & SMTP) or delivery target (SMTP).
