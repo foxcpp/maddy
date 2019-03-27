@@ -55,7 +55,7 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 	cfg.Custom("storage", false, false, defaultStorage, storageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, &insecureAuth)
-	cfg.Bool("io_debug", false, &insecureAuth)
+	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
 		return err
