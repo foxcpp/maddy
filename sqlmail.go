@@ -79,7 +79,7 @@ func (sqlm *SQLMail) Init(globalCfg map[string]config.Node, rawCfg config.Node) 
 	return nil
 }
 
-func (sqlm *SQLMail) Extensions() []string {
+func (sqlm *SQLMail) IMAPExtensions() []string {
 	return []string{"APPENDLIMIT", "MOVE", "CHILDREN"}
 }
 

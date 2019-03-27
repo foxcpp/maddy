@@ -156,7 +156,7 @@ func (endp *IMAPEndpoint) EnableChildrenExt() bool {
 }
 
 func (endp *IMAPEndpoint) enableExtensions() error {
-	exts := endp.Store.Extensions()
+	exts := endp.Store.IMAPExtensions()
 	for _, ext := range exts {
 		switch ext {
 		case "APPENDLIMIT":
