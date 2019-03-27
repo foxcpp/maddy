@@ -11,5 +11,5 @@ type Storage interface {
 	GetUser(username string) (imapbackend.User, error)
 
 	// Extensions returns list of IMAP extensions supported by backend.
-	Extensions() []string
+	IMAPExtensions() []string
 }
