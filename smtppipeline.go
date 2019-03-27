@@ -63,7 +63,7 @@ func LookupAddr(ip net.IP) (string, error) {
 
 func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
 	// We can safetly assume at least one recipient.
-	to := formatAddr(ctx.To[0])
+	to := sanitizeString(ctx.To[0])
 
 	// TODO: Include reverse DNS information.
 	received := "Received: from " + ctx.SrcHostname
@@ -76,7 +76,7 @@ func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Re
 		}
 	}
 	// TODO: Include our public IP address.
-	received += fmt.Sprintf("\r\n\tby %s with %s", ctx.OurHostname, ctx.SrcProto)
+	received += fmt.Sprintf("\r\n\tby %s with %s", sanitizeString(ctx.OurHostname), ctx.SrcProto)
 	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
 
 	msg = io.MultiReader(strings.NewReader(received), msg)
