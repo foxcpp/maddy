@@ -24,10 +24,10 @@ func Register(name string, factory FuncNewModule) {
 	modules[name] = factory
 }
 
-// GetMod returns module from global registry.
+// Get returns module from global registry.
 //
 // Nil is returned if no module with specified name is registered.
-func GetMod(name string) FuncNewModule {
+func Get(name string) FuncNewModule {
 	modulesLock.RLock()
 	defer modulesLock.RUnlock()
 

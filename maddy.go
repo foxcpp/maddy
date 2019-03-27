@@ -48,7 +48,7 @@ func Start(cfg []config.Node) error {
 
 		modName := block.Name
 
-		factory := module.GetMod(modName)
+		factory := module.Get(modName)
 		if factory == nil {
 			return fmt.Errorf("%s:%d: unknown module: %s", block.File, block.Line, modName)
 		}
