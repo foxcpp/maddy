@@ -79,6 +79,7 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 	endp.serv.ErrorLog = endp.Log.DebugWriter()
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
+		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
 	}
 
 	if err := endp.enableExtensions(); err != nil {
