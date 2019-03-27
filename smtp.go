@@ -93,6 +93,8 @@ type SMTPEndpoint struct {
 	listeners []net.Listener
 	pipeline  []SMTPPipelineStep
 
+	authAlwaysRequired bool
+
 	submission bool
 
 	listenersWg sync.WaitGroup
@@ -224,6 +226,12 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 			if err != nil {
 				return err
 			}
+
+			// This will not trigger for nested blocks ('match').
+			if entry.Name == "require_auth" {
+				endp.authAlwaysRequired = true
+			}
+
 			endp.pipeline = append(endp.pipeline, step)
 		default:
 			return fmt.Errorf("smtp: unknown config directive: %v", entry.Name)
@@ -238,6 +246,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	}
 	if endp.submission {
 		endp.pipeline = append([]SMTPPipelineStep{submissionPrepareStep{}, requireAuthStep{}}, endp.pipeline...)
+		endp.authAlwaysRequired = true
 	}
 
 	if ioDebug {
@@ -355,6 +364,10 @@ func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password 
 }
 
 func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User, error) {
+	if endp.authAlwaysRequired {
+		return nil, smtp.ErrAuthRequired
+	}
+
 	return SMTPUser{
 		endp:      endp,
 		anonymous: true,
