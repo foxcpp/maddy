@@ -132,10 +132,6 @@ func (endp *IMAPEndpoint) InstanceName() string {
 	return endp.name
 }
 
-func (endp *IMAPEndpoint) Version() string {
-	return VersionStr
-}
-
 func (endp *IMAPEndpoint) Close() error {
 	for _, l := range endp.listeners {
 		l.Close()

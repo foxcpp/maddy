@@ -27,10 +27,6 @@ func (d Dummy) Name() string {
 	return "dummy"
 }
 
-func (d Dummy) Version() string {
-	return VersionStr
-}
-
 func (d Dummy) InstanceName() string {
 	return d.instName
 }

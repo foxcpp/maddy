@@ -41,9 +41,6 @@ type Module interface {
 
 	// InstanceName method reports unique name of this module instance.
 	InstanceName() string
-
-	// Module version. Reported in logs.
-	Version() string
 }
 
 // FuncNewModule is function that creates new instance of module with specified name.

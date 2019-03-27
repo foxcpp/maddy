@@ -39,10 +39,6 @@ func (sqlm *SQLMail) InstanceName() string {
 	return sqlm.instName
 }
 
-func (sqlm *SQLMail) Version() string {
-	return sqlmail.VersionStr
-}
-
 func NewSQLMail(_, instName string) (module.Module, error) {
 	return &SQLMail{
 		instName: instName,
@@ -77,6 +73,8 @@ func (sqlm *SQLMail) Init(globalCfg map[string]config.Node, rawCfg config.Node) 
 		return fmt.Errorf("sqlmail: %s", err)
 	}
 	sqlm.Backend = back
+
+	sqlm.Log.Debugln("go-sqlmail version", sqlmail.VersionStr)
 
 	return nil
 }
