@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/mail"
 	"os"
 	"strings"
 	"sync"
@@ -363,14 +362,8 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User
 	}, nil
 }
 
-func formatAddr(raw string) string {
-	addr := mail.Address{Address: raw}
-	return addr.String()
-}
-
-func addReturnPath(ctx module.DeliveryContext, msg io.Reader) io.Reader {
-	hdr := "Return-Path: " + formatAddr(ctx.From) + "\r\n"
-	return io.MultiReader(strings.NewReader(hdr), msg)
+func sanitizeString(raw string) string {
+	return strings.Replace(raw, "\n", "", -1)
 }
 
 func (endp *SMTPEndpoint) Close() error {

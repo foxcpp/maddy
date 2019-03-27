@@ -146,8 +146,8 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 			}
 		}
 
-		headerPrefix := fmt.Sprintf("Return-Path: <%s>\r\n", ctx.From)
-		headerPrefix += fmt.Sprintf("Delivered-To: %s\r\n", rcpt)
+		headerPrefix := fmt.Sprintf("Return-Path: <%s>\r\n", sanitizeString(ctx.From))
+		headerPrefix += fmt.Sprintf("Delivered-To: %s\r\n", sanitizeString(rcpt))
 
 		msg := Literal{
 			Reader: io.MultiReader(strings.NewReader(headerPrefix), &buf),
