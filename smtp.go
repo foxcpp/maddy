@@ -255,6 +255,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 
 	if ioDebug {
 		endp.serv.Debug = os.Stderr
+		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
 	}
 
 	return nil
