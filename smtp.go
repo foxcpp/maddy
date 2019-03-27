@@ -110,10 +110,6 @@ func (endp *SMTPEndpoint) InstanceName() string {
 	return endp.name
 }
 
-func (endp *SMTPEndpoint) Version() string {
-	return VersionStr
-}
-
 func NewSMTPEndpoint(modName, instName string) (module.Module, error) {
 	endp := &SMTPEndpoint{
 		name:       instName,
