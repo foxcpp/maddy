@@ -90,10 +90,6 @@ func (step submissionPrepareStep) Pass(ctx *module.DeliveryContext, msg io.Reade
 		parsed.Header.Set("Date", time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 
-	if ctx.From != "" && parsed.Header.Get("Return-Path") == "" {
-		parsed.Header.Set("Return-Path", ctx.From)
-	}
-
 	var buf bytes.Buffer
 	if err := parsed.WriteTo(&buf); err != nil {
 		return nil, false, err
