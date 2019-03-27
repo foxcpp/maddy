@@ -37,12 +37,16 @@ func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
 		Ctx:         make(map[string]interface{}),
 	}
 
-	// Check if TLS connection state struct is poplated.
-	// If it is - we are using TLS.
-	if u.state.TLS.Version != 0 {
-		ctx.SrcProto = "ESMTPS"
+	if u.endp.serv.LMTP {
+		ctx.SrcProto = "LMTP"
 	} else {
-		ctx.SrcProto = "ESMTP"
+		// Check if TLS connection state struct is poplated.
+		// If it is - we are using TLS.
+		if u.state.TLS.Version != 0 {
+			ctx.SrcProto = "ESMTPS"
+		} else {
+			ctx.SrcProto = "ESMTP"
+		}
 	}
 
 	// TODO: Execute pipeline steps in parallel.
