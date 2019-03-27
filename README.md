@@ -28,7 +28,7 @@ Caddyfile.  You may want to read [Caddyfile page from Caddy docs](https://caddys
 
 Notable differences from Caddy's format:
 * Directives can't span multiple lines
-* Environmental variables are not expanded
+* Environment variables are not expanded
 * You can't omit braces if you have only one configuration block
 
 ### Modularity

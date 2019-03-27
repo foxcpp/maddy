@@ -24,7 +24,7 @@ type SMTPUser struct {
 	state     *smtp.ConnectionState
 }
 
-func (u SMTPUser) Send(from string, to []string, r io.Reader) error {
+func (u *SMTPUser) Send(from string, to []string, r io.Reader) error {
 	ctx := module.DeliveryContext{
 		From:        from,
 		To:          to,
@@ -361,7 +361,7 @@ func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password 
 		return nil, errors.New("Invalid credentials")
 	}
 
-	return SMTPUser{
+	return &SMTPUser{
 		endp:     endp,
 		username: username,
 		state:    state,
@@ -373,7 +373,7 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User
 		return nil, smtp.ErrAuthRequired
 	}
 
-	return SMTPUser{
+	return &SMTPUser{
 		endp:      endp,
 		anonymous: true,
 		state:     state,
