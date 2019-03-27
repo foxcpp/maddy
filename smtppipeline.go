@@ -107,7 +107,7 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 		for _, rcpt := range ctx.To {
 			parts := strings.Split(rcpt, "@")
 			if len(parts) != 2 {
-				continue
+				return nil, false, errors.New("invalid address")
 			}
 			if step.matches(parts[1]) {
 				match = true
@@ -119,12 +119,9 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 	case "from_domain":
 		parts := strings.Split(ctx.From, "@")
 		if len(parts) != 2 {
-			match = false
+			return nil, false, errors.New("invalid address")
 		}
-		if step.matches(parts[1]) {
-			match = true
-			break
-		}
+		match = step.matches(parts[1])
 	case "src_addr":
 		match = step.matches(ctx.SrcAddr.String())
 	case "src_hostname":
