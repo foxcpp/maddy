@@ -22,6 +22,15 @@ type SQLMail struct {
 	Log      log.Logger
 }
 
+type Literal struct {
+	io.Reader
+	length int
+}
+
+func (l Literal) Len() int {
+	return l.length
+}
+
 func (sqlm *SQLMail) Name() string {
 	return "sqlmail"
 }
@@ -139,7 +148,14 @@ func (sqlm *SQLMail) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 			}
 		}
 
-		if err := mbox.CreateMessage([]string{}, time.Now(), &buf); err != nil {
+		headerPrefix := fmt.Sprintf("Return-Path: <%s>\r\n", ctx.From)
+		headerPrefix += fmt.Sprintf("Delivered-To: %s\r\n", rcpt)
+
+		msg := Literal{
+			Reader: io.MultiReader(strings.NewReader(headerPrefix), &buf),
+			length: len(headerPrefix) + buf.Len(),
+		}
+		if err := mbox.CreateMessage([]string{}, time.Now(), msg); err != nil {
 			sqlm.Log.Debugf("failed to save msg for %s: %v", rcpt, err)
 			return err
 		}
