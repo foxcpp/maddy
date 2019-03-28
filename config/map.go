@@ -32,6 +32,8 @@ func (m *matcher) match(map_ *Map, node *Node) error {
 	return nil
 }
 
+// Map structure implements reflection-based conversion between configuration
+// directives and Go variables.
 type Map struct {
 	allowUnknown bool
 
@@ -55,12 +57,17 @@ func (m *Map) MatchErr(format string, args ...interface{}) error {
 	}
 }
 
+// AllowUnknown makes config.Map skip unknown configuration directives instead
+// of failing.
 func (m *Map) AllowUnknown() {
 	m.allowUnknown = true
 }
 
-//ffs, give me generics already
-
+// Bool maps presence of some configuration directive to a boolean variable.
+//
+// I.e. if directive 'io_debug' exists in processed configuration block or in
+// the global configuration (if inheritGlobal is true) then Process will store
+// true in target variable.
 func (m *Map) Bool(name string, inheritGlobal bool, store *bool) {
 	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
 		return false, nil
@@ -76,6 +83,13 @@ func (m *Map) Bool(name string, inheritGlobal bool, store *bool) {
 	}, store)
 }
 
+// String maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name arbitrary_string'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) String(name string, inheritGlobal, required bool, defaultVal string, store *string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -91,6 +105,13 @@ func (m *Map) String(name string, inheritGlobal, required bool, defaultVal strin
 	}, store)
 }
 
+// Int maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, store *int) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -110,6 +131,13 @@ func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, sto
 	}, store)
 }
 
+// UInt maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, store *uint) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -129,6 +157,13 @@ func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, s
 	}, store)
 }
 
+// Int32 maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32, store *int32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -148,6 +183,13 @@ func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32,
 	}, store)
 }
 
+// UInt32 maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint32, store *uint32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -167,6 +209,13 @@ func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint3
 	}, store)
 }
 
+// Int64 maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64, store *int64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -186,6 +235,13 @@ func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64,
 	}, store)
 }
 
+// UInt64 maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint64, store *uint64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -205,6 +261,13 @@ func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint6
 	}, store)
 }
 
+// Float maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name 123.55'.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
 func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float64, store *float64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
@@ -221,7 +284,22 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 	}, store)
 }
 
-// Custom maps configuration directive
+// Custom maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// If inheritGlobal is true - Map will try to use a value from globalCfg if
+// none is set in a processed configuration block.
+//
+// If required is true - Map will fail if no value is set in the configuration,
+// both global (if inheritGlobal is true) and in the processed block.
+//
+// defaultVal is a factory function that should return the default value for
+// the variable. It will be used if no value is set in the config. It can be
+// nil if required is true.
+//
+// mapper is a function that should convert configuration directive arguments
+// into variable value.  Both functions may fail with errors, configuration
+// processing will stop immediately then.
 func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func() (interface{}, error), mapper func(*Map, *Node) (interface{}, error), store interface{}) {
 	if m.entries == nil {
 		m.entries = make(map[string]matcher)
