@@ -103,8 +103,7 @@ type SMTPEndpoint struct {
 
 	listenersWg sync.WaitGroup
 
-	debug bool
-	Log   log.Logger
+	Log log.Logger
 }
 
 func (endp *SMTPEndpoint) Name() string {
