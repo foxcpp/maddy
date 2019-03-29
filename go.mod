@@ -1,6 +1,7 @@
 module github.com/emersion/maddy
 
 require (
+	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46
 	github.com/emersion/go-dkim v0.0.0-20181215182626-18000c30d4b8
 	github.com/emersion/go-imap v1.0.0-beta.2
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
