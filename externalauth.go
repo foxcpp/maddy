@@ -52,8 +52,9 @@ func (ea *ExternalAuth) Init(globalCfg map[string]config.Node, rawCfg config.Nod
 
 	helperName := "maddy-auth-helper"
 	switch ea.modName {
-	// TODO: PAM
-	// TODO: Local
+	case "pam":
+		helperName = "maddy-pam-helper"
+		// TODO: Local
 	}
 
 	var err error
@@ -108,4 +109,5 @@ func (ea *ExternalAuth) CheckPlain(username, password string) bool {
 
 func init() {
 	module.Register("extauth", NewExternalAuth)
+	module.Register("pam", NewExternalAuth)
 }

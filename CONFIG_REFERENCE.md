@@ -267,3 +267,10 @@ Valid configuration directives:
 
 * `debug`
   Verbose log only for this module.
+
+### 'pam' module
+
+Same as 'extauth' module but looks for [maddy-pam-helper] binary by default.
+
+[maddy-pam-helper][cmd/maddy-pam-helper]
+
