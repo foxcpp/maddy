@@ -244,3 +244,26 @@ No-op module. It doesn't need to be configured explicitly and can be referenced
 using `dummy` name. It can act as a filter, delivery target, and auth.
 provider.  In the latter case, it will accept any credentials, allowing any
 client to authenticate using any username and password (use with care!).
+
+### 'extauth' module
+
+Module for authentication using external helper binary.
+It looks for binary named maddy-auth-helper in $PATH and uses it for
+authentication.
+
+Protocol is very simple:
+Username and password are written to stdin, adding `\n` to the end. If binary
+exits with 0 status code - authentication is considered successful. If status
+code is 1 - authentication is failed. If status code is 2 - other unrelated
+error happened. Additional information should be written to stderr.
+
+```
+extauth default_auth
+```
+
+Valid configuration directives:
+* `helper`
+  Location of the helper binary.
+
+* `debug`
+  Verbose log only for this module.
