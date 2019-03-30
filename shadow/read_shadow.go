@@ -45,7 +45,6 @@ func parseEntry(line string) (*Entry, error) {
 		Name: parts[0],
 		Pass: parts[1],
 	}
-	var err error
 
 	for i, value := range [...]*int{
 		&res.LastChange, &res.MinPassAge, &res.MaxPassAge,
@@ -54,6 +53,7 @@ func parseEntry(line string) (*Entry, error) {
 		if parts[2+i] == "" {
 			*value = -1
 		} else {
+			var err error
 			*value, err = strconv.Atoi(parts[2+i])
 			if err != nil {
 				return nil, fmt.Errorf("read: invalid value for field %d", 2+i)

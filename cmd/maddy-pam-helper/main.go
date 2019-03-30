@@ -2,7 +2,7 @@ package main
 
 /*
 #cgo LDFLAGS: -lpam
-#cgo CFLAGS: -DCGO
+#cgo CFLAGS: -DCGO -Wall -Wextra -Werror -Wno-unused-parameter -Wno-error=unused-parameter -Wpedantic -std=c99
 extern int run();
 */
 import "C"
