@@ -93,7 +93,7 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 		if err != nil {
 			return fmt.Errorf("failed to bind on %v: %v", addr, err)
 		}
-		endp.Log.Printf("imap: listening on %v", addr)
+		endp.Log.Printf("listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.tlsConfig == nil {
