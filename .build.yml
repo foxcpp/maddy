@@ -1,0 +1,12 @@
+image: alpine/edge
+packages:
+  - go
+sources:
+  - https://github.com/emersion/maddy
+tasks:
+  - build: |
+      cd maddy
+      go build -v ./...
+  - test: |
+      cd maddy
+      go test ./...
