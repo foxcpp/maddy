@@ -60,10 +60,6 @@ Pick what works best for you.
 maddy-pam-helper uses custom service instead of pretending to be su or sudo.
 Because of this you should configure PAM to accept it.
 
-Here is minimal example using local passwd/shadow database for authentication:
-```
-#%PAM-1.0
-auth		required	pam_unix.so
-account		required	pam_unix.so
-```
-Put it into /etc/pam.d/maddy.
+Minimal example using local passwd/shadow database for authentication can be
+found in [maddy.conf][maddy.conf] file.
+It should be put into /etc/pam.d/maddy.
