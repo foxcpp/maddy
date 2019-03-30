@@ -1,20 +1,21 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <security/pam_appl.h>
 
 /*
-I really doublt it is a good idea to bring Go to the binary whose primary task
+I really doubt it is a good idea to bring Go to the binary whose primary task
 is to call libpam using CGo anyway.
 */
 
-struct pam_response *reply;
+static struct pam_response *reply;
 
-int conv_func(int num_msg, const struct pam_message **msg, struct pam_response **resp, void *appdata_ptr) {
+static int conv_func(int num_msg, const struct pam_message **msg, struct pam_response **resp, void *appdata_ptr) {
     *resp = reply;
     return PAM_SUCCESS;
 }
 
-int run() {
+int run(void) {
     char *username = NULL, *password = NULL;
     size_t username_buf_len = 0, password_buf_len = 0;
 
@@ -31,8 +32,12 @@ int run() {
     }
 
     // Cut trailing \n.
-    username[username_len-1] = 0;
-    password[password_len-1] = 0;
+    if (username_len > 0) {
+        username[username_len-1] = 0;
+    }
+    if (password_len > 0) {
+        password[password_len-1] = 0;
+    }
 
     const struct pam_conv local_conv = { conv_func, NULL };
     pam_handle_t *local_auth = NULL;
@@ -43,6 +48,10 @@ int run() {
     }
 
     reply = malloc(sizeof(struct pam_response));
+    if (reply == NULL) {
+        fprintf(stderr, "malloc returned NULL\n");
+        return 2;
+    }
     reply->resp = password;
     reply->resp_retcode = 0;
     status = pam_authenticate(local_auth, PAM_SILENT|PAM_DISALLOW_NULL_AUTHTOK);
@@ -60,6 +69,8 @@ int run() {
             fprintf(stderr, "pam_end: %s\n", pam_strerror(local_auth, status));
             return 2;
     }
+
+    return 0;
 }
 
 #ifndef CGO

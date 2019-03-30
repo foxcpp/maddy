@@ -12,14 +12,14 @@ import (
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 )
 
-const SecsInDay = 86400
+const secsInDay = 86400
 
 func (e *Entry) IsAccountValid() bool {
 	if e.AcctExpiry == -1 {
 		return true
 	}
 
-	nowDays := int(time.Now().Unix() / SecsInDay)
+	nowDays := int(time.Now().Unix() / secsInDay)
 	return nowDays < e.AcctExpiry
 }
 
@@ -28,7 +28,7 @@ func (e *Entry) IsPasswordValid() bool {
 		return true
 	}
 
-	nowDays := int(time.Now().Unix() / SecsInDay)
+	nowDays := int(time.Now().Unix() / secsInDay)
 	return nowDays < e.LastChange+e.MaxPassAge+e.InactivityPeriod
 }
 
