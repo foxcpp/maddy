@@ -1,6 +1,7 @@
 image: alpine/edge
 packages:
   - go
+  - linux-pam-dev
 sources:
   - https://github.com/emersion/maddy
 tasks:
