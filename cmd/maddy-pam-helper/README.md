@@ -65,6 +65,5 @@ Here is minimal example using local passwd/shadow database for authentication:
 #%PAM-1.0
 auth		required	pam_unix.so
 account		required	pam_unix.so
-session		required	pam_unix.so
 ```
 Put it into /etc/pam.d/maddy.
