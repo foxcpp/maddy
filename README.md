@@ -1,5 +1,7 @@
 # maddy
 
+[![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
+
 Fast, cross-platform mail server.
 
 Inspired from [Caddy](https://github.com/mholt/caddy).
