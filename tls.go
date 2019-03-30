@@ -33,6 +33,7 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 			return nil, err
 		} else {
 			cfg.Certificates = append(cfg.Certificates, cert)
+			return &cfg, nil
 		}
 	default:
 		return nil, m.MatchErr("expected 1 or 2 arguments")
