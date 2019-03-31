@@ -357,6 +357,7 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 
 func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.User, error) {
 	if !endp.Auth.CheckPlain(username, password) {
+		endp.Log.Printf("authentication failed for %s (from %v)", username, state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}
 

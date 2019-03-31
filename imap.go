@@ -146,6 +146,7 @@ func (endp *IMAPEndpoint) Close() error {
 
 func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, error) {
 	if !endp.Auth.CheckPlain(username, password) {
+		endp.Log.Printf("authentication failed for %s", username)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
