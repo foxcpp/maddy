@@ -278,7 +278,7 @@ which implements authentication using PAM stack.
 Same as 'extauth' module but looks for [maddy-shadow-helper] binary by default
 which implements authenticaiton using local shadow database (/etc/shadow).
 
-[maddy-pam-helper][cmd/maddy-pam-helper]
-[maddy-shadow-helper][cmd/maddy-shadow-helper]
+[maddy-pam-helper]: cmd/maddy-pam-helper
+[maddy-shadow-helper]: cmd/maddy-shadow-helper
 
 
