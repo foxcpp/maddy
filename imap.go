@@ -28,6 +28,7 @@ type IMAPEndpoint struct {
 	Auth      module.AuthProvider
 	Store     module.Storage
 
+	updater     imapbackend.BackendUpdater
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
 
@@ -59,6 +60,12 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
 		return err
+	}
+
+	var ok bool
+	endp.updater, ok = endp.Store.(imapbackend.BackendUpdater)
+	if !ok {
+		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
 	}
 
 	addresses := make([]Address, 0, len(rawCfg.Args))
@@ -123,6 +130,10 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 	}
 
 	return nil
+}
+
+func (endp *IMAPEndpoint) Updates() <-chan imapbackend.Update {
+	return endp.updater.Updates()
 }
 
 func (endp *IMAPEndpoint) Name() string {
