@@ -1,4 +1,4 @@
-// Package module contians interfaces implemented by maddy modules.
+// Package module contains interfaces implemented by maddy modules.
 //
 // They are moved to separate package to prevent circular dependencies.
 //

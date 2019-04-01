@@ -1,4 +1,4 @@
-// config package provides set of utilities for configuration parsing
+// Package config provides set of utilities for configuration parsing.
 package config
 
 import (
