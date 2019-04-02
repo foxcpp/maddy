@@ -11,9 +11,15 @@ func expandEnvironment(nodes []Node) []Node {
 	newNodes := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
 		node.Name = removeUnexpandedEnvvars(replacer.Replace(node.Name))
-		for i, arg := range node.Args {
-			node.Args[i] = removeUnexpandedEnvvars(replacer.Replace(arg))
+		newArgs := make([]string, 0, len(node.Args))
+		for _, arg := range node.Args {
+			expanded := removeUnexpandedEnvvars(replacer.Replace(arg))
+			if expanded == "" {
+				continue
+			}
+			newArgs = append(newArgs, expanded)
 		}
+		node.Args = newArgs
 		node.Children = expandEnvironment(node.Children)
 		newNodes = append(newNodes, node)
 	}
