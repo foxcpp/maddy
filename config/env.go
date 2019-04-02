@@ -2,25 +2,31 @@ package config
 
 import (
 	"os"
+	"regexp"
 	"strings"
 )
 
-func expandEnvironment(nodes []Node) ([]Node, error) {
+func expandEnvironment(nodes []Node) []Node {
 	replacer := buildEnvReplacer()
 	newNodes := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
-		node.Name = replacer.Replace(node.Name)
+		node.Name = removeUnexpandedEnvvars(replacer.Replace(node.Name))
 		for i, arg := range node.Args {
-			node.Args[i] = replacer.Replace(arg)
+			node.Args[i] = removeUnexpandedEnvvars(replacer.Replace(arg))
 		}
-		var err error
-		node.Children, err = expandEnvironment(node.Children)
-		if err != nil {
-			return nil, err
-		}
+		node.Children = expandEnvironment(node.Children)
 		newNodes = append(newNodes, node)
 	}
-	return newNodes, nil
+	return newNodes
+}
+
+var unixEnvvarRe = regexp.MustCompile(`{\$([^\$]+)}`)
+var winEnvvarRe = regexp.MustCompile(`{%([^%]+)%}`)
+
+func removeUnexpandedEnvvars(s string) string {
+	s = unixEnvvarRe.ReplaceAllString(s, "")
+	s = winEnvvarRe.ReplaceAllString(s, "")
+	return s
 }
 
 func buildEnvReplacer() *strings.Replacer {
