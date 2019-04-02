@@ -38,18 +38,18 @@ type parseContext struct {
 	fileLocation string
 }
 
-// readCfgNode reads node starting at current token pointed by lexer's
+// readNode reads node starting at current token pointed by lexer's
 // cursor (it should point to node name).
 //
-// After readCfgNode returns lexer's cursor will point to last token of parsed
+// After readNode returns lexer's cursor will point to last token of parsed
 // Node. This ensures predicatable cursor location independently of EOF state.
-// Thus code reading multiple nodes should call readCfgNode then manually
-// advance lexer cursor (ctx.Next) and either call readCfgNode again or stop
+// Thus code reading multiple nodes should call readNode then manually
+// advance lexer cursor (ctx.Next) and either call readNode again or stop
 // because cursor hit EOF.
 //
-// readCfgNode calls readCfgNodes if currently parsed node is a block.
+// readNode calls readNodes if currently parsed node is a block.
 // ctx.nesting is incremented call.
-func (ctx *parseContext) readCfgNode() (Node, error) {
+func (ctx *parseContext) readNode() (Node, error) {
 	node := Node{}
 	node.File = ctx.File()
 	node.Line = ctx.Line()
@@ -72,7 +72,7 @@ func (ctx *parseContext) readCfgNode() (Node, error) {
 		// }
 		if ctx.Val() == "{" {
 			var err error
-			node.Children, err = ctx.readCfgNodes()
+			node.Children, err = ctx.readNodes()
 			if err != nil {
 				return node, err
 			}
@@ -96,7 +96,7 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 	return false, ""
 }
 
-// readCfgNodes reads nodes from currently parsed block.
+// readNodes reads nodes from currently parsed block.
 //
 // Lexer's cursor should point to opening brace
 // name arg0 arg1 {  #< this one
@@ -104,9 +104,9 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 //   c1
 // }
 //
-// To stay consistent with readCfgNode after this function returns lexer's cursor pointer
+// To stay consistent with readNode after this function returns lexer's cursor pointer
 // to the last token of the black (closing brace).
-func (ctx *parseContext) readCfgNodes() ([]Node, error) {
+func (ctx *parseContext) readNodes() ([]Node, error) {
 	res := []Node{}
 
 	// Refuse to continue is nesting is too big.
@@ -138,7 +138,7 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 			}
 			break
 		}
-		node, err := ctx.readCfgNode()
+		node, err := ctx.readNode()
 		if err != nil {
 			return res, err
 		}
@@ -179,7 +179,7 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 	return res, nil
 }
 
-func readCfgTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, err error) {
+func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, err error) {
 	ctx := parseContext{
 		Dispenser:    caddyfile.NewDispenser(location, r),
 		snippets:     make(map[string][]Node),
@@ -191,19 +191,17 @@ func readCfgTree(r io.Reader, location string, expansionDepth int) (nodes []Node
 	root.File = location
 	root.Line = 1
 	// Before parsing starts lexer's cursor points to the non-existent token before
-	// first one. From readCfgNodes viewpoint this is opening brace so we
+	// first one. From readNodes viewpoint this is opening brace so we
 	// don't break any requirements here.
 	//
-	// For the same reason we use -1 as a starting nesting. So readCfgNodes
+	// For the same reason we use -1 as a starting nesting. So readNodes
 	// will see this as it is reading block at nesting level 0.
-	root.Children, err = ctx.readCfgNodes()
+	root.Children, err = ctx.readNodes()
 	if err != nil {
 		return root.Children, ctx.snippets, err
 	}
 
-	if ctx.nesting < 0 {
-		return root.Children, ctx.snippets, ctx.Err("Unexpected }")
-	}
+	// There is no need to check ctx.nesting < 0 because it is checked by readNodes.
 	if ctx.nesting > 0 {
 		return root.Children, ctx.snippets, ctx.Err("Unexpected {")
 	}
@@ -216,7 +214,7 @@ func readCfgTree(r io.Reader, location string, expansionDepth int) (nodes []Node
 }
 
 func Read(r io.Reader, location string) (nodes []Node, err error) {
-	nodes, _, err = readCfgTree(r, location, 0)
+	nodes, _, err = readTree(r, location, 0)
 	nodes = expandEnvironment(nodes)
 	return
 }
