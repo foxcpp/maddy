@@ -111,7 +111,7 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 
 	// Refuse to continue is nesting is too big.
 	if ctx.nesting > 255 {
-		return res, ctx.Err("Nesting limit reached")
+		return res, ctx.Err("nesting limit reached")
 	}
 
 	ctx.nesting++
@@ -134,7 +134,7 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 			// But then parent block reader does the same when it hits #3 -
 			// ctx.nesting becomes -1 and it fails.
 			if ctx.nesting < 0 {
-				return res, ctx.Err("Unexpected }")
+				return res, ctx.Err("unexpected }")
 			}
 			break
 		}
@@ -153,7 +153,7 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 		if len(node.Args) != 0 && node.Args[len(node.Args)-1] == "}" {
 			ctx.nesting--
 			if ctx.nesting < 0 {
-				return res, ctx.Err("Unexpected }")
+				return res, ctx.Err("unexpected }")
 			}
 			node.Args = node.Args[:len(node.Args)-1]
 			shouldStop = true
@@ -161,10 +161,10 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 
 		if node.Snippet {
 			if ctx.nesting != 0 {
-				return res, ctx.Err("Snippet declarations are only allowed at top-level")
+				return res, ctx.Err("snippet declarations are only allowed at top-level")
 			}
 			if len(node.Args) != 0 {
-				return res, ctx.Err("Snippet declarations can't have arguments")
+				return res, ctx.Err("snippet declarations can't have arguments")
 			}
 
 			ctx.snippets[node.Name] = node.Children
@@ -203,7 +203,7 @@ func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, s
 
 	// There is no need to check ctx.nesting < 0 because it is checked by readNodes.
 	if ctx.nesting > 0 {
-		return root.Children, ctx.snippets, ctx.Err("Unexpected {")
+		return root.Children, ctx.snippets, ctx.Err("unexpected {")
 	}
 
 	if err := ctx.expandImports(&root, expansionDepth); err != nil {

@@ -17,20 +17,20 @@ func main() {
 
 	absCfg, err := filepath.Abs(configpath)
 	if err != nil {
-		log.Printf("Failed to resolve path to config: %v\n", err)
+		log.Printf("failed to resolve path to config: %v\n", err)
 		os.Exit(1)
 	}
 
 	f, err := os.Open(absCfg)
 	if err != nil {
-		log.Printf("Cannot open %q: %v\n", configpath, err)
+		log.Printf("cannot open %q: %v\n", configpath, err)
 		os.Exit(1)
 	}
 	defer f.Close()
 
 	config, err := config.Read(f, absCfg)
 	if err != nil {
-		log.Printf("Cannot parse %q: %v\n", configpath, err)
+		log.Printf("cannot parse %q: %v\n", configpath, err)
 		os.Exit(1)
 	}
 
