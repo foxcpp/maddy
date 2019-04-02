@@ -217,5 +217,11 @@ func readCfgTree(r io.Reader, location string, expansionDepth int) (nodes []Node
 
 func Read(r io.Reader, location string) (nodes []Node, err error) {
 	nodes, _, err = readCfgTree(r, location, 0)
+
+	nodes, err = expandEnvironment(nodes)
+	if err != nil {
+		return nodes, err
+	}
+
 	return
 }
