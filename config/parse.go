@@ -3,8 +3,6 @@ package config
 
 import (
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/mholt/caddy/caddyfile"
@@ -33,20 +31,32 @@ type Node struct {
 
 type parseContext struct {
 	caddyfile.Dispenser
-	parens   int
+	nesting  int
 	snippets map[string][]Node
 
 	fileLocation string
 }
 
+// readCfgNode reads node starting at current token pointed by lexer's
+// cursor (it should point to node name).
+//
+// After readCfgNode returns lexer's cursor will point to last token of parsed
+// Node. This ensures predicatable cursor location independently of EOF state.
+// Thus code reading multiple nodes should call readCfgNode then manually
+// advance lexer cursor (ctx.Next) and either call readCfgNode again or stop
+// because cursor hit EOF.
+//
+// readCfgNode calls readCfgNodes if currently parsed node is a block.
+// ctx.nesting is incremented call.
 func (ctx *parseContext) readCfgNode() (Node, error) {
 	node := Node{}
 	node.File = ctx.File()
 	node.Line = ctx.Line()
+
 	if ctx.Val() == "{" {
-		ctx.parens++
 		return node, ctx.SyntaxErr("block header")
 	}
+
 	node.Name = ctx.Val()
 	if ok, name := ctx.isSnippet(node.Name); ok {
 		node.Name = name
@@ -54,8 +64,12 @@ func (ctx *parseContext) readCfgNode() (Node, error) {
 	}
 
 	for ctx.NextArg() {
+		// name arg0 arg1 {
+		//              # ^ called when we hit this token
+		//   c0
+		//   c1
+		// }
 		if ctx.Val() == "{" {
-			ctx.parens++
 			var err error
 			node.Children, err = ctx.readCfgNodes()
 			if err != nil {
@@ -63,68 +77,11 @@ func (ctx *parseContext) readCfgNode() (Node, error) {
 			}
 			break
 		}
-		if ctx.Val() == "}" {
-			ctx.parens--
-			if ctx.parens < 0 {
-				return node, ctx.Err("Unexpected }")
-			}
 
-			return node, nil
-		}
 		node.Args = append(node.Args, ctx.Val())
 	}
 
 	return node, nil
-}
-
-func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
-	newChildrens := make([]Node, 0, len(node.Children))
-	for _, child := range node.Children {
-		if child.Name == "import" {
-			if len(child.Args) != 1 {
-				return ctx.Err("import directive requires exactly 1 argument")
-			}
-
-			subtree, err := ctx.resolveImport(child.Args[0], expansionDepth)
-			if err != nil {
-				return err
-			}
-
-			newChildrens = append(newChildrens, subtree...)
-		} else {
-			if err := ctx.expandImports(&child, expansionDepth+1); err != nil {
-				return err
-			}
-
-			newChildrens = append(newChildrens, child)
-		}
-	}
-	node.Children = newChildrens
-	return nil
-}
-
-func (ctx *parseContext) resolveImport(name string, depth int) ([]Node, error) {
-	if subtree, ok := ctx.snippets[name]; ok {
-		return subtree, nil
-	}
-
-	file := filepath.Join(filepath.Dir(ctx.fileLocation), name)
-	src, err := os.Open(file)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, ctx.Err("Unknown import: " + name)
-		}
-		return nil, err
-	}
-	nodes, snips, err := readCfgTree(src, file, depth+1)
-	if err != nil {
-		return nodes, err
-	}
-	for k, v := range snips {
-		ctx.snippets[k] = v
-	}
-
-	return nodes, nil
 }
 
 func (ctx *parseContext) isSnippet(name string) (bool, string) {
@@ -134,15 +91,44 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 	return false, ""
 }
 
+// readCfgNodes reads nodes from currently parsed block.
+//
+// Lexer's cursor should point to opening brace
+// name arg0 arg1 {  #< this one
+//   c0
+//   c1
+// }
+//
+// To stay consistent with readCfgNode after this function returns lexer's cursor pointer
+// to the last token of the black (closing brace).
 func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 	res := []Node{}
-	if ctx.parens > 255 {
+
+	// Refuse to continue is nesting is too big.
+	if ctx.nesting > 255 {
 		return res, ctx.Err("Nesting limit reached")
 	}
+
+	ctx.nesting++
+
 	for ctx.Next() {
+		// name arg0 arg1 {
+		//   c0
+		//   c1
+		// }
+		// ^ called when we hit } on separate line,
+		// This means block we are supposed to parse ended and we should stop.
 		if ctx.Val() == "}" {
-			ctx.parens--
-			if ctx.parens < 0 {
+			ctx.nesting--
+			// name arg0 arg1 { #<1
+			// }   }
+			// ^2  ^3
+			//
+			// After #1 ctx.nesting is incremented by ctx.nesting++ before this loop.
+			// Then we advance cursor and hit }, we exit loop, ctx.nesting now becomes 0.
+			// But then parent block reader does the same when it hits #3 -
+			// ctx.nesting becomes -1 and it fails.
+			if ctx.nesting < 0 {
 				return res, ctx.Err("Unexpected }")
 			}
 			break
@@ -153,9 +139,15 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 		}
 
 		shouldStop := false
+
+		// name arg0 arg1 {
+		//   c1 c2 }
+		//         ^
+		// Edgy case, here we check if last argument of last node is a }
+		// If it is - we stop as we hit end of our block.
 		if len(node.Args) != 0 && node.Args[len(node.Args)-1] == "}" {
-			ctx.parens--
-			if ctx.parens < 0 {
+			ctx.nesting--
+			if ctx.nesting < 0 {
 				return res, ctx.Err("Unexpected }")
 			}
 			node.Args = node.Args[:len(node.Args)-1]
@@ -163,7 +155,7 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 		}
 
 		if node.Snippet {
-			if ctx.parens != 0 {
+			if ctx.nesting != 0 {
 				return res, ctx.Err("Snippet declarations are only allowed at top-level")
 			}
 			if len(node.Args) != 0 {
@@ -174,10 +166,10 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 			continue
 		}
 
+		res = append(res, node)
 		if shouldStop {
 			break
 		}
-		res = append(res, node)
 	}
 	return res, nil
 }
@@ -186,17 +178,27 @@ func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips m
 	ctx := parseContext{
 		Dispenser:    caddyfile.NewDispenser(location, r),
 		snippets:     make(map[string][]Node),
+		nesting:      depth - 1,
 		fileLocation: location,
 	}
+
 	root := Node{}
+	// Before parsing starts lexer's cursor points to the non-existent token before
+	// first one. From readCfgNodes viewpoint this is opening brace so we
+	// don't break any requirements here.
+	//
+	// For the same reason we use depth - 1 as a started nesting. It will be
+	// -1 for configs without external imports. So readCfgNodes will see this
+	// as it is reading block at nesting level 0.
 	root.Children, err = ctx.readCfgNodes()
 	if err != nil {
 		return root.Children, ctx.snippets, err
 	}
-	if ctx.parens < 0 {
+
+	if ctx.nesting < 0 {
 		return root.Children, ctx.snippets, ctx.Err("Unexpected }")
 	}
-	if ctx.parens > 0 {
+	if ctx.nesting > 0 {
 		return root.Children, ctx.snippets, ctx.Err("Unexpected {")
 	}
 
@@ -208,6 +210,6 @@ func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips m
 }
 
 func Read(r io.Reader, location string) (nodes []Node, err error) {
-	nodes, _, err = readCfgTree(r, location, 1)
+	nodes, _, err = readCfgTree(r, location, 0)
 	return
 }
