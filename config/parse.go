@@ -2,6 +2,7 @@
 package config
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -82,6 +83,10 @@ func (ctx *parseContext) readCfgNode() (Node, error) {
 	}
 
 	return node, nil
+}
+
+func (ctx *parseContext) NodeErr(node *Node, message string) error {
+	return fmt.Errorf("%s:%d - %s", node.File, node.Line, message)
 }
 
 func (ctx *parseContext) isSnippet(name string) (bool, string) {
@@ -174,22 +179,23 @@ func (ctx *parseContext) readCfgNodes() ([]Node, error) {
 	return res, nil
 }
 
-func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips map[string][]Node, err error) {
+func readCfgTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, err error) {
 	ctx := parseContext{
 		Dispenser:    caddyfile.NewDispenser(location, r),
 		snippets:     make(map[string][]Node),
-		nesting:      depth - 1,
+		nesting:      -1,
 		fileLocation: location,
 	}
 
 	root := Node{}
+	root.File = location
+	root.Line = 1
 	// Before parsing starts lexer's cursor points to the non-existent token before
 	// first one. From readCfgNodes viewpoint this is opening brace so we
 	// don't break any requirements here.
 	//
-	// For the same reason we use depth - 1 as a started nesting. It will be
-	// -1 for configs without external imports. So readCfgNodes will see this
-	// as it is reading block at nesting level 0.
+	// For the same reason we use -1 as a starting nesting. So readCfgNodes
+	// will see this as it is reading block at nesting level 0.
 	root.Children, err = ctx.readCfgNodes()
 	if err != nil {
 		return root.Children, ctx.snippets, err
@@ -202,7 +208,7 @@ func readCfgTree(r io.Reader, location string, depth int) (nodes []Node, snips m
 		return root.Children, ctx.snippets, ctx.Err("Unexpected {")
 	}
 
-	if err := ctx.expandImports(&root, depth); err != nil {
+	if err := ctx.expandImports(&root, expansionDepth); err != nil {
 		return root.Children, ctx.snippets, err
 	}
 
