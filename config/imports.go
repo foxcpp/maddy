@@ -58,7 +58,7 @@ func (ctx *parseContext) resolveImport(node *Node, name string, expansionDepth i
 		}
 		return nil, err
 	}
-	nodes, snips, err := readCfgTree(src, file, expansionDepth+1)
+	nodes, snips, err := readTree(src, file, expansionDepth+1)
 	if err != nil {
 		return nodes, err
 	}
