@@ -13,15 +13,10 @@ type matcher struct {
 	inheritGlobal bool
 	defaultVal    func() (interface{}, error)
 	mapper        func(*Map, *Node) (interface{}, error)
-	store         reflect.Value
+	store         *reflect.Value
 }
 
-func (m *matcher) match(map_ *Map, node *Node) error {
-	val, err := m.mapper(map_, node)
-	if err != nil {
-		return err
-	}
-
+func (m *matcher) assign(val interface{}) {
 	valRefl := reflect.ValueOf(val)
 	// Convert untyped nil into typed nil. Otherwise it will panic.
 	if !valRefl.IsValid() {
@@ -29,7 +24,6 @@ func (m *matcher) match(map_ *Map, node *Node) error {
 	}
 
 	m.store.Set(valRefl)
-	return nil
 }
 
 // Map structure implements reflection-based conversion between configuration
@@ -41,14 +35,19 @@ type Map struct {
 	// called.
 	curNode *Node
 
+	// All values saved by Map during processing.
+	Values map[string]interface{}
+
 	entries map[string]matcher
 
-	GlobalCfg map[string]Node
-	Block     *Node
+	// Values used by Process as default values if inheritGlobal is true.
+	Globals map[string]interface{}
+	// Config block used by Process.
+	Block *Node
 }
 
-func NewMap(globalCfg map[string]Node, block *Node) *Map {
-	return &Map{GlobalCfg: globalCfg, Block: block}
+func NewMap(globals map[string]interface{}, block *Node) *Map {
+	return &Map{Globals: globals, Block: block}
 }
 
 // MatchErr returns error with formatted message, if called from defaultVal or
@@ -307,18 +306,25 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 // mapper is a function that should convert configuration directive arguments
 // into variable value.  Both functions may fail with errors, configuration
 // processing will stop immediately then.
+//
+// store is where the value returned by mapper should be stored. Can be nil
+// (value will be saved only in Map.Values).
 func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func() (interface{}, error), mapper func(*Map, *Node) (interface{}, error), store interface{}) {
 	if m.entries == nil {
 		m.entries = make(map[string]matcher)
 	}
-
-	val := reflect.ValueOf(store).Elem()
-	if !val.CanSet() {
-		panic("Map.Custom: store argument must be settable (a pointer)")
-	}
-
 	if _, ok := m.entries[name]; ok {
 		panic("Map.Custom: duplicate matcher")
+	}
+
+	var target *reflect.Value
+	ptr := reflect.ValueOf(store)
+	if ptr.IsValid() && !ptr.IsNil() {
+		val := ptr.Elem()
+		if !val.CanSet() {
+			panic("Map.Custom: store argument must be settable (a pointer)")
+		}
+		target = &val
 	}
 
 	m.entries[name] = matcher{
@@ -327,7 +333,7 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 		required:      required,
 		defaultVal:    defaultVal,
 		mapper:        mapper,
-		store:         val,
+		store:         target,
 	}
 }
 
@@ -335,32 +341,38 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 //
 // If Map instance was not created using NewMap - Process panics.
 func (m *Map) Process() (unmatched []Node, err error) {
-	return m.ProcessWith(m.GlobalCfg, m.Block)
+	return m.ProcessWith(m.Globals, m.Block.Children)
 }
 
-// Process maps variables from global configuration and block passedin arguments.
-func (m *Map) ProcessWith(globalCfg map[string]Node, block *Node) (unmatched []Node, err error) {
-	unmatched = make([]Node, 0, len(block.Children))
+// Process maps variables from global configuration and block passed in arguments.
+func (m *Map) ProcessWith(globalCfg map[string]interface{}, block []Node) (unmatched []Node, err error) {
+	unmatched = make([]Node, 0, len(block))
 	matched := make(map[string]bool)
+	m.Values = make(map[string]interface{})
 
-	for _, subnode := range block.Children {
+	for _, subnode := range block {
 		m.curNode = &subnode
 
 		if matched[subnode.Name] {
-			return nil, m.MatchErr("duplicate directive")
+			return nil, m.MatchErr("duplicate directive: %s", subnode.Name)
 		}
 
 		matcher, ok := m.entries[subnode.Name]
 		if !ok {
 			if !m.allowUnknown {
-				return nil, m.MatchErr("unexpected directive")
+				return nil, m.MatchErr("unexpected directive: %s", subnode.Name)
 			}
 			unmatched = append(unmatched, subnode)
 			continue
 		}
 
-		if err := matcher.match(m, m.curNode); err != nil {
+		val, err := matcher.mapper(m, m.curNode)
+		if err != nil {
 			return nil, err
+		}
+		m.Values[matcher.name] = val
+		if matcher.store != nil {
+			matcher.assign(val)
 		}
 		matched[subnode.Name] = true
 	}
@@ -371,37 +383,29 @@ func (m *Map) ProcessWith(globalCfg map[string]Node, block *Node) (unmatched []N
 			continue
 		}
 
-		globalNode, ok := globalCfg[matcher.name]
+		var val interface{}
+		globalVal, ok := globalCfg[matcher.name]
 		if matcher.inheritGlobal && ok {
-			m.curNode = &globalNode
-			if err := matcher.match(m, m.curNode); err != nil {
-				m.curNode = nil
-				return nil, err
-			}
-			m.curNode = nil
+			val = globalVal
 		} else if !matcher.required {
 			if matcher.defaultVal == nil {
 				continue
 			}
 
-			val, err := matcher.defaultVal()
+			val, err = matcher.defaultVal()
 			if err != nil {
 				return nil, err
 			}
 			if val == nil {
 				return nil, m.MatchErr("missing required directive: %s", matcher.name)
 			}
-
-			valRefl := reflect.ValueOf(val)
-			// Convert untyped nil into typed nil. Otherwise it will panic.
-			if !valRefl.IsValid() {
-				valRefl = reflect.Zero(matcher.store.Type())
-			}
-
-			matcher.store.Set(valRefl)
-			continue
 		} else {
 			return nil, m.MatchErr("missing required directive: %s", matcher.name)
+		}
+
+		m.Values[matcher.name] = val
+		if matcher.store != nil {
+			matcher.assign(val)
 		}
 	}
 
