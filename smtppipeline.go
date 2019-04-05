@@ -181,8 +181,8 @@ func filterStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 		return nil, errors.New("filter: expected at least one argument")
 	}
 
-	modInst := module.GetInstance(node.Args[0])
-	if modInst == nil {
+	modInst, err := module.GetInstance(node.Args[0])
+	if err != nil {
 		return nil, fmt.Errorf("filter: unknown module instance: %s", node.Args[0])
 	}
 
@@ -202,8 +202,8 @@ func deliveryStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 		return nil, errors.New("delivery: expected at least one argument")
 	}
 
-	modInst := module.GetInstance(node.Args[0])
-	if modInst == nil {
+	modInst, err := module.GetInstance(node.Args[0])
+	if err != nil {
 		return nil, fmt.Errorf("delivery: unknown module instance: %s", node.Args[0])
 	}
 
