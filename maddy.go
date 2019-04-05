@@ -72,7 +72,7 @@ func Start(cfg []config.Node) error {
 
 	for _, inst := range instances {
 		log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName())
-		if err := inst.instance.Init(globalCfg, inst.cfg); err != nil {
+		if err := inst.instance.Init(config.NewMap(globalCfg, &inst.cfg)); err != nil {
 			return err
 		}
 	}

@@ -123,17 +123,17 @@ func NewSMTPEndpoint(modName, instName string) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *SMTPEndpoint) Init(globalCfg map[string]config.Node, cfg config.Node) error {
+func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
-	if err := endp.setConfig(globalCfg, cfg); err != nil {
+	if err := endp.setConfig(cfg); err != nil {
 		return err
 	}
 
 	endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
 	endp.Log.Debugf("pipeline: %#v", endp.pipeline)
 
-	addresses := make([]Address, 0, len(cfg.Args))
-	for _, addr := range cfg.Args {
+	addresses := make([]Address, 0, len(cfg.Block.Args))
+	for _, addr := range cfg.Block.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
 			return fmt.Errorf("smtp: invalid address: %s", addr)
@@ -160,7 +160,7 @@ func (endp *SMTPEndpoint) Init(globalCfg map[string]config.Node, cfg config.Node
 	return nil
 }
 
-func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg config.Node) error {
+func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	var (
 		err        error
 		ioDebug    bool
@@ -172,7 +172,6 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 		remoteDeliveryOpts    map[string]string
 	)
 
-	cfg := config.Map{}
 	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
 	cfg.String("hostname", true, false, "", &endp.serv.Domain)
 	cfg.Int("max_idle", false, false, 60, &endp.serv.MaxIdleSeconds)
@@ -185,7 +184,7 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	cfg.Bool("submission", false, &submission)
 	cfg.AllowUnknown()
 
-	remainingDirs, err := cfg.Process(globalCfg, &rawCfg)
+	remainingDirs, err := cfg.Process()
 	if err != nil {
 		return err
 	}
