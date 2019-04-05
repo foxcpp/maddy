@@ -19,26 +19,17 @@ type modInfo struct {
 
 func Start(cfg []config.Node) error {
 	instances := make(map[string]modInfo)
-	globalCfg := make(map[string]config.Node)
-
-	for _, block := range cfg {
-		switch block.Name {
-		case "tls", "hostname", "debug":
-			globalCfg[block.Name] = block
-			continue
-		}
+	globals := config.NewMap(nil, &config.Node{Children: cfg})
+	globals.String("hostname", false, false, "", nil)
+	globals.Custom("tls", false, true, nil, tlsDirective, nil)
+	globals.Bool("debug", false, &log.DefaultLogger.Debug)
+	globals.AllowUnknown()
+	unmatched, err := globals.Process()
+	if err != nil {
+		return err
 	}
 
-	if _, ok := globalCfg["debug"]; ok {
-		log.DefaultLogger.Debug = true
-	}
-
-	for _, block := range cfg {
-		switch block.Name {
-		case "hostname", "tls", "debug":
-			continue
-		}
-
+	for _, block := range unmatched {
 		var instName string
 		if len(block.Args) == 0 {
 			instName = block.Name
@@ -72,7 +63,7 @@ func Start(cfg []config.Node) error {
 
 	for _, inst := range instances {
 		log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName())
-		if err := inst.instance.Init(config.NewMap(globalCfg, &inst.cfg)); err != nil {
+		if err := inst.instance.Init(config.NewMap(globals.Values, &inst.cfg)); err != nil {
 			return err
 		}
 	}
