@@ -31,7 +31,7 @@ func (d Dummy) InstanceName() string {
 	return d.instName
 }
 
-func (d Dummy) Init(_ map[string]config.Node, _ config.Node) error {
+func (d Dummy) Init(_ *config.Map) error {
 	return nil
 }
 

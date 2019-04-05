@@ -46,19 +46,18 @@ func NewSQLStorage(_, instName string) (module.Module, error) {
 	}, nil
 }
 
-func (sqlm *SQLStorage) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
+func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	var driver string
 	var dsn string
 	appendlimitVal := int64(-1)
 
 	opts := imapsql.Opts{}
-	cfg := config.Map{}
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, &sqlm.Log.Debug)
 
-	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
+	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 

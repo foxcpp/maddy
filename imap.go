@@ -45,20 +45,19 @@ func NewIMAPEndpoint(_, instName string) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
+func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 	var (
 		insecureAuth bool
 		ioDebug      bool
 	)
 
-	cfg := config.Map{}
 	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
 	cfg.Custom("storage", false, false, defaultStorage, storageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, &insecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
-	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
+	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
@@ -68,8 +67,8 @@ func (endp *IMAPEndpoint) Init(globalCfg map[string]config.Node, rawCfg config.N
 		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
 	}
 
-	addresses := make([]Address, 0, len(rawCfg.Args))
-	for _, addr := range rawCfg.Args {
+	addresses := make([]Address, 0, len(cfg.Block.Args))
+	for _, addr := range cfg.Block.Args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
 			return fmt.Errorf("imap: invalid address: %s", endp.name)

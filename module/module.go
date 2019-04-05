@@ -32,7 +32,9 @@ type Module interface {
 	// registered at time of initialization, thus initialization does not
 	// depends on ordering of configuration blocks and modules can reference
 	// each other without any problems.
-	Init(globalCfg map[string]config.Node, cfg config.Node) error
+	//
+	// Module can use passed config.Map to read its configuration variables.
+	Init(*config.Map) error
 
 	// Name method reports module name.
 	//

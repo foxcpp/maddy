@@ -42,6 +42,13 @@ type Map struct {
 	curNode *Node
 
 	entries map[string]matcher
+
+	GlobalCfg map[string]Node
+	Block     *Node
+}
+
+func NewMap(globalCfg map[string]Node, block *Node) *Map {
+	return &Map{GlobalCfg: globalCfg, Block: block}
 }
 
 // MatchErr returns error with formatted message, if called from defaultVal or
@@ -324,11 +331,19 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 	}
 }
 
-func (m *Map) Process(globalCfg map[string]Node, tree *Node) (unmatched []Node, err error) {
-	unmatched = make([]Node, 0, len(tree.Children))
+// Process maps variables from global configuration and block passed in NewMap.
+//
+// If Map instance was not created using NewMap - Process panics.
+func (m *Map) Process() (unmatched []Node, err error) {
+	return m.ProcessWith(m.GlobalCfg, m.Block)
+}
+
+// Process maps variables from global configuration and block passedin arguments.
+func (m *Map) ProcessWith(globalCfg map[string]Node, block *Node) (unmatched []Node, err error) {
+	unmatched = make([]Node, 0, len(block.Children))
 	matched := make(map[string]bool)
 
-	for _, subnode := range tree.Children {
+	for _, subnode := range block.Children {
 		m.curNode = &subnode
 
 		if matched[subnode.Name] {

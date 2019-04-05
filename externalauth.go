@@ -37,11 +37,10 @@ func (ea *ExternalAuth) InstanceName() string {
 	return ea.instName
 }
 
-func (ea *ExternalAuth) Init(globalCfg map[string]config.Node, rawCfg config.Node) error {
-	cfg := config.Map{}
+func (ea *ExternalAuth) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, &ea.Log.Debug)
 	cfg.String("helper", false, false, "", &ea.helperPath)
-	if _, err := cfg.Process(globalCfg, &rawCfg); err != nil {
+	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
