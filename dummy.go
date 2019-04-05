@@ -37,5 +37,5 @@ func (d Dummy) Init(_ *config.Map) error {
 
 func init() {
 	module.Register("dummy", nil)
-	module.RegisterInstance(&Dummy{instName: "dummy"})
+	module.RegisterInstance(&Dummy{instName: "dummy"}, nil)
 }

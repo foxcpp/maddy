@@ -44,7 +44,7 @@ func Start(cfg []config.Node) error {
 			return fmt.Errorf("%s:%d: unknown module: %s", block.File, block.Line, modName)
 		}
 
-		if mod := module.GetInstance(instName); mod != nil {
+		if mod := module.GetUninitedInstance(instName); mod != nil {
 			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
 		}
 
@@ -54,14 +54,21 @@ func Start(cfg []config.Node) error {
 			return err
 		}
 
-		module.RegisterInstance(inst)
+		block := block
+		module.RegisterInstance(inst, config.NewMap(globals.Values, &block))
 		instances[instName] = modInfo{instance: inst, cfg: block}
 	}
 
-	addDefaultModule(instances, "default", createDefaultStorage, defaultStorageConfig)
-	addDefaultModule(instances, "default_remote_delivery", createDefaultRemoteDelivery, nil)
+	addDefaultModule(instances, "default", createDefaultStorage, globals.Values, defaultStorageConfig)
+	addDefaultModule(instances, "default_remote_delivery", createDefaultRemoteDelivery, globals.Values, nil)
 
 	for _, inst := range instances {
+		if module.Initialized[inst.instance.InstanceName()] {
+			log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName(), "skipped because it was lazily initialized before")
+			continue
+		}
+
+		module.Initialized[inst.instance.InstanceName()] = true
 		log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName())
 		if err := inst.instance.Init(config.NewMap(globals.Values, &inst.cfg)); err != nil {
 			return err
@@ -89,17 +96,17 @@ func Start(cfg []config.Node) error {
 	return nil
 }
 
-func addDefaultModule(insts map[string]modInfo, name string, factory func(string) (module.Module, error), cfgFactory func(string) config.Node) {
+func addDefaultModule(insts map[string]modInfo, name string, factory func(string) (module.Module, error), globalCfg map[string]interface{}, cfgFactory func(string) config.Node) {
 	if _, ok := insts[name]; !ok {
 		if mod, err := factory(name); err != nil {
 			log.Printf("failed to register %s: %v", name, err)
 		} else {
 			log.Debugf("module create %s %s (built-in)", mod.Name(), name)
-			module.RegisterInstance(mod)
 			info := modInfo{instance: mod}
 			if cfgFactory != nil {
 				info.cfg = cfgFactory(name)
 			}
+			module.RegisterInstance(mod, config.NewMap(globalCfg, &info.cfg))
 			insts[name] = info
 		}
 	} else {

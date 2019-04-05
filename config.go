@@ -13,9 +13,9 @@ Config matchers for module interfaces.
 */
 
 func authProvider(modName string) (module.AuthProvider, error) {
-	modObj := module.GetInstance(modName)
-	if modObj == nil {
-		return nil, fmt.Errorf("unknown auth. provider instance: %s", modName)
+	modObj, err := module.GetInstance(modName)
+	if err != nil {
+		return nil, err
 	}
 
 	provider, ok := modObj.(module.AuthProvider)
@@ -42,9 +42,9 @@ func authDirective(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 func storageBackend(modName string) (module.Storage, error) {
-	modObj := module.GetInstance(modName)
-	if modObj == nil {
-		return nil, fmt.Errorf("unknown storage backend instance: %s", modName)
+	modObj, err := module.GetInstance(modName)
+	if err != nil {
+		return nil, err
 	}
 
 	backend, ok := modObj.(module.Storage)
@@ -71,9 +71,9 @@ func storageDirective(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 func deliveryTarget(modName string) (module.DeliveryTarget, error) {
-	mod := module.GetInstance(modName)
+	mod, err := module.GetInstance(modName)
 	if mod == nil {
-		return nil, fmt.Errorf("unknown delivery target instance: %s", modName)
+		return nil, err
 	}
 
 	target, ok := mod.(module.DeliveryTarget)

@@ -33,36 +33,3 @@ func Get(name string) FuncNewModule {
 
 	return modules[name]
 }
-
-var instances = make(map[string]Module)
-var instancesLck sync.RWMutex
-
-// Register adds module instance to global registry.
-//
-// Instnace name must be unique. Second RegisterInstance with same instance
-// name will replace previous.
-func RegisterInstance(inst Module) {
-	instancesLck.Lock()
-	defer instancesLck.Unlock()
-
-	instances[inst.InstanceName()] = inst
-}
-
-// GetInstance returns module instance from global registry.
-//
-// Nil is returned if no module instance with specified name is registered.
-func GetInstance(name string) Module {
-	instancesLck.RLock()
-	defer instancesLck.RUnlock()
-
-	return instances[name]
-}
-
-// UnregisterInstance undoes effect of RegisterInstance, removing instance from
-// global registry.
-func UnregisterInstance(name string) {
-	instancesLck.Lock()
-	defer instancesLck.Unlock()
-
-	delete(instances, name)
-}
