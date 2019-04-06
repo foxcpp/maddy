@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
@@ -17,38 +18,32 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-type SMTPUser struct {
-	endp      *SMTPEndpoint
-	anonymous bool
-	username  string
-	state     *smtp.ConnectionState
+type SMTPSession struct {
+	endp  *SMTPEndpoint
+	state *smtp.ConnectionState
+	ctx   *module.DeliveryContext
 }
 
-func (u *SMTPUser) Send(from string, to []string, r io.Reader) error {
-	ctx := module.DeliveryContext{
-		From:        from,
-		To:          to,
-		Anonymous:   u.anonymous,
-		AuthUser:    u.username,
-		SrcTLSState: u.state.TLS,
-		SrcHostname: u.state.Hostname,
-		SrcAddr:     u.state.RemoteAddr,
-		OurHostname: u.endp.serv.Domain,
-		Ctx:         make(map[string]interface{}),
-	}
+func (s *SMTPSession) Reset() {
+	s.ctx.From = ""
+	s.ctx.To = nil
+}
 
-	if u.endp.serv.LMTP {
-		ctx.SrcProto = "LMTP"
-	} else {
-		// Check if TLS connection state struct is poplated.
-		// If it is - we are using TLS.
-		if u.state.TLS.Version != 0 {
-			ctx.SrcProto = "ESMTPS"
-		} else {
-			ctx.SrcProto = "ESMTP"
-		}
-	}
+func (s *SMTPSession) Mail(from string) error {
+	s.ctx.From = from
+	return nil
+}
 
+func (s *SMTPSession) Rcpt(to string) error {
+	s.ctx.To = append(s.ctx.To, to)
+	return nil
+}
+
+func (s *SMTPSession) Logout() error {
+	return nil
+}
+
+func (s *SMTPSession) Data(r io.Reader) error {
 	// TODO: Execute pipeline steps in parallel.
 	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
 
@@ -58,14 +53,14 @@ func (u *SMTPUser) Send(from string, to []string, r io.Reader) error {
 	}
 	currentMsg := bytes.NewReader(buf.Bytes())
 
-	for _, step := range u.endp.pipeline {
-		r, cont, err := step.Pass(&ctx, currentMsg)
+	for _, step := range s.endp.pipeline {
+		r, cont, err := step.Pass(s.ctx, currentMsg)
 		if !cont {
 			if err == module.ErrSilentDrop {
 				return nil
 			}
 			if err != nil {
-				u.endp.Log.Printf("%T failed: %v", step, err)
+				s.endp.Log.Printf("%T failed: %v", step, err)
 				return err
 			}
 		}
@@ -73,7 +68,7 @@ func (u *SMTPUser) Send(from string, to []string, r io.Reader) error {
 		if r != nil && r != io.Reader(currentMsg) {
 			buf.Reset()
 			if _, err := io.Copy(&buf, r); err != nil {
-				u.endp.Log.Printf("failed to buffer message: %v", err)
+				s.endp.Log.Printf("failed to buffer message: %v", err)
 				return err
 			}
 			currentMsg.Reset(buf.Bytes())
@@ -81,12 +76,8 @@ func (u *SMTPUser) Send(from string, to []string, r io.Reader) error {
 		currentMsg.Seek(0, io.SeekStart)
 	}
 
-	u.endp.Log.Printf("accepted incoming message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
+	s.endp.Log.Printf("accepted incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
 
-	return nil
-}
-
-func (u SMTPUser) Logout() error {
 	return nil
 }
 
@@ -166,6 +157,9 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 		ioDebug    bool
 		submission bool
 
+		writeTimeoutSecs uint
+		readTimeoutSecs  uint
+
 		localDeliveryDefault  string
 		localDeliveryOpts     map[string]string
 		remoteDeliveryDefault string
@@ -175,7 +169,9 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	cfg := config.Map{}
 	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
 	cfg.String("hostname", true, false, "", &endp.serv.Domain)
-	cfg.Int("max_idle", false, false, 60, &endp.serv.MaxIdleSeconds)
+	// TODO: Parse human-readable duration values.
+	cfg.UInt("write_timeout", false, false, 60, &writeTimeoutSecs)
+	cfg.UInt("read_timeout", false, false, 60, &readTimeoutSecs)
 	cfg.Int("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 255, &endp.serv.MaxRecipients)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.serv.TLSConfig)
@@ -189,6 +185,9 @@ func (endp *SMTPEndpoint) setConfig(globalCfg map[string]config.Node, rawCfg con
 	if err != nil {
 		return err
 	}
+
+	endp.serv.WriteTimeout = time.Duration(writeTimeoutSecs) * time.Second
+	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
 	// If endp.submission is set by NewSMTPEndpoint because module name is "submission"
 	// - don't use value from configuration.
@@ -355,29 +354,50 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 	return nil
 }
 
-func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.User, error) {
+func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
 	if !endp.Auth.CheckPlain(username, password) {
 		endp.Log.Printf("authentication failed for %s (from %v)", username, state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}
 
-	return &SMTPUser{
-		endp:     endp,
-		username: username,
-		state:    state,
-	}, nil
+	return endp.newSession(false, username, state), nil
 }
 
-func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.User, error) {
+func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
 	if endp.authAlwaysRequired {
 		return nil, smtp.ErrAuthRequired
 	}
 
-	return &SMTPUser{
-		endp:      endp,
-		anonymous: true,
-		state:     state,
-	}, nil
+	return endp.newSession(true, "", state), nil
+}
+
+func (endp *SMTPEndpoint) newSession(anonymous bool, username string, state *smtp.ConnectionState) smtp.Session {
+	ctx := module.DeliveryContext{
+		Anonymous:   anonymous,
+		AuthUser:    username,
+		SrcTLSState: state.TLS,
+		SrcHostname: state.Hostname,
+		SrcAddr:     state.RemoteAddr,
+		OurHostname: endp.serv.Domain,
+		Ctx:         make(map[string]interface{}),
+	}
+
+	if endp.serv.LMTP {
+		ctx.SrcProto = "LMTP"
+	} else {
+		// Check if TLS connection state struct is poplated.
+		// If it is - we are ssing TLS.
+		if state.TLS.Version != 0 {
+			ctx.SrcProto = "ESMTPS"
+		} else {
+			ctx.SrcProto = "ESMTP"
+		}
+	}
+
+	return &SMTPSession{
+		endp: endp,
+		ctx:  &ctx,
+	}
 }
 
 func sanitizeString(raw string) string {
