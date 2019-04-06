@@ -105,7 +105,7 @@ func Syslog() (FuncLog, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "!!! Failed to send message to syslog daemon: %v", err)
+			fmt.Fprintf(os.Stderr, "!!! Failed to send message to syslog daemon: %v\n", err)
 		}
 	}, nil
 }
