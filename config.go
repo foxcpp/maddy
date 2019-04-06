@@ -135,6 +135,12 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 		switch arg {
 		case "stderr":
 			outs = append(outs, log.StderrLog())
+		case "syslog":
+			syslogOut, err := log.Syslog()
+			if err != nil {
+				return nil, fmt.Errorf("failed to connect to syslog daemon: %v", err)
+			}
+			outs = append(outs, syslogOut)
 		case "off":
 			outs = append(outs, nil)
 		default:
