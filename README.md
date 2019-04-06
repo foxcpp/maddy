@@ -84,6 +84,8 @@ These can be specified only outside of any configuration block.
   Target can be one of the following:
   * `stderr`
     Write logs to stderr, this is the default.
+  * `syslog`
+    Send logs to the local syslog daemon.
   * `off`
     Do nothing. Useful to disable logging fully: `log off`
   * file path

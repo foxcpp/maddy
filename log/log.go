@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"io"
+	"log/syslog"
 	"os"
 	"time"
 )
@@ -87,6 +88,26 @@ func WriterLog(w io.Writer) FuncLog {
 		str = t.Format("02.01.06 15:04:05") + " " + str
 		io.WriteString(w, str)
 	}
+}
+
+func Syslog() (FuncLog, error) {
+	w, err := syslog.New(syslog.LOG_MAIL|syslog.LOG_INFO, "maddy")
+	if err != nil {
+		return nil, err
+	}
+
+	return func(t time.Time, debug bool, str string) {
+		var err error
+		if debug {
+			err = w.Debug(str)
+		} else {
+			err = w.Info(str)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "!!! Failed to send message to syslog daemon: %v", err)
+		}
+	}, nil
 }
 
 func MultiLog(outs ...FuncLog) FuncLog {
