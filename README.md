@@ -70,6 +70,7 @@ are options that can be used like that:
   Default TLS certificate to use. See
   [CONFIG_REFERENCE.md](CONFIG_REFERENCE.md) for details.
 
+<<<<<<< HEAD
 * `debug`
   Write verbose logs describing what exactly is happening and how its going.
   Default mode is relatively quiet and still produces useful logs so
@@ -97,6 +98,22 @@ These can be specified only outside of any configuration block.
   log off /log
   ```
 
+* `statedir`
+  Change directory used for all state-related files.
+  Default is $MADDYSTATE environment variable or `/var/lib/maddy` if $MADDYSTATE is not set.
+  Default value can be changed using -X linker flag:
+  ```
+  go build --ldflags '-X github.com/emersion/maddy.defaultStateDirectory=/opt/maddy/state'
+  ```
+
+* `libexecdir`
+  Change directory where all auxilary binaries are stored.
+  Default is $MADDYLIBEXEC environment variable or `/usr/libexec/maddy` if $MADDYLIBEXEC is not set.
+  Default value can be changed using -X linker flag:
+  ```
+  go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/maddy/bin'
+  ```
+
 ### Defaults
 
 Maddy provides reasonable defaults so you can start using it without spending
@@ -115,11 +132,12 @@ submission smtp://0.0.0.0:587 smtps://0.0.0.0:465
 Don't forget to use actual values instead of placeholders.
 
 With this configuration, maddy will create an SQLite3 database for messages in
-current directory and use it to store all messages.
+/var/lib/maddy and use it to store all messages. You need to ensure that this
+directory exists and maddy can write to it.
 
 ### go-imap-sql: Database location
 
-If you don't like SQLite3 or don't want to have it in the current directory,
+If you don't like SQLite3 or don't want to have it in /var/lib/maddy,
 you can override the configuration of the default module.
 
 See [go-imap-sql repository](https://github.com/foxcpp/go-imap-sql) for

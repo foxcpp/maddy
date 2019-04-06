@@ -3,21 +3,16 @@ package maddy
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
 
-var defaultDriver, defaultDsn string
+var defaultDriver = "sqlite3"
+var defaultDsn string
 
-func createDefaultStorage(_ string) (module.Module, error) {
-	if defaultDriver == "" {
-		defaultDriver = "sqlite3"
-	}
-	if defaultDsn == "" {
-		defaultDsn = "maddy.db"
-	}
-
+func createDefaultStorage(globals *config.Map, _ string) (module.Module, error) {
 	driverSupported := false
 	for _, driver := range sql.Drivers() {
 		if driver == defaultDriver {
@@ -32,7 +27,7 @@ func createDefaultStorage(_ string) (module.Module, error) {
 	return NewSQLStorage("sql", "default")
 }
 
-func defaultStorageConfig(name string) config.Node {
+func defaultStorageConfig(globals *config.Map, name string) config.Node {
 	return config.Node{
 		Name: "sql",
 		Args: []string{name},
@@ -43,12 +38,12 @@ func defaultStorageConfig(name string) config.Node {
 			},
 			{
 				Name: "dsn",
-				Args: []string{defaultDsn},
+				Args: []string{filepath.Join(StateDirectory(globals.Values), "maddy.db")},
 			},
 		},
 	}
 }
 
-func createDefaultRemoteDelivery(name string) (module.Module, error) {
+func createDefaultRemoteDelivery(_ *config.Map, name string) (module.Module, error) {
 	return Dummy{instName: name}, nil
 }
