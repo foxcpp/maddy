@@ -56,23 +56,43 @@ func (l *Logger) log(debug bool, s string) {
 		s = l.Name + ": " + s
 	}
 
-	if l.Out == nil {
-		DefaultLogger.Out(time.Now(), debug, s)
+	if l.Out != nil {
+		l.Out(time.Now(), debug, s)
+		return
 	}
-	l.Out(time.Now(), debug, s)
+	if DefaultLogger.Out != nil {
+		DefaultLogger.Out(time.Now(), debug, s)
+		return
+	}
+
+	// Logging is disabled - do nothing.
 }
 
-var DefaultLogger = Logger{Out: StderrLog}
+var DefaultLogger = Logger{Out: StderrLog()}
 
 func Debugf(format string, val ...interface{}) { DefaultLogger.Debugf(format, val...) }
 func Debugln(val ...interface{})               { DefaultLogger.Debugln(val...) }
 func Printf(format string, val ...interface{}) { DefaultLogger.Printf(format, val...) }
 func Println(val ...interface{})               { DefaultLogger.Println(val...) }
 
-func StderrLog(t time.Time, debug bool, str string) {
-	if debug {
-		str = "[debug] " + str
+func StderrLog() FuncLog {
+	return WriterLog(os.Stderr)
+}
+
+func WriterLog(w io.Writer) FuncLog {
+	return func(t time.Time, debug bool, str string) {
+		if debug {
+			str = "[debug] " + str
+		}
+		str = t.Format("02.01.06 15:04:05") + " " + str
+		io.WriteString(w, str)
 	}
-	str = t.Format("02.01.06 15:04:05") + " " + str
-	io.WriteString(os.Stderr, str)
+}
+
+func MultiLog(outs ...FuncLog) FuncLog {
+	return func(t time.Time, debug bool, str string) {
+		for _, out := range outs {
+			out(t, debug, str)
+		}
+	}
 }

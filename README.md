@@ -70,6 +70,30 @@ are options that can be used like that:
   Default TLS certificate to use. See
   [CONFIG_REFERENCE.md](CONFIG_REFERENCE.md) for details.
 
+* `debug`
+  Write verbose logs describing what exactly is happening and how its going.
+  Default mode is relatively quiet and still produces useful logs so
+  you need that only for debugging purposes.
+
+#### Options usable only at global level
+
+These can be specified only outside of any configuration block.
+
+* `log <targets...>`
+  Write log to one of more "targets".
+  Target can be one of the following:
+  * `stderr`
+    Write logs to stderr, this is the default.
+  * `off`
+    Do nothing. Useful to disable logging fully: `log off`
+  * file path
+    Write (append) logs to file..
+
+  For example:
+  ```
+  log off /log
+  ```
+
 ### Defaults
 
 Maddy provides reasonable defaults so you can start using it without spending

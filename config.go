@@ -3,8 +3,10 @@ package maddy
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
@@ -118,4 +120,39 @@ func defaultStorage() (interface{}, error) {
 		}
 	}
 	return res, nil
+}
+
+func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
+	if len(node.Args) == 0 {
+		return nil, m.MatchErr("expected at least 1 argument")
+	}
+	if len(node.Children) != 0 {
+		return nil, m.MatchErr("can't declare block here")
+	}
+
+	outs := make([]log.FuncLog, 0, len(node.Args))
+	for _, arg := range node.Args {
+		switch arg {
+		case "stderr":
+			outs = append(outs, log.StderrLog())
+		case "off":
+			outs = append(outs, nil)
+		default:
+			w, err := os.OpenFile(arg, os.O_RDWR, os.ModePerm)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create log file: %v", err)
+			}
+
+			outs = append(outs, log.WriterLog(w))
+		}
+	}
+
+	if len(outs) == 1 {
+		return outs[0], nil
+	}
+	return log.MultiLog(outs...), nil
+}
+
+func defaultLogOutput() (interface{}, error) {
+	return log.StderrLog(), nil
 }
