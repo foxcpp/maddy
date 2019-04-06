@@ -23,7 +23,7 @@ func NewExternalAuth(modName, instName string) (module.Module, error) {
 	ea := &ExternalAuth{
 		modName:  modName,
 		instName: instName,
-		Log:      log.Logger{Out: log.StderrLog, Name: modName},
+		Log:      log.Logger{Name: modName},
 	}
 
 	return ea, nil

@@ -109,7 +109,7 @@ func NewSMTPEndpoint(modName, instName string) (module.Module, error) {
 	endp := &SMTPEndpoint{
 		name:       instName,
 		submission: modName == "submission",
-		Log:        log.Logger{Out: log.StderrLog, Name: "smtp"},
+		Log:        log.Logger{Name: "smtp"},
 	}
 	return endp, nil
 }

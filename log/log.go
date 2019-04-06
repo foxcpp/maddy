@@ -55,6 +55,10 @@ func (l *Logger) log(debug bool, s string) {
 	if l.Name != "" {
 		s = l.Name + ": " + s
 	}
+
+	if l.Out == nil {
+		DefaultLogger.Out(time.Now(), debug, s)
+	}
 	l.Out(time.Now(), debug, s)
 }
 
