@@ -87,7 +87,8 @@ These can be specified only outside of any configuration block.
   * `syslog`
     Send logs to the local syslog daemon.
   * `off`
-    Do nothing. Useful to disable logging fully: `log off`
+    Do nothing. Used to disable logging fully: `log off`
+    Can't be combined with other targets.
   * file path
     Write (append) logs to file..
 

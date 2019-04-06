@@ -142,7 +142,10 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 			}
 			outs = append(outs, syslogOut)
 		case "off":
-			outs = append(outs, nil)
+			if len(node.Args) != 1 {
+				return nil, errors.New("'off' can't be combined with other log targets")
+			}
+			return nil, nil
 		default:
 			w, err := os.OpenFile(arg, os.O_RDWR, os.ModePerm)
 			if err != nil {
