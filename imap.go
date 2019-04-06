@@ -40,7 +40,7 @@ type IMAPEndpoint struct {
 func NewIMAPEndpoint(_, instName string) (module.Module, error) {
 	endp := &IMAPEndpoint{
 		name: instName,
-		Log:  log.Logger{Out: log.StderrLog, Name: "imap"},
+		Log:  log.Logger{Name: "imap"},
 	}
 	endp.name = instName
 
