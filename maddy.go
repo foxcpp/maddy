@@ -22,6 +22,7 @@ func Start(cfg []config.Node) error {
 	globals := config.NewMap(nil, &config.Node{Children: cfg})
 	globals.String("hostname", false, false, "", nil)
 	globals.Custom("tls", false, true, nil, tlsDirective, nil)
+	globals.Custom("log", false, false, defaultLogOutput, logOutput, &log.DefaultLogger.Out)
 	globals.Bool("debug", false, &log.DefaultLogger.Debug)
 	globals.AllowUnknown()
 	unmatched, err := globals.Process()
