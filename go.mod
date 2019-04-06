@@ -11,7 +11,7 @@ require (
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.9.2
 	github.com/emersion/go-msgauth v0.0.0-20180104172905-3707cece5cdb
-	github.com/emersion/go-smtp v0.10.0
+	github.com/emersion/go-smtp v0.11.0
 	github.com/foxcpp/go-imap-sql v0.0.0-20190330233953-473e284bc929
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.0
