@@ -99,8 +99,11 @@ Valid configuration directives and their forms:
   Set server domain name to advertise in EHLO/HELO response and for matching
   during delivery. Required.
 
-* `max_idle <value>` 
-  Connections timeout in seconds. Default is no timeout.
+* `read_timeout <value>` 
+  I/O read timeout in seconds. Default is 10 minutes.
+
+* `write_timeout <value>` 
+  I/O write timeout in seconds. Default is 1 minute.
 
 * `max_message_size <value>`
   Limit size of incoming messages to `value` bytes. Default is 32 MiB.
