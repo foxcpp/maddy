@@ -23,6 +23,8 @@ Build tags:
 
 ## Configuration
 
+Read from `/etc/maddy/maddy.conf` by default.
+
 ### Syntax
 
 Maddy uses configuration format similar (but not the same!) to Caddy's
