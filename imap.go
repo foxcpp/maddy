@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"sync"
 
@@ -84,9 +83,9 @@ func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
 	endp.serv.TLSConfig = endp.tlsConfig
-	endp.serv.ErrorLog = endp.Log.DebugWriter()
+	endp.serv.ErrorLog = &endp.Log
 	if ioDebug {
-		endp.serv.Debug = os.Stderr
+		endp.serv.Debug = endp.Log.DebugWriter()
 		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
 	}
 

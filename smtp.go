@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -251,7 +250,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	}
 
 	if ioDebug {
-		endp.serv.Debug = os.Stderr
+		endp.serv.Debug = endp.Log.DebugWriter()
 		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
 	}
 
