@@ -81,6 +81,7 @@ func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Re
 
 	msg = io.MultiReader(strings.NewReader(received), msg)
 
+	ctx.Opts = step.opts
 	err := step.t.Deliver(*ctx, msg)
 	return nil, err == nil, err
 }
