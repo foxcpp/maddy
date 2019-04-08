@@ -12,7 +12,7 @@ import (
 
 func main() {
 	var configpath string
-	flag.StringVar(&configpath, "config", "Maddyfile", "path to Maddyfile")
+	flag.StringVar(&configpath, "config", filepath.Join(maddy.ConfigDirectory(), "maddy.conf"), "path to configuration file")
 	flag.Parse()
 
 	absCfg, err := filepath.Abs(configpath)

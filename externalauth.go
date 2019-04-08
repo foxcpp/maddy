@@ -3,7 +3,9 @@ package maddy
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/emersion/maddy/config"
@@ -57,10 +59,9 @@ func (ea *ExternalAuth) Init(cfg *config.Map) error {
 		helperName = "maddy-shadow-helper"
 	}
 
-	var err error
-	ea.helperPath, err = exec.LookPath(helperName)
-	if err != nil {
-		return fmt.Errorf("no %s authentication support, %s is not found in $PATH and no custom path is set", ea.modName, helperName)
+	ea.helperPath = filepath.Join(LibexecDirectory(cfg.Globals), helperName)
+	if _, err := os.Stat(ea.helperPath); err != nil {
+		return fmt.Errorf("no %s authentication support, %s is not found in %s and no custom path is set", ea.modName, LibexecDirectory(cfg.Globals), helperName)
 	}
 
 	ea.Log.Debugln("using helper:", ea.helperPath)

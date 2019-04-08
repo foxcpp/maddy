@@ -21,6 +21,8 @@ func Start(cfg []config.Node) error {
 	instances := make(map[string]modInfo)
 	globals := config.NewMap(nil, &config.Node{Children: cfg})
 	globals.String("hostname", false, false, "", nil)
+	globals.String("statedir", false, false, "", nil)
+	globals.String("libexecdir", false, false, "", nil)
 	globals.Custom("tls", false, true, nil, tlsDirective, nil)
 	globals.Custom("log", false, false, defaultLogOutput, logOutput, &log.DefaultLogger.Out)
 	globals.Bool("debug", false, &log.DefaultLogger.Debug)
@@ -60,8 +62,8 @@ func Start(cfg []config.Node) error {
 		instances[instName] = modInfo{instance: inst, cfg: block}
 	}
 
-	addDefaultModule(instances, "default", createDefaultStorage, globals.Values, defaultStorageConfig)
-	addDefaultModule(instances, "default_remote_delivery", createDefaultRemoteDelivery, globals.Values, nil)
+	addDefaultModule(instances, globals, "default", createDefaultStorage, defaultStorageConfig)
+	addDefaultModule(instances, globals, "default_remote_delivery", createDefaultRemoteDelivery, nil)
 
 	for _, inst := range instances {
 		if module.Initialized[inst.instance.InstanceName()] {
@@ -97,17 +99,17 @@ func Start(cfg []config.Node) error {
 	return nil
 }
 
-func addDefaultModule(insts map[string]modInfo, name string, factory func(string) (module.Module, error), globalCfg map[string]interface{}, cfgFactory func(string) config.Node) {
+func addDefaultModule(insts map[string]modInfo, globals *config.Map, name string, factory func(*config.Map, string) (module.Module, error), cfgFactory func(*config.Map, string) config.Node) {
 	if _, ok := insts[name]; !ok {
-		if mod, err := factory(name); err != nil {
+		if mod, err := factory(globals, name); err != nil {
 			log.Printf("failed to register %s: %v", name, err)
 		} else {
 			log.Debugf("module create %s %s (built-in)", mod.Name(), name)
 			info := modInfo{instance: mod}
 			if cfgFactory != nil {
-				info.cfg = cfgFactory(name)
+				info.cfg = cfgFactory(globals, name)
 			}
-			module.RegisterInstance(mod, config.NewMap(globalCfg, &info.cfg))
+			module.RegisterInstance(mod, config.NewMap(globals.Values, &info.cfg))
 			insts[name] = info
 		}
 	} else {
