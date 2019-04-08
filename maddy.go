@@ -45,7 +45,7 @@ func Start(cfg []config.Node) error {
 			return fmt.Errorf("%s:%d: unknown module: %s", block.File, block.Line, modName)
 		}
 
-		if mod := module.GetUninitedInstance(instName); mod != nil {
+		if module.HasInstance(instName) {
 			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
 		}
 

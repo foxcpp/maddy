@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	Instances = make(map[string]struct {
+	instances = make(map[string]struct {
 		mod Module
 		cfg *config.Map
 	})
@@ -21,25 +21,15 @@ var (
 // Instnace name must be unique. Second RegisterInstance with same instance
 // name will replace previous.
 func RegisterInstance(inst Module, cfg *config.Map) {
-	Instances[inst.InstanceName()] = struct {
+	instances[inst.InstanceName()] = struct {
 		mod Module
 		cfg *config.Map
 	}{inst, cfg}
 }
 
-// GetUninitedInstance returns module instance from global registry.
-//
-// Nil is returned if no module instance with specified name is Instances.
-//
-// Note that this function may return uninitialized module. If you need to ensure
-// that it is safe to interact with module instance - use GetInstance instead.
-func GetUninitedInstance(name string) Module {
-	mod, ok := Instances[name]
-	if !ok {
-		return nil
-	}
-
-	return mod.mod
+func HasInstance(name string) bool {
+	_, ok := instances[name]
+	return ok
 }
 
 // GetInstance returns module instance from global registry, initializing it if
@@ -48,7 +38,7 @@ func GetUninitedInstance(name string) Module {
 // Error is returned if module initialization fails or module instance does not
 // exists.
 func GetInstance(name string) (Module, error) {
-	mod, ok := Instances[name]
+	mod, ok := instances[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown module instance: %s", name)
 	}
