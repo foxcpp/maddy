@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap/backend"
+	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -120,6 +121,12 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 		u, err := sqlm.GetExistingUser(parts[0])
 		if err != nil {
 			sqlm.Log.Debugf("failed to get user for %s: %v", rcpt, err)
+			if err == sqlstore.ErrUserDoesntExists {
+				return &smtp.SMTPError{
+					Code:    550,
+					Message: "Local mailbox doesn't exists",
+				}
+			}
 			return err
 		}
 
