@@ -62,9 +62,6 @@ func Start(cfg []config.Node) error {
 		instances[instName] = modInfo{instance: inst, cfg: block}
 	}
 
-	addDefaultModule(instances, globals, "default", createDefaultStorage, defaultStorageConfig)
-	addDefaultModule(instances, globals, "default_remote_delivery", createDefaultRemoteDelivery, nil)
-
 	for _, inst := range instances {
 		if module.Initialized[inst.instance.InstanceName()] {
 			log.Debugln("module init", inst.instance.Name(), inst.instance.InstanceName(), "skipped because it was lazily initialized before")
@@ -97,22 +94,4 @@ func Start(cfg []config.Node) error {
 	}
 
 	return nil
-}
-
-func addDefaultModule(insts map[string]modInfo, globals *config.Map, name string, factory func(*config.Map, string) (module.Module, error), cfgFactory func(*config.Map, string) config.Node) {
-	if _, ok := insts[name]; !ok {
-		if mod, err := factory(globals, name); err != nil {
-			log.Printf("failed to register %s: %v", name, err)
-		} else {
-			log.Debugf("module create %s %s (built-in)", mod.Name(), name)
-			info := modInfo{instance: mod}
-			if cfgFactory != nil {
-				info.cfg = cfgFactory(globals, name)
-			}
-			module.RegisterInstance(mod, config.NewMap(globals.Values, &info.cfg))
-			insts[name] = info
-		}
-	} else {
-		log.Debugf("module create %s (built-in) skipped because user-defined exists", name)
-	}
 }

@@ -376,7 +376,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block []Node) (unmat
 		}
 		matched[subnode.Name] = true
 	}
-	m.curNode = nil
+	m.curNode = m.Block
 
 	for _, matcher := range m.entries {
 		if matched[matcher.name] {

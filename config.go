@@ -100,28 +100,6 @@ func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	return modObj, nil
 }
 
-func defaultAuthProvider() (interface{}, error) {
-	res, err := authProvider("default_auth")
-	if err != nil {
-		res, err = authProvider("default")
-		if err != nil {
-			return nil, errors.New("missing default auth. provider, must set custom")
-		}
-	}
-	return res, nil
-}
-
-func defaultStorage() (interface{}, error) {
-	res, err := storageBackend("default_storage")
-	if err != nil {
-		res, err = storageBackend("default")
-		if err != nil {
-			return nil, errors.New("missing default storage backend, must set custom")
-		}
-	}
-	return res, nil
-}
-
 func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, m.MatchErr("expected at least 1 argument")
