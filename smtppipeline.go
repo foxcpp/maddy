@@ -16,7 +16,12 @@ import (
 )
 
 type SMTPPipelineStep interface {
-	Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error)
+	// Pass applies step's processing logic to the message.
+	//
+	// If Pass returns non-nil io.Reader - it should contain new message body.
+	// If Pass returns false - message processing will be stopped, if err is
+	// not nil - it will be returned to message source.
+	Pass(ctx *module.DeliveryContext, msg io.Reader) (newBody io.Reader, continueProcessing bool, err error)
 }
 
 type requireAuthStep struct{}
