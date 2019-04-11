@@ -4,8 +4,6 @@
 
 Fast, cross-platform mail server.
 
-Inspired from [Caddy](https://github.com/mholt/caddy).
-
 ## Installation
 
 ```shell
