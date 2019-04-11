@@ -24,6 +24,150 @@ type SMTPPipelineStep interface {
 	Pass(ctx *module.DeliveryContext, msg io.Reader) (newBody io.Reader, continueProcessing bool, err error)
 }
 
+type checkSourceHostnameStep struct {
+	required bool
+}
+
+func checkSourceHostnameStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+	required := false
+	if len(node.Args) >= 0 {
+		if node.Args[0] == "required" {
+			required = true
+		}
+	}
+
+	return checkSourceHostnameStep{
+		required: required,
+	}, nil
+}
+
+func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
+	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	if !ok {
+		return nil, true, nil
+	}
+
+	srcIPs, err := net.LookupIP(ctx.SrcHostname)
+	if err != nil {
+		ctx.Ctx["src_hostname_check"] = false
+		if s.required {
+			return nil, false, errors.New("source hostname does not resolve")
+		} else {
+			return nil, true, nil
+		}
+	}
+
+	for _, ip := range srcIPs {
+		if ipAddr.IP.Equal(ip) {
+			ctx.Ctx["src_hostname_check"] = true
+			return nil, true, nil
+		}
+	}
+	ctx.Ctx["src_hostname_check"] = false
+	if s.required {
+		return nil, false, errors.New("source hostname does not resolve to source address")
+	} else {
+		return nil, true, nil
+	}
+}
+
+type checkSourceMxStep struct {
+	required bool
+}
+
+func checkSourceMxStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+	required := false
+	if len(node.Args) >= 0 {
+		if node.Args[0] == "required" {
+			required = true
+		}
+	}
+
+	return checkSourceMxStep{
+		required: required,
+	}, nil
+}
+
+func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
+	parts := strings.Split(ctx.From, "@")
+	if len(parts) != 2 {
+		return nil, false, errors.New("malformed address")
+	}
+	domain := parts[1]
+
+	srcMx, err := net.LookupMX(domain)
+	if err != nil {
+		ctx.Ctx["src_mx_check"] = false
+		if s.required {
+			return nil, false, errors.New("could not find MX records for from domain")
+		} else {
+			return nil, true, nil
+		}
+	}
+
+	for _, mx := range srcMx {
+		if mx.Host == ctx.SrcHostname {
+			ctx.Ctx["src_mx_check"] = true
+			return nil, true, nil
+		}
+	}
+	ctx.Ctx["src_mx_check"] = false
+	if s.required {
+		return nil, false, errors.New("From domain has no MX record for itself")
+	} else {
+		return nil, true, nil
+	}
+}
+
+type checkSourceReverseDNSStep struct {
+	required bool
+}
+
+func checkSourceReverseDNSStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+	required := false
+	if len(node.Args) >= 0 {
+		if node.Args[0] == "required" {
+			required = true
+		}
+	}
+
+	return checkSourceReverseDNSStep{
+		required: required,
+	}, nil
+}
+
+func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
+	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	if !ok {
+		return nil, true, nil
+	}
+
+	names, err := net.LookupAddr(ipAddr.IP.String())
+	if err != nil || len(names) == 0 {
+		ctx.Ctx["src_rdns_check"] = false
+		if s.required {
+			return nil, false, errors.New("could look up rDNS address for source")
+		} else {
+			return nil, true, nil
+		}
+	}
+
+	srcDomain := strings.TrimRight(ctx.SrcHostname, ".")
+
+	for _, name := range names {
+		if strings.TrimRight(name, ".") == srcDomain {
+			ctx.Ctx["src_rdns_check"] = true
+			return nil, true, nil
+		}
+	}
+	ctx.Ctx["src_rdns_check"] = false
+	if s.required {
+		return nil, false, errors.New("rDNS name does not match source hostname")
+	} else {
+		return nil, true, nil
+	}
+}
+
 type requireAuthStep struct{}
 
 func (requireAuthStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
@@ -286,6 +430,12 @@ func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 		return stopStep{}, nil
 	case "require_auth":
 		return requireAuthStep{}, nil
+	case "check_source_hostname":
+		return checkSourceHostnameStepFromCfg(node)
+	case "check_source_mx":
+		return checkSourceMxStepFromCfg(node)
+	case "check_source_rdns":
+		return checkSourceReverseDNSStepFromCfg(node)
 	default:
 		return nil, fmt.Errorf("unknown pipeline step: %s", node.Name)
 	}
