@@ -217,7 +217,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 
 			remoteDeliveryDefault = entry.Args[0]
 			remoteDeliveryOpts = readOpts(entry.Args[1:])
-		case "filter", "delivery", "match", "stop", "require_auth":
+		case "filter", "deliver", "match", "stop", "require_auth":
 			if localDeliveryDefault != "" || remoteDeliveryDefault != "" {
 				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
 			}
@@ -339,13 +339,13 @@ func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryNa
 		endp.pipeline = append(endp.pipeline,
 			// require_auth and submission_check are always prepended to pipeline
 			//TODO: DKIM sign
-			deliveryStep{t: localDelivery, opts: localOpts},
-			deliveryStep{t: remoteDelivery, opts: remoteOpts},
+			deliverStep{t: localDelivery, opts: localOpts},
+			deliverStep{t: remoteDelivery, opts: remoteOpts},
 		)
 	} else {
 		endp.pipeline = append(endp.pipeline,
 			//TODO: DKIM verify
-			deliveryStep{t: localDelivery, opts: localOpts},
+			deliverStep{t: localDelivery, opts: localOpts},
 		)
 	}
 

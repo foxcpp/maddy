@@ -48,7 +48,7 @@ func (step filterStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Read
 	return r, true, nil
 }
 
-type deliveryStep struct {
+type deliverStep struct {
 	t    module.DeliveryTarget
 	opts map[string]string
 }
@@ -61,7 +61,7 @@ func LookupAddr(ip net.IP) (string, error) {
 	return strings.TrimRight(names[0], "."), nil
 }
 
-func (step deliveryStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
+func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
 	// We can safetly assume at least one recipient.
 	to := sanitizeString(ctx.To[0])
 
@@ -197,22 +197,22 @@ func filterStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	}, nil
 }
 
-func deliveryStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func deliverStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) == 0 {
-		return nil, errors.New("delivery: expected at least one argument")
+		return nil, errors.New("deliver: expected at least one argument")
 	}
 
 	modInst, err := module.GetInstance(node.Args[0])
 	if err != nil {
-		return nil, fmt.Errorf("delivery: unknown module instance: %s", node.Args[0])
+		return nil, fmt.Errorf("deliver: unknown module instance: %s", node.Args[0])
 	}
 
 	deliveryInst, ok := modInst.(module.DeliveryTarget)
 	if !ok {
-		return nil, fmt.Errorf("delivery: module %s (%s) doesn't implements DeliveryTarget", modInst.Name(), modInst.InstanceName())
+		return nil, fmt.Errorf("deliver: module %s (%s) doesn't implements DeliveryTarget", modInst.Name(), modInst.InstanceName())
 	}
 
-	return deliveryStep{
+	return deliverStep{
 		t:    deliveryInst,
 		opts: readOpts(node.Args[1:]),
 	}, nil
@@ -273,8 +273,8 @@ func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	switch node.Name {
 	case "filter":
 		return filterStepFromCfg(node)
-	case "delivery":
-		return deliveryStepFromCfg(node)
+	case "deliver":
+		return deliverStepFromCfg(node)
 	case "match":
 		return matchStepFromCfg(node)
 	case "stop":

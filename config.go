@@ -85,7 +85,7 @@ func deliveryTarget(modName string) (module.DeliveryTarget, error) {
 	return target, nil
 }
 
-func deliveryDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Args) != 1 {
 		return nil, m.MatchErr("expected 1 argument")
 	}
