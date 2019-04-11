@@ -172,8 +172,35 @@ You can add any number of steps you want using following directives:
   - `src_hostname`
     Hostname reported by the client in the EHLO/HELO command.
 
-  See below for example.
+    Example:
+    ```
+    match rcpt "/@emersion.fr$/" {
+        filter dkim verify
+        deliver local
+    }
+    ```
 
+
+* `destination <recipient...> { ... }`
+
+  Execute subblock only if message does have at least one recipient matching
+  any of the specified rules.
+
+  "Rule" can be either domain name, full address or regular expression.
+
+  **Note:** If rule matches recipient - it will be removed from delivery context,
+    thus no steps after this destination block will see this recipient.
+
+  This ensures that the following example will not deliver message to both 
+
+  Example: Deliver to "local" all messages for mailboxes on example.org and all other - to "dummy".
+  ```
+  destination example.org { delivery local }
+  delivery dummy
+  ```
+
+
+Complete SMTP block example using custom pipeline:
 
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
@@ -181,15 +208,14 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     auth pam
     hostname emersion.fr
 
-    match rcpt "/@emersion.fr$/" {
+    destination emersion.fr {
         filter dkim verify
         deliver local
     }
-    match no rcpt "/@emersion.fr$/" {
-        require_auth
-        filter dkim sign
-        deliver out_queue
-    }
+
+    require_auth
+    filter dkim sign
+    deliver out-queue
 }
 ```
 
