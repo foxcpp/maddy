@@ -153,6 +153,9 @@ You can add any number of steps you want using following directives:
   Executes all nested steps if the condition specified in the directive is true
   (field contains the specified substring).
 
+  **Note:** `match` is a low-level dispatching primitive, in most cases you should
+  use `destination` instead.
+
   If the substring is wrapped in forward slashes - it will be interpreted as a
   Perl-compatible regular expression that should match field contents.
 
@@ -174,29 +177,35 @@ You can add any number of steps you want using following directives:
 
     Example:
     ```
-    match rcpt "/@emersion.fr$/" {
+    match rcpt_domain emersion.fr {
         filter dkim verify
         deliver local
     }
     ```
-
 
 * `destination <recipient...> { ... }`
 
   Execute subblock only if message does have at least one recipient matching
   any of the specified rules.
 
-  "Rule" can be either domain name, full address or regular expression.
+  "Rule" can be either domain name, full address (should include `@`) or regular expression.
 
   **Note:** If rule matches recipient - it will be removed from delivery context,
-    thus no steps after this destination block will see this recipient.
-
+  thus no steps after this destination block will see this recipient.
   This ensures that the following example will not deliver message to both 
+
+  **Note 2:** Don't forget that order of pipeline steps matters.
+  ```
+  deliver sql
+  destination postmaster@example.org { deliver local }
+  ```
+  In this case messages for postmaster@example.org will be delivered to
+  **both** 'sql' and 'local' storage.
 
   Example: Deliver to "local" all messages for mailboxes on example.org and all other - to "dummy".
   ```
-  destination example.org { delivery local }
-  delivery dummy
+  destination example.org { deliver local }
+  deliver dummy
   ```
 
 
