@@ -284,7 +284,7 @@ type destinationStep struct {
 }
 
 func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
-	ctxCpy := *ctx
+	ctxCpy := ctx.DeepCopy()
 	unmatchedRcpts := make([]string, 0, len(ctx.To))
 	ctxCpy.To = make([]string, 0, len(ctx.To))
 	for _, rcpt := range ctx.To {
@@ -308,7 +308,7 @@ func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (i
 	//		 ctxCpy.To contains matched rcpts, ctx.To contains unmatched
 	ctx.To = unmatchedRcpts
 
-	return passThroughPipeline(step.substeps, &ctxCpy, msg)
+	return passThroughPipeline(step.substeps, ctxCpy, msg)
 }
 
 func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
