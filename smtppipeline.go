@@ -308,7 +308,8 @@ func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (i
 	//		 ctxCpy.To contains matched rcpts, ctx.To contains unmatched
 	ctx.To = unmatchedRcpts
 
-	return passThroughPipeline(step.substeps, ctxCpy, msg)
+	newBody, shouldContinue, err := passThroughPipeline(step.substeps, ctxCpy, msg)
+	return newBody, shouldContinue && len(ctx.To) != 0, err
 }
 
 func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
