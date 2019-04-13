@@ -1,7 +1,6 @@
 package maddy
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -46,35 +45,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	// TODO: Execute pipeline steps in parallel.
 	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
 
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(r); err != nil {
-		return err
-	}
-	currentMsg := bytes.NewReader(buf.Bytes())
-
-	for _, step := range s.endp.pipeline {
-		r, cont, err := step.Pass(s.ctx, currentMsg)
-		if !cont {
-			if err == module.ErrSilentDrop {
-				return nil
-			}
-			if err != nil {
-				s.endp.Log.Printf("%T failed: %v", step, err)
-				return err
-			}
-		}
-
-		if r != nil && r != io.Reader(currentMsg) {
-			buf.Reset()
-			if _, err := io.Copy(&buf, r); err != nil {
-				s.endp.Log.Printf("failed to buffer message: %v", err)
-				return err
-			}
-			currentMsg.Reset(buf.Bytes())
-		}
-		currentMsg.Seek(0, io.SeekStart)
-	}
-
+	passThroughPipeline(s.endp.pipeline, s.ctx, r)
 	s.endp.Log.Printf("accepted incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
 
 	return nil
