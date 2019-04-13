@@ -147,6 +147,22 @@ You can add any number of steps you want using following directives:
   Stop processing with "access denied" error if the client is not authenticated
   non-anonymously.
 
+* `check_source_hostname [required]`
+  Check that source server hostname (from EHLO/HELO command) resolves to source
+  server IP. If `required` argument is present - message will be rejected on
+  check failure.
+
+* `check_source_mx [required]`
+  Check that domain in MAIL FROM command does have a MX record pointing to
+  source server. If `required` argument is present - message will be rejected on
+  check failure.
+
+* `check_source_rdns [required]`
+  Check that source server IP does have a PTR record point to the domain
+  specified in EHLO/HELO command. If `required` argument is present - message
+  will be rejected on check failure.
+
+
 * `match [no] <field> <subtring>  { ... }`
   `match [no] <field> /<regexp>/  { ... }`
 
