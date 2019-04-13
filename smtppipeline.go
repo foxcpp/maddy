@@ -101,6 +101,11 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	}
 	domain := parts[1]
 
+	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	if !ok {
+		return nil, true, nil
+	}
+
 	srcMx, err := net.LookupMX(domain)
 	if err != nil {
 		ctx.Ctx["src_mx_check"] = false
@@ -112,7 +117,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	}
 
 	for _, mx := range srcMx {
-		if mx.Host == ctx.SrcHostname {
+		if mx.Host == ctx.SrcHostname || mx.Host == ipAddr.String() {
 			ctx.Ctx["src_mx_check"] = true
 			return nil, true, nil
 		}
