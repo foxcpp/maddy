@@ -313,21 +313,34 @@ func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (i
 }
 
 func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
-	currentMsg := msg
-	var buf bytes.Buffer
-	for _, substep := range steps {
-		r, cont, err := substep.Pass(ctx, currentMsg)
+	buf, ok := msg.(*bytes.Buffer)
+	if !ok {
+		buf = new(bytes.Buffer)
+		if _, err := buf.ReadFrom(msg); err != nil {
+			return nil, false, err
+		}
+	}
+	currentMsg := bytes.NewReader(buf.Bytes())
+
+	for _, step := range steps {
+		r, cont, err := step.Pass(ctx, currentMsg)
 		if !cont {
-			return nil, cont, err
+			if err == module.ErrSilentDrop {
+				return nil, false, nil
+			}
+			if err != nil {
+				return nil, true, err
+			}
 		}
 
-		if r != nil && r != &buf {
+		if r != nil && r != io.Reader(currentMsg) {
 			buf.Reset()
-			if _, err := io.Copy(&buf, r); err != nil {
+			if _, err := io.Copy(buf, r); err != nil {
 				return nil, false, err
 			}
-			currentMsg = &buf
+			currentMsg.Reset(buf.Bytes())
 		}
+		currentMsg.Seek(0, io.SeekStart)
 	}
 
 	if currentMsg != msg {
