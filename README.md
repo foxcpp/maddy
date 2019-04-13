@@ -23,6 +23,12 @@ Build tags:
 
 Read from `/etc/maddy/maddy.conf` by default.
 
+Start by copying contents of the [maddy.conf][maddy.conf] in this repository.
+
+With this configuration, maddy will create an SQLite3 database for messages in
+/var/lib/maddy and use it to store all messages. You need to ensure that this
+directory exists and maddy can write to it.
+
 ### Syntax
 
 Maddy uses configuration format similar (but not the same!) to Caddy's
@@ -70,7 +76,6 @@ are options that can be used like that:
   Default TLS certificate to use. See
   [CONFIG_REFERENCE.md](CONFIG_REFERENCE.md) for details.
 
-<<<<<<< HEAD
 * `debug`
   Write verbose logs describing what exactly is happening and how its going.
   Default mode is relatively quiet and still produces useful logs so
@@ -113,57 +118,6 @@ These can be specified only outside of any configuration block.
   ```
   go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/maddy/bin'
   ```
-
-### Defaults
-
-Maddy provides reasonable defaults so you can start using it without spending
-hours writing configuration files. All you need it so define smtp and imap
-modules in your configuration, configure TLS (see below) and set domain name.
-
-Here is the minimal example to get you started:
-```
-tls cert_file pkey_file
-hostname emersion.fr
-
-imap imap://0.0.0.0 imaps://0.0.0.0
-smtp smtp://0.0.0.0:25
-submission smtp://0.0.0.0:587 smtps://0.0.0.0:465
-```
-Don't forget to use actual values instead of placeholders.
-
-With this configuration, maddy will create an SQLite3 database for messages in
-/var/lib/maddy and use it to store all messages. You need to ensure that this
-directory exists and maddy can write to it.
-
-### go-imap-sql: Database location
-
-If you don't like SQLite3 or don't want to have it in /var/lib/maddy,
-you can override the configuration of the default module.
-
-See [go-imap-sql repository](https://github.com/foxcpp/go-imap-sql) for
-information on RDBMS support.
-
-```
-sql default {
-    driver sqlite3
-    dsn file_path
-}
-```
-
-You can then replace SQL driver and DSN values. Note that maddy needs to be
-built with a build tag corresponding to the name of the used driver (`mysql`,
-`postgresql`) for SQL engines other than sqlite3.
-
-DSN is a driver-specific value that describes the database to use.
-For SQLite3 this is just a file path.
-For MySQL: https://github.com/go-sql-driver/mysql#dsn-data-source-name
-For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
-
-Note that you can also change default DSN or SQL driver during compilation
-by building maddy using following command:
-```shell
-go build -ldflags "-X github,com/emersion/maddy.defaultDriver=DRIVER -X github.com/emersion/maddy.defaultDsn=DSN"
-```
 
 ### TLS
 

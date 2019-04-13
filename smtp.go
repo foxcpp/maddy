@@ -119,7 +119,9 @@ func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
+	if endp.Auth != nil {
+		endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
+	}
 	endp.Log.Debugf("pipeline: %#v", endp.pipeline)
 
 	addresses := make([]Address, 0, len(cfg.Block.Args))
@@ -152,20 +154,14 @@ func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 
 func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	var (
-		err        error
-		ioDebug    bool
-		submission bool
+		err     error
+		ioDebug bool
 
 		writeTimeoutSecs uint
 		readTimeoutSecs  uint
-
-		localDeliveryDefault  string
-		localDeliveryOpts     map[string]string
-		remoteDeliveryDefault string
-		remoteDeliveryOpts    map[string]string
 	)
 
-	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
+	cfg.Custom("auth", false, false, nil, authDirective, &endp.Auth)
 	cfg.String("hostname", true, false, "", &endp.serv.Domain)
 	// TODO: Parse human-readable duration values.
 	cfg.UInt("write_timeout", false, false, 60, &writeTimeoutSecs)
@@ -176,7 +172,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
-	cfg.Bool("submission", false, &submission)
+	cfg.Bool("submission", false, &endp.submission)
 	cfg.AllowUnknown()
 
 	remainingDirs, err := cfg.Process()
@@ -187,41 +183,9 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	endp.serv.WriteTimeout = time.Duration(writeTimeoutSecs) * time.Second
 	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
-	// If endp.submission is set by NewSMTPEndpoint because module name is "submission"
-	// - don't use value from configuration.
-	if !endp.submission {
-		endp.submission = submission
-	} else if submission {
-		endp.Log.Println("redundant submission statement")
-	}
-
 	for _, entry := range remainingDirs {
 		switch entry.Name {
-		case "local_delivery":
-			if len(entry.Args) == 0 {
-				return errors.New("smtp: local_delivery: expected at least 1 argument")
-			}
-			if len(endp.pipeline) != 0 {
-				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
-			}
-
-			localDeliveryDefault = entry.Args[0]
-			localDeliveryOpts = readOpts(entry.Args[1:])
-		case "remote_delivery":
-			if len(entry.Args) == 0 {
-				return errors.New("smtp: remote_delivery: expected at least 1 argument")
-			}
-			if len(endp.pipeline) != 0 {
-				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
-			}
-
-			remoteDeliveryDefault = entry.Args[0]
-			remoteDeliveryOpts = readOpts(entry.Args[1:])
 		case "filter", "deliver", "match", "stop", "require_auth":
-			if localDeliveryDefault != "" || remoteDeliveryDefault != "" {
-				return errors.New("smtp: can't use custom pipeline with local_delivery or remote_delivery")
-			}
-
 			step, err := StepFromCfg(entry)
 			if err != nil {
 				return err
@@ -238,15 +202,13 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 		}
 	}
 
-	if len(endp.pipeline) == 0 {
-		err := endp.setDefaultPipeline(localDeliveryDefault, remoteDeliveryDefault, localDeliveryOpts, remoteDeliveryOpts)
-		if err != nil {
-			return err
-		}
-	}
 	if endp.submission {
 		endp.pipeline = append([]SMTPPipelineStep{submissionPrepareStep{}, requireAuthStep{}}, endp.pipeline...)
 		endp.authAlwaysRequired = true
+
+		if endp.Auth == nil {
+			return fmt.Errorf("smtp: auth. provider must be set for submission endpoint")
+		}
 	}
 
 	if ioDebug {
@@ -307,52 +269,11 @@ func (endp *SMTPEndpoint) setupListeners(addresses []Address) error {
 	return nil
 }
 
-func (endp *SMTPEndpoint) setDefaultPipeline(localDeliveryName, remoteDeliveryName string, localOpts, remoteOpts map[string]string) error {
-	var err error
-	var localDelivery module.DeliveryTarget
-	if localDeliveryName == "" {
-		localDelivery, err = deliveryTarget("default_local_delivery")
-		if err != nil {
-			localDelivery, err = deliveryTarget("default")
-			if err != nil {
-				return err
-			}
-		}
-		localOpts = map[string]string{"local_only": ""}
-	} else {
-		localDelivery, err = deliveryTarget(localDeliveryName)
-		if err != nil {
-			return err
-		}
-	}
-
-	if endp.submission {
-		if remoteDeliveryName == "" {
-			remoteDeliveryName = "default_remote_delivery"
-			remoteOpts = map[string]string{"remote_only": ""}
-		}
-		remoteDelivery, err := deliveryTarget(remoteDeliveryName)
-		if err != nil {
-			return err
-		}
-
-		endp.pipeline = append(endp.pipeline,
-			// require_auth and submission_check are always prepended to pipeline
-			//TODO: DKIM sign
-			deliverStep{t: localDelivery, opts: localOpts},
-			deliverStep{t: remoteDelivery, opts: remoteOpts},
-		)
-	} else {
-		endp.pipeline = append(endp.pipeline,
-			//TODO: DKIM verify
-			deliverStep{t: localDelivery, opts: localOpts},
-		)
-	}
-
-	return nil
-}
-
 func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
+	if endp.Auth == nil {
+		return nil, smtp.ErrAuthUnsupported
+	}
+
 	if !endp.Auth.CheckPlain(username, password) {
 		endp.Log.Printf("authentication failed for %s (from %v)", username, state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")

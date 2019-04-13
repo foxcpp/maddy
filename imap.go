@@ -52,8 +52,8 @@ func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 		ioDebug      bool
 	)
 
-	cfg.Custom("auth", false, false, defaultAuthProvider, authDirective, &endp.Auth)
-	cfg.Custom("storage", false, false, defaultStorage, storageDirective, &endp.Store)
+	cfg.Custom("auth", false, true, nil, authDirective, &endp.Auth)
+	cfg.Custom("storage", false, true, nil, storageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, &insecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)

@@ -23,14 +23,12 @@ Valid configuration directives and their forms:
   Generate a self-signed certificate on startup. Useful only for testing.
 
 * `auth <instance_name>` 
-  Use the specified authentication provider module instead of default-auth or
-  default. `instance_name` is the name of the corresponding configuration
-  block.
+  Use the specified authentication provider module. `instance_name` is the name
+  of the corresponding configuration block. **Required.**
 
 * `storage <instance_name>`
-  Use the specified storage backend module instead of default-storage or
-  default. `instance_name` is the name of the corresponding configuration
-  block.
+  Use the specified storage backend module. `instance_name` is the name of the
+  corresponding configuration block. **Required.**
 
 * `insecure_auth`
   Allow plaintext authentication over unprotected (unencrypted) connections.
@@ -77,16 +75,16 @@ Valid configuration directives and their forms:
    Generate a self-signed certificate on startup. Useful only for testing.
 
 * `auth <instance_name>`
-  Use the specified authentication provider module instead of default-auth or
-  default. `instance_name` is the name of the corresponding configuration
-  block.
+  Use the specified authentication provider module. `instance_name` is the name
+  of the corresponding configuration block. **Required.**
 
 * `insecure_auth`
   Allow plaintext authentication over unprotected (unencrypted)
   connections. Use only for testing!
 
 * `submission`
-  When no pipeline is specified - use submission pipeline instead of relay.
+  Preprocess messages before pushing them to pipeline and require
+  authentication for all operations.
   You should use it for Submission protocol endpoints.
 
 * `io_debug`
@@ -108,46 +106,26 @@ Valid configuration directives and their forms:
 * `max_message_size <value>`
   Limit size of incoming messages to `value` bytes. Default is 32 MiB.
 
-* `local_delivery <instance_name> [opts]`
-  Replace delivery target for local email without replace the whole pipeline
-  (with DKIM and stuff).
-
-* `remote_delivery <instance_name> [opts]`
-  Replace delivery target for non-local email without replace the whole pipeline
-  (with DKIM and stuff).
-
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     auth pam
     hostname emersion.fr
+
+    deliver dummy
 }
 ```
 
 ### 'submission' module
 
-Alias to smtp module with submission pipeline used by default.
+Alias to smtp module with submission directive used by default.
 
 ##### SMTP pipeline
 
 SMTP module does have a flexible mechanism that allows you to define a custom
 sequence of actions to apply on each incoming message.
 
-By default, it just passes emails with recipients with domain same as the
-specified hostname to `default_delivery` or `default` delivery target (usually IMAP
-mailbox). If the message does have non-local recipients it will be passed to
-message queue for outgoing transfer.
-
-Here are configuration directives doing the same (almost):
-```
-deliver default local_only
-deliver out_queue remote_only
-```
-
-You can add any number of steps you want using following directives (note that
-if you specify any of them default steps will not be used so you need to 
-specify them explicitly!)
-
+You can add any number of steps you want using following directives:
 * `filter <instnace_name> [opts]` 
   Apply a "filter" to a message, `instance_name` is the configuration set name.
   You can pass additional parameters to filter by adding key=value pairs to the
@@ -198,7 +176,6 @@ specify them explicitly!)
 
 
 ```
-
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     auth pam
@@ -211,7 +188,7 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     match no rcpt "/@emersion.fr$/" {
         require_auth
         filter dkim sign
-        deliver out-queue
+        deliver out_queue
     }
 }
 ```
@@ -261,7 +238,7 @@ code is 1 - authentication is failed. If status code is 2 - other unrelated
 error happened. Additional information should be written to stderr.
 
 ```
-extauth default_auth
+extauth
 ```
 
 Valid configuration directives:
