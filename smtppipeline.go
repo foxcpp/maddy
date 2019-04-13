@@ -321,7 +321,8 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 			return nil, cont, err
 		}
 
-		if r != nil {
+		if r != nil && r != &buf {
+			buf.Reset()
 			if _, err := io.Copy(&buf, r); err != nil {
 				return nil, false, err
 			}

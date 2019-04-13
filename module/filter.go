@@ -58,7 +58,7 @@ type DeliveryContext struct {
 	Opts map[string]string
 }
 
-// DeepCopy method creates a copy of the DeliveryContext structure, also
+// DeepCopy creates a copy of the DeliveryContext structure, also
 // copying contents of the maps and slices.
 //
 // There are two exceptions, however:
@@ -69,7 +69,7 @@ func (ctx *DeliveryContext) DeepCopy() *DeliveryContext {
 	// There is no good way to copy net.Addr, but it should not be
 	// modified by anything anyway so we are safe.
 
-	cpy.Ctx = make(map[string]interface{})
+	cpy.Ctx = make(map[string]interface{}, len(ctx.Ctx))
 	for k, v := range ctx.Ctx {
 		// TODO: This is going to cause troubes if Ctx value is itself
 		// reference-based type like slice or map.

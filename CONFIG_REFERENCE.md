@@ -175,38 +175,27 @@ You can add any number of steps you want using following directives:
   - `src_hostname`
     Hostname reported by the client in the EHLO/HELO command.
 
-    Example:
-    ```
-    match rcpt_domain emersion.fr {
-        filter dkim verify
-        deliver local
-    }
-    ```
-
 * `destination <recipient...> { ... }`
 
-  Execute subblock only if message does have at least one recipient matching
-  any of the specified rules.
+  For all recipients that match at least one rule - execute subblock and stop
+  processing, for all others - skip block and continue.
 
-  "Rule" can be either domain name, full address (should include `@`) or regular expression.
-
-  **Note:** If rule matches recipient - it will be removed from delivery context,
-  thus no steps after this destination block will see this recipient.
-  This ensures that the following example will not deliver message to both 
-
-  **Note 2:** Don't forget that order of pipeline steps matters.
-  ```
-  deliver sql
-  destination postmaster@example.org { deliver local }
-  ```
-  In this case messages for postmaster@example.org will be delivered to
-  **both** 'sql' and 'local' storage.
+  "Rule" can be either domain name, full address (should include `@`) or
+  regular expression that should match full address.
 
   Example: Deliver to "local" all messages for mailboxes on example.org and all other - to "dummy".
   ```
   destination example.org { deliver local }
   deliver dummy
   ```
+
+  **Note:** Don't forget that order of pipeline steps matters.
+  ```
+  deliver sql
+  destination postmaster@example.org { deliver local }
+  ```
+  In this case messages for postmaster@example.org will be delivered to
+  **both** 'sql' and 'local' storage.
 
 
 Complete SMTP block example using custom pipeline:
