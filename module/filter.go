@@ -58,6 +58,39 @@ type DeliveryContext struct {
 	Opts map[string]string
 }
 
+// DeepCopy creates a copy of the DeliveryContext structure, also
+// copying contents of the maps and slices.
+//
+// There are two exceptions, however:
+// - SrcAddr is not copied and copys field references original value.
+// - Slice/map/pointer values in cpy.Ctx are not copied.
+func (ctx *DeliveryContext) DeepCopy() *DeliveryContext {
+	cpy := *ctx
+	// There is no good way to copy net.Addr, but it should not be
+	// modified by anything anyway so we are safe.
+
+	cpy.Ctx = make(map[string]interface{}, len(ctx.Ctx))
+	for k, v := range ctx.Ctx {
+		// TODO: This is going to cause troubes if Ctx value is itself
+		// reference-based type like slice or map.
+		//
+		// However, since we want to have Ctx values settable and referencable
+		// by configuration, they should not use any complex types.
+		// Probably ints, strings, bools but not more.
+		cpy.Ctx[k] = v
+	}
+
+	cpy.To = make([]string, 0, len(ctx.To))
+	for _, rcpt := range ctx.To {
+		cpy.To = append(cpy.To, rcpt)
+	}
+
+	// Opts should not be shared between calls.
+	cpy.Opts = nil
+
+	return &cpy
+}
+
 var ErrSilentDrop = errors.New("message is dropped by filter")
 
 // Filter is the interface implemented by modules that can perform arbitrary

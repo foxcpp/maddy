@@ -95,29 +95,6 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 			return errors.New("Deliver: missing domain part")
 		}
 
-		if _, ok := ctx.Opts["local_only"]; ok {
-			hostname := ctx.Opts["hostname"]
-			if hostname == "" {
-				hostname = ctx.OurHostname
-			}
-
-			if parts[1] != hostname {
-				sqlm.Log.Debugf("local_only, skipping %s", rcpt)
-				continue
-			}
-		}
-		if _, ok := ctx.Opts["remote_only"]; ok {
-			hostname := ctx.Opts["hostname"]
-			if hostname == "" {
-				hostname = ctx.OurHostname
-			}
-
-			if parts[1] == hostname {
-				sqlm.Log.Debugf("remote_only, skipping %s", rcpt)
-				continue
-			}
-		}
-
 		u, err := sqlm.GetExistingUser(parts[0])
 		if err != nil {
 			sqlm.Log.Debugf("failed to get user for %s: %v", rcpt, err)

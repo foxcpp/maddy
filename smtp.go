@@ -185,7 +185,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 
 	for _, entry := range remainingDirs {
 		switch entry.Name {
-		case "filter", "deliver", "match", "stop", "require_auth":
+		case "filter", "deliver", "match", "destination", "stop", "require_auth":
 			step, err := StepFromCfg(entry)
 			if err != nil {
 				return err

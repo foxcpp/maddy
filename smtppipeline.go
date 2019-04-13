@@ -138,26 +138,7 @@ func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reade
 		return nil, true, nil
 	}
 
-	currentMsg := msg
-	var buf bytes.Buffer
-	for _, substep := range step.substeps {
-		r, cont, err := substep.Pass(ctx, currentMsg)
-		if !cont {
-			return nil, cont, err
-		}
-
-		if r != nil {
-			if _, err := io.Copy(&buf, r); err != nil {
-				return nil, false, err
-			}
-			currentMsg = &buf
-		}
-	}
-
-	if currentMsg != msg {
-		return currentMsg, true, nil
-	}
-	return msg, true, nil
+	return passThroughPipeline(step.substeps, ctx, msg)
 }
 
 func (step matchStep) matches(s string) bool {
@@ -274,6 +255,118 @@ func matchStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	return res, nil
 }
 
+type destinationCond struct {
+	value  string
+	regexp *regexp.Regexp
+}
+
+func (cond destinationCond) matches(addr string) bool {
+	if cond.regexp != nil {
+		return cond.regexp.MatchString(addr)
+	}
+
+	if strings.Contains(cond.value, "@") {
+		return cond.value == addr
+	}
+
+	parts := strings.Split(addr, "@")
+	if len(parts) != 2 {
+		return false
+	}
+
+	// Domains are always case-sensetive.
+	return strings.ToLower(parts[1]) == strings.ToLower(cond.value)
+}
+
+type destinationStep struct {
+	conds    []destinationCond
+	substeps []SMTPPipelineStep
+}
+
+func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
+	ctxCpy := ctx.DeepCopy()
+	unmatchedRcpts := make([]string, 0, len(ctx.To))
+	ctxCpy.To = make([]string, 0, len(ctx.To))
+	for _, rcpt := range ctx.To {
+		for _, cond := range step.conds {
+			if cond.matches(rcpt) {
+				ctxCpy.To = append(ctxCpy.To, rcpt)
+				break
+			} else {
+				unmatchedRcpts = append(unmatchedRcpts, rcpt)
+			}
+		}
+	}
+
+	if len(ctxCpy.To) == 0 {
+		return nil, true, nil
+	}
+
+	// Remove matched recipients from original context value, so only one
+	// 'destination' block will ever handle particular recipient.
+	// Note: we are passing ctxCpy to substeps, not ctx.
+	//		 ctxCpy.To contains matched rcpts, ctx.To contains unmatched
+	ctx.To = unmatchedRcpts
+
+	newBody, shouldContinue, err := passThroughPipeline(step.substeps, ctxCpy, msg)
+	return newBody, shouldContinue && len(ctx.To) != 0, err
+}
+
+func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
+	currentMsg := msg
+	var buf bytes.Buffer
+	for _, substep := range steps {
+		r, cont, err := substep.Pass(ctx, currentMsg)
+		if !cont {
+			return nil, cont, err
+		}
+
+		if r != nil && r != &buf {
+			buf.Reset()
+			if _, err := io.Copy(&buf, r); err != nil {
+				return nil, false, err
+			}
+			currentMsg = &buf
+		}
+	}
+
+	if currentMsg != msg {
+		return currentMsg, true, nil
+	}
+	return msg, true, nil
+}
+
+func destinationStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+	if len(node.Args) == 0 {
+		return nil, errors.New("required at least one condition")
+	}
+
+	step := destinationStep{}
+
+	for _, arg := range node.Args {
+		if strings.HasPrefix(arg, "/") && strings.HasSuffix(arg, "/") {
+			re, err := regexp.Compile(arg[1 : len(arg)-1])
+			if err != nil {
+				return nil, err
+			}
+
+			step.conds = append(step.conds, destinationCond{regexp: re})
+		} else {
+			step.conds = append(step.conds, destinationCond{value: arg})
+		}
+	}
+
+	for _, child := range node.Children {
+		substep, err := StepFromCfg(child)
+		if err != nil {
+			return nil, err
+		}
+		step.substeps = append(step.substeps, substep)
+	}
+
+	return &step, nil
+}
+
 func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	switch node.Name {
 	case "filter":
@@ -282,6 +375,8 @@ func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 		return deliverStepFromCfg(node)
 	case "match":
 		return matchStepFromCfg(node)
+	case "destination":
+		return destinationStepFromCfg(node)
 	case "stop":
 		return stopStep{}, nil
 	case "require_auth":

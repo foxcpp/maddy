@@ -153,6 +153,9 @@ You can add any number of steps you want using following directives:
   Executes all nested steps if the condition specified in the directive is true
   (field contains the specified substring).
 
+  **Note:** `match` is a low-level dispatching primitive, in most cases you should
+  use `destination` instead.
+
   If the substring is wrapped in forward slashes - it will be interpreted as a
   Perl-compatible regular expression that should match field contents.
 
@@ -172,8 +175,30 @@ You can add any number of steps you want using following directives:
   - `src_hostname`
     Hostname reported by the client in the EHLO/HELO command.
 
-  See below for example.
+* `destination <recipient...> { ... }`
 
+  For all recipients that match at least one rule - execute subblock and stop
+  processing, for all others - skip block and continue.
+
+  "Rule" can be either domain name, full address (should include `@`) or
+  regular expression that should match full address.
+
+  Example: Deliver to "local" all messages for mailboxes on example.org and all other - to "dummy".
+  ```
+  destination example.org { deliver local }
+  deliver dummy
+  ```
+
+  **Note:** Don't forget that order of pipeline steps matters.
+  ```
+  deliver sql
+  destination postmaster@example.org { deliver local }
+  ```
+  In this case messages for postmaster@example.org will be delivered to
+  **both** 'sql' and 'local' storage.
+
+
+Complete SMTP block example using custom pipeline:
 
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
@@ -181,15 +206,14 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     auth pam
     hostname emersion.fr
 
-    match rcpt "/@emersion.fr$/" {
+    destination emersion.fr {
         filter dkim verify
         deliver local
     }
-    match no rcpt "/@emersion.fr$/" {
-        require_auth
-        filter dkim sign
-        deliver out_queue
-    }
+
+    require_auth
+    filter dkim sign
+    deliver out-queue
 }
 ```
 
