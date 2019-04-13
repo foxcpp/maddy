@@ -30,10 +30,13 @@ type checkSourceHostnameStep struct {
 
 func checkSourceHostnameStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	required := false
-	if len(node.Args) >= 0 {
-		if node.Args[0] == "required" {
-			required = true
-		}
+	if len(node.Args) > 1 {
+		return nil, errors.New("check_source_hostname: expected 0 or 1 argument")
+	}
+	if node.Args[0] == "required" {
+		required = true
+	} else {
+		return nil, errors.New("check_source_hostname: unexpected argument")
 	}
 
 	return checkSourceHostnameStep{
@@ -77,10 +80,13 @@ type checkSourceMxStep struct {
 
 func checkSourceMxStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	required := false
-	if len(node.Args) >= 0 {
-		if node.Args[0] == "required" {
-			required = true
-		}
+	if len(node.Args) > 1 {
+		return nil, errors.New("check_source_mx: expected 0 or 1 argument")
+	}
+	if node.Args[0] == "required" {
+		required = true
+	} else {
+		return nil, errors.New("check_source_mx: unexpected argument")
 	}
 
 	return checkSourceMxStep{
@@ -125,10 +131,13 @@ type checkSourceReverseDNSStep struct {
 
 func checkSourceReverseDNSStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	required := false
-	if len(node.Args) >= 0 {
-		if node.Args[0] == "required" {
-			required = true
-		}
+	if len(node.Args) > 1 {
+		return nil, errors.New("check_source_rdns: expected 0 or 1 argument")
+	}
+	if node.Args[0] == "required" {
+		required = true
+	} else {
+		return nil, errors.New("check_source_rdns: unexpected argument")
 	}
 
 	return checkSourceReverseDNSStep{
