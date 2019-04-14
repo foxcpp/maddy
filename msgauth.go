@@ -3,11 +3,11 @@ package maddy
 import (
 	"io"
 
-	"github.com/emersion/go-dkim"
-	"github.com/emersion/go-msgauth"
+	"github.com/emersion/go-msgauth/authres"
+	"github.com/emersion/go-msgauth/dkim"
 )
 
-func verifyDKIM(r io.Reader) ([]msgauth.Result, error) {
+func verifyDKIM(r io.Reader) ([]authres.Result, error) {
 	// TODO: limit max. number of signatures
 	verifications, err := dkim.Verify(r)
 	if err != nil {
@@ -16,16 +16,16 @@ func verifyDKIM(r io.Reader) ([]msgauth.Result, error) {
 
 	// TODO: add ResultNone
 
-	results := make([]msgauth.Result, 0, len(verifications))
+	results := make([]authres.Result, 0, len(verifications))
 	for _, verif := range verifications {
-		var val msgauth.ResultValue
+		var val authres.ResultValue
 		if verif.Err == nil {
-			val = msgauth.ResultPass
+			val = authres.ResultPass
 		} else {
-			val = msgauth.ResultFail
+			val = authres.ResultFail
 		}
 
-		results = append(results, &msgauth.DKIMResult{
+		results = append(results, &authres.DKIMResult{
 			Value:      val,
 			Domain:     verif.Domain,
 			Identifier: verif.Identifier,
