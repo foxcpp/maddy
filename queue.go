@@ -81,10 +81,14 @@ func (q *Queue) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, &q.Log.Debug)
 	cfg.Int("max_retries", false, false, 4, &q.maxRetries)
 	cfg.Int("workers", false, false, 16, &workers)
-	cfg.String("location", false, true, "", &q.location)
+	cfg.String("location", false, false, filepath.Join(StateDirectory(cfg.Globals), q.name), &q.location)
 	cfg.Custom("target", false, true, nil, deliverDirective, &q.Target)
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if !filepath.IsAbs(q.location) {
+		q.location = filepath.Join(StateDirectory(cfg.Globals), q.location)
 	}
 
 	// TODO: Check location write permissions.
