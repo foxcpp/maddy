@@ -305,7 +305,7 @@ var cases = []struct {
 		[]Node{
 			{
 				Name:     "a",
-				Args:     []string{},
+				Args:     []string{""},
 				Children: []Node{},
 				File:     "test",
 				Line:     1,
@@ -319,7 +319,7 @@ var cases = []struct {
 		[]Node{
 			{
 				Name:     "a",
-				Args:     []string{},
+				Args:     []string{""},
 				Children: []Node{},
 				File:     "test",
 				Line:     1,
