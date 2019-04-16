@@ -1,7 +1,7 @@
 ## maddy-shadow-helper
 
-External setuid binary for interaction with shadow passwords database.
-Unlike maddy-shadow-helper it supports only local shadow database but it does
+External helper binary for interaction with shadow passwords database.
+Unlike maddy-pam-helper it supports only local shadow database but it does
 not have any C dependencies.
 
 ### Installation
