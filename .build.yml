@@ -2,6 +2,7 @@ image: alpine/edge
 packages:
   - go
   - linux-pam-dev
+  - scdoc
 sources:
   - https://github.com/emersion/maddy
 tasks:
@@ -11,3 +12,7 @@ tasks:
   - test: |
       cd maddy
       go test ./...
+  - build-man-pages: |
+      cd maddy
+      scdoc <maddy.1.scd >/dev/null
+      scdoc <maddy.conf.5.scd >/dev/null
