@@ -45,7 +45,7 @@ type Queue struct {
 
 	initialRetryTime time.Duration
 	retryTimeScale   float64
-	maxRetries       int
+	maxTries         int
 
 	Log    log.Logger
 	Target module.DeliveryTarget
@@ -79,7 +79,7 @@ func (q *Queue) Init(cfg *config.Map) error {
 	var workers int
 
 	cfg.Bool("debug", true, &q.Log.Debug)
-	cfg.Int("max_retries", false, false, 4, &q.maxRetries)
+	cfg.Int("max_tries", false, false, 4, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
 	cfg.String("location", false, false, filepath.Join(StateDirectory(cfg.Globals), q.name), &q.location)
 	cfg.Custom("target", false, true, nil, deliverDirective, &q.Target)
@@ -135,7 +135,7 @@ func (q *Queue) worker() {
 		}
 		meta.Ctx.To = newRcpts
 
-		if meta.TriesCount+1 == q.maxRetries || len(meta.Ctx.To) == 0 {
+		if meta.TriesCount == q.maxTries || len(meta.Ctx.To) == 0 {
 			q.removeFromDisk(id)
 			continue
 		}
@@ -250,7 +250,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 		q.Log.Printf("accepted message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
 		meta := &QueueMetadata{
 			UUID:        id,
-			TriesCount:  0,
+			TriesCount:  1,
 			Ctx:         &ctx,
 			LastAttempt: time.Now(),
 		}
@@ -316,7 +316,7 @@ func (q *Queue) readDiskQueue() error {
 		}
 
 		nextTryTime := meta.LastAttempt
-		nextTryTime = nextTryTime.Add(q.initialRetryTime + q.initialRetryTime*time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount))))
+		nextTryTime = nextTryTime.Add(q.initialRetryTime + q.initialRetryTime*time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
 
 		if nextTryTime.Before(time.Now()) {
 			nextTryTime = time.Now().Add(5 * time.Second)
