@@ -12,6 +12,7 @@ import (
 
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
@@ -47,6 +48,7 @@ func checkSourceHostnameStepFromCfg(node config.Node) (SMTPPipelineStep, error) 
 func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
 	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
+		log.Debugf("check_source_hostname: not TCP/IP source (%v), skipped", ctx.SrcAddr)
 		return nil, true, nil
 	}
 
@@ -54,8 +56,10 @@ func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) 
 	if err != nil {
 		ctx.Ctx["src_hostname_check"] = false
 		if s.required {
+			log.Printf("check_source_hostname: %s does not resolve, FAIL", ctx.SrcHostname)
 			return nil, false, errors.New("source hostname does not resolve")
 		} else {
+			log.Debugf("check_source_hostname: %s does not resolve, OK", ctx.SrcHostname)
 			return nil, true, nil
 		}
 	}
@@ -63,13 +67,16 @@ func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) 
 	for _, ip := range srcIPs {
 		if tcpAddr.IP.Equal(ip) {
 			ctx.Ctx["src_hostname_check"] = true
+			log.Debugf("check_source_hostname: A/AAA record found for %s for %s domain, OK", tcpAddr.IP, ctx.SrcHostname)
 			return nil, true, nil
 		}
 	}
 	ctx.Ctx["src_hostname_check"] = false
 	if s.required {
+		log.Printf("check_source_hostname: no A/AAA records found for %s for %s domain, FAIL", tcpAddr.IP, ctx.SrcHostname)
 		return nil, false, errors.New("source hostname does not resolve to source address")
 	} else {
+		log.Debugf("check_source_hostname: no A/AAA records found for %s for %s domain, OK", tcpAddr.IP, ctx.SrcHostname)
 		return nil, true, nil
 	}
 }
@@ -103,6 +110,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 
 	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
+		log.Debugf("check_source_mx: not TCP/IP source (%v), skipped", ctx.SrcAddr)
 		return nil, true, nil
 	}
 
@@ -110,22 +118,27 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	if err != nil {
 		ctx.Ctx["src_mx_check"] = false
 		if s.required {
+			log.Debugf("check_source_mx: %s does not resolve, FAIL", domain)
 			return nil, false, errors.New("could not find MX records for from domain")
 		} else {
+			log.Debugf("check_source_mx: %s does not resolve, OK", domain)
 			return nil, true, nil
 		}
 	}
 
 	for _, mx := range srcMx {
 		if mx.Host == ctx.SrcHostname || mx.Host == tcpAddr.IP.String() {
+			log.Debugf("check_source_mx: MX record %s matches %v (%v), OK", mx.Host, ctx.SrcHostname, tcpAddr.IP)
 			ctx.Ctx["src_mx_check"] = true
 			return nil, true, nil
 		}
 	}
 	ctx.Ctx["src_mx_check"] = false
 	if s.required {
+		log.Printf("check_source_mx: no matching MX records for %s (%s), FAIL", ctx.SrcHostname, tcpAddr.IP)
 		return nil, false, errors.New("From domain has no MX record for itself")
 	} else {
+		log.Debugln("check_source_mx: no MX records, OK")
 		return nil, true, nil
 	}
 }
@@ -153,6 +166,7 @@ func checkSourceReverseDNSStepFromCfg(node config.Node) (SMTPPipelineStep, error
 func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
 	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
+		log.Debugf("check_source_rdns: non TCP/IP source (%v), skipped", ctx.SrcAddr)
 		return nil, true, nil
 	}
 
@@ -160,8 +174,10 @@ func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader
 	if err != nil || len(names) == 0 {
 		ctx.Ctx["src_rdns_check"] = false
 		if s.required {
+			log.Printf("check_source_rdns: rDNS query for %v failed (%v), FAIL", tcpAddr.IP, err)
 			return nil, false, errors.New("could look up rDNS address for source")
 		} else {
+			log.Debugf("check_source_rdns: rDNS query for %v failed (%v), OK", tcpAddr.IP, err)
 			return nil, true, nil
 		}
 	}
@@ -171,13 +187,16 @@ func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader
 	for _, name := range names {
 		if strings.TrimRight(name, ".") == srcDomain {
 			ctx.Ctx["src_rdns_check"] = true
+			log.Debugf("check_source_rdns: PTR record %s matches source domain, OK", name)
 			return nil, true, nil
 		}
 	}
 	ctx.Ctx["src_rdns_check"] = false
 	if s.required {
+		log.Printf("check_source_rdns: no PTR records for %v IP pointing to %s, FAIL", tcpAddr.IP, srcDomain)
 		return nil, false, errors.New("rDNS name does not match source hostname")
 	} else {
+		log.Debugf("check_source_rdns: no PTR records for %v IP pointing to %s, OK", tcpAddr.IP, srcDomain)
 		return nil, true, nil
 	}
 }
