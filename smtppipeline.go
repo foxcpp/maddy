@@ -500,6 +500,7 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 	currentMsg := bytes.NewReader(buf.Bytes())
 
 	for _, step := range steps {
+		log.Debugf("running %T step...", step)
 		r, cont, err := step.Pass(ctx, currentMsg)
 		if !cont {
 			if err == module.ErrSilentDrop {
@@ -513,6 +514,7 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 		if r != nil && r != io.Reader(currentMsg) {
 			buf.Reset()
 			if _, err := io.Copy(buf, r); err != nil {
+				log.Debugf("msg rebuffering failed: %v", err)
 				return nil, false, err
 			}
 			currentMsg.Reset(buf.Bytes())
