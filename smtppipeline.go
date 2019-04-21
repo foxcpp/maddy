@@ -45,7 +45,7 @@ func checkSourceHostnameStepFromCfg(node config.Node) (SMTPPipelineStep, error) 
 }
 
 func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
-	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		return nil, true, nil
 	}
@@ -61,7 +61,7 @@ func (s checkSourceHostnameStep) Pass(ctx *module.DeliveryContext, _ io.Reader) 
 	}
 
 	for _, ip := range srcIPs {
-		if ipAddr.IP.Equal(ip) {
+		if tcpAddr.IP.Equal(ip) {
 			ctx.Ctx["src_hostname_check"] = true
 			return nil, true, nil
 		}
@@ -101,7 +101,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	}
 	domain := parts[1]
 
-	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		return nil, true, nil
 	}
@@ -117,7 +117,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	}
 
 	for _, mx := range srcMx {
-		if mx.Host == ctx.SrcHostname || mx.Host == ipAddr.String() {
+		if mx.Host == ctx.SrcHostname || mx.Host == tcpAddr.IP.String() {
 			ctx.Ctx["src_mx_check"] = true
 			return nil, true, nil
 		}
@@ -151,12 +151,12 @@ func checkSourceReverseDNSStepFromCfg(node config.Node) (SMTPPipelineStep, error
 }
 
 func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
-	ipAddr, ok := ctx.SrcAddr.(*net.IPAddr)
+	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		return nil, true, nil
 	}
 
-	names, err := net.LookupAddr(ipAddr.IP.String())
+	names, err := net.LookupAddr(tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
 		ctx.Ctx["src_rdns_check"] = false
 		if s.required {
