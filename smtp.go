@@ -155,22 +155,17 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
 	for _, entry := range remainingDirs {
-		switch entry.Name {
-		case "filter", "deliver", "match", "destination", "stop", "require_auth":
-			step, err := StepFromCfg(entry)
-			if err != nil {
-				return err
-			}
-
-			// This will not trigger for nested blocks ('match').
-			if entry.Name == "require_auth" {
-				endp.authAlwaysRequired = true
-			}
-
-			endp.pipeline = append(endp.pipeline, step)
-		default:
-			return fmt.Errorf("smtp: unknown config directive: %v", entry.Name)
+		step, err := StepFromCfg(entry)
+		if err != nil {
+			return err
 		}
+
+		// This will not trigger for nested blocks ('match', 'destination').
+		if entry.Name == "require_auth" {
+			endp.authAlwaysRequired = true
+		}
+
+		endp.pipeline = append(endp.pipeline, step)
 	}
 
 	if endp.submission {

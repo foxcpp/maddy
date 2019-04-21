@@ -559,6 +559,6 @@ func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	case "check_source_rdns":
 		return checkSourceReverseDNSStepFromCfg(node)
 	default:
-		return nil, fmt.Errorf("unknown pipeline step: %s", node.Name)
+		return nil, fmt.Errorf("unknown configuration directive or pipeline step: %s", node.Name)
 	}
 }
