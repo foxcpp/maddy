@@ -539,6 +539,45 @@ Refuse to accept messages larger than `value` bytes. The default is 32 MiB.
 
 Enable verbose logging only for this configuration block.
 
+# QUEUE MODULE
+
+Queue module buffers messages on disk and retries delivery multiple times to
+ensure reliable delivery.
+
+```
+queue {
+    workers 16
+    max_tries 8
+    target dummy
+}
+```
+
+Valid configuration directives:
+
+## location
+
+File system directory to use to store queued messages.
+
+Default is /state_directory/configuration_block_name.
+
+## workers <count>
+
+Start up to 'count' goroutines for message processing. Basically, this option
+limits amount of messages tried to be delivered concurrently.
+
+Default is 16.
+
+## max_tries <count>
+
+Attempt delivery up to 'count' times. Note that no more attempts will be done
+is permanent error occured during previous attempt.
+
+Default is 4.
+
+## debug
+
+Enable verbose logging only for this configuration block.
+
 # EXTAUTH MODULE
 
 Module for authentication using external helper binary. It looks for binary
