@@ -45,7 +45,11 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	// TODO: Execute pipeline steps in parallel.
 	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
 
-	passThroughPipeline(s.endp.pipeline, s.ctx, r)
+	s.endp.Log.Printf("incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
+	_, _, err := passThroughPipeline(s.endp.pipeline, s.ctx, r)
+	if err != nil {
+		return err
+	}
 	s.endp.Log.Printf("accepted incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
 
 	return nil
