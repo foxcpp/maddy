@@ -598,7 +598,6 @@ queue {
     max_tries 8
     target dummy
 }
-```
 
 Valid configuration directives:
 
@@ -621,6 +620,30 @@ Attempt delivery up to 'count' times. Note that no more attempts will be done
 is permanent error occured during previous attempt.
 
 Default is 4.
+
+## debug
+
+Enable verbose logging only for this configuration block.
+
+# REMOTE MODULE
+
+Module that implements message delivery to remote MTAs.
+You probably want to use it with queue module for reliability.
+
+```
+remote
+```
+
+Valid configuration directives:
+
+## hostname <hostname>
+
+Override global hostname directive.
+
+## allow_unencrypted
+
+By default, remote module refuses to send messages using plain-text connections.
+You can override this behavior by using this directive.
 
 ## debug
 
