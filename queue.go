@@ -27,7 +27,7 @@ type PartialError struct {
 	Successful []string
 	// Recipients for which delivery permanently failed.
 	Failed []string
-	// Recipients for which delivery tmeporarly failed.
+	// Recipients for which delivery temporarly failed.
 	TemporaryFailed []string
 
 	// Underlying error objects.
@@ -110,7 +110,7 @@ func (q *Queue) Init(cfg *config.Map) error {
 }
 
 func (q *Queue) Close() error {
-	q.wheel.Stop()
+	q.wheel.Close()
 	q.workersWg.Wait()
 	return nil
 }
@@ -119,43 +119,44 @@ func (q *Queue) worker() {
 	for slot := range q.wheel.Dispatch() {
 		q.Log.Debugln("worker woke up for", slot.Value)
 
-		id := slot.Value.(uuid.UUID)
-		meta, body, err := q.openMessage(id)
-		if err != nil {
-			q.Log.Printf("failed to read message: %v", err)
-			continue
-		}
-
-		q.Log.Debugln("try count", meta.TriesCount)
-
-		shouldRetry, newRcpts := q.attemptDelivery(&meta, body)
-		if !shouldRetry {
-			q.removeFromDisk(id)
-			continue
-		}
-		meta.Ctx.To = newRcpts
-
-		if meta.TriesCount == q.maxTries || len(meta.Ctx.To) == 0 {
-			q.removeFromDisk(id)
-			continue
-		}
-
-		meta.TriesCount += 1
-		meta.LastAttempt = time.Now()
-
-		if err := q.updateMetadataOnDisk(&meta); err != nil {
-			q.Log.Printf("failed to update meta-data: %v", err)
-		}
-
-		nextTryTime := time.Now()
-		nextTryTime = nextTryTime.Add(q.initialRetryTime + q.initialRetryTime*time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount))))
-		q.Log.Printf("will retry in %v (at %v)", time.Until(nextTryTime), nextTryTime)
-
-		q.wheel.Add(nextTryTime, id)
-		body.Close()
-
+		q.retryDelivery(slot.Value.(uuid.UUID))
 	}
 	q.workersWg.Done()
+}
+
+func (q *Queue) retryDelivery(id uuid.UUID) {
+	meta, body, err := q.openMessage(id)
+	if err != nil {
+		q.Log.Printf("failed to read message: %v", err)
+	}
+	defer body.Close()
+
+	q.Log.Debugln("try count", meta.TriesCount)
+
+	shouldRetry, newRcpts := q.attemptDelivery(&meta, body)
+	if !shouldRetry {
+		q.removeFromDisk(id)
+		return
+	}
+	meta.Ctx.To = newRcpts
+
+	if meta.TriesCount == q.maxTries || len(meta.Ctx.To) == 0 {
+		q.removeFromDisk(id)
+		return
+	}
+
+	meta.TriesCount += 1
+	meta.LastAttempt = time.Now()
+
+	if err := q.updateMetadataOnDisk(&meta); err != nil {
+		q.Log.Printf("failed to update meta-data: %v", err)
+	}
+
+	nextTryTime := time.Now()
+	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount))))
+	q.Log.Printf("will retry in %v (at %v)", time.Until(nextTryTime), nextTryTime)
+
+	q.wheel.Add(nextTryTime, id)
 }
 
 func (q *Queue) attemptDelivery(meta *QueueMetadata, body io.Reader) (shouldRetry bool, newRcpts []string) {
@@ -247,7 +248,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	}
 
 	go func() {
-		q.Log.Printf("accepted message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
+		q.Log.Printf("enqueued message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
 		meta := &QueueMetadata{
 			UUID:        id,
 			TriesCount:  1,
@@ -316,7 +317,7 @@ func (q *Queue) readDiskQueue() error {
 		}
 
 		nextTryTime := meta.LastAttempt
-		nextTryTime = nextTryTime.Add(q.initialRetryTime + q.initialRetryTime*time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
+		nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
 
 		if nextTryTime.Before(time.Now()) {
 			nextTryTime = time.Now().Add(5 * time.Second)
@@ -361,7 +362,7 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	}
 	defer file.Close()
 
-	if _, ok := meta.Ctx.SrcAddr.(*net.IPAddr); !ok {
+	if _, ok := meta.Ctx.SrcAddr.(*net.TCPAddr); !ok {
 		meta.Ctx.SrcAddr = nil
 	}
 
@@ -382,10 +383,10 @@ func (q *Queue) readMessageMeta(id uuid.UUID) (QueueMetadata, error) {
 	meta := QueueMetadata{}
 
 	// net.Addr can't be deserialized because we don't know concrete type. For
-	// this reason we assume that SrcAddr is IPAddr, if it is not - we drop it
+	// this reason we assume that SrcAddr is TCPAddr, if it is not - we drop it
 	// during serialization (see updateMetadataOnDisk).
 	meta.Ctx = &module.DeliveryContext{}
-	meta.Ctx.SrcAddr = &net.IPAddr{}
+	meta.Ctx.SrcAddr = &net.TCPAddr{}
 
 	if err := json.NewDecoder(file).Decode(&meta); err != nil {
 		return QueueMetadata{}, err

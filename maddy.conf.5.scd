@@ -558,7 +558,7 @@ Valid configuration directives:
 
 File system directory to use to store queued messages.
 
-Default is /state_directory/configuration_block_name.
+Default is $MADDYSTATE/<configuration_block_name>.
 
 ## workers <count>
 
