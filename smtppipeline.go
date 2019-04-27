@@ -17,6 +17,9 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
+// TODO: Consider merging SMTPPipelineStep interface with module.Filter and
+// converting check_source_* into filters.
+
 type SMTPPipelineStep interface {
 	// Pass applies step's processing logic to the message.
 	//
@@ -39,12 +42,10 @@ func (requireAuthStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Reader
 }
 
 type filterStep struct {
-	f    module.Filter
-	opts map[string]string
+	f module.Filter
 }
 
 func (step filterStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
-	ctx.Opts = step.opts
 	r, err := step.f.Apply(ctx, msg)
 	if err == module.ErrSilentDrop {
 		return nil, false, nil
@@ -56,8 +57,7 @@ func (step filterStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Read
 }
 
 type deliverStep struct {
-	t    module.DeliveryTarget
-	opts map[string]string
+	t module.DeliveryTarget
 }
 
 func LookupAddr(ip net.IP) (string, error) {
@@ -93,7 +93,6 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 
 	msg = io.MultiReader(strings.NewReader(received), msg)
 
-	ctx.Opts = step.opts
 	err := step.t.Deliver(*ctx, msg)
 	return nil, err == nil, err
 }
@@ -194,63 +193,49 @@ func stopStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	}
 }
 
-func filterStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func filterStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) == 0 {
-		return nil, errors.New("filter: expected at least one argument")
+		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
 
-	modInst, err := module.GetInstance(node.Args[0])
-	if err != nil {
-		return nil, fmt.Errorf("filter: unknown module instance: %s", node.Args[0])
-	}
-
-	filterInst, ok := modInst.(module.Filter)
-	if !ok {
-		return nil, fmt.Errorf("filter: module %s (%s) doesn't implements Filter", modInst.Name(), modInst.InstanceName())
-	}
-
-	return filterStep{
-		f:    filterInst,
-		opts: readOpts(node.Args[1:]),
-	}, nil
-}
-
-func deliverStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
-	if len(node.Args) == 0 {
-		return nil, errors.New("deliver: expected at least one argument")
-	}
-
-	modInst, err := module.GetInstance(node.Args[0])
-	if err != nil {
-		return nil, fmt.Errorf("deliver: unknown module instance: %s", node.Args[0])
-	}
-
-	deliveryInst, ok := modInst.(module.DeliveryTarget)
-	if !ok {
-		return nil, fmt.Errorf("deliver: module %s (%s) doesn't implements DeliveryTarget", modInst.Name(), modInst.InstanceName())
-	}
-
-	return deliverStep{
-		t:    deliveryInst,
-		opts: readOpts(node.Args[1:]),
-	}, nil
-}
-
-func readOpts(args []string) (res map[string]string) {
-	res = make(map[string]string)
-	for _, arg := range args {
-		parts := strings.SplitN(arg, "=", 1)
-		if len(parts) == 1 {
-			res[parts[0]] = ""
-		} else {
-			res[parts[0]] = parts[1]
+	var modObj module.Module
+	var err error
+	if node.Children != nil {
+		modObj, err = createModule(node.Args)
+		if err != nil {
+			return nil, config.NodeErr(node, "%s", err.Error())
 		}
-
+	} else {
+		modObj, err = module.GetInstance(node.Args[0])
+		if err != nil {
+			return nil, config.NodeErr(node, "%s", err.Error())
+		}
 	}
-	return
+
+	filter, ok := modObj.(module.Filter)
+	if !ok {
+		return nil, config.NodeErr(node, "module %s doesn't implement filter interface", modObj.Name())
+	}
+
+	if node.Children != nil {
+		if err := initInlineModule(modObj, globals, node); err != nil {
+			return nil, err
+		}
+	}
+
+	return filterStep{filter}, nil
 }
 
-func matchStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func deliverStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPPipelineStep, error) {
+	target, err := deliverTarget(globals, node)
+	if err != nil {
+		return nil, err
+	}
+
+	return deliverStep{target}, nil
+}
+
+func matchStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) != 3 && len(node.Args) != 2 {
 		return nil, errors.New("match: expected 3 or 2 arguments")
 	}
@@ -277,7 +262,7 @@ func matchStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	}
 
 	for _, child := range node.Children {
-		step, err := StepFromCfg(child)
+		step, err := StepFromCfg(globals, child)
 		if err != nil {
 			return nil, err
 		}
@@ -381,7 +366,7 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 	return msg, true, nil
 }
 
-func destinationStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
 	if len(node.Args) == 0 {
 		return nil, errors.New("required at least one condition")
 	}
@@ -402,7 +387,7 @@ func destinationStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	}
 
 	for _, child := range node.Children {
-		substep, err := StepFromCfg(child)
+		substep, err := StepFromCfg(globals, child)
 		if err != nil {
 			return nil, err
 		}
@@ -412,16 +397,16 @@ func destinationStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	return &step, nil
 }
 
-func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func StepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
 	switch node.Name {
 	case "filter":
-		return filterStepFromCfg(node)
+		return filterStepFromCfg(globals, &node)
 	case "deliver":
-		return deliverStepFromCfg(node)
+		return deliverStepFromCfg(globals, &node)
 	case "match":
-		return matchStepFromCfg(node)
+		return matchStepFromCfg(globals, node)
 	case "destination":
-		return destinationStepFromCfg(node)
+		return destinationStepFromCfg(globals, node)
 	case "stop":
 		return stopStepFromCfg(node)
 	case "require_auth":

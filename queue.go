@@ -184,49 +184,7 @@ func (q *Queue) attemptDelivery(meta *QueueMetadata, body io.Reader) (shouldRetr
 	return false, nil
 }
 
-func filterRcpts(ctx *module.DeliveryContext) error {
-	newRcpts := make([]string, 0, len(ctx.To))
-	for _, rcpt := range ctx.To {
-		parts := strings.Split(rcpt, "@")
-		if len(parts) != 2 {
-			return fmt.Errorf("malformed address %s: missing domain part", rcpt)
-		}
-
-		if _, ok := ctx.Opts["local_only"]; ok {
-			hostname := ctx.Opts["hostname"]
-			if hostname == "" {
-				hostname = ctx.OurHostname
-			}
-
-			if parts[1] != hostname {
-				log.Debugf("local_only, skipping %s", rcpt)
-				continue
-			}
-		}
-		if _, ok := ctx.Opts["remote_only"]; ok {
-			hostname := ctx.Opts["hostname"]
-			if hostname == "" {
-				hostname = ctx.OurHostname
-			}
-
-			if parts[1] == hostname {
-				log.Debugf("remote_only, skipping %s", rcpt)
-				continue
-			}
-		}
-
-		newRcpts = append(newRcpts, rcpt)
-	}
-
-	ctx.To = newRcpts
-	return nil
-}
-
 func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
-	if err := filterRcpts(&ctx); err != nil {
-		return err
-	}
-
 	if len(ctx.To) == 0 {
 		return nil
 	}

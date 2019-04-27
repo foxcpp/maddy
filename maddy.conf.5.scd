@@ -67,15 +67,13 @@ directive0 {
 }
 ```
 
-Level of nesting is limited, but you should not ever hit the limit with correct
+Level of nesting is limited, but you should never hit the limit with correct
 configuration.
 
-An empty block is equivalent to no block, the following directives are absolutely
-the same from maddy perspective.
-
+In most cases, an empty block is equivalent to no block:
 ```
 directive { }
-directive2
+directive2 # same as above
 ```
 
 ## Environment variables
@@ -189,6 +187,45 @@ is same as just
 
 Remaining man page sections describe various modules you can use in your
 configuration.
+
+## "Inline" configuration blocks
+
+In most cases where you are supposed to specify configuration block name, you
+can instead write module name and include configuration block itself.
+
+Like that:
+```
+something {
+    auth sql {
+        driver sqlite3
+        dsn auth.db
+    }
+}
+```
+instead of
+```
+sql thing_name {
+    driver sqlite3
+    dsn auth.db
+}
+
+something {
+    auth thing_name
+}
+```
+
+Exceptions to this rule are explicitly noted in the documentation.
+
+*Note* that in certain cases you also have to specify a name for "inline"
+configuration block. This is required when the used module uses configuration
+block name as a key to store persistent data.
+```
+smtp ... {
+    deliver queue block_name_here {
+        target remote
+    }
+}
+```
 
 
 # GLOBAL DIRECTIVES
@@ -478,14 +515,14 @@ will be returned to the message source (SMTP client).
 
 You can add any number of steps you want using the following directives:
 
-## filter <instnace_name> [opts]
+## filter <instnace_name>
 
 Apply a "filter" to a message, instance_name is the configuration block name.
 You can pass additional parameters to filter by adding key=value pairs to the
 end directive, you can omit the value and just specify key if it is
 supported by the filter.
 
-## deliver <instance_name> [opts]
+## deliver <instance_name>
 
 Same as the filter directive, but also executes certain pre-delivery
 operations required by RFC 5321 (SMTP), i.e. it adds Received header to
