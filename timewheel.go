@@ -44,7 +44,7 @@ func (tw *TimeWheel) Add(target time.Time, value interface{}) {
 	tw.updateNotify <- target
 }
 
-func (tw *TimeWheel) Stop() {
+func (tw *TimeWheel) Close() {
 	tw.stopNotify <- struct{}{}
 	<-tw.stopNotify
 
@@ -90,7 +90,7 @@ func (tw *TimeWheel) tick() {
 				tw.slotsLock.Unlock()
 				tw.dispatch <- closestSlot
 
-				// break inside of select exits select, not outer loop
+				// break inside of select exits select, not for loop
 				goto breakinnerloop
 			case newTarget := <-tw.updateNotify:
 				// Avoid unnecessary restarts if new target is not going to affect our
