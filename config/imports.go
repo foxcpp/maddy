@@ -6,6 +6,11 @@ import (
 )
 
 func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
+	// Don't allocate slice if we are not going to do anything anyway.
+	if node.Children == nil {
+		return nil
+	}
+
 	newChildrens := make([]Node, 0, len(node.Children))
 	containsImports := false
 	for _, child := range node.Children {

@@ -20,9 +20,9 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
-				Children: []Node{},
 			},
 		},
 		false,
@@ -34,7 +34,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{"a1", "a2"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -83,14 +83,14 @@ var cases = []struct {
 					{
 						Name:     "a_child1",
 						Args:     []string{"c1arg1", "c1arg2"},
-						Children: []Node{},
+						Children: nil,
 						File:     "test",
 						Line:     2,
 					},
 					{
 						Name:     "a_child2",
 						Args:     []string{"c2arg1", "c2arg2"},
-						Children: []Node{},
+						Children: nil,
 						File:     "test",
 						Line:     3,
 					},
@@ -121,14 +121,14 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
 			{
 				Name:     "b",
 				Args:     []string{},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     2,
 			},
@@ -143,14 +143,14 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{"a1", "a2"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
 			{
 				Name:     "b",
 				Args:     []string{"b1", "b2"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     2,
 			},
@@ -179,14 +179,14 @@ var cases = []struct {
 					{
 						Name:     "a_child1",
 						Args:     []string{"c1arg1", "c1arg2"},
-						Children: []Node{},
+						Children: nil,
 						File:     "test",
 						Line:     2,
 					},
 					{
 						Name:     "a_child2",
 						Args:     []string{"c2arg1", "c2arg2"},
-						Children: []Node{},
+						Children: nil,
 						File:     "test",
 						Line:     3,
 					},
@@ -197,7 +197,7 @@ var cases = []struct {
 			{
 				Name:     "b",
 				Args:     []string{},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     4,
 			},
@@ -215,7 +215,7 @@ var cases = []struct {
 					{
 						Name:     "a_child1",
 						Args:     []string{"c1arg1", "c1arg2"},
-						Children: []Node{},
+						Children: nil,
 						File:     "test",
 						Line:     1,
 					},
@@ -264,7 +264,7 @@ var cases = []struct {
 			{
 				Name:     "b",
 				Args:     []string{"b1"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     2,
 			},
@@ -278,7 +278,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{"ABCDEF"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -292,7 +292,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{"ABC2 DEF2"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -306,7 +306,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{""},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -320,7 +320,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{""},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -334,7 +334,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{"{%TESTING_VARIABLE3"},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -349,7 +349,7 @@ var cases = []struct {
 			{
 				Name:     "a",
 				Args:     []string{},
-				Children: []Node{},
+				Children: nil,
 				File:     "test",
 				Line:     1,
 			},
@@ -426,12 +426,12 @@ func TestRead(t *testing.T) {
 			if !reflect.DeepEqual(case_.tree, tree) {
 				t.Log("parse result mismatch")
 				t.Log("expected:")
-				t.Logf("%+v", case_.tree)
+				t.Logf("%+#v", case_.tree)
 				for _, node := range case_.tree {
 					printTree(t, &node, 0)
 				}
 				t.Log("actual:")
-				t.Logf("%+v", tree)
+				t.Logf("%+#v", tree)
 				for _, node := range tree {
 					printTree(t, &node, 0)
 				}

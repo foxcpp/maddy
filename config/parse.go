@@ -113,6 +113,8 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 // To stay consistent with readNode after this function returns the lexer's cursor points
 // to the last token of the black (closing brace).
 func (ctx *parseContext) readNodes() ([]Node, error) {
+	// It is not 'var res []Node' becuase we want empty
+	// but non-nil Children slice for empty braces.
 	res := []Node{}
 
 	// Refuse to continue is nesting is too big.

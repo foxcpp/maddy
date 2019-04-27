@@ -7,6 +7,10 @@ import (
 )
 
 func expandEnvironment(nodes []Node) []Node {
+	if nodes == nil {
+		return nodes
+	}
+
 	replacer := buildEnvReplacer()
 	newNodes := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
