@@ -14,90 +14,142 @@ import (
 Config matchers for module interfaces.
 */
 
-func authProvider(modName string) (module.AuthProvider, error) {
-	modObj, err := module.GetInstance(modName)
-	if err != nil {
-		return nil, err
+// createModule is a helper function for config matchers that can create inline modules.
+func createModule(args []string) (module.Module, error) {
+	modName := args[0]
+	var instName string
+	if len(args) >= 2 {
+		instName = args[1]
+		if module.HasInstance(instName) {
+			return nil, fmt.Errorf("module instance named %s already exists", instName)
+		}
+	}
+
+	newMod := module.Get(modName)
+	if newMod == nil {
+		return nil, fmt.Errorf("unknown module: %s", modName)
+	}
+
+	log.Debugln("module create", modName, instName, "(inline)")
+
+	return newMod(modName, instName)
+}
+
+func initInlineModule(modObj module.Module, globals map[string]interface{}, node *config.Node) error {
+	// This is to ensure modules Init will see expected node layout if it breaks
+	// Map abstraction and works with map.Values.
+	//
+	// Expected: modName modArgs { ... }
+	// Actual: something modName modArgs { ... }
+	node.Name = node.Args[0]
+	node.Args = node.Args[1:]
+
+	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
+	return modObj.Init(config.NewMap(globals, node))
+}
+
+func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	return deliverTarget(m.Globals, node)
+}
+
+func deliverTarget(globals map[string]interface{}, node *config.Node) (module.DeliveryTarget, error) {
+	// First argument to make it compatible with config.Map.
+	if len(node.Args) == 0 {
+		return nil, config.NodeErr(node, "expected at least 1 argument")
+	}
+
+	var modObj module.Module
+	var err error
+	if node.Children != nil {
+		modObj, err = createModule(node.Args)
+		if err != nil {
+			return nil, config.NodeErr(node, "%s", err.Error())
+		}
+	} else {
+		modObj, err = module.GetInstance(node.Args[0])
+		if err != nil {
+			return nil, config.NodeErr(node, "%s", err.Error())
+		}
+	}
+
+	target, ok := modObj.(module.DeliveryTarget)
+	if !ok {
+		return nil, config.NodeErr(node, "module %s doesn't implement delivery target interface", modObj.Name())
+	}
+
+	if node.Children != nil {
+		if err := initInlineModule(modObj, globals, node); err != nil {
+			return nil, err
+		}
+	}
+
+	return target, nil
+}
+
+func authDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	if len(node.Args) == 0 {
+		return nil, m.MatchErr("expected at least 1 argument")
+	}
+
+	var modObj module.Module
+	var err error
+	if node.Children != nil {
+		modObj, err = createModule(node.Args)
+		if err != nil {
+			return nil, m.MatchErr("%s", err.Error())
+		}
+	} else {
+		modObj, err = module.GetInstance(node.Args[0])
+		if err != nil {
+			return nil, m.MatchErr("%s", err.Error())
+		}
 	}
 
 	provider, ok := modObj.(module.AuthProvider)
 	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements auth. provider interface", modObj.Name())
+		return nil, m.MatchErr("module %s doesn't implement auth. provider interface", modObj.Name())
 	}
+
+	if node.Children != nil {
+		if err := initInlineModule(modObj, m.Globals, node); err != nil {
+			return nil, err
+		}
+	}
+
 	return provider, nil
 }
 
-func authDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) != 1 {
-		return nil, m.MatchErr("expected 1 argument")
-	}
-	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
+func storageDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	if len(node.Args) == 0 {
+		return nil, m.MatchErr("expected at least 1 argument")
 	}
 
-	modObj, err := authProvider(node.Args[0])
-	if err != nil {
-		return nil, m.MatchErr("%s", err.Error())
-	}
-
-	return modObj, nil
-}
-
-func storageBackend(modName string) (module.Storage, error) {
-	modObj, err := module.GetInstance(modName)
-	if err != nil {
-		return nil, err
+	var modObj module.Module
+	var err error
+	if node.Children != nil {
+		modObj, err = createModule(node.Args)
+		if err != nil {
+			return nil, m.MatchErr("%s", err.Error())
+		}
+	} else {
+		modObj, err = module.GetInstance(node.Args[0])
+		if err != nil {
+			return nil, m.MatchErr("%s", err.Error())
+		}
 	}
 
 	backend, ok := modObj.(module.Storage)
 	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements storage interface", modObj.Name())
+		return nil, m.MatchErr("module %s doesn't implement storage interface", modObj.Name())
 	}
+
+	if node.Children != nil {
+		if err := initInlineModule(modObj, m.Globals, node); err != nil {
+			return nil, err
+		}
+	}
+
 	return backend, nil
-}
-
-func storageDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) != 1 {
-		return nil, m.MatchErr("expected 1 argument")
-	}
-	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
-	}
-
-	modObj, err := storageBackend(node.Args[0])
-	if err != nil {
-		return nil, m.MatchErr("%s", err.Error())
-	}
-
-	return modObj, nil
-}
-
-func deliveryTarget(modName string) (module.DeliveryTarget, error) {
-	mod, err := module.GetInstance(modName)
-	if mod == nil {
-		return nil, err
-	}
-
-	target, ok := mod.(module.DeliveryTarget)
-	if !ok {
-		return nil, fmt.Errorf("module %s doesn't implements delivery target interface", mod.Name())
-	}
-	return target, nil
-}
-
-func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) != 1 {
-		return nil, m.MatchErr("expected 1 argument")
-	}
-	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
-	}
-
-	modObj, err := deliveryTarget(node.Args[0])
-	if err != nil {
-		return nil, m.MatchErr("%s", err.Error())
-	}
-	return modObj, nil
 }
 
 func logOutput(m *config.Map, node *config.Node) (interface{}, error) {

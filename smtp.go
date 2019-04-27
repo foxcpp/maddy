@@ -175,7 +175,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
 	for _, entry := range remainingDirs {
-		step, err := StepFromCfg(entry)
+		step, err := StepFromCfg(cfg.Globals, entry)
 		if err != nil {
 			return err
 		}

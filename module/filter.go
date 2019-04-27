@@ -61,9 +61,6 @@ type DeliveryContext struct {
 	// For example, spam filter may set Ctx[spam] to true to tell storage
 	// backend to mark message as spam.
 	Ctx map[string]interface{}
-
-	// Custom options passed to filter from server configuration.
-	Opts map[string]string
 }
 
 // DeepCopy creates a copy of the DeliveryContext structure, also
@@ -92,9 +89,6 @@ func (ctx *DeliveryContext) DeepCopy() *DeliveryContext {
 	for _, rcpt := range ctx.To {
 		cpy.To = append(cpy.To, rcpt)
 	}
-
-	// Opts should not be shared between calls.
-	cpy.Opts = nil
 
 	return &cpy
 }
