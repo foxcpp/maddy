@@ -14,7 +14,7 @@ func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
 			// use line information from import directive that is likely
 			// caused this error.
 			if expansionDepth > 255 {
-				return ctx.NodeErr(&child, "hit import expansion limit")
+				return NodeErr(&child, "hit import expansion limit")
 			}
 
 			containsImports = true
@@ -54,7 +54,7 @@ func (ctx *parseContext) resolveImport(node *Node, name string, expansionDepth i
 	src, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ctx.NodeErr(node, "unknown import: "+name)
+			return nil, NodeErr(node, "unknown import: "+name)
 		}
 		return nil, err
 	}

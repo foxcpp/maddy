@@ -91,8 +91,8 @@ func (ctx *parseContext) readNode() (Node, error) {
 	return node, nil
 }
 
-func (ctx *parseContext) NodeErr(node *Node, message string) error {
-	return fmt.Errorf("%s:%d - %s", node.File, node.Line, message)
+func NodeErr(node *Node, f string, args ...interface{}) error {
+	return fmt.Errorf("%s:%d: %s", node.File, node.Line, fmt.Sprintf(f, args...))
 }
 
 func (ctx *parseContext) isSnippet(name string) (bool, string) {
