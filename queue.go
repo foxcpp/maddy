@@ -68,9 +68,10 @@ type QueueMetadata struct {
 func NewQueue(_, instName string) (module.Module, error) {
 	return &Queue{
 		name:             instName,
-		initialRetryTime: 30 * time.Second,
-		retryTimeScale:   5,
-		Log:              log.Logger{Name: "queue"},
+		initialRetryTime: 15 * time.Minute,
+		// note that first **retry** time actually will be initialRetryTime*retryTimeScale
+		retryTimeScale: 2,
+		Log:            log.Logger{Name: "queue"},
 	}, nil
 }
 
@@ -79,7 +80,7 @@ func (q *Queue) Init(cfg *config.Map) error {
 	var workers int
 
 	cfg.Bool("debug", true, &q.Log.Debug)
-	cfg.Int("max_tries", false, false, 4, &q.maxTries)
+	cfg.Int("max_tries", false, false, 8, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
 	cfg.String("location", false, false, filepath.Join(StateDirectory(cfg.Globals), q.name), &q.location)
 	cfg.Custom("target", false, true, nil, deliverDirective, &q.Target)
