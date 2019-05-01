@@ -425,24 +425,6 @@ Same as the filter directive, but also executes certain pre-delivery
 operations required by RFC 5321 (SMTP), i.e. it adds Received header to
 message.
 
-## check_source_hostname [required]
-
-Check that source server hostname (from EHLO/HELO command) resolves to source
-server IP. If `required` argument is present - message will be rejected on
-check failure.
-
-## check_source_mx [required]
-
-Check that domain in MAIL FROM command does have a MX record pointing to
-source server. If `required` argument is present - message will be rejected on
-check failure.
-
-## check_source_rdns [required]
-
-Check that source server IP does have a PTR record point to the domain
-specified in EHLO/HELO command. If `required` argument is present - message
-will be rejected on check failure.
-
 ## stop
 
 Stops processing.
@@ -629,6 +611,32 @@ smtp smtp://0.0.0.0 {
     auth shadow
 }
 ```
+
+# CHECK_* MODULES
+
+All modules in this section run one check on message and either cause it to be
+rejected.
+
+They all implement filter interface and have configuration blocks defined
+implicitly so you use them like that:
+```
+filter check_source_hostname
+```
+
+## check_source_hostname
+
+Check that source server hostname (from EHLO/HELO command) resolves to source
+server IP.
+
+## check_source_mx
+
+Check that domain in MAIL FROM command does have a MX record pointing to
+source server.
+
+## check_source_rdns
+
+Check that source server IP does have a PTR record point to the domain
+specified in EHLO/HELO command.
 
 # DUMMY MODULE
 
