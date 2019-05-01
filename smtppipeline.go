@@ -257,7 +257,7 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 		}
 	}
 	received += fmt.Sprintf("\r\n\tby %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
-	received += fmt.Sprintf("\r\n\twith %s", ctx.SrcProto)
+	received += fmt.Sprintf("\r\n\twith %s id %s", ctx.SrcProto, ctx.DeliveryID)
 	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
 
 	msg = io.MultiReader(strings.NewReader(received), msg)
