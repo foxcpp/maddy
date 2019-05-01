@@ -13,7 +13,12 @@ import (
 func main() {
 	var configpath string
 	flag.StringVar(&configpath, "config", filepath.Join(maddy.ConfigDirectory(), "maddy.conf"), "path to configuration file")
+	debugFlag := flag.Bool("debug", false, "enable debug logging early")
 	flag.Parse()
+
+	if *debugFlag {
+		log.DefaultLogger.Debug = true
+	}
 
 	absCfg, err := filepath.Abs(configpath)
 	if err != nil {
@@ -28,13 +33,26 @@ func main() {
 	}
 	defer f.Close()
 
-	config, err := config.Read(f, absCfg)
+	cfg, err := config.Read(f, absCfg)
 	if err != nil {
 		log.Printf("cannot parse %q: %v\n", configpath, err)
 		os.Exit(1)
 	}
 
-	if err := maddy.Start(config); err != nil {
+	if *debugFlag {
+		// Insert 'debug' directive so other config blocks will inherit it.
+		skipInsert := false
+		for _, node := range cfg {
+			if node.Name == "debug" {
+				skipInsert = true
+			}
+		}
+		if !skipInsert {
+			cfg = append(cfg, config.Node{Name: "debug"})
+		}
+	}
+
+	if err := maddy.Start(cfg); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
