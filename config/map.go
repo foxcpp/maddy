@@ -396,9 +396,6 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block []Node) (unmat
 			if err != nil {
 				return nil, err
 			}
-			if val == nil {
-				return nil, m.MatchErr("missing required directive: %s", matcher.name)
-			}
 		} else {
 			return nil, m.MatchErr("missing required directive: %s", matcher.name)
 		}
