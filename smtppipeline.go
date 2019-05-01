@@ -247,7 +247,6 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 	// We can safetly assume at least one recipient.
 	to := sanitizeString(ctx.To[0])
 
-	// TODO: Include reverse DNS information.
 	received := "Received: from " + ctx.SrcHostname
 	if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
 		domain, err := LookupAddr(tcpAddr.IP)
@@ -257,8 +256,8 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 			received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
 		}
 	}
-	// TODO: Include our public IP address.
-	received += fmt.Sprintf("\r\n\tby %s with %s", sanitizeString(ctx.OurHostname), ctx.SrcProto)
+	received += fmt.Sprintf("\r\n\tby %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
+	received += fmt.Sprintf("\r\n\twith %s", ctx.SrcProto)
 	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
 
 	msg = io.MultiReader(strings.NewReader(received), msg)
