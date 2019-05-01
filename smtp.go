@@ -10,10 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"encoding/hex"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
+	"math/rand"
 )
 
 type SMTPSession struct {
@@ -45,12 +47,19 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	// TODO: Execute pipeline steps in parallel.
 	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
 
-	s.endp.Log.Printf("incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
-	_, _, err := passThroughPipeline(s.endp.pipeline, s.ctx, r)
+	rawID := make([]byte, 32)
+	_, err := rand.Read(rawID)
 	if err != nil {
 		return err
 	}
-	s.endp.Log.Printf("accepted incoming message from %s (%s)", s.ctx.SrcHostname, s.ctx.SrcAddr)
+	s.ctx.DeliveryID = hex.EncodeToString(rawID)
+
+	s.endp.Log.Printf("incoming message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
+	_, _, err = passThroughPipeline(s.endp.pipeline, s.ctx, r)
+	if err != nil {
+		return err
+	}
+	s.endp.Log.Printf("accepted message (delivery ID = %s) from %s (%s)", s.ctx.SrcHostname, s.ctx.DeliveryID, s.ctx.SrcAddr)
 
 	return nil
 }

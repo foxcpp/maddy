@@ -118,7 +118,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	if err != nil {
 		ctx.Ctx["src_mx_check"] = false
 		if s.required {
-			log.Debugf("check_source_mx: %s does not resolve, FAIL", domain)
+			log.Printf("check_source_mx: %s does not resolve, FAIL, delivery ID = %s", domain, ctx.DeliveryID)
 			return nil, false, errors.New("could not find MX records for from domain")
 		} else {
 			log.Debugf("check_source_mx: %s does not resolve, OK", domain)
@@ -135,7 +135,7 @@ func (s checkSourceMxStep) Pass(ctx *module.DeliveryContext, _ io.Reader) (io.Re
 	}
 	ctx.Ctx["src_mx_check"] = false
 	if s.required {
-		log.Printf("check_source_mx: no matching MX records for %s (%s), FAIL", ctx.SrcHostname, tcpAddr.IP)
+		log.Printf("check_source_mx: no matching MX records for %s (%s), FAIL, delivery ID = %s", ctx.SrcHostname, tcpAddr.IP, ctx.DeliveryID)
 		return nil, false, errors.New("From domain has no MX record for itself")
 	} else {
 		log.Debugln("check_source_mx: no MX records, OK")
@@ -174,7 +174,7 @@ func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader
 	if err != nil || len(names) == 0 {
 		ctx.Ctx["src_rdns_check"] = false
 		if s.required {
-			log.Printf("check_source_rdns: rDNS query for %v failed (%v), FAIL", tcpAddr.IP, err)
+			log.Printf("check_source_rdns: rDNS query for %v failed (%v), FAIL, delivery ID = %s", tcpAddr.IP, err, ctx.DeliveryID)
 			return nil, false, errors.New("could look up rDNS address for source")
 		} else {
 			log.Debugf("check_source_rdns: rDNS query for %v failed (%v), OK", tcpAddr.IP, err)
@@ -193,7 +193,7 @@ func (s checkSourceReverseDNSStep) Pass(ctx *module.DeliveryContext, _ io.Reader
 	}
 	ctx.Ctx["src_rdns_check"] = false
 	if s.required {
-		log.Printf("check_source_rdns: no PTR records for %v IP pointing to %s, FAIL", tcpAddr.IP, srcDomain)
+		log.Printf("check_source_rdns: no PTR records for %v IP pointing to %s, FAIL, delivery ID = %s", tcpAddr.IP, srcDomain, ctx.DeliveryID)
 		return nil, false, errors.New("rDNS name does not match source hostname")
 	} else {
 		log.Debugf("check_source_rdns: no PTR records for %v IP pointing to %s, OK", tcpAddr.IP, srcDomain)
