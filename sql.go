@@ -97,7 +97,7 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 
 		u, err := sqlm.GetExistingUser(parts[0])
 		if err != nil {
-			sqlm.Log.Debugf("failed to get user for %s: %v", rcpt, err)
+			sqlm.Log.Printf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 			if err == sqlstore.ErrUserDoesntExists {
 				return &smtp.SMTPError{
 					Code:    550,
@@ -124,7 +124,7 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 					return err
 				}
 			} else {
-				sqlm.Log.Debugf("failed to get inbox for %s: %v", rcpt, err)
+				sqlm.Log.Printf("failed to get inbox for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 				return err
 			}
 		}
@@ -137,7 +137,7 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 			length: len(headerPrefix) + buf.Len(),
 		}
 		if err := mbox.CreateMessage([]string{}, time.Now(), msg); err != nil {
-			sqlm.Log.Debugf("failed to save msg for %s: %v", rcpt, err)
+			sqlm.Log.Printf("failed to save msg for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 			return err
 		}
 	}

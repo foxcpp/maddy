@@ -47,6 +47,10 @@ type DeliveryContext struct {
 	// Our domain.
 	OurHostname string
 
+	// Unique identifier for this delivery attempt. Should be used in logs to
+	// make troubleshotting easier.
+	DeliveryID string
+
 	// Arbitrary context meta-data that can be modified by any module in
 	// pipeline. It is passed unchanged to next module in chain.
 	//
