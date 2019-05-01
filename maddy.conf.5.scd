@@ -207,6 +207,9 @@ disable TLS fully (not recommended!).
 Must be present in either all endpoint modules configuration blocks or as
 global directive.
 
+You can specify multiple certificates, cipher suites and TLS versions too. See
+TLS CONFIGURATION for details.
+
 ## log <targets...>
 
 Write log to one of more "targets".
@@ -254,6 +257,50 @@ go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/ma
 ## debug
 
 Enable verbose logging. You don't need that unless you are reporting a bug.
+
+# TLS CONFIGURATION
+
+Instead of just certificate/key paths 'tls' directive can have block with
+multiple certificates and other options:
+
+```
+tls {
+    <certificate_file> <key_file>
+    <certificate_file> <key_file>
+    <certificate_file> <key_file>
+
+    max_version TLS1.3
+}
+```
+
+Certificate to use for client connection is picked based on SNI. If no SNI is
+sent by client - first certificate is used.
+
+Valid configuration directives:
+
+## min_version <version>
+## max_version <version>
+
+Minimum/maximum accepted TLS version.
+Valid values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2, TLS1.3
+
+Default values are defined by crypto/tls, at the time of writting they were TLS
+1.0 and TLS 1.2.
+
+## ciphers <cipher0> [cipher1] [cipher2] ...
+
+List of supported cipher suites, in preference order.
+Default is defined by crypto/tls and may be different depending on
+CPU architecture and Go version. Ignored if TLS 1.3 i used.
+
+See https://golang.org/pkg/crypto/tls/#pkg-constants for list of valid values.
+
+## curve <curve0> [curve0] ...
+
+The elliptic curves that will be used in an ECDHE handshake, in preference
+order.
+
+Valid values: P256, P384, P521, X25519.
 
 # ADDRESS DEFINITIONS
 
