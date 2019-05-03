@@ -19,7 +19,7 @@ import (
 	"github.com/emersion/go-imap-idle"
 	"github.com/emersion/go-imap-move"
 	"github.com/emersion/go-imap-unselect"
-	"github.com/foxcpp/go-imap-sql/imap/children"
+	"github.com/foxcpp/go-imap-sql/children"
 )
 
 type IMAPEndpoint struct {
