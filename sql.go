@@ -13,8 +13,7 @@ import (
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
-	sqlstore "github.com/foxcpp/go-imap-sql"
-	imapsql "github.com/foxcpp/go-imap-sql/imap"
+	"github.com/foxcpp/go-imap-sql"
 )
 
 type SQLStorage struct {
@@ -74,7 +73,7 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	}
 	sqlm.Backend = back
 
-	sqlm.Log.Debugln("go-imap-sql version", sqlstore.VersionStr)
+	sqlm.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
 
 	return nil
 }
@@ -97,8 +96,8 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 
 		u, err := sqlm.GetExistingUser(parts[0])
 		if err != nil {
-			sqlm.Log.Printf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
-			if err == sqlstore.ErrUserDoesntExists {
+			sqlm.Log.Debugf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
+			if err == imapsql.ErrUserDoesntExists {
 				return &smtp.SMTPError{
 					Code:    550,
 					Message: "Local mailbox doesn't exists",
