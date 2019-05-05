@@ -679,10 +679,9 @@ Valid configuration directives:
 
 Override global hostname directive.
 
-## allow_unencrypted
+## require_tls
 
-By default, remote module refuses to send messages using plain-text connections.
-You can override this behavior by using this directive.
+Always refuse to send messages over unencrypted connections.
 
 ## debug
 
