@@ -21,6 +21,9 @@ IMAP server functionality in one application.
 *-config* _path_
 	Path to configuratio file. Default is /etc/maddy/maddy.conf
 
+*-debug*
+    Enable debug log.
+
 # ENVIRONMENT VARIABLES
 
 *MADDYSTATE*
