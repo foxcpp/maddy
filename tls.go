@@ -109,8 +109,11 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 		PreferServerCipherSuites: true,
 	}
 
+	var certPath, keyPath string
 	m := config.NewMap(nil, blockNode)
 	var minVersionStr, maxVersionStr string
+	m.String("cert", false, true, "", &certPath)
+	m.String("key", false, true, "", &keyPath)
 	m.String("min_version", false, false, "", &minVersionStr)
 	m.String("max_version", false, false, "", &maxVersionStr)
 
@@ -152,11 +155,17 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 		return res, nil
 	}, &cfg.CurvePreferences)
 
-	m.AllowUnknown()
-	unmatched, err := m.Process()
+	if _, err := m.Process(); err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("tls: using %s/%s", certPath, keyPath)
+	cfg.Certificates = append(cfg.Certificates, cert)
 
 	var ok bool
 	cfg.MinVersion, ok = strVersionsMap[minVersionStr]
@@ -168,41 +177,6 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 		return nil, m.MatchErr("unknown TLS version: %s", maxVersionStr)
 	}
 	log.Debugf("tls: min version: %s (%x), max version: %s (%x)", minVersionStr, cfg.MinVersion, maxVersionStr, cfg.MaxVersion)
-
-	for _, subnode := range unmatched {
-		if subnode.Name == "self_signed" {
-			if err := makeSelfSignedCert(&cfg); err != nil {
-				return nil, m.MatchErr("%v", err)
-			}
-			log.Debugf("tls: using self-signed certificate, this is not secure!")
-			continue
-		}
-		if len(subnode.Args) != 1 {
-			return nil, m.MatchErr("expected 2 (cert & key) values, got %d", len(subnode.Args)-1)
-		}
-
-		cert, err := tls.LoadX509KeyPair(subnode.Name, subnode.Args[0])
-		if err != nil {
-			return nil, m.MatchErr("%v", err)
-		}
-		cfg.Certificates = append(cfg.Certificates, cert)
-		log.Debugf("tls: using %s/%s", subnode.Name, subnode.Args[0])
-	}
-
-	if len(cfg.Certificates) == 0 {
-		return nil, m.MatchErr("at least one certificate required")
-	}
-
-	cfg.BuildNameToCertificate()
-	log.Debugf("NameToCert:")
-	for k, v := range cfg.NameToCertificate {
-		// last certificate is usually us, and all prev. are intermediates.
-		cert, err := x509.ParseCertificate(v.Certificate[len(v.Certificate)-1])
-		if err != nil {
-			return nil, err
-		}
-		log.Debugf("%v => %x", k, cert.SerialNumber.Bytes()) // print hex-encoded SerialNumber
-	}
 
 	return &cfg, nil
 }

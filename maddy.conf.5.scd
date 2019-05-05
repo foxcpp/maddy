@@ -260,14 +260,13 @@ Enable verbose logging. You don't need that unless you are reporting a bug.
 
 # TLS CONFIGURATION
 
-Instead of just certificate/key paths 'tls' directive can have block with
-multiple certificates and other options:
+Instead of just certificate/key paths 'tls' directive can have with other
+options:
 
 ```
 tls {
-    <certificate_file> <key_file>
-    <certificate_file> <key_file>
-    <certificate_file> <key_file>
+    cert cert.pem
+    key cert.pem
 
     max_version TLS1.3
 }
@@ -277,6 +276,12 @@ Certificate to use for client connection is picked based on SNI. If no SNI is
 sent by client - first certificate is used.
 
 Valid configuration directives:
+
+## cert <path>
+## key <path>
+
+Specify certificate and key and PEM format. Same as directive arguments for
+'tls' without block.
 
 ## min_version <version>
 ## max_version <version>
