@@ -20,9 +20,9 @@ import (
 var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't supports STARTTLS")
 
 type RemoteDelivery struct {
-	name             string
-	hostname         string
-	allowUnencrypted bool
+	name       string
+	hostname   string
+	requireTLS bool
 
 	Log log.Logger
 }
@@ -37,7 +37,7 @@ func NewRemoteDelivery(_, instName string) (module.Module, error) {
 func (rd *RemoteDelivery) Init(cfg *config.Map) error {
 	cfg.String("hostname", true, true, "", &rd.hostname)
 	cfg.Bool("debug", true, &rd.Log.Debug)
-	cfg.Bool("allow_unencrypted", false, &rd.allowUnencrypted)
+	cfg.Bool("require_tls", false, &rd.requireTLS)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, msg io.Reader) err
 		var temporaryConnErr bool
 		var lastErr error
 		for _, host := range hosts {
-			cl, err = connectToServer(rd.hostname, host, !rd.allowUnencrypted)
+			cl, err = connectToServer(rd.hostname, host, !rd.requireTLS)
 			if err == nil {
 				usedHost = host
 				break
