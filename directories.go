@@ -19,7 +19,7 @@ func StateDirectory(globals map[string]interface{}) string {
 		return dir
 	}
 
-	if val, ok := globals["statedir"]; ok {
+	if val, ok := globals["statedir"]; ok && val.(string) != "" {
 		return val.(string)
 	}
 
@@ -31,7 +31,7 @@ func LibexecDirectory(globals map[string]interface{}) string {
 		return dir
 	}
 
-	if val, ok := globals["libexecdir"]; ok {
+	if val, ok := globals["libexecdir"]; ok && val.(string) != "" {
 		return val.(string)
 	}
 
