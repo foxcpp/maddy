@@ -18,7 +18,6 @@ import (
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
-	"github.com/google/uuid"
 )
 
 // PartialError describes state of partially successfull message delivery.
@@ -54,7 +53,7 @@ type Queue struct {
 }
 
 type QueueMetadata struct {
-	UUID uuid.UUID
+	ID string
 
 	Ctx *module.DeliveryContext
 
@@ -120,12 +119,12 @@ func (q *Queue) worker() {
 	for slot := range q.wheel.Dispatch() {
 		q.Log.Debugln("worker woke up for", slot.Value)
 
-		q.retryDelivery(slot.Value.(uuid.UUID))
+		q.retryDelivery(slot.Value.(string))
 	}
 	q.workersWg.Done()
 }
 
-func (q *Queue) retryDelivery(id uuid.UUID) {
+func (q *Queue) retryDelivery(id string) {
 	meta, body, err := q.openMessage(id)
 	if err != nil {
 		q.Log.Printf("failed to read message: %v", err)
@@ -161,17 +160,17 @@ func (q *Queue) retryDelivery(id uuid.UUID) {
 }
 
 func (q *Queue) attemptDelivery(meta *QueueMetadata, body io.Reader) (shouldRetry bool, newRcpts []string) {
-	meta.Ctx.Ctx["id"] = meta.UUID
+	meta.Ctx.Ctx["id"] = meta.ID
 	err := q.Target.Deliver(*meta.Ctx, body)
 
 	if err == nil {
-		q.Log.Debugf("success for %s", meta.UUID)
+		q.Log.Debugf("success for %s", meta.ID)
 		return false, nil
 	}
 
 	if partialErr, ok := err.(PartialError); ok {
 		meta.Failed = append(meta.Failed, partialErr.Failed...)
-		q.Log.Debugf("partial failure for %s:", meta.UUID)
+		q.Log.Debugf("partial failure for %s:", meta.ID)
 		q.Log.Debugf("- successful: %v", partialErr.Successful)
 		q.Log.Debugf("- temporary failed: %v", partialErr.TemporaryFailed)
 		q.Log.Debugf("- permanently failed: %v", partialErr.Failed)
@@ -180,7 +179,7 @@ func (q *Queue) attemptDelivery(meta *QueueMetadata, body io.Reader) (shouldRetr
 	}
 
 	// non-PartialErr is assumed to be permanent failure for all recipients
-	q.Log.Debugf("permanent failure for all recipients of %s: %v", meta.UUID, err)
+	q.Log.Debugf("permanent failure for all recipients of %s: %v", meta.ID, err)
 	meta.Failed = append(meta.Failed, meta.Ctx.To...)
 	return false, nil
 }
@@ -231,11 +230,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	if len(ctx.To) == 0 {
 		return nil
 	}
-
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return fmt.Errorf("message UUID generation failed: %v", err)
-	}
+	id := ctx.DeliveryID
 
 	var body io.ReadSeeker
 	if seekable, ok := msg.(io.ReadSeeker); ok {
@@ -251,7 +246,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	go func() {
 		q.Log.Printf("enqueued message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
 		meta := &QueueMetadata{
-			UUID:        id,
+			ID:          id,
 			TriesCount:  1,
 			Ctx:         &ctx,
 			LastAttempt: time.Now(),
@@ -270,14 +265,14 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 			return
 		}
 		q.Log.Printf("will retry in %v (at %v)", q.initialRetryTime, time.Now().Add(q.initialRetryTime))
-		q.wheel.Add(time.Now().Add(q.initialRetryTime), meta.UUID)
+		q.wheel.Add(time.Now().Add(q.initialRetryTime), meta.ID)
 	}()
 
 	return nil
 }
 
-func (q *Queue) removeFromDisk(id uuid.UUID) {
-	bodyPath := filepath.Join(q.location, id.String())
+func (q *Queue) removeFromDisk(id string) {
+	bodyPath := filepath.Join(q.location, id)
 	if err := os.Remove(bodyPath); err != nil {
 		q.Log.Printf("failed to remove %s body from disk", id)
 	}
@@ -298,22 +293,16 @@ func (q *Queue) readDiskQueue() error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".meta") {
 			continue
 		}
-		bodyName := entry.Name()[:len(entry.Name())-5]
-		if _, err := os.Stat(filepath.Join(q.location, bodyName)); err != nil {
-			q.Log.Printf("failed to stat body file %s, removing meta-data file", bodyName)
+		id := entry.Name()[:len(entry.Name())-5]
+		if _, err := os.Stat(filepath.Join(q.location, id)); err != nil {
+			q.Log.Printf("failed to stat body file %s, removing meta-data file", id)
 			os.Remove(entry.Name())
-			continue
-		}
-
-		id, err := uuid.Parse(bodyName)
-		if err != nil {
-			q.Log.Printf("%s is not a valid UUID, skipping", bodyName)
 			continue
 		}
 
 		meta, err := q.readMessageMeta(id)
 		if err != nil {
-			q.Log.Printf("failed to read meta-data for %s, skipping: %v", bodyName, err)
+			q.Log.Printf("failed to read meta-data for %s, skipping: %v", id, err)
 			continue
 		}
 
@@ -337,7 +326,7 @@ func (q *Queue) readDiskQueue() error {
 }
 
 func (q *Queue) storeNewMessage(meta *QueueMetadata, body io.Reader) error {
-	bodyPath := filepath.Join(q.location, meta.UUID.String())
+	bodyPath := filepath.Join(q.location, meta.ID)
 	bodyFile, err := os.Create(bodyPath)
 	if err != nil {
 		return err
@@ -356,7 +345,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, body io.Reader) error {
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
-	metaPath := filepath.Join(q.location, meta.UUID.String()+".meta")
+	metaPath := filepath.Join(q.location, meta.ID+".meta")
 	file, err := os.Create(metaPath)
 	if err != nil {
 		return err
@@ -373,8 +362,8 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	return nil
 }
 
-func (q *Queue) readMessageMeta(id uuid.UUID) (QueueMetadata, error) {
-	metaPath := filepath.Join(q.location, id.String()+".meta")
+func (q *Queue) readMessageMeta(id string) (QueueMetadata, error) {
+	metaPath := filepath.Join(q.location, id+".meta")
 	file, err := os.Open(metaPath)
 	if err != nil {
 		return QueueMetadata{}, err
@@ -396,17 +385,17 @@ func (q *Queue) readMessageMeta(id uuid.UUID) (QueueMetadata, error) {
 	return meta, nil
 }
 
-func (q *Queue) openMessage(id uuid.UUID) (meta QueueMetadata, body *os.File, err error) {
+func (q *Queue) openMessage(id string) (meta QueueMetadata, body *os.File, err error) {
 	meta, err = q.readMessageMeta(id)
 	if err != nil {
 		return
 	}
 
-	bodyPath := filepath.Join(q.location, id.String())
+	bodyPath := filepath.Join(q.location, id)
 	body, err = os.Open(bodyPath)
 	if err != nil {
 		q.Log.Printf("removing dangling meta-data file for %v", id)
-		os.Remove(filepath.Join(q.location, id.String()))
+		os.Remove(filepath.Join(q.location, id))
 	}
 
 	return
