@@ -287,7 +287,7 @@ Specify certificate and key and PEM format. Same as directive arguments for
 ## max_version <version>
 
 Minimum/maximum accepted TLS version.
-Valid values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2, TLS1.3
+Valid values are: TLS1.0, TLS1.1, TLS1.2, TLS1.3
 
 Default values are defined by crypto/tls, at the time of writting they were TLS
 1.0 and TLS 1.2.

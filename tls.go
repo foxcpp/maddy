@@ -58,7 +58,6 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 var strVersionsMap = map[string]uint16{
-	"SSL3.0": tls.VersionSSL30,
 	"TLS1.0": tls.VersionTLS10,
 	"TLS1.1": tls.VersionTLS11,
 	"TLS1.2": tls.VersionTLS12,
