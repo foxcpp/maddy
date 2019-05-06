@@ -207,8 +207,8 @@ disable TLS fully (not recommended!).
 Must be present in either all endpoint modules configuration blocks or as
 global directive.
 
-You can specify multiple certificates, cipher suites and TLS versions too. See
-TLS CONFIGURATION for details.
+You can also specify other configuration options such as cipher suites and TLS
+version. See TLS CONFIGURATION for details.
 
 ## log <targets...>
 
@@ -260,15 +260,11 @@ Enable verbose logging. You don't need that unless you are reporting a bug.
 
 # TLS CONFIGURATION
 
-Instead of just certificate/key paths 'tls' directive can have with other
-options:
+You can specify other TLS-related options in a configuration block:
 
 ```
-tls {
-    cert cert.pem
-    key cert.pem
-
-    max_version TLS1.3
+tls cert.pem cert.pem {
+    protocols tls1.3
 }
 ```
 
@@ -277,17 +273,13 @@ sent by client - first certificate is used.
 
 Valid configuration directives:
 
-## cert <path>
-## key <path>
+## protocols <min> <max>
+## protcools <value>
 
-Specify certificate and key and PEM format. Same as directive arguments for
-'tls' without block.
+Minimum/maximum accepted TLS version. If only one value is specified, it will
+be the only one usable version.
 
-## min_version <version>
-## max_version <version>
-
-Minimum/maximum accepted TLS version.
-Valid values are: TLS1.0, TLS1.1, TLS1.2, TLS1.3
+Valid values are: tls1.0, tls1.1, tls1.2, tls1.3
 
 Default values are defined by crypto/tls, at the time of writting they were TLS
 1.0 and TLS 1.2.
@@ -298,14 +290,36 @@ List of supported cipher suites, in preference order.
 Default is defined by crypto/tls and may be different depending on
 CPU architecture and Go version. Ignored if TLS 1.3 i used.
 
-See https://golang.org/pkg/crypto/tls/#pkg-constants for list of valid values.
+Valid values:
+- RSA-WITH-RC4128-SHA
+- RSA-WITH-3DES-EDE-CBC-SHA
+- RSA-WITH-AES128-CBC-SHA
+- RSA-WITH-AES256-CBC-SHA
+- RSA-WITH-AES128-CBC-SHA256
+- RSA-WITH-AES128-GCM-SHA256
+- RSA-WITH-AES256-GCM-SHA384
+- ECDHE-ECDSA-WITH-RC4128-SHA
+- ECDHE-ECDSA-WITH-AES128-CBC-SHA
+- ECDHE-ECDSA-WITH-AES256-CBC-SHA
+- ECDHE-RSA-WITH-RC4128-SHA
+- ECDHE-RSA-WITH-3DES-EDE-CBC-SHA
+- ECDHE-RSA-WITH-AES128-CBC-SHA
+- ECDHE-RSA-WITH-AES256-CBC-SHA
+- ECDHE-ECDSA-WITH-AES128-CBC-SHA256
+- ECDHE-RSA-WITH-AES128-CBC-SHA256
+- ECDHE-RSA-WITH-AES128-GCM-SHA256
+- ECDHE-ECDSA-WITH-AES128-GCM-SHA256
+- ECDHE-RSA-WITH-AES256-GCM-SHA384
+- ECDHE-ECDSA-WITH-AES256-GCM-SHA384
+- ECDHE-RSA-WITH-CHACHA20-POLY1305
+- ECDHE-ECDSA-WITH-CHACHA20-POLY1305
 
 ## curve <curve0> [curve0] ...
 
 The elliptic curves that will be used in an ECDHE handshake, in preference
 order.
 
-Valid values: P256, P384, P521, X25519.
+Valid values: p256, p384, p521, X25519.
 
 # ADDRESS DEFINITIONS
 

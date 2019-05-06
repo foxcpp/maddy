@@ -18,12 +18,6 @@ import (
 
 func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	switch len(node.Args) {
-	case 0:
-		cfg, err := readTlsBlock(node)
-		if err != nil {
-			return nil, err
-		}
-		return cfg, nil
 	case 1:
 		switch node.Args[0] {
 		case "off":
@@ -40,16 +34,11 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 			return &cfg, nil
 		}
 	case 2:
-		cfg := tls.Config{}
-		cert, err := tls.LoadX509KeyPair(node.Args[0], node.Args[1])
+		cfg, err := readTlsBlock(node)
 		if err != nil {
 			return nil, err
 		}
-
-		log.Debugf("tls: using %s/%s", node.Args[0], node.Args[1])
-		cfg.Certificates = append(cfg.Certificates, cert)
-
-		return &cfg, nil
+		return cfg, nil
 	default:
 		return nil, m.MatchErr("expected 1 or 2 arguments")
 	}
@@ -58,48 +47,48 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 var strVersionsMap = map[string]uint16{
-	"TLS1.0": tls.VersionTLS10,
-	"TLS1.1": tls.VersionTLS11,
-	"TLS1.2": tls.VersionTLS12,
-	"TLS1.3": tls.VersionTLS13,
+	"tls1.0": tls.VersionTLS10,
+	"tls1.1": tls.VersionTLS11,
+	"tls1.2": tls.VersionTLS12,
+	"tls1.3": tls.VersionTLS13,
 	"":       0, // use crypto/tls defaults if value is not specified
 }
 
 var strCiphersMap = map[string]uint16{
 	// TLS 1.0 - 1.2 cipher suites.
-	"TLS_RSA_WITH_RC4_128_SHA":                0x0005,
-	"TLS_RSA_WITH_3DES_EDE_CBC_SHA":           0x000a,
-	"TLS_RSA_WITH_AES_128_CBC_SHA":            0x002f,
-	"TLS_RSA_WITH_AES_256_CBC_SHA":            0x0035,
-	"TLS_RSA_WITH_AES_128_CBC_SHA256":         0x003c,
-	"TLS_RSA_WITH_AES_128_GCM_SHA256":         0x009c,
-	"TLS_RSA_WITH_AES_256_GCM_SHA384":         0x009d,
-	"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA":        0xc007,
-	"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA":    0xc009,
-	"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA":    0xc00a,
-	"TLS_ECDHE_RSA_WITH_RC4_128_SHA":          0xc011,
-	"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA":     0xc012,
-	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":      0xc013,
-	"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":      0xc014,
-	"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256": 0xc023,
-	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":   0xc027,
-	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":   0xc02f,
-	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256": 0xc02b,
-	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":   0xc030,
-	"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384": 0xc02c,
-	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305":    0xcca8,
-	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":  0xcca9,
+	"RSA-WITH-RC4128-SHA":                0x0005,
+	"RSA-WITH-3DES-EDE-CBC-SHA":          0x000a,
+	"RSA-WITH-AES128-CBC-SHA":            0x002f,
+	"RSA-WITH-AES256-CBC-SHA":            0x0035,
+	"RSA-WITH-AES128-CBC-SHA256":         0x003c,
+	"RSA-WITH-AES128-GCM-SHA256":         0x009c,
+	"RSA-WITH-AES256-GCM-SHA384":         0x009d,
+	"ECDHE-ECDSA-WITH-RC4128-SHA":        0xc007,
+	"ECDHE-ECDSA-WITH-AES128-CBC-SHA":    0xc009,
+	"ECDHE-ECDSA-WITH-AES256-CBC-SHA":    0xc00a,
+	"ECDHE-RSA-WITH-RC4128-SHA":          0xc011,
+	"ECDHE-RSA-WITH-3DES-EDE-CBC-SHA":    0xc012,
+	"ECDHE-RSA-WITH-AES128-CBC-SHA":      0xc013,
+	"ECDHE-RSA-WITH-AES256-CBC-SHA":      0xc014,
+	"ECDHE-ECDSA-WITH-AES128-CBC-SHA256": 0xc023,
+	"ECDHE-RSA-WITH-AES128-CBC-SHA256":   0xc027,
+	"ECDHE-RSA-WITH-AES128-GCM-SHA256":   0xc02f,
+	"ECDHE-ECDSA-WITH-AES128-GCM-SHA256": 0xc02b,
+	"ECDHE-RSA-WITH-AES256-GCM-SHA384":   0xc030,
+	"ECDHE-ECDSA-WITH-AES256-GCM-SHA384": 0xc02c,
+	"ECDHE-RSA-WITH-CHACHA20-POLY1305":   0xcca8,
+	"ECDHE-ECDSA-WITH-CHACHA20-POLY1305": 0xcca9,
 
 	// TLS 1.3 cipher suites.
-	"TLS_AES_128_GCM_SHA256":       0x1301,
-	"TLS_AES_256_GCM_SHA384":       0x1302,
-	"TLS_CHACHA20_POLY1305_SHA256": 0x1303,
+	"AES128-GCM-SHA256":        0x1301,
+	"AES256-GCM-SHA384":        0x1302,
+	"CHACHA20-POLY1305-SHA256": 0x1303,
 }
 
 var strCurvesMap = map[string]tls.CurveID{
-	"P256":   23,
-	"P384":   24,
-	"P521":   25,
+	"p256":   23,
+	"p384":   24,
+	"p521":   25,
 	"X25519": 29,
 }
 
@@ -108,17 +97,43 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 		PreferServerCipherSuites: true,
 	}
 
-	var certPath, keyPath string
 	m := config.NewMap(nil, blockNode)
-	var minVersionStr, maxVersionStr string
-	m.String("cert", false, true, "", &certPath)
-	m.String("key", false, true, "", &keyPath)
-	m.String("min_version", false, false, "", &minVersionStr)
-	m.String("max_version", false, false, "", &maxVersionStr)
+	var tlsVersions [2]uint16
+
+	if len(blockNode.Args) != 2 {
+		return nil, config.NodeErr(blockNode, "two arguments required")
+	}
+	certPath := blockNode.Args[0]
+	keyPath := blockNode.Args[1]
+
+	m.Custom("protocols", false, false, func() (interface{}, error) {
+		return [2]uint16{0, 0}, nil
+	}, func(m *config.Map, node *config.Node) (interface{}, error) {
+		switch len(node.Args) {
+		case 1:
+			value, ok := strVersionsMap[node.Args[0]]
+			if !ok {
+				return nil, m.MatchErr("invalid TLS version value: %s", node.Args[0])
+			}
+			return [2]uint16{value, value}, nil
+		case 2:
+			minValue, ok := strVersionsMap[node.Args[0]]
+			if !ok {
+				return nil, m.MatchErr("invalid TLS version value: %s", node.Args[0])
+			}
+			maxValue, ok := strVersionsMap[node.Args[1]]
+			if !ok {
+				return nil, m.MatchErr("invalid TLS version value: %s", node.Args[1])
+			}
+			return [2]uint16{minValue, maxValue}, nil
+		default:
+			return nil, m.MatchErr("expected 1 or 2 arguments")
+		}
+	}, &tlsVersions)
 
 	m.Custom("ciphers", false, false, func() (interface{}, error) {
 		return nil, nil
-	}, func(_ *config.Map, node *config.Node) (interface{}, error) {
+	}, func(m *config.Map, node *config.Node) (interface{}, error) {
 		if len(node.Args) == 0 {
 			return nil, m.MatchErr("expected at least 1 argument, got 0")
 		}
@@ -137,7 +152,7 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 
 	m.Custom("curves", false, false, func() (interface{}, error) {
 		return nil, nil
-	}, func(_ *config.Map, node *config.Node) (interface{}, error) {
+	}, func(m *config.Map, node *config.Node) (interface{}, error) {
 		if len(node.Args) == 0 {
 			return nil, m.MatchErr("expected at least 1 argument, got 0")
 		}
@@ -166,16 +181,9 @@ func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
 	log.Debugf("tls: using %s/%s", certPath, keyPath)
 	cfg.Certificates = append(cfg.Certificates, cert)
 
-	var ok bool
-	cfg.MinVersion, ok = strVersionsMap[minVersionStr]
-	if !ok {
-		return nil, m.MatchErr("unknown TLS version: %s", minVersionStr)
-	}
-	cfg.MaxVersion, ok = strVersionsMap[maxVersionStr]
-	if !ok {
-		return nil, m.MatchErr("unknown TLS version: %s", maxVersionStr)
-	}
-	log.Debugf("tls: min version: %s (%x), max version: %s (%x)", minVersionStr, cfg.MinVersion, maxVersionStr, cfg.MaxVersion)
+	cfg.MinVersion = tlsVersions[0]
+	cfg.MaxVersion = tlsVersions[1]
+	log.Debugf("tls: min version: %x, max version: %x", tlsVersions[0], tlsVersions[1])
 
 	return &cfg, nil
 }
