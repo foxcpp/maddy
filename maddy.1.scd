@@ -22,7 +22,7 @@ IMAP server functionality in one application.
 	Path to configuratio file. Default is /etc/maddy/maddy.conf
 
 *-debug*
-    Enable debug log.
+	Enable debug log.
 
 # ENVIRONMENT VARIABLES
 
