@@ -31,7 +31,7 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 				return nil, err
 			}
 			log.Debugln("tls: using self-signed certificate, this is not secure!")
-			return &cfg, nil
+			return cfg, nil
 		}
 	case 2:
 		cfg, err := readTLSBlock(node)
