@@ -67,7 +67,7 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-	back, err := imapsql.NewBackend(driver, dsn, opts)
+	back, err := imapsql.New(driver, dsn, opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}
@@ -94,7 +94,7 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 			return errors.New("Deliver: missing domain part")
 		}
 
-		u, err := sqlm.GetExistingUser(parts[0])
+		u, err := sqlm.GetUser(parts[0])
 		if err != nil {
 			sqlm.Log.Debugf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 			if err == imapsql.ErrUserDoesntExists {
