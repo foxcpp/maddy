@@ -116,6 +116,10 @@ func standardizeAddress(str string) (Address, error) {
 		}
 	}
 
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+
 	// see if we can set port based off scheme
 	if port == "" {
 		switch u.Scheme {

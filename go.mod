@@ -17,5 +17,6 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/mholt/caddy v0.11.5
+	github.com/stretchr/testify v1.3.0
 	golang.org/x/sys v0.0.0-20190412213103-97732733099d // indirect
 )
