@@ -9,11 +9,11 @@ import (
 
 type FuncFilter func(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error)
 
-// FunctionFilter is a wrapper to help create simple filter functions that
+// functionFilter is a wrapper to help create simple filter functions that
 // don't need any state or configuration.
 //
 // See RegisterFunctionFilter.
-type FunctionFilter struct {
+type functionFilter struct {
 	modName, instName string
 	ctxVarName        string
 
@@ -22,7 +22,7 @@ type FunctionFilter struct {
 	f FuncFilter
 }
 
-func (fltr *FunctionFilter) Init(m *config.Map) error {
+func (fltr *functionFilter) Init(m *config.Map) error {
 	m.Bool("ignore_fail", false, &fltr.ignoreFail)
 	if _, err := m.Process(); err != nil {
 		return err
@@ -30,7 +30,7 @@ func (fltr *FunctionFilter) Init(m *config.Map) error {
 	return nil
 }
 
-func (fltr *FunctionFilter) Apply(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error) {
+func (fltr *functionFilter) Apply(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error) {
 	r, err := fltr.f(ctx, msg)
 	if fltr.ctxVarName != "" {
 		ctx.Ctx[fltr.ctxVarName] = err != nil
@@ -41,17 +41,17 @@ func (fltr *FunctionFilter) Apply(ctx *module.DeliveryContext, msg io.Reader) (i
 	return r, nil
 }
 
-func (fltr *FunctionFilter) Name() string {
+func (fltr *functionFilter) Name() string {
 	return fltr.modName
 }
 
-func (fltr *FunctionFilter) InstanceName() string {
+func (fltr *functionFilter) InstanceName() string {
 	return fltr.instName
 }
 
 func NewFuncFilter(name, ctxVarName string, f FuncFilter) module.FuncNewModule {
 	return func(modName, instName string) (module.Module, error) {
-		return &FunctionFilter{
+		return &functionFilter{
 			modName:    modName,
 			instName:   instName,
 			ctxVarName: ctxVarName,
