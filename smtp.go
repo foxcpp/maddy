@@ -59,7 +59,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	s.endp.Log.Printf("accepted message (delivery ID = %s) from %s (%s)", s.ctx.SrcHostname, s.ctx.DeliveryID, s.ctx.SrcAddr)
+	s.endp.Log.Printf("accepted message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
 
 	return nil
 }
