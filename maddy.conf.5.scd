@@ -288,7 +288,7 @@ Default values are defined by crypto/tls, at the time of writting they were TLS
 
 List of supported cipher suites, in preference order.
 Default is defined by crypto/tls and may be different depending on
-CPU architecture and Go version. Ignored if TLS 1.3 i used.
+CPU architecture and Go version. Ignored if TLS 1.3 is used.
 
 Valid values:
 - RSA-WITH-RC4128-SHA
@@ -314,7 +314,7 @@ Valid values:
 - ECDHE-RSA-WITH-CHACHA20-POLY1305
 - ECDHE-ECDSA-WITH-CHACHA20-POLY1305
 
-## curve <curve0> [curve0] ...
+## curve <curve0> [curve1] ...
 
 The elliptic curves that will be used in an ECDHE handshake, in preference
 order.

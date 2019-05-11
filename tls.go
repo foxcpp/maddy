@@ -34,7 +34,7 @@ func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {
 			return &cfg, nil
 		}
 	case 2:
-		cfg, err := readTlsBlock(node)
+		cfg, err := readTLSBlock(node)
 		if err != nil {
 			return nil, err
 		}
@@ -86,13 +86,13 @@ var strCiphersMap = map[string]uint16{
 }
 
 var strCurvesMap = map[string]tls.CurveID{
-	"p256":   23,
-	"p384":   24,
-	"p521":   25,
-	"X25519": 29,
+	"p256":   tls.CurveP256,
+	"p384":   tls.CurveP384,
+	"p521":   tls.CurveP521,
+	"X25519": tls.X25519,
 }
 
-func readTlsBlock(blockNode *config.Node) (*tls.Config, error) {
+func readTLSBlock(blockNode *config.Node) (*tls.Config, error) {
 	cfg := tls.Config{
 		PreferServerCipherSuites: true,
 	}
