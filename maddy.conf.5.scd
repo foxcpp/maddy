@@ -207,6 +207,9 @@ disable TLS fully (not recommended!).
 Must be present in either all endpoint modules configuration blocks or as
 global directive.
 
+You can also specify other configuration options such as cipher suites and TLS
+version. See TLS CONFIGURATION for details.
+
 ## log <targets...>
 
 Write log to one of more "targets".
@@ -254,6 +257,69 @@ go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/ma
 ## debug
 
 Enable verbose logging. You don't need that unless you are reporting a bug.
+
+# TLS CONFIGURATION
+
+You can specify other TLS-related options in a configuration block:
+
+```
+tls cert.pem cert.pem {
+    protocols tls1.3
+}
+```
+
+Certificate to use for client connection is picked based on SNI. If no SNI is
+sent by client - first certificate is used.
+
+Valid configuration directives:
+
+## protocols <min> <max>
+## protcools <value>
+
+Minimum/maximum accepted TLS version. If only one value is specified, it will
+be the only one usable version.
+
+Valid values are: tls1.0, tls1.1, tls1.2, tls1.3
+
+Default values are defined by crypto/tls, at the time of writting they were TLS
+1.0 and TLS 1.2.
+
+## ciphers <cipher0> [cipher1] [cipher2] ...
+
+List of supported cipher suites, in preference order.
+Default is defined by crypto/tls and may be different depending on
+CPU architecture and Go version. Ignored if TLS 1.3 is used.
+
+Valid values:
+- RSA-WITH-RC4128-SHA
+- RSA-WITH-3DES-EDE-CBC-SHA
+- RSA-WITH-AES128-CBC-SHA
+- RSA-WITH-AES256-CBC-SHA
+- RSA-WITH-AES128-CBC-SHA256
+- RSA-WITH-AES128-GCM-SHA256
+- RSA-WITH-AES256-GCM-SHA384
+- ECDHE-ECDSA-WITH-RC4128-SHA
+- ECDHE-ECDSA-WITH-AES128-CBC-SHA
+- ECDHE-ECDSA-WITH-AES256-CBC-SHA
+- ECDHE-RSA-WITH-RC4128-SHA
+- ECDHE-RSA-WITH-3DES-EDE-CBC-SHA
+- ECDHE-RSA-WITH-AES128-CBC-SHA
+- ECDHE-RSA-WITH-AES256-CBC-SHA
+- ECDHE-ECDSA-WITH-AES128-CBC-SHA256
+- ECDHE-RSA-WITH-AES128-CBC-SHA256
+- ECDHE-RSA-WITH-AES128-GCM-SHA256
+- ECDHE-ECDSA-WITH-AES128-GCM-SHA256
+- ECDHE-RSA-WITH-AES256-GCM-SHA384
+- ECDHE-ECDSA-WITH-AES256-GCM-SHA384
+- ECDHE-RSA-WITH-CHACHA20-POLY1305
+- ECDHE-ECDSA-WITH-CHACHA20-POLY1305
+
+## curve <curve0> [curve1] ...
+
+The elliptic curves that will be used in an ECDHE handshake, in preference
+order.
+
+Valid values: p256, p384, p521, X25519.
 
 # ADDRESS DEFINITIONS
 
