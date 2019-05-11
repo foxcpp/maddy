@@ -329,9 +329,7 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 			if err == module.ErrSilentDrop {
 				return nil, false, nil
 			}
-			if err != nil {
-				return nil, true, err
-			}
+			return nil, false, err
 		}
 
 		if r != nil && r != io.Reader(currentMsg) {
