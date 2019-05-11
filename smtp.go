@@ -138,8 +138,9 @@ func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 
 func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	var (
-		err     error
-		ioDebug bool
+		err        error
+		ioDebug    bool
+		submission bool
 
 		writeTimeoutSecs uint
 		readTimeoutSecs  uint
@@ -156,8 +157,14 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
-	cfg.Bool("submission", false, &endp.submission)
+	cfg.Bool("submission", false, &submission)
 	cfg.AllowUnknown()
+
+	// endp.submission can be set to true by NewSMTPEndpoint, leave it on
+	// even if directive is missing.
+	if submission {
+		endp.submission = true
+	}
 
 	remainingDirs, err := cfg.Process()
 	if err != nil {
