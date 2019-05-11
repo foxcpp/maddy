@@ -37,7 +37,13 @@ func (a Address) String() string {
 	if s != "" {
 		s += "://"
 	}
-	s += a.Host
+
+	host := a.Host
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	s += host
+
 	if a.Port != "" &&
 		((scheme == "imaps" && a.Port != "993") ||
 			(scheme == "imap" && a.Port != "143") ||
@@ -76,7 +82,7 @@ func (a Address) Address() string {
 	if a.Scheme == "lmtp+unix" {
 		return a.Path
 	} else {
-		return a.Host + ":" + a.Port
+		return net.JoinHostPort(a.Host, a.Port)
 	}
 }
 
