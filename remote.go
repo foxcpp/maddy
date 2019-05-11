@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -17,7 +18,7 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't supports STARTTLS")
+var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
 
 type RemoteDelivery struct {
 	name       string
@@ -69,90 +70,39 @@ func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, msg io.Reader) err
 		return err
 	}
 
-	// TODO: Add field to DeliveryContext.
-	msgId := ctx.Ctx["id"]
+	groupedRcpts, err := groupByDomain(ctx.To)
+	if err != nil {
+		return err
+	}
+
 	partialErr := PartialError{
 		Errs: make(map[string]error),
 	}
+	// TODO: look into ways to parallelize this, the main trouble here is body
+	// probably create pipe for each server and copy body to each?
+	for domain, rcpts := range groupedRcpts {
+		perr := rd.deliverForServer(&ctx, domain, rcpts, body)
 
-	for _, rcpt := range ctx.To {
-		rcptErr := func(temporary bool, err error) {
-			if temporary {
-				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, rcpt)
-			} else {
-				partialErr.Failed = append(partialErr.Failed, rcpt)
+		if _, err := body.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("body seek failed: %v", err)
+		}
+
+		if perr != nil {
+			rd.Log.Debugf("deliverForServer: %+v (delivery ID = %s)", perr, ctx.DeliveryID)
+			for _, successful := range perr.Successful {
+				partialErr.Successful = append(partialErr.Successful, successful)
 			}
-			partialErr.Errs[rcpt] = err
-		}
-
-		hosts, err := lookupTargetServers(rcpt)
-		if err != nil {
-			isTmp := isTemporaryErr(err)
-			if isTmp {
-				rd.Log.Printf("sending %v to %s: temporary error during MX lookup: %v", msgId, rcpt, err)
-			} else {
-				log.Printf("sending %v to %s: permanent error during MX lookup: %v", msgId, rcpt, err)
+			for _, temporaryFail := range perr.TemporaryFailed {
+				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, temporaryFail)
 			}
-			rcptErr(isTmp, err)
-			continue
-		}
-		if len(hosts) == 0 {
-			// No mail eXchanger => permanent error for this recipient.
-			rd.Log.Printf("sending %v to %s: no MX record found", ctx.Ctx["id"], rcpt)
-			rcptErr(false, errors.New("no MX record found"))
-			continue
-		}
-
-		// TODO: Send to all mailboxes on one server in one session.
-		var cl *smtp.Client
-		var usedHost string
-		var temporaryConnErr bool
-		var lastErr error
-		for _, host := range hosts {
-			cl, err = connectToServer(rd.hostname, host, !rd.requireTLS)
-			if err == nil {
-				usedHost = host
-				break
-			} else {
-				lastErr = err
-				if isTemporaryErr(err) {
-					temporaryConnErr = true
-				}
-				rd.Log.Printf("failed to connect to %s: %v (temporary=%v)", host, err, temporaryConnErr)
+			for _, failed := range perr.Failed {
+				partialErr.Failed = append(partialErr.Failed, failed)
+			}
+			for k, v := range perr.Errs {
+				partialErr.Errs[k] = v
 			}
 		}
-		if cl == nil {
-			rd.Log.Printf("sending %v to %s: no usable SMTP server found", msgId, rcpt)
-			rcptErr(temporaryConnErr, lastErr)
-			continue
-		}
 
-		if err := cl.Mail(ctx.From); err != nil {
-			log.Printf("sending %v to %s: MAIL FROM failed: %v", msgId, rcpt, err)
-			rcptErr(isTemporaryErr(err), err)
-			continue
-		}
-		if err := cl.Rcpt(rcpt); err != nil {
-			log.Printf("sending %v to %s: RCPT TO failed: %v", msgId, usedHost, err)
-			rcptErr(isTemporaryErr(err), err)
-			continue
-		}
-		bodyWriter, err := cl.Data()
-		if err != nil {
-			log.Printf("sending %v to %s: DATA failed: %v", msgId, usedHost, err)
-			rcptErr(isTemporaryErr(err), err)
-			continue
-		}
-		if _, err := io.Copy(bodyWriter, body); err != nil {
-			log.Printf("sending %v to %s: body write failed: %v", msgId, usedHost, err)
-			// I/O errors are assumed to be temporary.
-			rcptErr(isTemporaryErr(err), err)
-			continue
-		}
-
-		rd.Log.Printf("delivered %v to %s (%s)", msgId, rcpt, usedHost)
-		partialErr.Successful = append(partialErr.Successful, rcpt)
-		bodyWriter.Close()
 	}
 
 	if len(partialErr.Failed) == 0 && len(partialErr.TemporaryFailed) == 0 {
@@ -161,19 +111,92 @@ func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, msg io.Reader) err
 	return partialErr
 }
 
-func connectToServer(hostname, host string, requireTLS bool) (*smtp.Client, error) {
-	cl, err := smtp.Dial(host + ":25")
+func toPartialError(temporary bool, rcpts []string, err error) *PartialError {
+	perr := PartialError{
+		Errs: make(map[string]error, len(rcpts)),
+	}
+	if temporary {
+		perr.TemporaryFailed = rcpts
+	} else {
+		perr.Failed = rcpts
+	}
+	for _, rcpt := range rcpts {
+		perr.Errs[rcpt] = err
+	}
+	return &perr
+}
+
+func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain string, rcpts []string, body io.Reader) *PartialError {
+	addrs, err := lookupTargetServers(domain)
+	if err != nil {
+		return toPartialError(false, rcpts, err)
+	}
+
+	var cl *smtp.Client
+	var lastErr error
+	var usedServer string
+	for _, addr := range addrs {
+		cl, err = connectToServer(rd.hostname, addr, rd.requireTLS)
+		if err != nil {
+			rd.Log.Debugf("failed to connect to %s: %v", addr, err)
+			lastErr = err
+			if !isTemporaryErr(err) {
+				break
+			}
+			continue
+		}
+		usedServer = addr
+	}
+	if cl == nil {
+		return toPartialError(isTemporaryErr(lastErr), rcpts, lastErr)
+	}
+
+	rd.Log.Debugln("connected to", usedServer)
+
+	if err := cl.Mail(ctx.From); err != nil {
+		rd.Log.Printf("MAIL FROM failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
+		return toPartialError(isTemporaryErr(err), rcpts, err)
+	}
+
+	perr := PartialError{Errs: make(map[string]error)}
+	for _, rcpt := range rcpts {
+		if err := cl.Rcpt(rcpt); err != nil {
+			rd.Log.Printf("RCPT TO failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
+			if isTemporaryErr(err) {
+				perr.TemporaryFailed = append(perr.TemporaryFailed, rcpt)
+			} else {
+				perr.Failed = append(perr.Failed, rcpt)
+			}
+			perr.Errs[rcpt] = err
+		}
+	}
+	bodyWriter, err := cl.Data()
+	if err != nil {
+		rd.Log.Printf("DATA failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
+		return toPartialError(isTemporaryErr(err), rcpts, err)
+	}
+	defer bodyWriter.Close()
+	if _, err := io.Copy(bodyWriter, body); err != nil {
+		rd.Log.Printf("body write failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
+		return toPartialError(isTemporaryErr(err), rcpts, err)
+	}
+
+	return nil
+}
+
+func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client, error) {
+	cl, err := smtp.Dial(address + ":25")
 	if err != nil {
 		return nil, err
 	}
 
-	if err := cl.Hello(hostname); err != nil {
+	if err := cl.Hello(ourHostname); err != nil {
 		return nil, err
 	}
 
 	if tlsOk, _ := cl.Extension("STARTTLS"); tlsOk {
 		if err := cl.StartTLS(&tls.Config{
-			ServerName: host,
+			ServerName: address,
 		}); err != nil {
 			return nil, err
 		}
@@ -184,13 +207,21 @@ func connectToServer(hostname, host string, requireTLS bool) (*smtp.Client, erro
 	return cl, nil
 }
 
-func lookupTargetServers(addr string) ([]string, error) {
-	addrParts := strings.Split(addr, "@")
-	if len(addrParts) != 2 {
-		return nil, errors.New("malformed recipient address")
-	}
+func groupByDomain(rcpts []string) (map[string][]string, error) {
+	res := make(map[string][]string, len(rcpts))
+	for _, rcpt := range rcpts {
+		parts := strings.Split(rcpt, "@")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("malformed address: %s", rcpt)
+		}
 
-	records, err := net.LookupMX(addrParts[1])
+		res[parts[1]] = append(res[parts[1]], rcpt)
+	}
+	return res, nil
+}
+
+func lookupTargetServers(domain string) ([]string, error) {
+	records, err := net.LookupMX(domain)
 	if err != nil {
 		return nil, err
 	}
