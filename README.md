@@ -20,7 +20,7 @@ You need Go 1.11 or newer. A C compiler is required for SQLite3 storage support
 (can be disabled using `nosqlite3` tag).
 
 ```shell
-go get github.com/emersion/maddy/cmd/maddy
+go get github.com/emersion/maddy/cmd/maddy@master
 ```
 
 You can also compile and install helper binaries from
