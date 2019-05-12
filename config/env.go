@@ -7,8 +7,10 @@ import (
 )
 
 func expandEnvironment(nodes []Node) []Node {
+	// If nodes is nil - don't replace with empty slice, as nil indicates "no
+	// block".
 	if nodes == nil {
-		return nodes
+		return nil
 	}
 
 	replacer := buildEnvReplacer()
