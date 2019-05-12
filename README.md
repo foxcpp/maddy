@@ -10,12 +10,14 @@ IMAP server functionality in one application.
 **⚠️ Warning:** maddy is in development, many important features are missing, there
 are bugs and performance can be bad.
 
+Feel free to join the IRC channel: ##emersion on irc.freenode.net.
+
 ## Getting started
 
 ### Installation
 
 You need Go 1.11 or newer. A C compiler is required for SQLite3 storage support
-(can be disabled using `nosqlite3` tag). 
+(can be disabled using `nosqlite3` tag).
 
 ```shell
 go get github.com/emersion/maddy/cmd/maddy
