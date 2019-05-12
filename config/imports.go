@@ -6,7 +6,8 @@ import (
 )
 
 func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
-	// Don't allocate slice if we are not going to do anything anyway.
+	// Leave nil value as is because it is used as non-existent block indicator
+	// (vs empty slice - empty block).
 	if node.Children == nil {
 		return nil
 	}
