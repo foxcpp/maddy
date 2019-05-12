@@ -598,6 +598,7 @@ queue {
     max_tries 8
     target dummy
 }
+```
 
 Valid configuration directives:
 
@@ -696,7 +697,7 @@ which implements authentication using local shadow database (/etc/shadow).
 ```
 shadow
 smtp smtp://0.0.0.0 {
-    auth shadow
+	auth shadow
 }
 ```
 
