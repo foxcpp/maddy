@@ -35,6 +35,13 @@ func createModule(args []string) (module.Module, error) {
 	return newMod(modName, instName)
 }
 
+func moduleFromNode(node *config.Node) (module.Module, error) {
+	if node.Children != nil {
+		return createModule(node.Args)
+	}
+	return module.GetInstance(node.Args[0])
+}
+
 func initInlineModule(modObj module.Module, globals map[string]interface{}, node *config.Node) error {
 	// This is to ensure modules Init will see expected node layout if it breaks
 	// Map abstraction and works with map.Values.
@@ -58,18 +65,9 @@ func deliverTarget(globals map[string]interface{}, node *config.Node) (module.De
 		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
 
-	var modObj module.Module
-	var err error
-	if node.Children != nil {
-		modObj, err = createModule(node.Args)
-		if err != nil {
-			return nil, config.NodeErr(node, "%s", err.Error())
-		}
-	} else {
-		modObj, err = module.GetInstance(node.Args[0])
-		if err != nil {
-			return nil, config.NodeErr(node, "%s", err.Error())
-		}
+	modObj, err := moduleFromNode(node)
+	if err != nil {
+		return nil, config.NodeErr(node, "%s", err.Error())
 	}
 
 	target, ok := modObj.(module.DeliveryTarget)
@@ -91,18 +89,9 @@ func authDirective(m *config.Map, node *config.Node) (interface{}, error) {
 		return nil, m.MatchErr("expected at least 1 argument")
 	}
 
-	var modObj module.Module
-	var err error
-	if node.Children != nil {
-		modObj, err = createModule(node.Args)
-		if err != nil {
-			return nil, m.MatchErr("%s", err.Error())
-		}
-	} else {
-		modObj, err = module.GetInstance(node.Args[0])
-		if err != nil {
-			return nil, m.MatchErr("%s", err.Error())
-		}
+	modObj, err := moduleFromNode(node)
+	if err != nil {
+		return nil, m.MatchErr("%s", err.Error())
 	}
 
 	provider, ok := modObj.(module.AuthProvider)
@@ -124,18 +113,9 @@ func storageDirective(m *config.Map, node *config.Node) (interface{}, error) {
 		return nil, m.MatchErr("expected at least 1 argument")
 	}
 
-	var modObj module.Module
-	var err error
-	if node.Children != nil {
-		modObj, err = createModule(node.Args)
-		if err != nil {
-			return nil, m.MatchErr("%s", err.Error())
-		}
-	} else {
-		modObj, err = module.GetInstance(node.Args[0])
-		if err != nil {
-			return nil, m.MatchErr("%s", err.Error())
-		}
+	modObj, err := moduleFromNode(node)
+	if err != nil {
+		return nil, m.MatchErr("%s", err.Error())
 	}
 
 	backend, ok := modObj.(module.Storage)

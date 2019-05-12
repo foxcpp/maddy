@@ -17,8 +17,7 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-// TODO: Consider merging SMTPPipelineStep interface with module.Filter and
-// converting check_source_* into filters.
+// TODO: Consider merging SMTPPipelineStep interface with module.Filter.
 
 type SMTPPipelineStep interface {
 	// Pass applies step's processing logic to the message.
@@ -198,18 +197,9 @@ func filterStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPP
 		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
 
-	var modObj module.Module
-	var err error
-	if node.Children != nil {
-		modObj, err = createModule(node.Args)
-		if err != nil {
-			return nil, config.NodeErr(node, "%s", err.Error())
-		}
-	} else {
-		modObj, err = module.GetInstance(node.Args[0])
-		if err != nil {
-			return nil, config.NodeErr(node, "%s", err.Error())
-		}
+	modObj, err := moduleFromNode(node)
+	if err != nil {
+		return nil, config.NodeErr(node, "%s", err.Error())
 	}
 
 	filter, ok := modObj.(module.Filter)
