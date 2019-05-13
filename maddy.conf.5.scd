@@ -626,6 +626,15 @@ Refuse to accept messages larger than `value` bytes. The default is 32 MiB.
 
 Enable verbose logging only for this configuration block.
 
+## fsstore
+## fsstore <directory>
+
+Store messages in file system directory instead of database rows. You generally
+want to use this for server-based RDBMS.
+
+If directory path is not specified - it will be derived from configuration
+block name ('$MADDYSTATE/sql-NAME-fsstore').
+
 # QUEUE MODULE
 
 Queue module buffers messages on disk and retries delivery multiple times to
