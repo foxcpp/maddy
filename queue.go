@@ -81,12 +81,18 @@ func (q *Queue) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, &q.Log.Debug)
 	cfg.Int("max_tries", false, false, 8, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
-	cfg.String("location", false, false, filepath.Join(StateDirectory(cfg.Globals), q.name), &q.location)
+	cfg.String("location", false, false, "", &q.location)
 	cfg.Custom("target", false, true, nil, deliverDirective, &q.Target)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
+	if q.location == "" && q.name == "" {
+		return errors.New("queue: need explicit location directive or config block name if defined inline")
+	}
+	if q.location == "" {
+		q.location = filepath.Join(StateDirectory(cfg.Globals), q.name)
+	}
 	if !filepath.IsAbs(q.location) {
 		q.location = filepath.Join(StateDirectory(cfg.Globals), q.location)
 	}
