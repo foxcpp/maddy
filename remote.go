@@ -181,6 +181,10 @@ func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain s
 		return toPartialError(isTemporaryErr(err), rcpts, err)
 	}
 
+	if err := bodyWriter.Close(); err != nil {
+		return toPartialError(isTemporaryErr(err), rcpts, err)
+	}
+
 	return nil
 }
 
@@ -244,12 +248,8 @@ func isTemporaryErr(err error) bool {
 	if smtpErr, ok := err.(*smtp.SMTPError); ok {
 		return (smtpErr.Code / 100) == 4
 	}
-	if dnsErr, ok := err.(*net.DNSError); ok {
-		return dnsErr.Temporary()
-	}
-
-	if strings.HasPrefix(err.Error(), "x509") {
-		return false
+	if netErr, ok := err.(net.Error); ok {
+		return netErr.Temporary()
 	}
 
 	if err == ErrTLSRequired {
