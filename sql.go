@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,7 +15,8 @@ import (
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
-	"github.com/foxcpp/go-imap-sql"
+	imapsql "github.com/foxcpp/go-imap-sql"
+	"github.com/foxcpp/go-imap-sql/fsstore"
 )
 
 type SQLStorage struct {
@@ -47,8 +50,8 @@ func NewSQLStorage(_, instName string) (module.Module, error) {
 }
 
 func (sqlm *SQLStorage) Init(cfg *config.Map) error {
-	var driver string
-	var dsn string
+	var driver, dsn string
+	var fsstoreLocation string
 	appendlimitVal := int64(-1)
 
 	opts := imapsql.Opts{}
@@ -57,8 +60,35 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, &sqlm.Log.Debug)
 
+	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
+		return "", nil
+	}, func(m *config.Map, node *config.Node) (interface{}, error) {
+		switch len(node.Args) {
+		case 0:
+			if sqlm.instName == "" {
+				return nil, errors.New("sql: need explicit fsstore location for inline definition")
+			}
+			return filepath.Join(StateDirectory(cfg.Globals), "sql-"+sqlm.instName+"-fsstore"), nil
+		case 1:
+			return node.Args[0], nil
+		default:
+			return nil, m.MatchErr("expected 0 or 1 arguments")
+		}
+	}, &fsstoreLocation)
+
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if fsstoreLocation != "" {
+		if !filepath.IsAbs(fsstoreLocation) {
+			fsstoreLocation = filepath.Join(StateDirectory(cfg.Globals), fsstoreLocation)
+		}
+
+		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
+			return err
+		}
+		opts.ExternalStore = &fsstore.Store{Root: fsstoreLocation}
 	}
 
 	if appendlimitVal == -1 {
