@@ -71,16 +71,22 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 	// We can safetly assume at least one recipient.
 	to := sanitizeString(ctx.To[0])
 
-	received := "Received: from " + ctx.SrcHostname
-	if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
-		domain, err := LookupAddr(tcpAddr.IP)
-		if err != nil {
-			received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
-		} else {
-			received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
+	received := "Received: "
+
+	if !ctx.DontTraceSender {
+		received += "from " + ctx.SrcHostname
+		if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
+			domain, err := LookupAddr(tcpAddr.IP)
+			if err != nil {
+				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
+			} else {
+				received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
+			}
 		}
+		received += "\r\n\t"
 	}
-	received += fmt.Sprintf("\r\n\tby %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
+
+	received += fmt.Sprintf("by %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
 	received += fmt.Sprintf("\r\n\twith %s id %s", ctx.SrcProto, ctx.DeliveryID)
 	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
 

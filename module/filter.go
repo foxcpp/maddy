@@ -47,6 +47,10 @@ type DeliveryContext struct {
 	// Our domain.
 	OurHostname string
 
+	// If set - no SrcHostname and SrcAddr will be added to Received
+	// header.
+	DontTraceSender bool
+
 	// Unique identifier for this delivery attempt. Should be used in logs to
 	// make troubleshotting easier.
 	DeliveryID string

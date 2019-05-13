@@ -23,6 +23,8 @@ func (step submissionPrepareStep) Pass(ctx *module.DeliveryContext, msg io.Reade
 		return nil, false, errors.New("Message can't be parsed")
 	}
 
+	ctx.DontTraceSender = true
+
 	if parsed.Header.Get("Message-ID") == "" {
 		msgId, err := uuid.NewRandom()
 		if err != nil {
