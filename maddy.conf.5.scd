@@ -492,8 +492,10 @@ operations required by RFC 5321 (SMTP), i.e. it adds Received header to
 message.
 
 ## stop
+## stop <status code> <message>
 
-Stops processing.
+Stops processing. If status code and message are specified - they will be
+returned. Otherwise "250 OK: queued" will be sent.
 
 ## require_auth
 
