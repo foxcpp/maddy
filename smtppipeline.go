@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -156,10 +157,35 @@ func (step matchStep) matches(s string) bool {
 	}
 }
 
-type stopStep struct{}
+type stopStep struct {
+	errCode int
+	errMsg  string
+}
 
-func (stopStep) Pass(_ *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
+func (step stopStep) Pass(_ *module.DeliveryContext, _ io.Reader) (io.Reader, bool, error) {
+	if step.errCode != 0 {
+		return nil, false, &smtp.SMTPError{Code: step.errCode, Message: step.errMsg}
+	}
 	return nil, false, nil
+}
+
+func stopStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+	switch len(node.Args) {
+	case 0:
+		return stopStep{}, nil
+	case 2:
+		var step stopStep
+		var err error
+		step.errCode, err = strconv.Atoi(node.Args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		step.errMsg = node.Args[1]
+		return step, nil
+	default:
+		return nil, config.NodeErr(&node, "expected 2 or 0 arguments")
+	}
 }
 
 func filterStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
@@ -391,7 +417,7 @@ func StepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	case "destination":
 		return destinationStepFromCfg(node)
 	case "stop":
-		return stopStep{}, nil
+		return stopStepFromCfg(node)
 	case "require_auth":
 		return requireAuthStep{}, nil
 	default:
