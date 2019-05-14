@@ -635,6 +635,19 @@ want to use this for server-based RDBMS.
 If directory path is not specified - it will be derived from configuration
 block name ('$MADDYSTATE/sql-NAME-fsstore').
 
+## sqlite_exclusive_lock
+## sqlite_cache_size <value>
+## sqlite_busy_timeout <value>
+
+SQLite3-specific performance tuning options.
+cache_size and busy_timeout change corresponding PRAGMA options. exclusive_lock
+sets locking_mode PRAGMA to EXCLUSIVE.
+
+If cache_size is not used, SQLite3 default is used. If busy_timeout is not set,
+500000 is used.
+
+See https://sqlite.org/pragma.html for more details.
+
 # QUEUE MODULE
 
 Queue module buffers messages on disk and retries delivery multiple times to

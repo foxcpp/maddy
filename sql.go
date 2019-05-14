@@ -59,6 +59,9 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, &sqlm.Log.Debug)
+	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
+	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
+	cfg.Bool("sqlite3_exclusive_lock", false, &opts.ExclusiveLock)
 
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "", nil
