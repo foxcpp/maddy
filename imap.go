@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/emersion/go-imap"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/maddy/config"
@@ -155,9 +156,9 @@ func (endp *IMAPEndpoint) Close() error {
 	return nil
 }
 
-func (endp *IMAPEndpoint) Login(username, password string) (imapbackend.User, error) {
+func (endp *IMAPEndpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
 	if !endp.Auth.CheckPlain(username, password) {
-		endp.Log.Printf("authentication failed for %s", username)
+		endp.Log.Printf("authentication failed for %s (%v)", username, connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
