@@ -18,8 +18,11 @@ Feel free to join the IRC channel: ##emersion on irc.freenode.net.
 
 You need Go 1.11.4 or newer. A C compiler is required for SQLite3 storage support
 (can be disabled using `nosqlite3` tag).
+Also you need to enable modules support to get the right version. Set
+`GO111MODULE` environment variable to `on`.
 
 ```shell
+export GO111MODULE=on
 go get github.com/emersion/maddy/cmd/maddy@master
 ```
 
@@ -44,6 +47,23 @@ You can view page source [here](maddy.conf.5.scd) (it is readable!) or
 generate man page using [scdoc](https://git.sr.ht/~sircmpwn/scdoc) utliity:
 ```
 scdoc < maddy.conf.5.scd > maddy.conf.5
+```
+
+## go-imap-sql database management
+
+go-imap-sql is the main storage backend used by maddy. You might want to take a
+look at https://github.com/foxcpp/go-imap-sql and
+https://github.com/foxcpp/go-imap-sql/tree/master/cmd/imapsql-ctl for how to
+configure and use it. imapsql-ctl needs to be compiled with build tag
+corresponding to used RDBMS (`sqlite3`, `mysql`, `postgres`):
+```
+export GO111MODULE=on
+go get -tags sqlite3 github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl
+```
+
+You need imapsql-ctl tool to create user accounts. Here is the command to use:
+```
+imapsql-ctl --driver DRIVER --dsn DSN users create NAME
 ```
 
 ## License
