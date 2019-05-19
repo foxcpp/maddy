@@ -27,7 +27,7 @@ github.com/emersion/go-smtp v0.11.0 h1:lM9M2JSxSKEb1dfvB4stkIaIkNJxd5na5Mok8FJDl
 github.com/emersion/go-smtp v0.11.0/go.mod h1:CfUbM5NgspbOMHFEgCdoK2PVrKt48HAPtL8hnahwfYg=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe h1:40SWqY0zE3qCi6ZrtTf5OUdNm5lDnGnjRSq9GgmeTrg=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
-github.com/foxcpp/go-imap-sql v0.1.0 h1:T4dY0u/I4L2BD4vBnOPACZcAzm2Bnojsjtkh28NuoE0=
+github.com/foxcpp/go-imap-sql v0.1.0 h1:S1o0tnhP1C0VMu5Vetj6e+9jcynfkEa3xRcBDzaX81Q=
 github.com/foxcpp/go-imap-sql v0.1.0/go.mod h1:J7DAF5zkqEO0YAi2p+kLv5TrSvpf4YOyz0bzLKgGl+4=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
