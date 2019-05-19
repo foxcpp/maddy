@@ -16,7 +16,7 @@ Feel free to join the IRC channel: ##emersion on irc.freenode.net.
 
 ### Installation
 
-You need Go 1.11 or newer. A C compiler is required for SQLite3 storage support
+You need Go 1.11.4 or newer. A C compiler is required for SQLite3 storage support
 (can be disabled using `nosqlite3` tag).
 
 ```shell
