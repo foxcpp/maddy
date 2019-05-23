@@ -291,7 +291,7 @@ flag during compilation:
 go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/maddy/bin'
 ```
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging. You don't need that unless you are reporting a bug.
 
@@ -422,16 +422,16 @@ Use an authentication module with a specified configuration block name. *Require
 
 Use a storage module with a specified configuration block name. *Required.*
 
-## insecure_auth
+## insecure_auth [yes/no]
 
 Allow plain-text authentication over unencrypted connections. Not recommended!
 Enabled automatically if TLS is disabled.
 
-## io_debug
+## io_debug [yes/no]
 
 Write all commands and responses to stderr.
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
 
@@ -468,11 +468,11 @@ Override the global hostname directive. The hostname is used in EHLO/HELO greeti
 
 Override global tls directive.
 
-## io_debug
+## io_debug [yes/no]
 
 Write all commands and responses to stderr.
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
 
@@ -498,7 +498,7 @@ Limit the size of incoming messages to value bytes. The default is 32 MiB.
 Use an authentication module with a specified configuration block name.
 *Required.*
 
-## submission
+## submission [yes/no]
 
 Preprocess messages before pushing them to pipeline and require authentication
 for all operations. You should use it for Submission protocol endpoints.
@@ -619,7 +619,7 @@ For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parame
 
 Refuse to accept messages larger than `value` bytes. The default is 32 MiB.
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
 
@@ -680,7 +680,7 @@ is permanent error occured during previous attempt.
 
 Default is 4.
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
 
@@ -703,7 +703,7 @@ Override global hostname directive.
 
 Always refuse to send messages over unencrypted connections.
 
-## debug
+## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
 
@@ -731,7 +731,7 @@ Valid configuration directives:
 
 Location of the helper binary.
 
-## debug
+## debug [yes/no]
 
 Verbose log only for this configuration block.
 
