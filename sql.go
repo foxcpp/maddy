@@ -20,9 +20,11 @@ import (
 )
 
 type SQLStorage struct {
-	*imapsql.Backend
+	back     *imapsql.Backend
 	instName string
 	Log      log.Logger
+
+	perDomain bool
 }
 
 type Literal struct {
@@ -59,6 +61,7 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, &sqlm.Log.Debug)
+	cfg.Bool("storage_perdomain", true, &sqlm.perDomain)
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, &opts.ExclusiveLock)
@@ -100,11 +103,11 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-	back, err := imapsql.New(driver, dsn, opts)
+	var err error
+	sqlm.back, err = imapsql.New(driver, dsn, opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}
-	sqlm.Backend = back
 
 	sqlm.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
 
@@ -113,6 +116,33 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 
 func (sqlm *SQLStorage) IMAPExtensions() []string {
 	return []string{"APPENDLIMIT", "MOVE", "CHILDREN"}
+}
+
+func (sqlm *SQLStorage) Updates() <-chan backend.Update {
+	return sqlm.back.Updates()
+}
+
+func (sqlm *SQLStorage) EnableChildrenExt() bool {
+	return sqlm.back.EnableChildrenExt()
+}
+
+func (sqlm *SQLStorage) CheckPlain(username, password string) bool {
+	return sqlm.back.CheckPlain(username, password)
+}
+
+func (sqlm *SQLStorage) GetOrCreateUser(username string) (backend.User, error) {
+	var accountName string
+	if sqlm.perDomain {
+		if !strings.Contains(username, "@") {
+			return nil, errors.New("GetOrCreateUser: username@domain required")
+		}
+		accountName = username
+	} else {
+		parts := strings.Split(username, "@")
+		accountName = parts[0]
+	}
+
+	return sqlm.back.GetOrCreateUser(accountName)
 }
 
 func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
@@ -127,7 +157,7 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 			return errors.New("Deliver: missing domain part")
 		}
 
-		u, err := sqlm.GetUser(parts[0])
+		u, err := sqlm.back.GetUser(parts[0])
 		if err != nil {
 			sqlm.Log.Debugf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 			if err == imapsql.ErrUserDoesntExists {

@@ -295,6 +295,12 @@ go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/ma
 
 Enable verbose logging. You don't need that unless you are reporting a bug.
 
+## storage_perdomain [yes/no]
+
+Don't remove domain part when accessing the underlying storage and require it
+to be present. Can be used if you want user@domain1 and user@domain2 to be
+different accounts at the storage level.
+
 # TLS CONFIGURATION
 
 You can specify other TLS-related options in a configuration block:
@@ -647,6 +653,10 @@ If cache_size is not used, SQLite3 default is used. If busy_timeout is not set,
 500000 is used.
 
 See https://sqlite.org/pragma.html for more details.
+
+## storage_perdomain [yes/no]
+
+Override global storage_perdomain directive.
 
 # QUEUE MODULE
 
