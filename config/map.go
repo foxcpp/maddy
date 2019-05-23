@@ -86,6 +86,29 @@ func (m *Map) Bool(name string, inheritGlobal bool, store *bool) {
 	}, store)
 }
 
+// StringList maps configuration directive with the specified name to variable
+// referenced by 'store' pointer.
+//
+// Configuration directive must be in form 'name arbitrary_string arbitrary_string ...'
+// Where at least one argument must be present.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
+func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal []string, store *[]string) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Args) == 0 {
+			return nil, m.MatchErr("expected at least one argument")
+		}
+		if len(node.Children) != 0 {
+			return nil, m.MatchErr("can't declare block here")
+		}
+
+		return node.Args, nil
+	}, store)
+}
+
 // String maps configuration directive with the specified name to variable
 // referenced by 'store' pointer.
 //
