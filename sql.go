@@ -24,7 +24,9 @@ type SQLStorage struct {
 	instName string
 	Log      log.Logger
 
-	perDomain bool
+	storagePerDomain bool
+	authPerDomain    bool
+	authDomains      []string
 }
 
 type Literal struct {
@@ -61,7 +63,9 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, &sqlm.Log.Debug)
-	cfg.Bool("storage_perdomain", true, &sqlm.perDomain)
+	cfg.Bool("storage_perdomain", true, &sqlm.storagePerDomain)
+	cfg.Bool("auth_perdomain", true, &sqlm.authPerDomain)
+	cfg.StringList("auth_domains", true, false, nil, &sqlm.authDomains)
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, &opts.ExclusiveLock)
@@ -84,6 +88,10 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if sqlm.authPerDomain && sqlm.authDomains == nil {
+		return errors.New("sql: auth_domains must be set if auth_perdomain is used")
 	}
 
 	if fsstoreLocation != "" {
@@ -127,12 +135,17 @@ func (sqlm *SQLStorage) EnableChildrenExt() bool {
 }
 
 func (sqlm *SQLStorage) CheckPlain(username, password string) bool {
-	return sqlm.back.CheckPlain(username, password)
+	accountName, ok := checkDomainAuth(username, sqlm.authPerDomain, sqlm.authDomains)
+	if !ok {
+		return false
+	}
+
+	return sqlm.back.CheckPlain(accountName, password)
 }
 
 func (sqlm *SQLStorage) GetOrCreateUser(username string) (backend.User, error) {
 	var accountName string
-	if sqlm.perDomain {
+	if sqlm.storagePerDomain {
 		if !strings.Contains(username, "@") {
 			return nil, errors.New("GetOrCreateUser: username@domain required")
 		}

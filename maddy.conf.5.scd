@@ -301,6 +301,23 @@ Don't remove domain part when accessing the underlying storage and require it
 to be present. Can be used if you want user@domain1 and user@domain2 to be
 different accounts at the storage level.
 
+## auth_perdomain [yes/no]
+
+If yes - authentication requests that specify just username will be rejected
+as invalid and domain part will be used as part of login name.
+
+## auth_domains <domain0> [domain1] ...
+
+Domains that should be allowed in username.
+
+For example, if auth_domains is set to "domain1 domain2", then
+username, username@domain1 and username@domain2 will be accepted as valid login
+name.
+
+If used without auth_perdomain, domain part will be removed from login before
+check with underlying auth. mechanism. If auth_perdomain is set, then
+auth_domains must be also set and domain part WILL NOT be removed before check.
+
 # TLS CONFIGURATION
 
 You can specify other TLS-related options in a configuration block:
@@ -658,6 +675,11 @@ See https://sqlite.org/pragma.html for more details.
 
 Override global storage_perdomain directive.
 
+## auth_perdomain [yes/no]
+## auth_domains ...
+
+Override corresponding global directives.
+
 # QUEUE MODULE
 
 Queue module buffers messages on disk and retries delivery multiple times to
@@ -747,6 +769,12 @@ Location of the helper binary.
 ## debug [yes/no]
 
 Verbose log only for this configuration block.
+
+## auth_perdomain [yes/no]
+## auth_domains ...
+
+Override corresponding global directives.
+
 
 # PAM MODULE
 
