@@ -78,14 +78,24 @@ func (m *Map) Bool(name string, inheritGlobal bool, store *bool) {
 	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
 		return false, nil
 	}, func(m *Map, node *Node) (interface{}, error) {
-		if len(node.Args) != 0 {
-			return nil, m.MatchErr("unexpected arguments")
-		}
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare block here")
 		}
 
-		return true, nil
+		if len(node.Args) == 0 {
+			return true, nil
+		}
+		if len(node.Args) != 1 {
+			return nil, m.MatchErr("expected exactly 1 argument")
+		}
+
+		switch node.Args[0] {
+		case "yes":
+			return true, nil
+		case "no":
+			return false, nil
+		}
+		return nil, m.MatchErr("bool argument should be 'yes' or 'no'")
 	}, store)
 }
 
