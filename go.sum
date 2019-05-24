@@ -6,6 +6,8 @@ github.com/emersion/go-imap v1.0.0-beta.4/go.mod h1:mOPegfAgLVXbhRm1bh2JTX08z2Y3
 github.com/emersion/go-imap v1.0.0-beta.4.0.20190504114255-4d5af3d05147/go.mod h1:mOPegfAgLVXbhRm1bh2JTX08z2Y3HYmKYpbrKDeAzsQ=
 github.com/emersion/go-imap v1.0.0-beta.5 h1:KpOPIoPNNq5m9LpWqRZcUgoDoc4SBy+TdYniGdwBJiU=
 github.com/emersion/go-imap v1.0.0-beta.5/go.mod h1:hwG4om0BJJYYFktL0Wm3xHhL3kybvG0hlm94ZofzwWQ=
+github.com/emersion/go-imap v1.0.0-beta.5.0.20190524140338-704298c50ed8 h1:oi8aWRML0/Nf+o+dVYEvlwfCR/5Ulrwz93vcKOTz6bI=
+github.com/emersion/go-imap v1.0.0-beta.5.0.20190524140338-704298c50ed8/go.mod h1:hwG4om0BJJYYFktL0Wm3xHhL3kybvG0hlm94ZofzwWQ=
 github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a h1:bMdSPm6sssuOFpIaveu3XGAijMS3Tq2S3EqFZmZxidc=
 github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a/go.mod h1:ikgISoP7pRAolqsVP64yMteJa2FIpS6ju88eBT6K1yQ=
 github.com/emersion/go-imap-compress v0.0.0-20170105185004-f036eda44681 h1:xihom5g2Ps+rZxfKiXMKjvWlvrrW4QjSu4Vz1wgT5es=
