@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/textproto"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -50,6 +51,9 @@ func (rd *RemoteDelivery) Init(cfg *config.Map) error {
 
 	if !filepath.IsAbs(rd.mtastsCache.Location) {
 		rd.mtastsCache.Location = filepath.Join(StateDirectory(cfg.Globals), rd.mtastsCache.Location)
+	}
+	if err := os.MkdirAll(rd.mtastsCache.Location, os.ModePerm); err != nil {
+		return err
 	}
 
 	rd.mtastsCache.Logger = &rd.Log
