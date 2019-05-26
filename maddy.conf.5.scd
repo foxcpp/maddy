@@ -739,6 +739,11 @@ Always refuse to send messages over unencrypted connections.
 
 Enable verbose logging only for this configuration block.
 
+## mtasts_cache <directory>
+
+Set location of the MTA-STS policies cache directory.
+Default is $MADDYSTATE/mtasts-cache
+
 # EXTAUTH MODULE
 
 Module for authentication using external helper binary. It looks for binary
