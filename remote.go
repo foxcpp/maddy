@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
@@ -28,7 +29,9 @@ type RemoteDelivery struct {
 	hostname   string
 	requireTLS bool
 
-	mtastsCache mtasts.Cache
+	mtastsCache        mtasts.Cache
+	stsCacheUpdateTick *time.Ticker
+	stsCacheUpdateDone chan struct{}
 
 	Log log.Logger
 }
@@ -37,6 +40,8 @@ func NewRemoteDelivery(_, instName string) (module.Module, error) {
 	return &RemoteDelivery{
 		name: instName,
 		Log:  log.Logger{Name: "remote"},
+
+		stsCacheUpdateDone: make(chan struct{}),
 	}, nil
 }
 
@@ -55,9 +60,18 @@ func (rd *RemoteDelivery) Init(cfg *config.Map) error {
 	if err := os.MkdirAll(rd.mtastsCache.Location, os.ModePerm); err != nil {
 		return err
 	}
-
 	rd.mtastsCache.Logger = &rd.Log
+	// MTA-STS policies typically have max_age around one day, so updating them
+	// twice a day should keep them up-to-date most of the time.
+	rd.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
+	go rd.stsCacheUpdater()
 
+	return nil
+}
+
+func (rd *RemoteDelivery) Close() error {
+	rd.stsCacheUpdateDone <- struct{}{}
+	<-rd.stsCacheUpdateDone
 	return nil
 }
 
@@ -222,6 +236,30 @@ func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain s
 	}
 
 	return nil
+}
+
+func (rd *RemoteDelivery) stsCacheUpdater() {
+	// Always update cache on start-up since we may have been down for some
+	// time.
+	rd.Log.Debugln("updating MTA-STS cache...")
+	if err := rd.mtastsCache.RefreshCache(); err != nil {
+		rd.Log.Printf("MTA-STS cache opdate failed: %v", err)
+	}
+	rd.Log.Debugln("updating MTA-STS cache... done!")
+
+	for {
+		select {
+		case <-rd.stsCacheUpdateTick.C:
+			rd.Log.Debugln("updating MTA-STS cache...")
+			if err := rd.mtastsCache.RefreshCache(); err != nil {
+				rd.Log.Printf("MTA-STS cache opdate failed: %v", err)
+			}
+			rd.Log.Debugln("updating MTA-STS cache... done!")
+		case <-rd.stsCacheUpdateDone:
+			rd.stsCacheUpdateDone <- struct{}{}
+			return
+		}
+	}
 }
 
 func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client, error) {
