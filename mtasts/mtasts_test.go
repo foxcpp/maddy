@@ -1,6 +1,7 @@
 package mtasts
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -173,6 +174,64 @@ mx: *.example.org`,
 					t.Logf("actual result: %+v", p)
 					t.Fail()
 				}
+			}
+		})
+	}
+}
+
+func TestPolicyMatch(t *testing.T) {
+	cases := []struct {
+		mx          string
+		validMxs    []string
+		shouldMatch bool
+	}{
+		{
+			mx:          "example.org.",
+			validMxs:    []string{"example.org"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "example.org",
+			validMxs:    []string{"example.org"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "mx0.example.org",
+			validMxs:    []string{"special.example.org", "*.example.org"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "special.example.org",
+			validMxs:    []string{"special.example.org", "*.example.org"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "mx0.special.example.org",
+			validMxs:    []string{"special.example.org", "*.example.org"},
+			shouldMatch: false,
+		},
+		{
+			mx:          "mx0.special.example.org",
+			validMxs:    []string{"*.special.example.org", "*.example.org"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "unrelated.org",
+			validMxs:    []string{"*.example.org"},
+			shouldMatch: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintln(c.mx, c.validMxs), func(t *testing.T) {
+			p := Policy{MX: c.validMxs}
+
+			matched := p.Match(c.mx)
+			if c.shouldMatch && !matched {
+				t.Error(c.mx, "didn't matched", c.validMxs, "but it should")
+			}
+			if !c.shouldMatch && matched {
+				t.Error(c.mx, "matched", c.validMxs, "but it shouldn't")
 			}
 		})
 	}

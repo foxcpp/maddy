@@ -139,3 +139,21 @@ func readPolicy(contents io.Reader) (*Policy, error) {
 
 	return &policy, nil
 }
+
+func (p Policy) Match(mx string) bool {
+	mx = strings.TrimSuffix(mx, ".")
+
+	for _, mxRecord := range p.MX {
+		if strings.HasPrefix(mxRecord, "*.") {
+			if mx[strings.Index(mx, "."):] == mxRecord[1:] {
+				return true
+			}
+			continue
+		}
+
+		if mxRecord == mx {
+			return true
+		}
+	}
+	return false
+}
