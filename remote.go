@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/textproto"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
+	"github.com/emersion/maddy/mtasts"
 )
 
 var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
@@ -24,6 +26,8 @@ type RemoteDelivery struct {
 	name       string
 	hostname   string
 	requireTLS bool
+
+	mtastsCache mtasts.Cache
 
 	Log log.Logger
 }
@@ -37,11 +41,18 @@ func NewRemoteDelivery(_, instName string) (module.Module, error) {
 
 func (rd *RemoteDelivery) Init(cfg *config.Map) error {
 	cfg.String("hostname", true, true, "", &rd.hostname)
+	cfg.String("mtasts_cache", false, false, filepath.Join(StateDirectory(cfg.Globals), "mtasts-cache"), &rd.mtastsCache.Location)
 	cfg.Bool("debug", true, &rd.Log.Debug)
 	cfg.Bool("require_tls", false, &rd.requireTLS)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
+
+	if !filepath.IsAbs(rd.mtastsCache.Location) {
+		rd.mtastsCache.Location = filepath.Join(StateDirectory(cfg.Globals), rd.mtastsCache.Location)
+	}
+
+	rd.mtastsCache.Logger = &rd.Log
 
 	return nil
 }
@@ -126,17 +137,38 @@ func toPartialError(temporary bool, rcpts []string, err error) *PartialError {
 	return &perr
 }
 
+var ErrNoMXMatchedBySTS = errors.New("remote: no MX record matched MTA-STS policy")
+
 func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain string, rcpts []string, body io.Reader) *PartialError {
 	addrs, err := lookupTargetServers(domain)
 	if err != nil {
 		return toPartialError(false, rcpts, err)
 	}
 
+	stsPolicy, err := rd.mtastsCache.Get(domain)
+	if err != nil && err != mtasts.ErrNoPolicy {
+		rd.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
+		// Problems with policy should be threated as temporary ones.
+		return toPartialError(true, rcpts, err)
+	}
+	if stsPolicy != nil && stsPolicy.Mode != mtasts.ModeEnforce {
+		// Throw away policy if it is not enforced, we don't do TLSRPT for now.
+		// TODO: TLS reporting.
+		rd.Log.Debugf("ignoring non-enforced MTA-STS policy for %s", domain)
+		stsPolicy = nil
+	}
+
 	var cl *smtp.Client
 	var lastErr error
 	var usedServer string
 	for _, addr := range addrs {
-		cl, err = connectToServer(rd.hostname, addr, rd.requireTLS)
+		if stsPolicy != nil && !stsPolicy.Match(addr) {
+			rd.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS policy (%v)", addr, stsPolicy.MX)
+			lastErr = ErrNoMXMatchedBySTS
+			continue
+		}
+
+		cl, err = connectToServer(rd.hostname, addr, rd.requireTLS || stsPolicy != nil)
 		if err != nil {
 			rd.Log.Debugf("failed to connect to %s: %v", addr, err)
 			lastErr = err
