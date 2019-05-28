@@ -54,7 +54,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	}
 	s.ctx.DeliveryID = hex.EncodeToString(rawID)
 
-	s.endp.Log.Printf("incoming message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
+	s.endp.Log.Debugf("incoming message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
 	_, _, err = passThroughPipeline(s.endp.pipeline, s.ctx, r)
 	if err != nil {
 		return err

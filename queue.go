@@ -160,7 +160,7 @@ func (q *Queue) retryDelivery(id string) {
 
 	nextTryTime := time.Now()
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount))))
-	q.Log.Printf("will retry in %v (at %v)", time.Until(nextTryTime), nextTryTime)
+	q.Log.Printf("%d-th attempt failed for %s, will retry in %v (at %v)", meta.TriesCount, meta.ID, time.Until(nextTryTime), nextTryTime)
 
 	q.wheel.Add(nextTryTime, id)
 }
@@ -208,7 +208,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	}
 
 	go func() {
-		q.Log.Printf("enqueued message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
+		q.Log.Debugf("enqueued message %s from %s (%s)", id, ctx.SrcAddr, ctx.SrcHostname)
 		meta := &QueueMetadata{
 			ID:          id,
 			TriesCount:  1,
@@ -228,7 +228,7 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 			q.Log.Printf("failed to save message %v to disk: %v", id, err)
 			return
 		}
-		q.Log.Printf("will retry in %v (at %v)", q.initialRetryTime, time.Now().Add(q.initialRetryTime))
+		q.Log.Printf("first attempt to deliver %v failed, will retry in %v (at %v)", meta.ID, q.initialRetryTime, time.Now().Add(q.initialRetryTime))
 		q.wheel.Add(time.Now().Add(q.initialRetryTime), meta.ID)
 	}()
 
