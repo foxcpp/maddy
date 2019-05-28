@@ -147,7 +147,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	)
 
 	cfg.Custom("auth", false, false, nil, authDirective, &endp.Auth)
-	cfg.String("hostname", true, false, "", &endp.serv.Domain)
+	cfg.String("hostname", true, true, "", &endp.serv.Domain)
 	// TODO: Parse human-readable duration values.
 	cfg.UInt("write_timeout", false, false, 60, &writeTimeoutSecs)
 	cfg.UInt("read_timeout", false, false, 600, &readTimeoutSecs)
