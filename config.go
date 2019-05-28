@@ -48,11 +48,12 @@ func initInlineModule(modObj module.Module, globals map[string]interface{}, node
 	//
 	// Expected: modName modArgs { ... }
 	// Actual: something modName modArgs { ... }
-	node.Name = node.Args[0]
-	node.Args = node.Args[1:]
+	nodeCpy := *node
+	nodeCpy.Name = node.Args[0]
+	nodeCpy.Args = node.Args[1:]
 
 	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
-	return modObj.Init(config.NewMap(globals, node))
+	return modObj.Init(config.NewMap(globals, &nodeCpy))
 }
 
 func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {

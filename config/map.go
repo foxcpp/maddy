@@ -303,6 +303,7 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 // mapper is a function that should convert configuration directive arguments
 // into variable value.  Both functions may fail with errors, configuration
 // processing will stop immediately then.
+// Note: mapper function should not modify passed values.
 //
 // store is where the value returned by mapper should be stored. Can be nil
 // (value will be saved only in Map.Values).
