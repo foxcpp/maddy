@@ -607,9 +607,6 @@ Valid configuration directives:
 Use a specified driver to communicate with the database.  Supported values:
 sqlite3, mysql, postgres.
 
-Latter two are not included by default and should be enabled using
-corresponding build tags
-
 ## dsn <string>
 
 Data Source Name, the driver-specific value that specifies the database to use.

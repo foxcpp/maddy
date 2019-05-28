@@ -17,6 +17,9 @@ import (
 	"github.com/emersion/maddy/module"
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/go-imap-sql/fsstore"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 type SQLStorage struct {
