@@ -321,4 +321,6 @@ func (endp *SMTPEndpoint) Close() error {
 func init() {
 	module.Register("smtp", NewSMTPEndpoint)
 	module.Register("submission", NewSMTPEndpoint)
+
+	rand.Seed(time.Now().UnixNano())
 }
