@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -54,12 +53,10 @@ func NewMap(globals map[string]interface{}, block *Node) *Map {
 // mapper functions - message will be prepended with information about
 // processed config node.
 func (m *Map) MatchErr(format string, args ...interface{}) error {
-	msg := fmt.Sprintf(format, args...)
-
 	if m.curNode != nil {
-		return fmt.Errorf("%s:%d %s: %s", m.curNode.File, m.curNode.Line, m.curNode.Name, msg)
+		return NodeErr(m.curNode, format, args...)
 	} else {
-		return errors.New(msg)
+		return fmt.Errorf(format, args...)
 	}
 }
 
@@ -341,16 +338,16 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 //
 // If Map instance was not created using NewMap - Process panics.
 func (m *Map) Process() (unmatched []Node, err error) {
-	return m.ProcessWith(m.Globals, m.Block.Children)
+	return m.ProcessWith(m.Globals, m.Block)
 }
 
 // Process maps variables from global configuration and block passed in arguments.
-func (m *Map) ProcessWith(globalCfg map[string]interface{}, block []Node) (unmatched []Node, err error) {
-	unmatched = make([]Node, 0, len(block))
+func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unmatched []Node, err error) {
+	unmatched = make([]Node, 0, len(block.Children))
 	matched := make(map[string]bool)
 	m.Values = make(map[string]interface{})
 
-	for _, subnode := range block {
+	for _, subnode := range block.Children {
 		m.curNode = &subnode
 
 		if matched[subnode.Name] {
@@ -376,7 +373,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block []Node) (unmat
 		}
 		matched[subnode.Name] = true
 	}
-	m.curNode = m.Block
+	m.curNode = block
 
 	for _, matcher := range m.entries {
 		if matched[matcher.name] {
