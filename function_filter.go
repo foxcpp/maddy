@@ -38,7 +38,7 @@ func (fltr *functionFilter) Apply(ctx *module.DeliveryContext, msg io.Reader) (i
 	if err != nil && fltr.ignoreFail {
 		return nil, nil
 	}
-	return r, nil
+	return r, err
 }
 
 func (fltr *functionFilter) Name() string {
