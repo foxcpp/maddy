@@ -11,6 +11,8 @@ import (
 	"github.com/emersion/go-imap"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
+	"github.com/emersion/go-message"
+	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -191,4 +193,6 @@ func (endp *IMAPEndpoint) enableExtensions() error {
 
 func init() {
 	module.Register("imap", NewIMAPEndpoint)
+
+	imap.CharsetReader = message.CharsetReader
 }
