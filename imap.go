@@ -162,7 +162,7 @@ func (endp *IMAPEndpoint) Login(connInfo *imap.ConnInfo, username, password stri
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
-	return endp.Store.GetUser(username)
+	return endp.Store.GetOrCreateUser(username)
 }
 
 func (endp *IMAPEndpoint) EnableChildrenExt() bool {
