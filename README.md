@@ -54,11 +54,10 @@ scdoc < maddy.conf.5.scd > maddy.conf.5
 go-imap-sql is the main storage backend used by maddy. You might want to take a
 look at https://github.com/foxcpp/go-imap-sql and
 https://github.com/foxcpp/go-imap-sql/tree/master/cmd/imapsql-ctl for how to
-configure and use it. imapsql-ctl needs to be compiled with build tag
-corresponding to used RDBMS (`sqlite3`, `mysql`, `postgres`):
+configure and use it. 
 ```
 export GO111MODULE=on
-go get -tags sqlite3 github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl
+go get github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl
 ```
 
 You need imapsql-ctl tool to create user accounts. Here is the command to use:
