@@ -86,7 +86,9 @@ func WriterLog(w io.Writer) FuncLog {
 			str = "[debug] " + str
 		}
 		str = t.Format("02.01.06 15:04:05") + " " + str
-		io.WriteString(w, str)
+		if _, err := io.WriteString(w, str); err != nil {
+			fmt.Fprintf(os.Stderr, "!!! Failed to write message to log: %v\n", err)
+		}
 	}
 }
 

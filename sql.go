@@ -238,7 +238,9 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, body io.Reader) erro
 		}
 
 		if len(ctx.To) > 1 {
-			seekable.Seek(0, io.SeekStart)
+			if _, err := seekable.Seek(0, io.SeekStart); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
