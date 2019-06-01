@@ -177,6 +177,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 		}
 
 		if err := c.store(domain, dnsId, time.Now(), policy); err != nil {
+			c.Logger.Printf("failed to store new policy for %s: %v", domain, err)
 			// We still got up-to-date policy, cache is not critcial.
 			return false, cachedPolicy, nil
 		}
