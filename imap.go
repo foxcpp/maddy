@@ -17,11 +17,11 @@ import (
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 
-	"github.com/emersion/go-imap-appendlimit"
-	"github.com/emersion/go-imap-compress"
-	"github.com/emersion/go-imap-idle"
-	"github.com/emersion/go-imap-move"
-	"github.com/emersion/go-imap-unselect"
+	appendlimit "github.com/emersion/go-imap-appendlimit"
+	compress "github.com/emersion/go-imap-compress"
+	idle "github.com/emersion/go-imap-idle"
+	move "github.com/emersion/go-imap-move"
+	unselect "github.com/emersion/go-imap-unselect"
 	"github.com/foxcpp/go-imap-sql/children"
 )
 
