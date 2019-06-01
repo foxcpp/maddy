@@ -52,7 +52,7 @@ var ErrNoPolicy = errors.New("mtasts: no MTA-STS policy found")
 
 // Get reads policy from cache or tries to fetch it from Policy Host.
 func (c *Cache) Get(domain string) (*Policy, error) {
-	_, p, err := c.fetch(false, domain)
+	_, p, err := c.fetch(false, time.Now(), domain)
 	return p, err
 }
 
