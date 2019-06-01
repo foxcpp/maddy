@@ -66,6 +66,42 @@ func (m *Map) AllowUnknown() {
 	m.allowUnknown = true
 }
 
+// StringMap maps a block containing string pairs to a map[string]string.
+//
+// something {
+//   k v
+//   k1 v2
+// }
+// will be converted to map[string]string{"k": "v", "k1": "v2"}.
+//
+// Duplicate keys are allowed, only last value is used.
+//
+// See Custom function for details about inheritGlobal, required and
+// defaultVal.
+func (m *Map) StringMap(name string, inheritGlobal, requied bool, defaultVal map[string]string, store *map[string]string) {
+	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Args) != 0 {
+			return nil, m.MatchErr("unexpected arguments")
+		}
+		if node.Children == nil {
+			return nil, m.MatchErr("block required")
+		}
+
+		kv := make(map[string]string, len(node.Children))
+		for _, child := range node.Children {
+			if len(child.Args) != 1 {
+				return nil, m.MatchErr("expected exactly one argument")
+			}
+
+			kv[child.Name] = child.Args[0]
+		}
+
+		return kv, nil
+	}, store)
+}
+
 // Bool maps presence of some configuration directive to a boolean variable.
 //
 // I.e. if directive 'io_debug' exists in processed configuration block or in
