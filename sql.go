@@ -163,6 +163,15 @@ func (sqlm *SQLStorage) GetOrCreateUser(username string) (backend.User, error) {
 }
 
 func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, body io.Reader) error {
+	var seekable io.ReadSeeker
+	if len(ctx.To) > 1 {
+		var err error
+		seekable, err = seekableBody(body)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, rcpt := range ctx.To {
 		parts := strings.Split(rcpt, "@")
 		if len(parts) != 2 {
@@ -212,13 +221,24 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, body io.Reader) erro
 			return err
 		}
 
+		var msgReader io.Reader
+		if len(ctx.To) > 1 {
+			msgReader = io.MultiReader(&headerBlob, seekable)
+		} else {
+			msgReader = io.MultiReader(&headerBlob, body)
+		}
+
 		msg := Literal{
-			Reader: io.MultiReader(&headerBlob, body),
+			Reader: msgReader,
 			length: headerBlob.Len() + ctx.BodyLength,
 		}
 		if err := mbox.CreateMessage([]string{}, time.Now(), msg); err != nil {
 			sqlm.Log.Printf("failed to save msg for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
 			return err
+		}
+
+		if len(ctx.To) > 1 {
+			seekable.Seek(0, io.SeekStart)
 		}
 	}
 	return nil
