@@ -52,7 +52,7 @@ var ErrNoPolicy = errors.New("mtasts: no MTA-STS policy found")
 
 // Get reads policy from cache or tries to fetch it from Policy Host.
 func (c *Cache) Get(domain string) (*Policy, error) {
-	_, p, err := c.fetch(domain)
+	_, p, err := c.fetch(false, domain)
 	return p, err
 }
 
@@ -98,7 +98,7 @@ func (c *Cache) RefreshCache() error {
 		if ent.IsDir() {
 			continue
 		}
-		cacheHit, _, err := c.fetch(ent.Name())
+		cacheHit, _, err := c.fetch(true, ent.Name())
 		if err != nil {
 			c.Logger.Printf("failed to update MTA-STS policy for %v: %v", ent.Name(), err)
 		}
@@ -119,7 +119,7 @@ func (c *Cache) RefreshCache() error {
 	return nil
 }
 
-func (c *Cache) fetch(domain string) (cacheHit bool, p *Policy, err error) {
+func (c *Cache) fetch(ignoreDns bool, domain string) (cacheHit bool, p *Policy, err error) {
 	validCache := true
 	cachedId, fetchTime, cachedPolicy, err := c.load(domain)
 	if err != nil {
@@ -133,33 +133,36 @@ func (c *Cache) fetch(domain string) (cacheHit bool, p *Policy, err error) {
 		validCache = false
 	}
 
-	records, err := net.LookupTXT("_mta-sts." + domain)
-	if err != nil {
-		if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
+	var dnsId string
+	if !ignoreDns {
+		records, err := net.LookupTXT("_mta-sts." + domain)
+		if err != nil {
+			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
+				return false, nil, ErrNoPolicy
+			}
+			return false, nil, err
+		}
+
+		// RFC says:
+		//   If the number of resulting records is not one, or if the resulting
+		//   record is syntactically invalid, senders MUST assume the recipient
+		//   domain does not have an available MTA-STS Policy. ...
+		//   (Note that the absence of a usable TXT record is not by itself
+		//   sufficient to remove a sender's previously cached policy for the Policy
+		//   Domain, as discussed in Section 5.1, "Policy Application Control Flow".)
+		if len(records) != 1 {
+			if validCache {
+				return true, cachedPolicy, nil
+			}
 			return false, nil, ErrNoPolicy
 		}
-		return false, nil, err
-	}
-
-	// RFC says:
-	//   If the number of resulting records is not one, or if the resulting
-	//   record is syntactically invalid, senders MUST assume the recipient
-	//   domain does not have an available MTA-STS Policy. ...
-	//   (Note that the absence of a usable TXT record is not by itself
-	//   sufficient to remove a sender's previously cached policy for the Policy
-	//   Domain, as discussed in Section 5.1, "Policy Application Control Flow".)
-	if len(records) != 1 {
-		if validCache {
-			return true, cachedPolicy, nil
+		dnsId, err = readDNSRecord(records[0])
+		if err != nil {
+			if validCache {
+				return true, cachedPolicy, nil
+			}
+			return false, nil, ErrNoPolicy
 		}
-		return false, nil, ErrNoPolicy
-	}
-	dnsId, err := readDNSRecord(records[0])
-	if err != nil {
-		if validCache {
-			return true, cachedPolicy, nil
-		}
-		return false, nil, ErrNoPolicy
 	}
 
 	if !validCache || dnsId != cachedId {
