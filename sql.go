@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap/backend"
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
@@ -161,11 +162,7 @@ func (sqlm *SQLStorage) GetOrCreateUser(username string) (backend.User, error) {
 	return sqlm.back.GetOrCreateUser(accountName)
 }
 
-func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, msg); err != nil {
-		return err
-	}
+func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, body io.Reader) error {
 	for _, rcpt := range ctx.To {
 		parts := strings.Split(rcpt, "@")
 		if len(parts) != 2 {
@@ -207,12 +204,17 @@ func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, msg io.Reader) error
 			}
 		}
 
-		headerPrefix := fmt.Sprintf("Return-Path: <%s>\r\n", sanitizeString(ctx.From))
-		headerPrefix += fmt.Sprintf("Delivered-To: %s\r\n", sanitizeString(rcpt))
+		ctx.Header.Add("Return-Path", "<"+sanitizeString(ctx.From)+">")
+		ctx.Header.Add("Delivered-To", sanitizeString(rcpt))
+
+		headerBlob := bytes.Buffer{}
+		if err := textproto.WriteHeader(&headerBlob, ctx.Header); err != nil {
+			return err
+		}
 
 		msg := Literal{
-			Reader: io.MultiReader(strings.NewReader(headerPrefix), &buf),
-			length: len(headerPrefix) + buf.Len(),
+			Reader: io.MultiReader(&headerBlob, body),
+			length: headerBlob.Len() + ctx.BodyLength,
 		}
 		if err := mbox.CreateMessage([]string{}, time.Now(), msg); err != nil {
 			sqlm.Log.Printf("failed to save msg for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)

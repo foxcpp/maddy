@@ -1,7 +1,7 @@
 package maddy
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -196,15 +197,9 @@ func (q *Queue) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
 	}
 	id := ctx.DeliveryID
 
-	var body io.ReadSeeker
-	if seekable, ok := msg.(io.ReadSeeker); ok {
-		body = seekable
-	} else {
-		bodySlice, err := ioutil.ReadAll(msg)
-		if err != nil {
-			return errors.New("failed to buffer message")
-		}
-		body = bytes.NewReader(bodySlice)
+	body, err := seekableBody(msg)
+	if err != nil {
+		return err
 	}
 
 	go func() {
@@ -296,6 +291,11 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, body io.Reader) error {
 		return err
 	}
 	defer bodyFile.Close()
+
+	if err := textproto.WriteHeader(bodyFile, meta.Ctx.Header); err != nil {
+		return err
+	}
+
 	if _, err := io.Copy(bodyFile, body); err != nil {
 		return err
 	}
@@ -316,11 +316,16 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	}
 	defer file.Close()
 
-	if _, ok := meta.Ctx.SrcAddr.(*net.TCPAddr); !ok {
+	metaCopy := *meta
+	metaCopy.Ctx = meta.Ctx.DeepCopy()
+
+	if _, ok := metaCopy.Ctx.SrcAddr.(*net.TCPAddr); !ok {
 		meta.Ctx.SrcAddr = nil
 	}
 
-	if err := json.NewEncoder(file).Encode(meta); err != nil {
+	// Header is stored in body by storeNewMessage.
+
+	if err := json.NewEncoder(file).Encode(metaCopy); err != nil {
 		return err
 	}
 	return nil
@@ -349,20 +354,32 @@ func (q *Queue) readMessageMeta(id string) (QueueMetadata, error) {
 	return meta, nil
 }
 
-func (q *Queue) openMessage(id string) (meta QueueMetadata, body *os.File, err error) {
+type BufferedReadCloser struct {
+	*bufio.Reader
+	io.Closer
+}
+
+func (q *Queue) openMessage(id string) (meta QueueMetadata, body io.ReadCloser, err error) {
 	meta, err = q.readMessageMeta(id)
 	if err != nil {
-		return
+		return QueueMetadata{}, nil, err
 	}
 
 	bodyPath := filepath.Join(q.location, id)
-	body, err = os.Open(bodyPath)
+	bodyFile, err := os.Open(bodyPath)
 	if err != nil {
 		q.Log.Printf("removing dangling meta-data file for %v", id)
 		os.Remove(filepath.Join(q.location, id))
+		return QueueMetadata{}, nil, err
+	}
+	bufferedBody := bufio.NewReader(bodyFile)
+
+	meta.Ctx.Header, err = textproto.ReadHeader(bufferedBody)
+	if err != nil {
+		return QueueMetadata{}, nil, err
 	}
 
-	return
+	return meta, BufferedReadCloser{Reader: bufferedBody, Closer: bodyFile}, nil
 }
 
 func (q *Queue) InstanceName() string {

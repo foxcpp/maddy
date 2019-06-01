@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -11,11 +12,13 @@ import (
 	"time"
 
 	"encoding/hex"
+	"math/rand"
+
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
-	"math/rand"
 )
 
 type SMTPSession struct {
@@ -55,7 +58,14 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	s.ctx.DeliveryID = hex.EncodeToString(rawID)
 
 	s.endp.Log.Debugf("incoming message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
-	_, _, err = passThroughPipeline(s.endp.pipeline, s.ctx, r)
+
+	bufr := bufio.NewReader(r)
+	s.ctx.Header, err = textproto.ReadHeader(bufr)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = passThroughPipeline(s.endp.pipeline, s.ctx, bufr)
 	if err != nil {
 		return err
 	}
