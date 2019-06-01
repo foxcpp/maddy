@@ -1,5 +1,7 @@
 github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46 h1:rs0kDBt2zF4/CM9rO5/iH+U22jnTygPlqWgX55Ufcxg=
 github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46/go.mod h1:kC29dT1vFpj7py2OvG1khBdQpo3kInWP+6QipLbdngo=
+github.com/ProtonMail/go-imap-id v0.0.0-20180531095342-e05907b730e0 h1:L7LjFTaLHm4z/eSfvAwjd6VEklpMOXm0bfsUWlBlfCs=
+github.com/ProtonMail/go-imap-id v0.0.0-20180531095342-e05907b730e0/go.mod h1:795VPXcRUIQ9JyMNHP4el582VokQfippgjkQP3Gk0r0=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

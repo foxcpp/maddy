@@ -435,6 +435,22 @@ Write all commands and responses to stderr.
 
 Enable verbose logging only for this configuration block.
 
+## id { ... }
+
+Send provided key-value pairs in response to IMAP ID command.
+This command is meant to provide server software information.
+
+See https://tools.ietf.org/html/rfc2971#section-3.3 for valid keys.
+
+If no id directive is specified in configuration - maddy will respond with
+"NIL" to ID command.
+
+```
+id {
+    name "maddy"
+}
+```
+
 # SMTP MODULE
 
 ESMTP server endpoint. Endpoints are special-case modules that use config

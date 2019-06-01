@@ -17,11 +17,12 @@ import (
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 
-	"github.com/emersion/go-imap-appendlimit"
-	"github.com/emersion/go-imap-compress"
-	"github.com/emersion/go-imap-idle"
-	"github.com/emersion/go-imap-move"
-	"github.com/emersion/go-imap-unselect"
+	id "github.com/ProtonMail/go-imap-id"
+	appendlimit "github.com/emersion/go-imap-appendlimit"
+	compress "github.com/emersion/go-imap-compress"
+	idle "github.com/emersion/go-imap-idle"
+	move "github.com/emersion/go-imap-move"
+	unselect "github.com/emersion/go-imap-unselect"
 	"github.com/foxcpp/go-imap-sql/children"
 )
 
@@ -31,6 +32,7 @@ type IMAPEndpoint struct {
 	listeners []net.Listener
 	Auth      module.AuthProvider
 	Store     module.Storage
+	idValues  id.ID
 
 	updater     imapbackend.BackendUpdater
 	tlsConfig   *tls.Config
@@ -61,6 +63,7 @@ func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 	cfg.Bool("insecure_auth", false, &insecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
+	cfg.StringMap("id", false, false, nil, (*map[string]string)(&endp.idValues))
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -187,6 +190,7 @@ func (endp *IMAPEndpoint) enableExtensions() error {
 	endp.serv.Enable(compress.NewExtension())
 	endp.serv.Enable(unselect.NewExtension())
 	endp.serv.Enable(idle.NewExtension())
+	endp.serv.Enable(id.NewExtension(endp.idValues))
 
 	return nil
 }

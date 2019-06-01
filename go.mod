@@ -2,6 +2,7 @@ module github.com/emersion/maddy
 
 require (
 	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46
+	github.com/ProtonMail/go-imap-id v0.0.0-20180531095342-e05907b730e0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emersion/go-imap v1.0.0-beta.5.0.20190524140338-704298c50ed8
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
