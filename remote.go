@@ -308,7 +308,6 @@ func lookupTargetServers(domain string) ([]string, error) {
 }
 
 func isTemporaryErr(err error) bool {
-	return true
 	if protoErr, ok := err.(*nettextproto.Error); ok {
 		return (protoErr.Code / 100) == 4
 	}
