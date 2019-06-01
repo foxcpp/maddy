@@ -440,7 +440,8 @@ Enable verbose logging only for this configuration block.
 Send provided key-value pairs in response to IMAP ID command.
 This command is meant to provide server software information.
 
-See https://tools.ietf.org/html/rfc2971#section-3.3 for valid keys.
+See https://tools.ietf.org/html/rfc2971#section-3.3 for valid keys as well as
+restrictions.
 
 If no id directive is specified in configuration - maddy will respond with
 "NIL" to ID command.

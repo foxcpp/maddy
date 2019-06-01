@@ -190,6 +190,22 @@ func (endp *IMAPEndpoint) enableExtensions() error {
 	endp.serv.Enable(compress.NewExtension())
 	endp.serv.Enable(unselect.NewExtension())
 	endp.serv.Enable(idle.NewExtension())
+
+	// See https://tools.ietf.org/html/rfc2971#section-3.3 for requirements checked here.
+	if len(endp.idValues) > 30 {
+		return fmt.Errorf("ID block can't contain more than 30 fields")
+	}
+	for k, v := range endp.idValues {
+		if len(k) > 30 {
+			return fmt.Errorf("ID field name is longer than allowed (%d > %d): %s", len(k), 30, k)
+		}
+		if len(v) > 1024 {
+			return fmt.Errorf("ID value for field %s is longer than allowed (%d > %d)", k, len(v), 30)
+		}
+		delete(endp.idValues, k)
+		endp.idValues[strings.ToLower(k)] = v
+	}
+
 	endp.serv.Enable(id.NewExtension(endp.idValues))
 
 	return nil
