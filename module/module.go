@@ -26,7 +26,7 @@ import (
 // on shutdown. If module starts long-lived goroutines - they should be stopped
 // *before* Close method returns to ensure graceful shutdown.
 type Module interface {
-	// Init performs actual initalization of the module.
+	// Init performs actual initialization of the module.
 	//
 	// It is not done in FuncNewModule so all module instances are
 	// registered at time of initialization, thus initialization does not

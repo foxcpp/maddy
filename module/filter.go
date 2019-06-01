@@ -54,7 +54,7 @@ type DeliveryContext struct {
 	DontTraceSender bool
 
 	// Unique identifier for this delivery attempt. Should be used in logs to
-	// make troubleshotting easier.
+	// make troubleshooting easier.
 	DeliveryID string
 
 	// Parsed MIME header of message.

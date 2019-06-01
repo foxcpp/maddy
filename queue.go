@@ -21,13 +21,13 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-// PartialError describes state of partially successfull message delivery.
+// PartialError describes state of partially successful message delivery.
 type PartialError struct {
 	// Recipients for which delivery was successful.
 	Successful []string
 	// Recipients for which delivery permanently failed.
 	Failed []string
-	// Recipients for which delivery temporarly failed.
+	// Recipients for which delivery temporary failed.
 	TemporaryFailed []string
 
 	// Underlying error objects.
