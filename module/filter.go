@@ -96,10 +96,7 @@ func (ctx *DeliveryContext) DeepCopy() *DeliveryContext {
 		cpy.Ctx[k] = v
 	}
 
-	cpy.To = make([]string, 0, len(ctx.To))
-	for _, rcpt := range ctx.To {
-		cpy.To = append(cpy.To, rcpt)
-	}
+	cpy.To = append(make([]string, 0, len(ctx.To)), ctx.To...)
 
 	return &cpy
 }

@@ -112,15 +112,9 @@ func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, bodyR io.Reader) e
 
 		if perr != nil {
 			rd.Log.Debugf("deliverForServer: %+v (delivery ID = %s)", perr, ctx.DeliveryID)
-			for _, successful := range perr.Successful {
-				partialErr.Successful = append(partialErr.Successful, successful)
-			}
-			for _, temporaryFail := range perr.TemporaryFailed {
-				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, temporaryFail)
-			}
-			for _, failed := range perr.Failed {
-				partialErr.Failed = append(partialErr.Failed, failed)
-			}
+			partialErr.Successful = append(partialErr.Successful, perr.Successful...)
+			partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, perr.TemporaryFailed...)
+			partialErr.Failed = append(partialErr.Failed, perr.Failed...)
 			for k, v := range perr.Errs {
 				partialErr.Errs[k] = v
 			}
