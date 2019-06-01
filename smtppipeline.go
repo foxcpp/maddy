@@ -1,10 +1,10 @@
 package maddy
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"regexp"
 	"strconv"
@@ -25,7 +25,7 @@ type SMTPPipelineStep interface {
 	// If Pass returns non-nil io.Reader - it should contain new message body.
 	// If Pass returns false - message processing will be stopped, if err is
 	// not nil - it will be returned to message source.
-	Pass(ctx *module.DeliveryContext, msg io.Reader) (newBody io.Reader, continueProcessing bool, err error)
+	Pass(ctx *module.DeliveryContext, body io.Reader) (newBody io.Reader, continueProcessing bool, err error)
 }
 
 type requireAuthStep struct{}
@@ -67,12 +67,11 @@ func LookupAddr(ip net.IP) (string, error) {
 	return strings.TrimRight(names[0], "."), nil
 }
 
-func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
+func (step deliverStep) Pass(ctx *module.DeliveryContext, body io.Reader) (io.Reader, bool, error) {
 	// We can safetly assume at least one recipient.
 	to := sanitizeString(ctx.To[0])
 
-	received := "Received: "
-
+	var received string
 	if !ctx.DontTraceSender {
 		received += "from " + ctx.SrcHostname
 		if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
@@ -83,16 +82,16 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Rea
 				received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
 			}
 		}
-		received += "\r\n\t"
 	}
+	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
+	received += fmt.Sprintf(" with %s id %s", ctx.SrcProto, ctx.DeliveryID)
+	received += fmt.Sprintf(" for %s; %s", to, time.Now().Format(time.RFC1123Z))
 
-	received += fmt.Sprintf("by %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(ctx.From))
-	received += fmt.Sprintf("\r\n\twith %s id %s", ctx.SrcProto, ctx.DeliveryID)
-	received += fmt.Sprintf("\r\n\tfor %s; %s\r\n", to, time.Now().Format(time.RFC1123Z))
+	// Don't mutate passed context, since it will affect further steps.
+	ctxCpy := ctx.DeepCopy()
+	ctxCpy.Header.Add("Received", received)
 
-	msg = io.MultiReader(strings.NewReader(received), msg)
-
-	err := step.t.Deliver(*ctx, msg)
+	err := step.t.Deliver(*ctxCpy, body)
 	return nil, err == nil, err
 }
 
@@ -319,19 +318,28 @@ func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (i
 	return newBody, shouldContinue && len(ctx.To) != 0, err
 }
 
-func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
-	buf, ok := msg.(*bytes.Buffer)
-	if !ok {
-		buf = new(bytes.Buffer)
-		if _, err := buf.ReadFrom(msg); err != nil {
-			return nil, false, err
-		}
+func seekableBody(body io.Reader) (io.ReadSeeker, error) {
+	if seeker, ok := body.(io.ReadSeeker); ok {
+		return seeker, nil
 	}
-	currentMsg := bytes.NewReader(buf.Bytes())
+	if byter, ok := body.(Byter); ok {
+		return NewBytesReader(byter.Bytes()), nil
+	}
+
+	bodyBlob, err := ioutil.ReadAll(body)
+	log.Debugln("message body copied or buffered, size:", len(bodyBlob))
+	return NewBytesReader(bodyBlob), err
+}
+
+func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, body io.Reader) (io.Reader, bool, error) {
+	currentBody, err := seekableBody(body)
+	if err != nil {
+		return nil, false, err
+	}
 
 	for _, step := range steps {
 		log.Debugf("running %T step...", step)
-		r, cont, err := step.Pass(ctx, currentMsg)
+		r, cont, err := step.Pass(ctx, currentBody)
 		if !cont {
 			if err == module.ErrSilentDrop {
 				return nil, false, nil
@@ -339,21 +347,18 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 			return nil, false, err
 		}
 
-		if r != nil && r != io.Reader(currentMsg) {
-			buf.Reset()
-			if _, err := io.Copy(buf, r); err != nil {
-				log.Debugf("msg rebuffering failed: %v", err)
+		if r != nil {
+			currentBody, err = seekableBody(r)
+			if err != nil {
 				return nil, false, err
 			}
-			currentMsg.Reset(buf.Bytes())
 		}
-		currentMsg.Seek(0, io.SeekStart)
+		if _, err := currentBody.Seek(0, io.SeekStart); err != nil {
+			return nil, false, err
+		}
 	}
 
-	if currentMsg != msg {
-		return currentMsg, true, nil
-	}
-	return msg, true, nil
+	return body, true, nil
 }
 
 func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {

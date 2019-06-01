@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net"
+
+	"github.com/emersion/go-message/textproto"
 )
 
 // DeliveryContext structure is created for each message and passed with it
@@ -55,6 +57,13 @@ type DeliveryContext struct {
 	// make troubleshotting easier.
 	DeliveryID string
 
+	// Parsed MIME header of message.
+	Header textproto.Header
+
+	// Size of message body. It is updated by pipeline code after each step
+	// that changes body.
+	BodyLength int
+
 	// Arbitrary context meta-data that can be modified by any module in
 	// pipeline. It is passed unchanged to next module in chain.
 	//
@@ -73,6 +82,8 @@ func (ctx *DeliveryContext) DeepCopy() *DeliveryContext {
 	cpy := *ctx
 	// There is no good way to copy net.Addr, but it should not be
 	// modified by anything anyway so we are safe.
+
+	cpy.Header = ctx.Header.Copy()
 
 	cpy.Ctx = make(map[string]interface{}, len(ctx.Ctx))
 	for k, v := range ctx.Ctx {
@@ -101,15 +112,15 @@ type Filter interface {
 	// Apply is called for each message that should be processed by module
 	// instance.
 	//
-	// If Filter returns non-nil io.Writer - then its contents will replace
-	// message body. If Filter returns nil io.Writer - message body will
+	// If Filter returns non-nil io.Reader - then its contents will replace
+	// message body. If Filter returns nil io.Reader - message body will
 	// not be changed.
 	//
 	// If it returns non-nil error - message processing stops and error will be
 	// returned to message source.  However, if Apply returns ErrSilentDrop
 	// error value - message processing stops and message source will be told
 	// that message is processed successfully.
-	Apply(ctx *DeliveryContext, msg io.Reader) (io.Reader, error)
+	Apply(ctx *DeliveryContext, body io.Reader) (io.Reader, error)
 }
 
 // DeliveryTarget is a special versionof Filter tht can't mutate message or its
@@ -120,5 +131,5 @@ type DeliveryTarget interface {
 	//
 	// If it returns non-nil error - message processing stops and error will be
 	// returned to message source.
-	Deliver(ctx DeliveryContext, msg io.Reader) error
+	Deliver(ctx DeliveryContext, body io.Reader) error
 }

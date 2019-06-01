@@ -1,20 +1,19 @@
 package maddy
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
-	"net/textproto"
+	nettextproto "net/textproto"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
@@ -28,6 +27,7 @@ type RemoteDelivery struct {
 	name       string
 	hostname   string
 	requireTLS bool
+	ioDebug    bool
 
 	mtastsCache        mtasts.Cache
 	stsCacheUpdateTick *time.Ticker
@@ -83,16 +83,10 @@ func (rd *RemoteDelivery) InstanceName() string {
 	return rd.name
 }
 
-func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, msg io.Reader) error {
-	var body io.ReadSeeker
-	if seekable, ok := msg.(io.ReadSeeker); ok {
-		body = seekable
-	} else {
-		bodySlice, err := ioutil.ReadAll(msg)
-		if err != nil {
-			return errors.New("failed to buffer message")
-		}
-		body = bytes.NewReader(bodySlice)
+func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, bodyR io.Reader) error {
+	body, err := seekableBody(bodyR)
+	if err != nil {
+		return err
 	}
 
 	if _, err := body.Seek(0, io.SeekStart); err != nil {
@@ -226,6 +220,11 @@ func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain s
 		return toPartialError(isTemporaryErr(err), rcpts, err)
 	}
 	defer bodyWriter.Close()
+
+	if err := textproto.WriteHeader(bodyWriter, ctx.Header); err != nil {
+		rd.Log.Printf("header write failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
+		return toPartialError(isTemporaryErr(err), rcpts, err)
+	}
 	if _, err := io.Copy(bodyWriter, body); err != nil {
 		rd.Log.Printf("body write failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
 		return toPartialError(isTemporaryErr(err), rcpts, err)
@@ -316,7 +315,8 @@ func lookupTargetServers(domain string) ([]string, error) {
 }
 
 func isTemporaryErr(err error) bool {
-	if protoErr, ok := err.(*textproto.Error); ok {
+	return true
+	if protoErr, ok := err.(*nettextproto.Error); ok {
 		return (protoErr.Code / 100) == 4
 	}
 	if smtpErr, ok := err.(*smtp.SMTPError); ok {
