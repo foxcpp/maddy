@@ -22,9 +22,8 @@ import (
 )
 
 type SMTPSession struct {
-	endp  *SMTPEndpoint
-	state *smtp.ConnectionState
-	ctx   *module.DeliveryContext
+	endp *SMTPEndpoint
+	ctx  *module.DeliveryContext
 }
 
 func (s *SMTPSession) Reset() {

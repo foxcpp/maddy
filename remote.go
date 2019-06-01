@@ -27,7 +27,6 @@ type RemoteDelivery struct {
 	name       string
 	hostname   string
 	requireTLS bool
-	ioDebug    bool
 
 	mtastsCache        mtasts.Cache
 	stsCacheUpdateTick *time.Ticker
