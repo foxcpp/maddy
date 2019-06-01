@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"mime"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/emersion/maddy/log"
@@ -29,7 +29,12 @@ func downloadPolicy(domain string) (*Policy, error) {
 		return nil, errors.New("mtasts: HTTP " + resp.Status)
 	}
 
-	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/plain") {
+	contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		return nil, err
+	}
+
+	if contentType != "text/plain" {
 		return nil, errors.New("mtasts: unexpected content type")
 	}
 
