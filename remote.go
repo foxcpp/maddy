@@ -166,7 +166,7 @@ func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain s
 	stsPolicy, err := rd.mtastsCache.Get(domain)
 	if err != nil && err != mtasts.ErrNoPolicy {
 		rd.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
-		// Problems with policy should be threated as temporary ones.
+		// Problems with policy should be treated as temporary ones.
 		return toPartialError(true, rcpts, err)
 	}
 	if stsPolicy != nil && stsPolicy.Mode != mtasts.ModeEnforce {
