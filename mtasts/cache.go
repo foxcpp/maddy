@@ -98,7 +98,12 @@ func (c *Cache) RefreshCache() error {
 		if ent.IsDir() {
 			continue
 		}
-		cacheHit, _, err := c.fetch(true, ent.Name())
+		// If policy is going to expire in next 6 hours (half of our refresh
+		// period) - we still want to refresh it.
+		// Since otherwise we are going to have expired policy for another 6 hours,
+		// which makes it useless.
+		// See https://tools.ietf.org/html/rfc8461#section-10.2.
+		cacheHit, _, err := c.fetch(true, time.Now().Add(6*time.Hour), ent.Name())
 		if err != nil {
 			c.Logger.Printf("failed to update MTA-STS policy for %v: %v", ent.Name(), err)
 		}
@@ -119,7 +124,7 @@ func (c *Cache) RefreshCache() error {
 	return nil
 }
 
-func (c *Cache) fetch(ignoreDns bool, domain string) (cacheHit bool, p *Policy, err error) {
+func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bool, p *Policy, err error) {
 	validCache := true
 	cachedId, fetchTime, cachedPolicy, err := c.load(domain)
 	if err != nil {
@@ -129,7 +134,7 @@ func (c *Cache) fetch(ignoreDns bool, domain string) (cacheHit bool, p *Policy, 
 		}
 
 		validCache = false
-	} else if fetchTime.Add(time.Duration(cachedPolicy.MaxAge) * time.Second).Before(time.Now()) {
+	} else if fetchTime.Add(time.Duration(cachedPolicy.MaxAge) * time.Second).Before(now) {
 		validCache = false
 	}
 
