@@ -89,7 +89,9 @@ func Start(cfg []config.Node) error {
 	for _, inst := range instances {
 		if closer, ok := inst.instance.(io.Closer); ok {
 			log.Debugln("clean-up for module", inst.instance.Name(), inst.instance.InstanceName())
-			closer.Close()
+			if err := closer.Close(); err != nil {
+				log.Printf("module %s (%s) close failed: %v", inst.instance.Name(), inst.instance.InstanceName(), err)
+			}
 		}
 	}
 

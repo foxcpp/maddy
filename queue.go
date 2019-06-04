@@ -255,7 +255,9 @@ func (q *Queue) readDiskQueue() error {
 		id := entry.Name()[:len(entry.Name())-5]
 		if _, err := os.Stat(filepath.Join(q.location, id)); err != nil {
 			q.Log.Printf("failed to stat body file %s, removing meta-data file", id)
-			os.Remove(entry.Name())
+			if err := os.Remove(entry.Name()); err != nil {
+				q.Log.Printf("failed to remove dangling meta-data file %s.meta: %v", entry.Name(), err)
+			}
 			continue
 		}
 
