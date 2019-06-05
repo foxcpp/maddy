@@ -4,7 +4,7 @@
 
 Simple, fast IMAP+SMTP mail server.
 
-Maddy implements Mail Transfer agent (MTA), Mail Submission Agent (MSA) and
+Maddy implements Mail Transfer agent (MTA), Mail Submission Agent (MSA), Mail Delivery Agent (MDA) and
 IMAP server functionality in one application.
 
 **⚠️ Warning:** maddy is in development, many important features are missing, there
