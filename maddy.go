@@ -24,6 +24,8 @@ func Start(cfg []config.Node) error {
 	globals.String("statedir", false, false, "", nil)
 	globals.String("libexecdir", false, false, "", nil)
 	globals.Custom("tls", false, false, nil, tlsDirective, nil)
+	globals.Bool("auth_perdomain", false, nil)
+	globals.StringList("auth_domains", false, false, nil, nil)
 	globals.Custom("log", false, false, defaultLogOutput, logOutput, &log.DefaultLogger.Out)
 	globals.Bool("debug", false, &log.DefaultLogger.Debug)
 	globals.AllowUnknown()

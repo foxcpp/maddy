@@ -64,10 +64,16 @@ func (s *SMTPSession) Data(r io.Reader) error {
 		return err
 	}
 
-	_, _, err = passThroughPipeline(s.endp.pipeline, s.ctx, bufr)
-	if err != nil {
+	if s.endp.submission {
+		if err := SubmissionPrepare(s.ctx); err != nil {
+			return err
+		}
+	}
+
+	if err := s.endp.target.Deliver(*s.ctx, bufr); err != nil {
 		return err
 	}
+
 	s.endp.Log.Printf("accepted message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
 
 	return nil
@@ -78,7 +84,7 @@ type SMTPEndpoint struct {
 	serv      *smtp.Server
 	name      string
 	listeners []net.Listener
-	pipeline  []SMTPPipelineStep
+	target    module.DeliveryTarget
 
 	authAlwaysRequired bool
 
@@ -115,7 +121,6 @@ func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 	if endp.Auth != nil {
 		endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
 	}
-	endp.Log.Debugf("pipeline: %#v", endp.pipeline)
 
 	addresses := make([]Address, 0, len(cfg.Block.Args))
 	for _, addr := range cfg.Block.Args {
@@ -167,7 +172,12 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	cfg.Bool("submission", false, &submission)
-	cfg.AllowUnknown()
+	cfg.Custom("target", false, true, nil, deliverDirective, &endp.target)
+
+	_, err = cfg.Process()
+	if err != nil {
+		return err
+	}
 
 	// endp.submission can be set to true by NewSMTPEndpoint, leave it on
 	// even if directive is missing.
@@ -175,30 +185,10 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 		endp.submission = true
 	}
 
-	remainingDirs, err := cfg.Process()
-	if err != nil {
-		return err
-	}
-
 	endp.serv.WriteTimeout = time.Duration(writeTimeoutSecs) * time.Second
 	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
-	for _, entry := range remainingDirs {
-		step, err := StepFromCfg(cfg.Globals, entry)
-		if err != nil {
-			return err
-		}
-
-		// This will not trigger for nested blocks ('match', 'destination').
-		if entry.Name == "require_auth" {
-			endp.authAlwaysRequired = true
-		}
-
-		endp.pipeline = append(endp.pipeline, step)
-	}
-
 	if endp.submission {
-		endp.pipeline = append([]SMTPPipelineStep{submissionPrepareStep{}, requireAuthStep{}}, endp.pipeline...)
 		endp.authAlwaysRequired = true
 
 		if endp.Auth == nil {
