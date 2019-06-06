@@ -469,19 +469,18 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     auth pam
     hostname emersion.fr
 
-    destination emersion.fr {
-        filter dkim verify
-        deliver local
-    }
+    target pipeline {
+        destination emersion.fr {
+            filter dkim verify
+            deliver local
+        }
 
-    require_auth
-    filter dkim sign
-    deliver out-queue
+        require_auth
+        filter dkim sign
+        deliver out-queue
+    }
 }
 ```
-
-Directives not mentioned below are parsed as SMTP pipeline definition (see the
-corresponding section below)
 
 ## hostname ...
 
@@ -523,13 +522,20 @@ Use an authentication module with a specified configuration block name.
 
 ## submission [yes/no]
 
-Preprocess messages before pushing them to pipeline and require authentication
+Preprocess messages before pushing them to target and require authentication
 for all operations. You should use it for Submission protocol endpoints.
 
-# SMTP PIPELINE
+## target <block_name>
 
-SMTP module does have a flexible mechanism that allows you to define a custom
-sequence of actions to apply on each incoming message.
+Deliver messages to the delivery target defined by a specified configuration
+block name.
+
+You probably want to use pipeline module here.
+
+# PIPELINE MODULE
+
+The pipeline module defines a flexible mechanism that allows you to define a
+custom sequence of actions to apply on each processed message.
 
 Pipeline steps are applied strictly in the order they are specified in the
 configuration. Steps can change the message body or recipient list. They also

@@ -18,9 +18,9 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-// TODO: Consider merging SMTPPipelineStep interface with module.Filter.
+// TODO: Consider merging PipelineStep interface with module.Filter.
 
-type SMTPPipelineStep interface {
+type PipelineStep interface {
 	// Pass applies step's processing logic to the message.
 	//
 	// If Pass returns non-nil io.Reader - it should contain new message body.
@@ -105,7 +105,7 @@ type matchStep struct {
 	pattern  string
 	inverted bool
 	regexp   *regexp.Regexp
-	substeps []SMTPPipelineStep
+	substeps []PipelineStep
 }
 
 func (step matchStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
@@ -177,7 +177,7 @@ func (step stopStep) Pass(_ *module.DeliveryContext, _ io.Reader) (io.Reader, bo
 	return nil, false, nil
 }
 
-func stopStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
+func stopStepFromCfg(node config.Node) (PipelineStep, error) {
 	switch len(node.Args) {
 	case 0:
 		return stopStep{}, nil
@@ -196,7 +196,7 @@ func stopStepFromCfg(node config.Node) (SMTPPipelineStep, error) {
 	}
 }
 
-func filterStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPPipelineStep, error) {
+func filterStepFromCfg(globals map[string]interface{}, node *config.Node) (PipelineStep, error) {
 	if len(node.Args) == 0 {
 		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
@@ -220,7 +220,7 @@ func filterStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPP
 	return filterStep{filter}, nil
 }
 
-func deliverStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTPPipelineStep, error) {
+func deliverStepFromCfg(globals map[string]interface{}, node *config.Node) (PipelineStep, error) {
 	target, err := deliverTarget(globals, node)
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func deliverStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTP
 	return deliverStep{t: target, resolver: net.DefaultResolver}, nil
 }
 
-func matchStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
+func matchStepFromCfg(globals map[string]interface{}, node config.Node) (PipelineStep, error) {
 	if len(node.Args) != 3 && len(node.Args) != 2 {
 		return nil, errors.New("match: expected 3 or 2 arguments")
 	}
@@ -291,7 +291,7 @@ func (cond destinationCond) matches(addr string) bool {
 
 type destinationStep struct {
 	conds    []destinationCond
-	substeps []SMTPPipelineStep
+	substeps []PipelineStep
 }
 
 func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, bool, error) {
@@ -339,7 +339,7 @@ func seekableBody(body io.Reader) (io.ReadSeeker, error) {
 	return NewBytesReader(bodyBlob), err
 }
 
-func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, body io.Reader) (io.Reader, bool, error) {
+func passThroughPipeline(steps []PipelineStep, ctx *module.DeliveryContext, body io.Reader) (io.Reader, bool, error) {
 	currentBody, err := seekableBody(body)
 	if err != nil {
 		return nil, false, err
@@ -366,7 +366,7 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 	return body, true, nil
 }
 
-func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
+func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (PipelineStep, error) {
 	if len(node.Args) == 0 {
 		return nil, errors.New("required at least one condition")
 	}
@@ -397,7 +397,7 @@ func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (S
 	return &step, nil
 }
 
-func StepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
+func StepFromCfg(globals map[string]interface{}, node config.Node) (PipelineStep, error) {
 	switch node.Name {
 	case "filter":
 		return filterStepFromCfg(globals, &node)
