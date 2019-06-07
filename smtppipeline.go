@@ -294,13 +294,16 @@ func (step *destinationStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (i
 	unmatchedRcpts := make([]string, 0, len(ctx.To))
 	ctxCpy.To = make([]string, 0, len(ctx.To))
 	for _, rcpt := range ctx.To {
+		matched := false
 		for _, cond := range step.conds {
 			if cond.matches(rcpt) {
-				ctxCpy.To = append(ctxCpy.To, rcpt)
-				break
-			} else {
-				unmatchedRcpts = append(unmatchedRcpts, rcpt)
+				matched = true
 			}
+		}
+		if matched {
+			ctxCpy.To = append(ctxCpy.To, rcpt)
+		} else {
+			unmatchedRcpts = append(unmatchedRcpts, rcpt)
 		}
 	}
 
