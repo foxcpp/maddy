@@ -344,9 +344,6 @@ func passThroughPipeline(steps []SMTPPipelineStep, ctx *module.DeliveryContext, 
 		log.Debugf("running %T step...", step)
 		r, cont, err := step.Pass(ctx, currentBody)
 		if !cont {
-			if err == module.ErrSilentDrop {
-				return nil, false, nil
-			}
 			return nil, false, err
 		}
 
