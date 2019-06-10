@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -57,10 +58,14 @@ func (step filterStep) Pass(ctx *module.DeliveryContext, msg io.Reader) (io.Read
 
 type deliverStep struct {
 	t module.DeliveryTarget
+
+	// Resolver object used for obtaining information to include in Received
+	// header.
+	resolver Resolver
 }
 
-func LookupAddr(ip net.IP) (string, error) {
-	names, err := net.LookupAddr(ip.String())
+func LookupAddr(r Resolver, ip net.IP) (string, error) {
+	names, err := r.LookupAddr(context.Background(), ip.String())
 	if err != nil || len(names) == 0 {
 		return "", err
 	}
@@ -75,7 +80,7 @@ func (step deliverStep) Pass(ctx *module.DeliveryContext, body io.Reader) (io.Re
 	if !ctx.DontTraceSender {
 		received += "from " + ctx.SrcHostname
 		if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
-			domain, err := LookupAddr(tcpAddr.IP)
+			domain, err := LookupAddr(step.resolver, tcpAddr.IP)
 			if err != nil {
 				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
 			} else {
@@ -221,7 +226,7 @@ func deliverStepFromCfg(globals map[string]interface{}, node *config.Node) (SMTP
 		return nil, err
 	}
 
-	return deliverStep{target}, nil
+	return deliverStep{t: target, resolver: net.DefaultResolver}, nil
 }
 
 func matchStepFromCfg(globals map[string]interface{}, node config.Node) (SMTPPipelineStep, error) {
