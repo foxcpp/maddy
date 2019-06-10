@@ -1,6 +1,7 @@
 package mtasts
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -41,10 +42,15 @@ func downloadPolicy(domain string) (*Policy, error) {
 	return readPolicy(resp.Body)
 }
 
+type Resolver interface {
+	LookupTXT(ctx context.Context, domain string) ([]string, error)
+}
+
 // Cache structure implements transparent MTA-STS policy caching using FS
 // directory.
 type Cache struct {
 	Location string
+	Resolver Resolver
 	Logger   *log.Logger
 }
 
@@ -140,7 +146,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 
 	var dnsId string
 	if !ignoreDns {
-		records, err := net.LookupTXT("_mta-sts." + domain)
+		records, err := c.Resolver.LookupTXT(context.Background(), "_mta-sts."+domain)
 		if err != nil {
 			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
 				return false, nil, ErrNoPolicy

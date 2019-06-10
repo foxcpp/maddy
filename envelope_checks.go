@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -10,14 +11,14 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-func checkSrcRDNS(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
+func checkSrcRDNS(r Resolver, ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		log.Debugf("check_source_rdns: non TCP/IP source (%v), skipped", ctx.SrcAddr)
 		return nil, nil
 	}
 
-	names, err := net.LookupAddr(tcpAddr.IP.String())
+	names, err := r.LookupAddr(context.Background(), tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
 		log.Printf("check_source_rdns: rDNS query for %v failed (%v), FAIL, delivery ID = %s", tcpAddr.IP, err, ctx.DeliveryID)
 		return nil, errors.New("could look up rDNS address for source")
@@ -35,7 +36,7 @@ func checkSrcRDNS(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 	return nil, errors.New("rDNS name does not match source hostname")
 }
 
-func checkSrcMX(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
+func checkSrcMX(r Resolver, ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 	parts := strings.Split(ctx.From, "@")
 	if len(parts) != 2 {
 		return nil, errors.New("malformed address")
@@ -48,7 +49,7 @@ func checkSrcMX(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 		return nil, nil
 	}
 
-	srcMx, err := net.LookupMX(domain)
+	srcMx, err := r.LookupMX(context.Background(), domain)
 	if err != nil {
 		log.Debugf("check_source_mx: %s does not resolve, FAIL, delivery ID = %s", domain, ctx.DeliveryID)
 		return nil, errors.New("could not find MX records for from domain")
@@ -64,21 +65,21 @@ func checkSrcMX(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 	return nil, errors.New("From domain has no MX record for itself")
 }
 
-func checkSrcHostname(ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
+func checkSrcHostname(r Resolver, ctx *module.DeliveryContext, _ io.Reader) (io.Reader, error) {
 	tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		log.Debugf("check_source_hostname: not TCP/IP source (%v), skipped", ctx.SrcAddr)
 		return nil, nil
 	}
 
-	srcIPs, err := net.LookupIP(ctx.SrcHostname)
+	srcIPs, err := r.LookupIPAddr(context.Background(), ctx.SrcHostname)
 	if err != nil {
 		log.Printf("check_source_hostname: %s does not resolve, FAIL, delivery ID = %s", ctx.SrcHostname, ctx.DeliveryID)
 		return nil, errors.New("source hostname does not resolve")
 	}
 
 	for _, ip := range srcIPs {
-		if tcpAddr.IP.Equal(ip) {
+		if tcpAddr.IP.Equal(ip.IP) {
 			log.Debugf("check_source_hostname: A/AAA record found for %s for %s domain, OK, delivery ID = %s", tcpAddr.IP, ctx.SrcHostname, ctx.DeliveryID)
 			return nil, nil
 		}

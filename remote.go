@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -28,6 +29,8 @@ type RemoteDelivery struct {
 	hostname   string
 	requireTLS bool
 
+	resolver Resolver
+
 	mtastsCache        mtasts.Cache
 	stsCacheUpdateTick *time.Ticker
 	stsCacheUpdateDone chan struct{}
@@ -37,8 +40,10 @@ type RemoteDelivery struct {
 
 func NewRemoteDelivery(_, instName string) (module.Module, error) {
 	return &RemoteDelivery{
-		name: instName,
-		Log:  log.Logger{Name: "remote"},
+		name:        instName,
+		resolver:    net.DefaultResolver,
+		mtastsCache: mtasts.Cache{Resolver: net.DefaultResolver},
+		Log:         log.Logger{Name: "remote"},
 
 		stsCacheUpdateDone: make(chan struct{}),
 	}, nil
@@ -145,7 +150,7 @@ func toPartialError(temporary bool, rcpts []string, err error) *PartialError {
 var ErrNoMXMatchedBySTS = errors.New("remote: no MX record matched MTA-STS policy")
 
 func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain string, rcpts []string, body io.Reader) *PartialError {
-	addrs, err := lookupTargetServers(domain)
+	addrs, err := rd.lookupTargetServers(domain)
 	if err != nil {
 		return toPartialError(false, rcpts, err)
 	}
@@ -290,8 +295,8 @@ func groupByDomain(rcpts []string) (map[string][]string, error) {
 	return res, nil
 }
 
-func lookupTargetServers(domain string) ([]string, error) {
-	records, err := net.LookupMX(domain)
+func (rd *RemoteDelivery) lookupTargetServers(domain string) ([]string, error) {
+	records, err := rd.resolver.LookupMX(context.Background(), domain)
 	if err != nil {
 		return nil, err
 	}

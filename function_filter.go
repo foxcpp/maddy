@@ -2,12 +2,13 @@ package maddy
 
 import (
 	"io"
+	"net"
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
 
-type FuncFilter func(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error)
+type FuncFilter func(r Resolver, ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error)
 
 // functionFilter is a wrapper to help create simple filter functions that
 // don't need any state or configuration.
@@ -18,6 +19,7 @@ type functionFilter struct {
 	ctxVarName        string
 
 	ignoreFail bool
+	resolver   Resolver
 
 	f FuncFilter
 }
@@ -31,7 +33,7 @@ func (fltr *functionFilter) Init(m *config.Map) error {
 }
 
 func (fltr *functionFilter) Apply(ctx *module.DeliveryContext, msg io.Reader) (io.Reader, error) {
-	r, err := fltr.f(ctx, msg)
+	r, err := fltr.f(fltr.resolver, ctx, msg)
 	if fltr.ctxVarName != "" {
 		ctx.Ctx[fltr.ctxVarName] = err != nil
 	}
@@ -55,6 +57,7 @@ func NewFuncFilter(name, ctxVarName string, f FuncFilter) module.FuncNewModule {
 			modName:    modName,
 			instName:   instName,
 			ctxVarName: ctxVarName,
+			resolver:   net.DefaultResolver,
 			f:          f,
 		}, nil
 	}
