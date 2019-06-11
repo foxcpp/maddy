@@ -60,6 +60,21 @@ func checkSrcMX(r Resolver, ctx *module.DeliveryContext, _ io.Reader) (io.Reader
 			log.Debugf("check_source_mx: MX record %s matches %v (%v), OK, delivery ID = %s", mx.Host, ctx.SrcHostname, tcpAddr.IP, ctx.DeliveryID)
 			return nil, nil
 		}
+
+		// MX record may contain hostname that will resolve to source hostname, check that too.
+		addrs, err := r.LookupIPAddr(context.Background(), mx.Host)
+		if err != nil {
+			// TODO: Actually check whether mx.Host is a domain.
+			// Probably that was an IP.
+			continue
+		}
+
+		for _, addr := range addrs {
+			if addr.IP.Equal(tcpAddr.IP) {
+				log.Debugf("check_source_mx: MX record %s matches %v (%v), OK, delivery ID = %s", mx.Host, ctx.SrcHostname, tcpAddr.IP, ctx.DeliveryID)
+				return nil, nil
+			}
+		}
 	}
 	log.Printf("check_source_mx: no matching MX records for %s (%s), FAIL, delivery ID = %s", ctx.SrcHostname, tcpAddr.IP, ctx.DeliveryID)
 	return nil, errors.New("From domain has no MX record for itself")
