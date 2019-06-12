@@ -264,7 +264,7 @@ func (endp *SMTPEndpoint) Login(state *smtp.ConnectionState, username, password 
 		return nil, errors.New("Invalid credentials")
 	}
 
-	return endp.newSession(false, username, state), nil
+	return endp.newSession(false, username, password, state), nil
 }
 
 func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
@@ -272,18 +272,19 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Sess
 		return nil, smtp.ErrAuthRequired
 	}
 
-	return endp.newSession(true, "", state), nil
+	return endp.newSession(true, "", "", state), nil
 }
 
-func (endp *SMTPEndpoint) newSession(anonymous bool, username string, state *smtp.ConnectionState) smtp.Session {
+func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
 	ctx := module.DeliveryContext{
-		Anonymous:   anonymous,
-		AuthUser:    username,
-		SrcTLSState: state.TLS,
-		SrcHostname: state.Hostname,
-		SrcAddr:     state.RemoteAddr,
-		OurHostname: endp.serv.Domain,
-		Ctx:         make(map[string]interface{}),
+		Anonymous:    anonymous,
+		AuthUser:     username,
+		AuthPassword: password,
+		SrcTLSState:  state.TLS,
+		SrcHostname:  state.Hostname,
+		SrcAddr:      state.RemoteAddr,
+		OurHostname:  endp.serv.Domain,
+		Ctx:          make(map[string]interface{}),
 	}
 
 	if endp.serv.LMTP {
