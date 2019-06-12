@@ -155,7 +155,7 @@ func (step matchStep) matches(s string) bool {
 	if step.regexp != nil {
 		match = step.regexp.MatchString(s)
 	} else {
-		match = strings.Contains(s, step.pattern)
+		match = strings.Contains(strings.ToLower(s), step.pattern)
 	}
 
 	if step.inverted {
@@ -245,11 +245,11 @@ func matchStepFromCfg(globals map[string]interface{}, node config.Node) (Pipelin
 	}
 
 	res.field = node.Args[0]
-	res.pattern = node.Args[1]
+	res.pattern = strings.ToLower(node.Args[1])
 	if strings.HasPrefix(res.pattern, "/") && strings.HasSuffix(res.pattern, "/") {
 		res.pattern = res.pattern[1 : len(res.pattern)-1]
 		var err error
-		res.regexp, err = regexp.Compile(res.pattern)
+		res.regexp, err = regexp.Compile("(?i)" + res.pattern)
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func (cond destinationCond) matches(addr string) bool {
 	}
 
 	if strings.Contains(cond.value, "@") {
-		return cond.value == addr
+		return strings.EqualFold(cond.value, addr)
 	}
 
 	parts := strings.Split(addr, "@")
@@ -286,7 +286,7 @@ func (cond destinationCond) matches(addr string) bool {
 	}
 
 	// Domains are always case-sensetive.
-	return strings.ToLower(parts[1]) == strings.ToLower(cond.value)
+	return strings.EqualFold(parts[1], cond.value)
 }
 
 type destinationStep struct {
@@ -375,7 +375,7 @@ func destinationStepFromCfg(globals map[string]interface{}, node config.Node) (P
 
 	for _, arg := range node.Args {
 		if strings.HasPrefix(arg, "/") && strings.HasSuffix(arg, "/") {
-			re, err := regexp.Compile(arg[1 : len(arg)-1])
+			re, err := regexp.Compile("(?i)" + arg[1:len(arg)-1])
 			if err != nil {
 				return nil, err
 			}
