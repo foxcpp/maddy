@@ -22,7 +22,7 @@ func checkDomainAuth(username string, perDomain bool, allowedDomains []string) (
 	allowed = domain == ""
 	if allowedDomains != nil && domain != "" {
 		for _, allowedDomain := range allowedDomains {
-			if domain == allowedDomain {
+			if strings.EqualFold(domain, allowedDomain) {
 				allowed = true
 			}
 		}
