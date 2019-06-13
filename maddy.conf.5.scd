@@ -328,9 +328,6 @@ tls cert.pem cert.pem {
 }
 ```
 
-Certificate to use for client connection is picked based on SNI. If no SNI is
-sent by client - first certificate is used.
-
 Valid configuration directives:
 
 ## protocols <min> <max>
