@@ -68,6 +68,13 @@ func (ea *ExternalAuth) Init(cfg *config.Map) error {
 		helperName = "maddy-shadow-helper"
 	}
 
+	switch ea.modName {
+	case "pam", "shadow":
+		if ea.perDomain {
+			return errors.New("PAM/shadow authentication does not support per-domain namespacing (auth_perdomain)")
+		}
+	}
+
 	ea.helperPath = filepath.Join(LibexecDirectory(cfg.Globals), helperName)
 	if _, err := os.Stat(ea.helperPath); err != nil {
 		return fmt.Errorf("no %s authentication support, %s is not found in %s and no custom path is set", ea.modName, LibexecDirectory(cfg.Globals), helperName)
