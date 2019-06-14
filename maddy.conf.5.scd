@@ -303,8 +303,8 @@ different accounts at the storage level.
 
 ## auth_perdomain [yes/no]
 
-If yes - authentication requests that specify just username will be rejected
-as invalid and domain part will be used as part of login name.
+If yes - authentication requests that specify just username without the domain
+will be rejected as invalid and domain part will be used as part of login name.
 
 ## auth_domains <domain0> [domain1] ...
 
@@ -312,7 +312,7 @@ Domains that should be allowed in username.
 
 For example, if auth_domains is set to "domain1 domain2", then
 username, username@domain1 and username@domain2 will be accepted as valid login
-name.
+name in addition to just username.
 
 If used without auth_perdomain, domain part will be removed from login before
 check with underlying auth. mechanism. If auth_perdomain is set, then
