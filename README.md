@@ -34,7 +34,7 @@ README files for details.
 ### Configuration
 
 Start by copying contents of the [maddy.conf](maddy.conf) to
-`/etc/maddy/maddy.conf` (default configurtion location).
+`/etc/maddy/maddy.conf` (default configuration location).
 
 With this configuration, maddy will create an SQLite3 database for messages in
 /var/lib/maddy and use it to store all messages. You need to ensure that this
@@ -44,7 +44,7 @@ Configuration syntax, high-level structure, and all implemented options are
 documented in maddy.conf(5) man page.
 
 You can view page source [here](maddy.conf.5.scd) (it is readable!) or
-generate man page using [scdoc](https://git.sr.ht/~sircmpwn/scdoc) utliity:
+generate man page using [scdoc](https://git.sr.ht/~sircmpwn/scdoc) utility:
 ```
 scdoc < maddy.conf.5.scd > maddy.conf.5
 ```
