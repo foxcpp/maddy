@@ -103,8 +103,4 @@ func checkSrcHostname(r Resolver, ctx *module.DeliveryContext, _ io.Reader) (io.
 	return nil, errors.New("source hostname does not resolve to source address")
 }
 
-func init() {
-	RegisterFuncFilter("check_source_rdns", "source_rdns", checkSrcRDNS)
-	RegisterFuncFilter("check_source_mx", "source_mx", checkSrcMX)
-	RegisterFuncFilter("check_source_hostname", "source_hostname", checkSrcHostname)
-}
+// FIXME: Register

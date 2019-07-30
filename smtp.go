@@ -70,9 +70,10 @@ func (s *SMTPSession) Data(r io.Reader) error {
 		}
 	}
 
-	if err := s.endp.target.Deliver(*s.ctx, bufr); err != nil {
-		return err
-	}
+	//TODO
+	//if err := s.endp.target.Deliver(*s.ctx, bufr); err != nil {
+	//	return err
+	//}
 
 	s.endp.Log.Printf("accepted message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
 

@@ -168,7 +168,8 @@ func (q *Queue) retryDelivery(id string) {
 
 func (q *Queue) attemptDelivery(meta *QueueMetadata, body io.Reader) (shouldRetry bool, newRcpts []string) {
 	meta.Ctx.Ctx["id"] = meta.ID
-	err := q.Target.Deliver(*meta.Ctx, body)
+	// TODO err := q.Target.Deliver(*meta.Ctx, body)
+	var err error
 
 	if err == nil {
 		q.Log.Debugf("success for %s", meta.ID)
