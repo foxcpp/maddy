@@ -466,16 +466,7 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     auth pam
     hostname emersion.fr
 
-    target pipeline {
-        destination emersion.fr {
-            filter dkim verify
-            deliver local
-        }
-
-        require_auth
-        filter dkim sign
-        deliver out-queue
-    }
+    target dummy
 }
 ```
 
@@ -526,94 +517,6 @@ for all operations. You should use it for Submission protocol endpoints.
 
 Deliver messages to the delivery target defined by a specified configuration
 block name.
-
-You probably want to use pipeline module here.
-
-# PIPELINE MODULE
-
-The pipeline module defines a flexible mechanism that allows you to define a
-custom sequence of actions to apply on each processed message.
-
-Pipeline steps are applied strictly in the order they are specified in the
-configuration. Steps can change the message body or recipient list. They also
-can reject the message, in this case no more steps will be executed and error
-will be returned to the message source (SMTP client).
-
-You can add any number of steps you want using the following directives:
-
-## filter <instnace_name>
-
-Apply a "filter" to a message, instance_name is the configuration block name.
-You can pass additional parameters to filter by adding key=value pairs to the
-end directive, you can omit the value and just specify key if it is
-supported by the filter.
-
-## deliver <instance_name>
-
-Same as the filter directive, but also executes certain pre-delivery
-operations required by RFC 5321 (SMTP), i.e. it adds Received header to
-message.
-
-## stop
-## stop <status code> <message>
-
-Stops processing. If status code and message are specified - they will be
-returned. Otherwise "250 OK: queued" will be sent.
-
-## require_auth
-
-Stop processing with "access denied" error if the client is not authenticated
-non-anonymously.
-
-## match [no] <field> <subtring>  { ... }
-## match [no] <field> /<regexp>/  { ... }
-
-Executes all nested steps if the condition specified in the directive is true
-(field contains the specified substring).
-
-*Note:* 'match' is low-level dispatching primitive, in most cases you should
-use 'destination' instead.
-
-If the substring is wrapped in forward slashes - it will be interpreted as a
-Perl-compatible regular expression that should match field contents.
-
-Valid "fields":
-- rcpt
-  Message recipient addresses, the condition is true if at least one
-  recipient matches.
-- rcpt_domain
-  Message recipient domain, the condition is true if at least one
-  recipient matches.
-- from
-  Message sender address.
-- from_domain
-  Domain part of message sender address.
-- src_addr
-  IP of the client who submitted the message.
-- src_hostname
-  Hostname reported by the client in the EHLO/HELO command.
-
-## destination <recipient...> { ... }
-
-For all recipients that match at least one rule - execute subblock and stop
-processing, for all others - skip block and continue.
-
-"Rule" can be either domain name, full address (should include `@`) or
-a regular expression that should match full address.
-
-Example: Deliver to "local" all messages for mailboxes on example.org and all other - to "dummy".
-```
-destination example.org { deliver local }
-deliver dummy
-```
-
-*Note:* Don't forget that order of pipeline steps matters.
-```
-deliver sql
-destination postmaster@example.org { deliver local }
-```
-In this case, messages for postmaster@example.org will be delivered to
-*both* 'sql' and 'local' storage.
 
 # SUBMISSION MODULE
 
