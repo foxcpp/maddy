@@ -22,6 +22,8 @@ type testTarget struct {
 	bodyErr   error
 	abortErr  error
 	commitErr error
+
+	instName string
 }
 
 /*
@@ -33,6 +35,9 @@ func (dt testTarget) Init(*config.Map) error {
 }
 
 func (dt testTarget) InstanceName() string {
+	if dt.instName != "" {
+		return dt.instName
+	}
 	return "test_instance"
 }
 

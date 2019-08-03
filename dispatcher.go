@@ -60,7 +60,7 @@ func splitAddress(addr string) (mailbox, domain string, err error) {
 
 func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
-		deliveries: make(map[*rcptBlock][]module.Delivery),
+		deliveries: make(map[module.DeliveryTarget]module.Delivery),
 		ctx:        ctx,
 		log:        &d.Log,
 	}
@@ -113,7 +113,7 @@ type dispatcherDelivery struct {
 	sourceAddr  string
 	sourceBlock sourceBlock
 
-	deliveries map[*rcptBlock][]module.Delivery
+	deliveries map[module.DeliveryTarget]module.Delivery
 	ctx        *module.DeliveryContext
 }
 
@@ -147,25 +147,23 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	// TODO: Init per-rcpt checks, run CheckConnection, CheckSender and CheckRcpt.
 	// TODO: Init per-rcpt modificators, run RewriteRcpt.
 
-	var deliveries []module.Delivery
-	if deliveries, ok = dd.deliveries[rcptBlock]; !ok {
-		deliveries = make([]module.Delivery, 0, len(rcptBlock.targets))
-		for _, tgt := range rcptBlock.targets {
-			delivery, err := tgt.Start(dd.ctx, dd.sourceAddr)
+	for _, target := range rcptBlock.targets {
+		var delivery module.Delivery
+		var err error
+		if delivery, ok = dd.deliveries[target]; !ok {
+			delivery, err = target.Start(dd.ctx, dd.sourceAddr)
 			if err != nil {
 				dd.log.Printf("target.Start(%s) failure, target = %s (%s): %v (delivery ID = %s)",
-					dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name(), err, dd.ctx.DeliveryID)
+					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err, dd.ctx.DeliveryID)
 				return err
 			}
 
 			dd.log.Debugf("target.Start(%s) ok, target = %s (%s) (delivery ID = %s)",
-				dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name(), dd.ctx.DeliveryID)
-			deliveries = append(deliveries, delivery)
-		}
-		dd.deliveries[rcptBlock] = deliveries
-	}
+				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), dd.ctx.DeliveryID)
 
-	for _, delivery := range deliveries {
+			dd.deliveries[target] = delivery
+		}
+
 		if err := delivery.AddRcpt(to); err != nil {
 			dd.log.Printf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v (delivery ID = %s)",
 				to, delivery, err, dd.ctx.DeliveryID)
@@ -179,49 +177,43 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 }
 
 func (dd dispatcherDelivery) Body(body module.BodyBuffer) error {
-	for _, deliveries := range dd.deliveries {
-		for _, delivery := range deliveries {
-			if err := delivery.Body(body); err != nil {
-				dd.log.Printf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
-					delivery, err, dd.ctx.DeliveryID)
-				return err
-			}
-			dd.log.Debugf("delivery.Body ok, Delivery object = %T (delivery ID = %v)",
-				delivery, dd.ctx.DeliveryID)
+	for _, delivery := range dd.deliveries {
+		if err := delivery.Body(body); err != nil {
+			dd.log.Printf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
+				delivery, err, dd.ctx.DeliveryID)
+			return err
 		}
+		dd.log.Debugf("delivery.Body ok, Delivery object = %T (delivery ID = %v)",
+			delivery, dd.ctx.DeliveryID)
 	}
 	return nil
 }
 
 func (dd dispatcherDelivery) Commit() error {
-	for _, deliveries := range dd.deliveries {
-		for _, delivery := range deliveries {
-			if err := delivery.Commit(); err != nil {
-				dd.log.Printf("delivery.Commit failure, Delivery object = %T: %v (delivery ID = %s)",
-					delivery, err, dd.ctx.DeliveryID)
-				// No point in Committing remaining deliveries, everything is broken already.
-				return err
-			}
-			dd.log.Debugf("delivery.Commit ok, Delivery object = %T (delivery ID = %s)",
-				delivery, dd.ctx.DeliveryID)
+	for _, delivery := range dd.deliveries {
+		if err := delivery.Commit(); err != nil {
+			dd.log.Printf("delivery.Commit failure, Delivery object = %T: %v (delivery ID = %s)",
+				delivery, err, dd.ctx.DeliveryID)
+			// No point in Committing remaining deliveries, everything is broken already.
+			return err
 		}
+		dd.log.Debugf("delivery.Commit ok, Delivery object = %T (delivery ID = %s)",
+			delivery, dd.ctx.DeliveryID)
 	}
 	return nil
 }
 
 func (dd dispatcherDelivery) Abort() error {
 	var lastErr error
-	for _, deliveries := range dd.deliveries {
-		for _, delivery := range deliveries {
-			if err := delivery.Abort(); err != nil {
-				dd.log.Printf("delivery.Abort failure, Delivery object = %T: %v (delivery ID = %s)",
-					delivery, err, dd.ctx.DeliveryID)
-				lastErr = err
-				// Continue anyway and try to Abort all remaining delivery objects.
-			}
-			dd.log.Debugf("delivery.Abort ok, Delivery object = %T (delivery ID = %s)",
-				delivery, dd.ctx.DeliveryID)
+	for _, delivery := range dd.deliveries {
+		if err := delivery.Abort(); err != nil {
+			dd.log.Printf("delivery.Abort failure, Delivery object = %T: %v (delivery ID = %s)",
+				delivery, err, dd.ctx.DeliveryID)
+			lastErr = err
+			// Continue anyway and try to Abort all remaining delivery objects.
 		}
+		dd.log.Debugf("delivery.Abort ok, Delivery object = %T (delivery ID = %s)",
+			delivery, dd.ctx.DeliveryID)
 	}
 	dd.log.Printf("delivery aborted (delivery ID = %s)", dd.ctx.DeliveryID)
 	return lastErr
