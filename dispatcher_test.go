@@ -83,7 +83,7 @@ func TestDispatcher_AllToTarget(t *testing.T) {
 }
 
 func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
-	orgTarget, comTarget := testTarget{}, testTarget{}
+	orgTarget, comTarget := testTarget{instName: "orgTarget"}, testTarget{instName: "comTarget"}
 	d := Dispatcher{
 		perSource: map[string]sourceBlock{
 			"example.com": sourceBlock{
@@ -118,7 +118,7 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 }
 
 func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
-	target1, target2 := testTarget{}, testTarget{}
+	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
 		perSource: map[string]sourceBlock{
 			"sender1@example.com": sourceBlock{
@@ -142,18 +142,18 @@ func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 	doTestDelivery(t, &d, "sender2@example.com", []string{"rcpt@example.com"})
 
 	if len(target1.messages) != 1 {
-		t.Fatalf("wrong amount of messages received for target1, want %d, got %d", 1, len(target1.messages))
+		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 1, len(target1.messages))
 	}
 	checkTestMessage(t, &target1, 0, "sender1@example.com", []string{"rcpt@example.com"})
 
 	if len(target2.messages) != 1 {
-		t.Fatalf("wrong amount of messages received for target1, want %d, got %d", 1, len(target2.messages))
+		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 1, len(target2.messages))
 	}
 	checkTestMessage(t, &target2, 0, "sender2@example.com", []string{"rcpt@example.com"})
 }
 
 func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
-	target1, target2 := testTarget{}, testTarget{}
+	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
 		perSource: map[string]sourceBlock{},
 		defaultSource: sourceBlock{
@@ -176,20 +176,20 @@ func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 	doTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.org", "rcpt2@example.com"})
 
 	if len(target1.messages) != 2 {
-		t.Fatalf("wrong amount of messages received for target1, want %d, got %d", 2, len(target1.messages))
+		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 2, len(target1.messages))
 	}
 	checkTestMessage(t, &target1, 0, "sender@example.com", []string{"rcpt1@example.com"})
 	checkTestMessage(t, &target1, 1, "sender@example.com", []string{"rcpt2@example.com"})
 
 	if len(target2.messages) != 2 {
-		t.Fatalf("wrong amount of messages received for target2, want %d, got %d", 2, len(target2.messages))
+		t.Errorf("wrong amount of messages received for target2, want %d, got %d", 2, len(target2.messages))
 	}
 	checkTestMessage(t, &target2, 0, "sender@example.com", []string{"rcpt2@example.org"})
 	checkTestMessage(t, &target2, 1, "sender@example.com", []string{"rcpt1@example.org"})
 }
 
 func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
-	target1, target2 := testTarget{}, testTarget{}
+	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
 		perSource: map[string]sourceBlock{
 			"sender1@example.com": sourceBlock{
@@ -445,4 +445,29 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 			t.Errorf("%s is accepted as valid address", addr)
 		}
 	}
+}
+
+func TestDispatcher_TwoRcptToOneTarget(t *testing.T) {
+	target := testTarget{}
+	d := Dispatcher{
+		perSource: map[string]sourceBlock{},
+		defaultSource: sourceBlock{
+			perRcpt: map[string]*rcptBlock{
+				"example.com": &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+				"example.org": &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Log: testLogger("dispatcher"),
+	}
+
+	doTestDelivery(t, &d, "sender@example.com", []string{"recipient@example.com", "recipient@example.org"})
+
+	if len(target.messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.messages))
+	}
+	checkTestMessage(t, &target, 0, "sender@example.com", []string{"recipient@example.com", "recipient@example.org"})
 }
