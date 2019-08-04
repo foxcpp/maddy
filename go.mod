@@ -19,5 +19,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/mholt/caddy v1.0.0
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8 // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190616124812-15dcb6c0061f // indirect
 )

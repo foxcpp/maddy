@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -18,7 +19,7 @@ import (
 // source (Submission, SMTP, JMAP modules) implementation.
 type Dispatcher struct {
 	// Configuration.
-	// TODO: globalChecks
+	globalChecks  CheckGroup
 	perSource     map[string]sourceBlock
 	defaultSource sourceBlock
 
@@ -26,12 +27,14 @@ type Dispatcher struct {
 }
 
 type sourceBlock struct {
+	checks      CheckGroup
 	rejectErr   error
 	perRcpt     map[string]*rcptBlock
 	defaultRcpt *rcptBlock
 }
 
 type rcptBlock struct {
+	checks    CheckGroup
 	rejectErr error
 	targets   []module.DeliveryTarget
 }
@@ -60,12 +63,26 @@ func splitAddress(addr string) (mailbox, domain string, err error) {
 
 func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
-		deliveries: make(map[module.DeliveryTarget]module.Delivery),
-		ctx:        ctx,
-		log:        &d.Log,
+		rcptChecksState: make(map[*rcptBlock]module.CheckState),
+		deliveries:      make(map[module.DeliveryTarget]module.Delivery),
+		ctx:             ctx,
+		cancelCtx:       context.Background(),
+		log:             &d.Log,
 	}
 
-	// TODO: Init global checks, run CheckConnection and CheckSender.
+	globalChecksState, err := d.globalChecks.NewMessage(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := globalChecksState.CheckConnection(dd.cancelCtx); err != nil {
+		return nil, err
+	}
+	if err := globalChecksState.CheckSender(dd.cancelCtx, mailFrom); err != nil {
+		return nil, err
+	}
+	dd.globalChecksState = globalChecksState
+
 	// TODO: Init global modificators, run RewriteSender.
 
 	// First try to match against complete address.
@@ -95,7 +112,18 @@ func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module
 	}
 	dd.sourceBlock = sourceBlock
 
-	// TODO: Init per-sender checks, run CheckConnection, CheckSender.
+	sourceChecksState, err := sourceBlock.checks.NewMessage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := sourceChecksState.CheckConnection(dd.cancelCtx); err != nil {
+		return nil, err
+	}
+	if err := sourceChecksState.CheckSender(dd.cancelCtx, mailFrom); err != nil {
+		return nil, err
+	}
+	dd.sourceChecksState = sourceChecksState
+
 	// TODO: Init per-sender modificators, run RewriteSender.
 
 	dd.sourceAddr = mailFrom
@@ -104,9 +132,9 @@ func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module
 }
 
 type dispatcherDelivery struct {
-	// TODO: globalChecksState
-	// TODO: sourceChecksState
-	// TODO: rcptChecksState
+	globalChecksState module.CheckState
+	sourceChecksState module.CheckState
+	rcptChecksState   map[*rcptBlock]module.CheckState
 
 	log *log.Logger
 
@@ -115,6 +143,7 @@ type dispatcherDelivery struct {
 
 	deliveries map[module.DeliveryTarget]module.Delivery
 	ctx        *module.DeliveryContext
+	cancelCtx  context.Context
 }
 
 func (dd dispatcherDelivery) AddRcpt(to string) error {
@@ -144,7 +173,26 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		return rcptBlock.rejectErr
 	}
 
-	// TODO: Init per-rcpt checks, run CheckConnection, CheckSender and CheckRcpt.
+	var rcptChecksState module.CheckState
+	if rcptChecksState, ok = dd.rcptChecksState[rcptBlock]; !ok {
+		var err error
+		rcptChecksState, err = rcptBlock.checks.NewMessage(dd.ctx)
+		if err != nil {
+			return err
+		}
+		if err := rcptChecksState.CheckConnection(dd.cancelCtx); err != nil {
+			return err
+		}
+		if err := rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr); err != nil {
+			return err
+		}
+		dd.rcptChecksState[rcptBlock] = rcptChecksState
+	}
+
+	if err := rcptChecksState.CheckRcpt(dd.cancelCtx, to); err != nil {
+		return err
+	}
+
 	// TODO: Init per-rcpt modificators, run RewriteRcpt.
 
 	for _, target := range rcptBlock.targets {

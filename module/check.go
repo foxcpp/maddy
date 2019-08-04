@@ -12,10 +12,10 @@ import (
 type Check interface {
 	// NewMessage initializing the "internal" check state required for
 	// processing of the new message.
-	NewMessage(ctx *DeliveryContext) (MessageCheck, error)
+	NewMessage(ctx *DeliveryContext) (CheckState, error)
 }
 
-type MessageCheck interface {
+type CheckState interface {
 	// CheckConnection is executed once when client sends a new message.
 	//
 	// Result may be cached for the whole client connection so this function
