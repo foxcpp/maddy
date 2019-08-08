@@ -7,23 +7,43 @@ import (
 
 // Dummy is a struct that implements AuthProvider, DeliveryTarget and Filter
 // interfaces but does nothing. Useful for testing.
-//
-// FIXME Incomplete
 type Dummy struct{ instName string }
 
-func (d Dummy) CheckPlain(_, _ string) bool {
+func (d *Dummy) CheckPlain(_, _ string) bool {
 	return true
 }
 
-func (d Dummy) Name() string {
+func (d *Dummy) Name() string {
 	return "dummy"
 }
 
-func (d Dummy) InstanceName() string {
+func (d *Dummy) InstanceName() string {
 	return d.instName
 }
 
-func (d Dummy) Init(_ *config.Map) error {
+func (d *Dummy) Init(_ *config.Map) error {
+	return nil
+}
+
+func (d *Dummy) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+	return dummyDelivery{}, nil
+}
+
+type dummyDelivery struct{}
+
+func (dd dummyDelivery) AddRcpt(to string) error {
+	return nil
+}
+
+func (dd dummyDelivery) Body(body module.BodyBuffer) error {
+	return nil
+}
+
+func (dd dummyDelivery) Abort() error {
+	return nil
+}
+
+func (dd dummyDelivery) Commit() error {
 	return nil
 }
 
