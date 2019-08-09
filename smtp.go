@@ -173,7 +173,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	cfg.Bool("submission", false, &submission)
-	cfg.Custom("target", false, true, nil, deliverDirective, &endp.target)
+	cfg.Custom("target", false, true, nil, deliveryDirective, &endp.target)
 
 	_, err = cfg.Process()
 	if err != nil {

@@ -83,7 +83,7 @@ func (q *Queue) Init(cfg *config.Map) error {
 	cfg.Int("max_tries", false, false, 8, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
 	cfg.String("location", false, false, "", &q.location)
-	cfg.Custom("target", false, true, nil, deliverDirective, &q.Target)
+	cfg.Custom("target", false, true, nil, deliveryDirective, &q.Target)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}

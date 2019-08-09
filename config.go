@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
@@ -14,15 +15,10 @@ import (
 Config matchers for module interfaces.
 */
 
-// createModule is a helper function for config matchers that can create inline modules.
-func createModule(args []string) (module.Module, error) {
-	modName := args[0]
-	var instName string
-	if len(args) >= 2 {
-		instName = args[1]
-		if module.HasInstance(instName) {
-			return nil, fmt.Errorf("module instance named %s already exists", instName)
-		}
+// createInlineModule is a helper function for config matchers that can create inline modules.
+func createInlineModule(modName, instName string) (module.Module, error) {
+	if instName != "" && module.HasInstance(instName) {
+		return nil, fmt.Errorf("module instance named %s already exists", instName)
 	}
 
 	newMod := module.Get(modName)
@@ -35,101 +31,132 @@ func createModule(args []string) (module.Module, error) {
 	return newMod(modName, instName)
 }
 
-func moduleFromNode(node *config.Node) (module.Module, error) {
-	if node.Children != nil {
-		return createModule(node.Args)
-	}
-	return module.GetInstance(node.Args[0])
-}
-
-func initInlineModule(modObj module.Module, globals map[string]interface{}, node *config.Node) error {
-	// This is to ensure modules Init will see expected node layout if it breaks
-	// Map abstraction and works with map.Values.
-	//
-	// Expected: modName modArgs { ... }
-	// Actual: something modName modArgs { ... }
-	nodeCpy := *node
-	nodeCpy.Name = node.Args[0]
-	nodeCpy.Args = node.Args[1:]
-
+// initInlineModule constructs "faked" config tree and passes it to module
+// Init function to make it look like it is defined at top-level.
+//
+// args must contain at least one argument, otherwise initInlineModule panics.
+func initInlineModule(modObj module.Module, globals map[string]interface{}, args []string, block *config.Node) error {
 	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
-	return modObj.Init(config.NewMap(globals, &nodeCpy))
+	return modObj.Init(config.NewMap(globals, &config.Node{
+		Name:     args[0],
+		Args:     args[1:],
+		Children: block.Children,
+		File:     block.File,
+		Line:     block.Line,
+	}))
 }
 
-func deliverDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	return deliverTarget(m.Globals, node)
-}
+// moduleFromNode does all work to create or get existing module object with a certain type.
+// It is not used by top-level module definitions, only for references from other
+// modules configuration blocks.
+//
+// inlineCfg should contain configuration directives for inline declarations.
+// args should contain values that are used to create module.
+// It should be either module name + instance name or just module name. Further extensions
+// may add other string arguments (currently, they can be accessed by module code using
+// Values field of config.Map passed to Init).
+//
+// It checks using reflection whether it is possible to store a module object into modObj
+// pointer (e.g. it implements all necessary interfaces) and stores it if everything is fine.
+// If module object doesn't implement necessary module interfaces - error is returned.
+// If modObj is not a pointer, moduleFromNode panics.
+func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]interface{}, moduleIface interface{}) error {
+	// single argument
+	//  - instance name of an existing module
+	// single argument + block
+	//  - module name, inline definition
+	// two arguments + block
+	//  - module name and instance name, inline definition
+	//
+	// two arguments, no block
+	//  - invalid
 
-func deliverTarget(globals map[string]interface{}, node *config.Node) (module.DeliveryTarget, error) {
-	// First argument to make it compatible with config.Map.
-	if len(node.Args) == 0 {
-		return nil, config.NodeErr(node, "expected at least 1 argument")
+	if len(args) == 0 {
+		return config.NodeErr(inlineCfg, "at least one argument is required")
 	}
 
-	modObj, err := moduleFromNode(node)
+	var modObj module.Module
+	var err error
+	if inlineCfg.Children != nil {
+		modName := args[0]
+
+		instName := ""
+		if len(args) == 2 {
+			instName = args[1]
+		}
+
+		modObj, err = createInlineModule(modName, instName)
+	} else {
+		if len(args) != 1 {
+			return config.NodeErr(inlineCfg, "exactly one argument is required")
+		}
+		modObj, err = module.GetInstance(args[0])
+	}
 	if err != nil {
-		return nil, config.NodeErr(node, "%s", err.Error())
+		return err
 	}
 
-	target, ok := modObj.(module.DeliveryTarget)
-	if !ok {
-		return nil, config.NodeErr(node, "module %s doesn't implement delivery target interface", modObj.Name())
+	// NOTE: This will panic if moduleIface is not a pointer.
+	modIfaceType := reflect.TypeOf(moduleIface).Elem()
+	modObjType := reflect.TypeOf(modObj)
+	if !modObjType.Implements(modIfaceType) && !modObjType.AssignableTo(modIfaceType) {
+		return config.NodeErr(inlineCfg, "module %s (%s) doesn't implement %v interface", modObj.Name(), modObj.InstanceName(), modIfaceType)
 	}
 
-	if node.Children != nil {
-		if err := initInlineModule(modObj, globals, node); err != nil {
-			return nil, err
+	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))
+
+	if inlineCfg.Children != nil {
+		if err := initInlineModule(modObj, globals, args, inlineCfg); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// deliveryDirective is a callback for use in config.Map.Custom.
+//
+// It does all work necessary to create a module instance from the config
+// directive with the following structure:
+// directive_name mod_name [inst_name] [{
+//   inline_mod_config
+// }]
+//
+// Note that if used configuration structure lacks directive_name before mod_name - this function
+// should not be used (call deliveryTarget directly).
+func deliveryDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	return deliveryTarget(m.Globals, node.Args, node)
+}
+
+func deliveryTarget(globals map[string]interface{}, args []string, block *config.Node) (module.DeliveryTarget, error) {
+	var target module.DeliveryTarget
+	if err := moduleFromNode(args, block, globals, &target); err != nil {
+		return nil, err
+	}
 	return target, nil
 }
 
+func messageCheck(globals map[string]interface{}, args []string, block *config.Node) (module.Check, error) {
+	var check module.Check
+	if err := moduleFromNode(args, block, globals, &check); err != nil {
+		return nil, err
+	}
+	return check, nil
+}
+
 func authDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) == 0 {
-		return nil, m.MatchErr("expected at least 1 argument")
+	var provider module.AuthProvider
+	if err := moduleFromNode(node.Args, node, m.Globals, &provider); err != nil {
+		return nil, err
 	}
-
-	modObj, err := moduleFromNode(node)
-	if err != nil {
-		return nil, m.MatchErr("%s", err.Error())
-	}
-
-	provider, ok := modObj.(module.AuthProvider)
-	if !ok {
-		return nil, m.MatchErr("module %s doesn't implement auth. provider interface", modObj.Name())
-	}
-
-	if node.Children != nil {
-		if err := initInlineModule(modObj, m.Globals, node); err != nil {
-			return nil, err
-		}
-	}
-
 	return provider, nil
 }
 
 func storageDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) == 0 {
-		return nil, m.MatchErr("expected at least 1 argument")
+	var backend module.Storage
+	if err := moduleFromNode(node.Args, node, m.Globals, &backend); err != nil {
+		return nil, err
 	}
-
-	modObj, err := moduleFromNode(node)
-	if err != nil {
-		return nil, m.MatchErr("%s", err.Error())
-	}
-
-	backend, ok := modObj.(module.Storage)
-	if !ok {
-		return nil, m.MatchErr("module %s doesn't implement storage interface", modObj.Name())
-	}
-
-	if node.Children != nil {
-		if err := initInlineModule(modObj, m.Globals, node); err != nil {
-			return nil, err
-		}
-	}
-
 	return backend, nil
 }
 
