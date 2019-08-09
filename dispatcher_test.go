@@ -63,11 +63,13 @@ func checkTestMessage(t *testing.T, tgt *testTarget, indx int, sender string, rc
 func TestDispatcher_AllToTarget(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{},
-			defaultRcpt: &rcptBlock{
-				targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
 			},
 		},
 		Log: testLogger("dispatcher"),
@@ -85,22 +87,24 @@ func TestDispatcher_AllToTarget(t *testing.T) {
 func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 	orgTarget, comTarget := testTarget{instName: "orgTarget"}, testTarget{instName: "comTarget"}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&comTarget},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&comTarget},
+					},
+				},
+				"example.org": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&orgTarget},
+					},
 				},
 			},
-			"example.org": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&orgTarget},
-				},
-			},
+			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
-		Log:           testLogger("dispatcher"),
+		Log: testLogger("dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -120,22 +124,24 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"sender1@example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target1},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"sender1@example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target1},
+					},
+				},
+				"sender2@example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target2},
+					},
 				},
 			},
-			"sender2@example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target2},
-				},
-			},
+			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
-		Log:           testLogger("dispatcher"),
+		Log: testLogger("dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -155,18 +161,20 @@ func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target1},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"example.com": {
+						targets: []module.DeliveryTarget{&target1},
+					},
+					"example.org": {
+						targets: []module.DeliveryTarget{&target2},
+					},
 				},
-				"example.org": &rcptBlock{
-					targets: []module.DeliveryTarget{&target2},
+				defaultRcpt: &rcptBlock{
+					rejectErr: errors.New("defaultRcpt block used"),
 				},
-			},
-			defaultRcpt: &rcptBlock{
-				rejectErr: errors.New("defaultRcpt block used"),
 			},
 		},
 		Log: testLogger("dispatcher"),
@@ -191,21 +199,23 @@ func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
 	target1, target2 := testTarget{instName: "target1"}, testTarget{instName: "target2"}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"sender1@example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target1},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"sender1@example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target1},
+					},
+				},
+				"example.com": {perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target2},
+					},
 				},
 			},
-			"example.com": sourceBlock{perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target2},
-				},
-			},
+			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
-		Log:           testLogger("dispatcher"),
+		Log: testLogger("dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -225,19 +235,21 @@ func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
 func TestDispatcher_PerSourceReject(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"sender1@example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"sender1@example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+				"example.com": {perRcpt: map[string]*rcptBlock{},
+					rejectErr: errors.New("go away"),
 				},
 			},
-			"example.com": sourceBlock{perRcpt: map[string]*rcptBlock{},
-				rejectErr: errors.New("go away"),
-			},
+			defaultSource: sourceBlock{rejectErr: errors.New("go away")},
 		},
-		defaultSource: sourceBlock{rejectErr: errors.New("go away")},
-		Log:           testLogger("dispatcher"),
+		Log: testLogger("dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -256,18 +268,20 @@ func TestDispatcher_PerSourceReject(t *testing.T) {
 func TestDispatcher_PerRcptReject(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"rcpt1@example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"rcpt1@example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.com": {
+						rejectErr: errors.New("go away"),
+					},
 				},
-				"example.com": &rcptBlock{
+				defaultRcpt: &rcptBlock{
 					rejectErr: errors.New("go away"),
 				},
-			},
-			defaultRcpt: &rcptBlock{
-				rejectErr: errors.New("go away"),
 			},
 		},
 		Log: testLogger("dispatcher"),
@@ -296,18 +310,20 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 func TestDispatcher_PostmasterRcpt(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"postmaster": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"postmaster": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.com": {
+						rejectErr: errors.New("go away"),
+					},
 				},
-				"example.com": &rcptBlock{
+				defaultRcpt: &rcptBlock{
 					rejectErr: errors.New("go away"),
 				},
-			},
-			defaultRcpt: &rcptBlock{
-				rejectErr: errors.New("go away"),
 			},
 		},
 		Log: testLogger("dispatcher"),
@@ -323,19 +339,21 @@ func TestDispatcher_PostmasterRcpt(t *testing.T) {
 func TestDispatcher_PostmasterSrc(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"postmaster": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"postmaster": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+				"example.com": {
+					rejectErr: errors.New("go away"),
 				},
 			},
-			"example.com": sourceBlock{
+			defaultSource: sourceBlock{
 				rejectErr: errors.New("go away"),
 			},
-		},
-		defaultSource: sourceBlock{
-			rejectErr: errors.New("go away"),
 		},
 		Log: testLogger("dispatcher"),
 	}
@@ -350,28 +368,30 @@ func TestDispatcher_PostmasterSrc(t *testing.T) {
 func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{
-			"postmaster": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"postmaster": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+				"sender@example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+				"example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
 				},
 			},
-			"sender@example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
+			defaultSource: sourceBlock{
+				rejectErr: errors.New("go away"),
 			},
-			"example.com": sourceBlock{
-				perRcpt: map[string]*rcptBlock{},
-				defaultRcpt: &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-			},
-		},
-		defaultSource: sourceBlock{
-			rejectErr: errors.New("go away"),
 		},
 		Log: testLogger("dispatcher"),
 	}
@@ -390,17 +410,19 @@ func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
 func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"postmaster": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-				"sender@example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-				"example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"postmaster": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"sender@example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
 				},
 			},
 		},
@@ -421,17 +443,19 @@ func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 func TestDispatcher_MalformedSource(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"postmaster": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-				"sender@example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-				"example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"postmaster": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"sender@example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
 				},
 			},
 		},
@@ -450,14 +474,16 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 func TestDispatcher_TwoRcptToOneTarget(t *testing.T) {
 	target := testTarget{}
 	d := Dispatcher{
-		perSource: map[string]sourceBlock{},
-		defaultSource: sourceBlock{
-			perRcpt: map[string]*rcptBlock{
-				"example.com": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
-				},
-				"example.org": &rcptBlock{
-					targets: []module.DeliveryTarget{&target},
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.org": {
+						targets: []module.DeliveryTarget{&target},
+					},
 				},
 			},
 		},
