@@ -18,10 +18,7 @@ import (
 // It is not a "module object" and is intended to be used as part of message
 // source (Submission, SMTP, JMAP modules) implementation.
 type Dispatcher struct {
-	// Configuration.
-	globalChecks  CheckGroup
-	perSource     map[string]sourceBlock
-	defaultSource sourceBlock
+	dispatcherCfg
 
 	Log log.Logger
 }
@@ -39,8 +36,11 @@ type rcptBlock struct {
 	targets   []module.DeliveryTarget
 }
 
-func NewDispatcher(cfg []config.Node) (Dispatcher, error) {
-	return Dispatcher{}, nil
+func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatcher, error) {
+	parsedCfg, err := parseDispatcherRootCfg(globals, cfg)
+	return &Dispatcher{
+		dispatcherCfg: parsedCfg,
+	}, err
 }
 
 func splitAddress(addr string) (mailbox, domain string, err error) {

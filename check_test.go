@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
 
@@ -17,6 +18,18 @@ type testCheck struct {
 
 func (tc *testCheck) NewMessage(ctx *module.DeliveryContext) (module.CheckState, error) {
 	return &testCheckState{ctx, tc}, nil
+}
+
+func (tc *testCheck) Init(*config.Map) error {
+	return nil
+}
+
+func (tc *testCheck) Name() string {
+	return "test_check"
+}
+
+func (tc *testCheck) InstanceName() string {
+	return "test_check"
 }
 
 type testCheckState struct {
@@ -42,4 +55,11 @@ func (tcs *testCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMut
 
 func (tcs *testCheckState) Close() error {
 	return nil
+}
+
+func init() {
+	module.Register("test_check", func(modName, instanceName string) (module.Module, error) {
+		return &testCheck{}, nil
+	})
+	module.RegisterInstance(&testCheck{}, nil)
 }
