@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/module"
 )
 
@@ -26,7 +27,7 @@ func doTestDelivery(t *testing.T, d *Dispatcher, from string, to []string) {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
-	if err := delivery.Body(body); err != nil {
+	if err := delivery.Body(textproto.Header{}, body); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
 	if err := delivery.Commit(); err != nil {
@@ -299,7 +300,7 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 	if err := delivery.AddRcpt("rcpt1@example.com"); err != nil {
 		t.Fatalf("unexpected AddRcpt err for %s: %v", "rcpt1@example.com", err)
 	}
-	if err := delivery.Body(module.MemoryBuffer{Slice: []byte("foobar")}); err != nil {
+	if err := delivery.Body(textproto.Header{}, module.MemoryBuffer{Slice: []byte("foobar")}); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
 	if err := delivery.Commit(); err != nil {

@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
@@ -35,7 +36,7 @@ func (dd dummyDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd dummyDelivery) Body(body module.BodyBuffer) error {
+func (dd dummyDelivery) Body(header textproto.Header, body module.BodyBuffer) error {
 	return nil
 }
 

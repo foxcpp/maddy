@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -224,9 +226,14 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd dispatcherDelivery) Body(body module.BodyBuffer) error {
+func (dd dispatcherDelivery) Body(header textproto.Header, body module.BodyBuffer) error {
+	var headerLock sync.RWMutex
+	if err := dd.globalChecksState.CheckBody(dd.cancelCtx, &headerLock, header, body); err != nil {
+		return err
+	}
+
 	for _, delivery := range dd.deliveries {
-		if err := delivery.Body(body); err != nil {
+		if err := delivery.Body(header, body); err != nil {
 			dd.log.Printf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
 				delivery, err, dd.ctx.DeliveryID)
 			return err
