@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -24,7 +23,7 @@ import (
 
 var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
 
-type RemoteDelivery struct {
+type RemoteTarget struct {
 	name       string
 	hostname   string
 	requireTLS bool
@@ -38,8 +37,10 @@ type RemoteDelivery struct {
 	Log log.Logger
 }
 
-func NewRemoteDelivery(_, instName string) (module.Module, error) {
-	return &RemoteDelivery{
+var _ module.DeliveryTarget = &RemoteTarget{}
+
+func NewRemoteTarget(_, instName string) (module.Module, error) {
+	return &RemoteTarget{
 		name:        instName,
 		resolver:    net.DefaultResolver,
 		mtastsCache: mtasts.Cache{Resolver: net.DefaultResolver},
@@ -49,211 +50,267 @@ func NewRemoteDelivery(_, instName string) (module.Module, error) {
 	}, nil
 }
 
-func (rd *RemoteDelivery) Init(cfg *config.Map) error {
-	cfg.String("hostname", true, true, "", &rd.hostname)
-	cfg.String("mtasts_cache", false, false, filepath.Join(StateDirectory(cfg.Globals), "mtasts-cache"), &rd.mtastsCache.Location)
-	cfg.Bool("debug", true, &rd.Log.Debug)
-	cfg.Bool("require_tls", false, &rd.requireTLS)
+func (rt *RemoteTarget) Init(cfg *config.Map) error {
+	cfg.String("hostname", true, true, "", &rt.hostname)
+	cfg.String("mtasts_cache", false, false, filepath.Join(StateDirectory(cfg.Globals), "mtasts-cache"), &rt.mtastsCache.Location)
+	cfg.Bool("debug", true, &rt.Log.Debug)
+	cfg.Bool("require_tls", false, &rt.requireTLS)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
-	if !filepath.IsAbs(rd.mtastsCache.Location) {
-		rd.mtastsCache.Location = filepath.Join(StateDirectory(cfg.Globals), rd.mtastsCache.Location)
+	if !filepath.IsAbs(rt.mtastsCache.Location) {
+		rt.mtastsCache.Location = filepath.Join(StateDirectory(cfg.Globals), rt.mtastsCache.Location)
 	}
-	if err := os.MkdirAll(rd.mtastsCache.Location, os.ModePerm); err != nil {
+	if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
 		return err
 	}
-	rd.mtastsCache.Logger = &rd.Log
+	rt.mtastsCache.Logger = &rt.Log
 	// MTA-STS policies typically have max_age around one day, so updating them
 	// twice a day should keep them up-to-date most of the time.
-	rd.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
-	go rd.stsCacheUpdater()
+	rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
+	go rt.stsCacheUpdater()
 
 	return nil
 }
 
-func (rd *RemoteDelivery) Close() error {
-	rd.stsCacheUpdateDone <- struct{}{}
-	<-rd.stsCacheUpdateDone
+func (rt *RemoteTarget) Close() error {
+	rt.stsCacheUpdateDone <- struct{}{}
+	<-rt.stsCacheUpdateDone
 	return nil
 }
 
-func (rd *RemoteDelivery) Name() string {
+func (rt *RemoteTarget) Name() string {
 	return "remote"
 }
 
-func (rd *RemoteDelivery) InstanceName() string {
-	return rd.name
+func (rt *RemoteTarget) InstanceName() string {
+	return rt.name
 }
 
-func (rd *RemoteDelivery) Deliver(ctx module.DeliveryContext, bodyR io.Reader) error {
-	body, err := seekableBody(bodyR)
+type remoteConnection struct {
+	recipients []string
+	serverName string
+	*smtp.Client
+}
+
+type remoteDelivery struct {
+	rt       *RemoteTarget
+	mailFrom string
+	ctx      *module.DeliveryContext
+
+	connections map[string]*remoteConnection
+}
+
+func (rt *RemoteTarget) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+	return &remoteDelivery{
+		rt:          rt,
+		mailFrom:    mailFrom,
+		ctx:         ctx,
+		connections: map[string]*remoteConnection{},
+	}, nil
+}
+
+func (rd *remoteDelivery) AddRcpt(to string) error {
+	_, domain, err := splitAddress(to)
 	if err != nil {
 		return err
 	}
 
-	if _, err := body.Seek(0, io.SeekStart); err != nil {
-		return err
+	// Special-case for <postmaster> address. If it is not handled by a rewrite rule before
+	// - we should not attempt to do anything with it and reject it as invalid.
+	if domain == "" {
+		return fmt.Errorf("<postmaster> address is not supported")
 	}
 
-	groupedRcpts, err := groupByDomain(ctx.To)
+	// serverName (MX serv. address) is very useful for tracing purposes and should be logged on all related errors.
+	conn, err := rd.connectionForDomain(domain)
 	if err != nil {
 		return err
 	}
+
+	if err := conn.Rcpt(to); err != nil {
+		rd.rt.Log.Printf("RCPT TO failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+		return err
+	}
+
+	conn.recipients = append(conn.recipients, to)
+	return nil
+}
+
+func (rd *remoteDelivery) Body(header textproto.Header, b module.BodyBuffer) error {
+	errChans := make(map[string]chan error, len(rd.connections))
+	for domain := range rd.connections {
+		errChans[domain] = make(chan error)
+	}
+
+	for i, conn := range rd.connections {
+		conn := conn
+		go func() {
+			errCh := errChans[i]
+
+			bodyW, err := conn.Data()
+			if err != nil {
+				rd.rt.Log.Printf("DATA failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				errCh <- err
+				return
+			}
+			bodyR, err := b.Open()
+			if err != nil {
+				rd.rt.Log.Printf("failed to open body buffer: %v (delivery ID = %s)", err, rd.ctx.DeliveryID)
+				errCh <- err
+				return
+			}
+			if err = textproto.WriteHeader(bodyW, header); err != nil {
+				rd.rt.Log.Printf("header write failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				errCh <- err
+				return
+			}
+			if _, err = io.Copy(bodyW, bodyR); err != nil {
+				rd.rt.Log.Printf("body write failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				errCh <- err
+				return
+			}
+
+			if err := bodyW.Close(); err != nil {
+				rd.rt.Log.Printf("body write final failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				errCh <- err
+				return
+			}
+
+			errCh <- nil
+		}()
+	}
+
+	// TODO: Report partial errors early for LMTP. See github.com/emersion/go-smtp/pull/56
 
 	partialErr := PartialError{
-		Errs: make(map[string]error),
+		Errs: map[string]error{},
 	}
-	// TODO: look into ways to parallelize this, the main trouble here is body
-	// probably create pipe for each server and copy body to each?
-	for domain, rcpts := range groupedRcpts {
-		perr := rd.deliverForServer(&ctx, domain, rcpts, body)
-
-		if _, err := body.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("body seek failed: %v", err)
-		}
-
-		if perr != nil {
-			rd.Log.Debugf("deliverForServer: %+v (delivery ID = %s)", perr, ctx.DeliveryID)
-			partialErr.Successful = append(partialErr.Successful, perr.Successful...)
-			partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, perr.TemporaryFailed...)
-			partialErr.Failed = append(partialErr.Failed, perr.Failed...)
-			for k, v := range perr.Errs {
-				partialErr.Errs[k] = v
+	for domain, conn := range rd.connections {
+		err := <-errChans[domain]
+		if err != nil {
+			if isTemporaryErr(err) {
+				partialErr.Successful = append(partialErr.TemporaryFailed, conn.recipients...)
+			} else {
+				partialErr.Successful = append(partialErr.Failed, conn.recipients...)
 			}
+			for _, rcpt := range conn.recipients {
+				partialErr.Errs[rcpt] = err
+			}
+		} else {
+			partialErr.Successful = append(partialErr.Successful, conn.recipients...)
 		}
-
 	}
 
-	if len(partialErr.Failed) == 0 && len(partialErr.TemporaryFailed) == 0 {
+	if len(partialErr.Errs) == 0 {
 		return nil
 	}
 	return partialErr
 }
 
-func toPartialError(temporary bool, rcpts []string, err error) *PartialError {
-	perr := PartialError{
-		Errs: make(map[string]error, len(rcpts)),
-	}
-	if temporary {
-		perr.TemporaryFailed = rcpts
-	} else {
-		perr.Failed = rcpts
-	}
-	for _, rcpt := range rcpts {
-		perr.Errs[rcpt] = err
-	}
-	return &perr
+func (rd *remoteDelivery) Abort() error {
+	return rd.Close()
 }
 
-var ErrNoMXMatchedBySTS = errors.New("remote: no MX record matched MTA-STS policy")
+func (rd *remoteDelivery) Commit() error {
+	// It is not possible to implement it atomically, so users of remoteDelivery have to
+	// take care of partial failures.
+	return rd.Close()
+}
 
-func (rd *RemoteDelivery) deliverForServer(ctx *module.DeliveryContext, domain string, rcpts []string, body io.Reader) *PartialError {
-	addrs, err := rd.lookupTargetServers(domain)
-	if err != nil {
-		return toPartialError(false, rcpts, err)
+func (rd *remoteDelivery) Close() error {
+	for _, conn := range rd.connections {
+		conn.Close()
+	}
+	return nil
+}
+
+func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection, error) {
+	if c, ok := rd.connections[domain]; ok {
+		return c, nil
 	}
 
-	stsPolicy, err := rd.mtastsCache.Get(domain)
+	addrs, err := rd.rt.lookupTargetServers(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	stsPolicy, err := rd.rt.getSTSPolicy(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var lastErr error
+	conn := &remoteConnection{}
+	for _, addr := range addrs {
+		if stsPolicy != nil && !stsPolicy.Match(addr) {
+			rd.rt.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS stsPolicy (%v) (delivery ID = %s)", addr, stsPolicy.MX, rd.ctx.DeliveryID)
+			err = ErrNoMXMatchedBySTS
+			continue
+		}
+		conn.serverName = addr
+
+		conn.Client, err = connectToServer(rd.rt.hostname, addr, rd.rt.requireTLS)
+		if err != nil {
+			rd.rt.Log.Debugf("failed to connect to %s: %v (delivery ID = %s)", addr, err, rd.ctx.DeliveryID)
+			lastErr = err
+			continue
+		}
+	}
+	if conn.Client == nil {
+		rd.rt.Log.Printf("no usable MX servers found for %s, last error (%s): %v (delivery ID = %s)", domain, conn.serverName, lastErr, rd.ctx.DeliveryID)
+		return nil, lastErr
+	}
+
+	if err := conn.Mail(rd.mailFrom); err != nil {
+		rd.rt.Log.Printf("MAIL FROM failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+		return nil, err
+	}
+
+	rd.rt.Log.Debugf("connected to %s (delivery ID = %s)", conn.serverName, rd.ctx.DeliveryID)
+	rd.connections[domain] = conn
+
+	return conn, nil
+}
+
+func (rt *RemoteTarget) getSTSPolicy(domain string) (*mtasts.Policy, error) {
+	stsPolicy, err := rt.mtastsCache.Get(domain)
 	if err != nil && err != mtasts.ErrNoPolicy {
-		rd.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
-		// Problems with policy should be treated as temporary ones.
-		return toPartialError(true, rcpts, err)
+		rt.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
+		// TODO: Problems with policy should be treated as temporary ones.
+		return nil, err
 	}
 	if stsPolicy != nil && stsPolicy.Mode != mtasts.ModeEnforce {
 		// Throw away policy if it is not enforced, we don't do TLSRPT for now.
 		// TODO: TLS reporting.
-		rd.Log.Debugf("ignoring non-enforced MTA-STS policy for %s", domain)
-		stsPolicy = nil
+		rt.Log.Debugf("ignoring non-enforced MTA-STS policy for %s", domain)
+		return nil, nil
 	}
-
-	var cl *smtp.Client
-	var lastErr error
-	var usedServer string
-	for _, addr := range addrs {
-		if stsPolicy != nil && !stsPolicy.Match(addr) {
-			rd.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS policy (%v)", addr, stsPolicy.MX)
-			lastErr = ErrNoMXMatchedBySTS
-			continue
-		}
-
-		cl, err = connectToServer(rd.hostname, addr, rd.requireTLS || stsPolicy != nil)
-		if err != nil {
-			rd.Log.Debugf("failed to connect to %s: %v", addr, err)
-			lastErr = err
-			if !isTemporaryErr(err) {
-				break
-			}
-			continue
-		}
-		usedServer = addr
-	}
-	if cl == nil {
-		return toPartialError(isTemporaryErr(lastErr), rcpts, lastErr)
-	}
-
-	rd.Log.Debugln("connected to", usedServer)
-
-	if err := cl.Mail(ctx.From); err != nil {
-		rd.Log.Printf("MAIL FROM failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
-		return toPartialError(isTemporaryErr(err), rcpts, err)
-	}
-
-	perr := PartialError{Errs: make(map[string]error)}
-	for _, rcpt := range rcpts {
-		if err := cl.Rcpt(rcpt); err != nil {
-			rd.Log.Printf("RCPT TO failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
-			if isTemporaryErr(err) {
-				perr.TemporaryFailed = append(perr.TemporaryFailed, rcpt)
-			} else {
-				perr.Failed = append(perr.Failed, rcpt)
-			}
-			perr.Errs[rcpt] = err
-		}
-	}
-	bodyWriter, err := cl.Data()
-	if err != nil {
-		rd.Log.Printf("DATA failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
-		return toPartialError(isTemporaryErr(err), rcpts, err)
-	}
-	defer bodyWriter.Close()
-
-	if err := textproto.WriteHeader(bodyWriter, ctx.Header); err != nil {
-		rd.Log.Printf("header write failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
-		return toPartialError(isTemporaryErr(err), rcpts, err)
-	}
-	if _, err := io.Copy(bodyWriter, body); err != nil {
-		rd.Log.Printf("body write failed: %v (server = %s, delivery ID = %s)", err, usedServer, ctx.DeliveryID)
-		return toPartialError(isTemporaryErr(err), rcpts, err)
-	}
-
-	if err := bodyWriter.Close(); err != nil {
-		return toPartialError(isTemporaryErr(err), rcpts, err)
-	}
-
-	return nil
+	return stsPolicy, nil
 }
 
-func (rd *RemoteDelivery) stsCacheUpdater() {
+var ErrNoMXMatchedBySTS = errors.New("remote: no MX record matched MTA-STS policy")
+
+func (rt *RemoteTarget) stsCacheUpdater() {
 	// Always update cache on start-up since we may have been down for some
 	// time.
-	rd.Log.Debugln("updating MTA-STS cache...")
-	if err := rd.mtastsCache.RefreshCache(); err != nil {
-		rd.Log.Printf("MTA-STS cache opdate failed: %v", err)
+	rt.Log.Debugln("updating MTA-STS cache...")
+	if err := rt.mtastsCache.RefreshCache(); err != nil {
+		rt.Log.Printf("MTA-STS cache opdate failed: %v", err)
 	}
-	rd.Log.Debugln("updating MTA-STS cache... done!")
+	rt.Log.Debugln("updating MTA-STS cache... done!")
 
 	for {
 		select {
-		case <-rd.stsCacheUpdateTick.C:
-			rd.Log.Debugln("updating MTA-STS cache...")
-			if err := rd.mtastsCache.RefreshCache(); err != nil {
-				rd.Log.Printf("MTA-STS cache opdate failed: %v", err)
+		case <-rt.stsCacheUpdateTick.C:
+			rt.Log.Debugln("updating MTA-STS cache...")
+			if err := rt.mtastsCache.RefreshCache(); err != nil {
+				rt.Log.Printf("MTA-STS cache opdate failed: %v", err)
 			}
-			rd.Log.Debugln("updating MTA-STS cache... done!")
-		case <-rd.stsCacheUpdateDone:
-			rd.stsCacheUpdateDone <- struct{}{}
+			rt.Log.Debugln("updating MTA-STS cache... done!")
+		case <-rt.stsCacheUpdateDone:
+			rt.stsCacheUpdateDone <- struct{}{}
 			return
 		}
 	}
@@ -282,21 +339,8 @@ func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client
 	return cl, nil
 }
 
-func groupByDomain(rcpts []string) (map[string][]string, error) {
-	res := make(map[string][]string, len(rcpts))
-	for _, rcpt := range rcpts {
-		parts := strings.Split(rcpt, "@")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("malformed address: %s", rcpt)
-		}
-
-		res[parts[1]] = append(res[parts[1]], rcpt)
-	}
-	return res, nil
-}
-
-func (rd *RemoteDelivery) lookupTargetServers(domain string) ([]string, error) {
-	records, err := rd.resolver.LookupMX(context.Background(), domain)
+func (rt *RemoteTarget) lookupTargetServers(domain string) ([]string, error) {
+	records, err := rt.resolver.LookupMX(context.Background(), domain)
 	if err != nil {
 		return nil, err
 	}
@@ -332,5 +376,5 @@ func isTemporaryErr(err error) bool {
 }
 
 func init() {
-	module.Register("remote", NewRemoteDelivery)
+	module.Register("remote", NewRemoteTarget)
 }
