@@ -93,7 +93,7 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 		modObj, err = module.GetInstance(args[0])
 	}
 	if err != nil {
-		return err
+		return config.NodeErr(inlineCfg, "%v", err)
 	}
 
 	// NOTE: This will panic if moduleIface is not a pointer.
