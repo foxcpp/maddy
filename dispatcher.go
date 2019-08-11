@@ -109,7 +109,7 @@ func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module
 	}
 
 	if sourceBlock.rejectErr != nil {
-		dd.log.Printf("sender %s rejected with error: %v (delivery ID = %s)", mailFrom, sourceBlock.rejectErr, ctx.DeliveryID)
+		dd.log.Debugf("sender %s rejected with error: %v (delivery ID = %s)", mailFrom, sourceBlock.rejectErr, ctx.DeliveryID)
 		return nil, sourceBlock.rejectErr
 	}
 	dd.sourceBlock = sourceBlock
@@ -171,7 +171,7 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	}
 
 	if rcptBlock.rejectErr != nil {
-		dd.log.Printf("recipient %s rejected: %v (delivery ID = %s)", to, rcptBlock.rejectErr, dd.ctx.DeliveryID)
+		dd.log.Debugf("recipient %s rejected: %v (delivery ID = %s)", to, rcptBlock.rejectErr, dd.ctx.DeliveryID)
 		return rcptBlock.rejectErr
 	}
 
@@ -203,19 +203,19 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		if delivery, ok = dd.deliveries[target]; !ok {
 			delivery, err = target.Start(dd.ctx, dd.sourceAddr)
 			if err != nil {
-				dd.log.Printf("target.Start(%s) failure, target = %s (%s): %v (delivery ID = %s)",
+				dd.log.Debugf("dispatcher.Start(%s) failure, dispatcher = %s (%s): %v (delivery ID = %s)",
 					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err, dd.ctx.DeliveryID)
 				return err
 			}
 
-			dd.log.Debugf("target.Start(%s) ok, target = %s (%s) (delivery ID = %s)",
+			dd.log.Debugf("dispatcher.Start(%s) ok, dispatcher = %s (%s) (delivery ID = %s)",
 				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), dd.ctx.DeliveryID)
 
 			dd.deliveries[target] = delivery
 		}
 
 		if err := delivery.AddRcpt(to); err != nil {
-			dd.log.Printf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v (delivery ID = %s)",
+			dd.log.Debugf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v (delivery ID = %s)",
 				to, delivery, err, dd.ctx.DeliveryID)
 			return err
 		}
@@ -234,7 +234,7 @@ func (dd dispatcherDelivery) Body(header textproto.Header, body module.BodyBuffe
 
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Body(header, body); err != nil {
-			dd.log.Printf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
+			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
 				delivery, err, dd.ctx.DeliveryID)
 			return err
 		}
@@ -247,7 +247,7 @@ func (dd dispatcherDelivery) Body(header textproto.Header, body module.BodyBuffe
 func (dd dispatcherDelivery) Commit() error {
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Commit(); err != nil {
-			dd.log.Printf("delivery.Commit failure, Delivery object = %T: %v (delivery ID = %s)",
+			dd.log.Debugf("delivery.Commit failure, Delivery object = %T: %v (delivery ID = %s)",
 				delivery, err, dd.ctx.DeliveryID)
 			// No point in Committing remaining deliveries, everything is broken already.
 			return err
@@ -262,7 +262,7 @@ func (dd dispatcherDelivery) Abort() error {
 	var lastErr error
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Abort(); err != nil {
-			dd.log.Printf("delivery.Abort failure, Delivery object = %T: %v (delivery ID = %s)",
+			dd.log.Debugf("delivery.Abort failure, Delivery object = %T: %v (delivery ID = %s)",
 				delivery, err, dd.ctx.DeliveryID)
 			lastErr = err
 			// Continue anyway and try to Abort all remaining delivery objects.
@@ -270,6 +270,6 @@ func (dd dispatcherDelivery) Abort() error {
 		dd.log.Debugf("delivery.Abort ok, Delivery object = %T (delivery ID = %s)",
 			delivery, dd.ctx.DeliveryID)
 	}
-	dd.log.Printf("delivery aborted (delivery ID = %s)", dd.ctx.DeliveryID)
+	dd.log.Debugf("delivery aborted (delivery ID = %s)", dd.ctx.DeliveryID)
 	return lastErr
 }
