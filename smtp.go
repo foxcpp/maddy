@@ -21,71 +21,122 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
+func SMTPCtxLog(l log.Logger, ctx *module.DeliveryContext) log.Logger {
+	out := l.Out
+	if out == nil {
+		out = log.DefaultLogger.Out
+	}
+
+	return log.Logger{
+		Out: func(t time.Time, debug bool, str string) {
+			ctxInfo := fmt.Sprintf(", HELO = %s, IP = %s, MAIL FROM = %s, delivery ID = %s", ctx.SrcHostname, ctx.SrcAddr, ctx.From, ctx.DeliveryID)
+			out(t, debug, str+ctxInfo)
+		},
+		Debug: l.Debug,
+		Name:  l.Name,
+	}
+}
+
 type SMTPSession struct {
-	endp *SMTPEndpoint
-	ctx  *module.DeliveryContext
+	endp     *SMTPEndpoint
+	delivery module.Delivery
+	ctx      *module.DeliveryContext
+	log      log.Logger
 }
 
 func (s *SMTPSession) Reset() {
-	s.ctx.From = ""
-	s.ctx.To = nil
+	if s.delivery != nil {
+		if err := s.delivery.Abort(); err != nil {
+			s.endp.Log.Printf("failed to abort delivery: %v", err)
+		}
+		s.delivery = nil
+	}
 }
 
 func (s *SMTPSession) Mail(from string) error {
+	rawID := make([]byte, 32)
+	_, err := rand.Read(rawID)
+	if err != nil {
+		s.endp.Log.Printf("rand.Rand error: %v", err)
+		return &smtp.SMTPError{
+			Code:    451,
+			Message: "Temporary internal error, try again later",
+		}
+	}
+	s.ctx.DeliveryID = hex.EncodeToString(rawID)
 	s.ctx.From = from
+
+	s.log.Printf("incoming message")
+
+	s.delivery, err = s.endp.dispatcher.Start(s.ctx, from)
+	if err != nil {
+		s.log.Printf("sender rejected: %v", err)
+		return err
+	}
+
 	return nil
 }
 
 func (s *SMTPSession) Rcpt(to string) error {
-	s.ctx.To = append(s.ctx.To, to)
-	return nil
+	err := s.delivery.AddRcpt(to)
+	if err != nil {
+		s.log.Printf("recipient rejected: %v, RCPT TO = %s", err, to)
+	}
+	return err
 }
 
 func (s *SMTPSession) Logout() error {
+	if s.delivery != nil {
+		if err := s.delivery.Abort(); err != nil {
+			s.endp.Log.Printf("failed to abort delivery: %v", err)
+		}
+		s.delivery = nil
+	}
 	return nil
 }
 
 func (s *SMTPSession) Data(r io.Reader) error {
-	// TODO: Execute pipeline steps in parallel.
-	// https://github.com/emersion/maddy/pull/17#discussion_r267573580
-
-	rawID := make([]byte, 32)
-	_, err := rand.Read(rawID)
-	if err != nil {
-		return err
-	}
-	s.ctx.DeliveryID = hex.EncodeToString(rawID)
-
-	s.endp.Log.Debugf("incoming message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
-
 	bufr := bufio.NewReader(r)
-	s.ctx.Header, err = textproto.ReadHeader(bufr)
+	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
+		s.log.Printf("malformed header or I/O error: %v", err)
 		return err
 	}
 
 	if s.endp.submission {
 		if err := SubmissionPrepare(s.ctx); err != nil {
+			s.log.Printf("malformed header or I/O error: %v", err)
 			return err
 		}
 	}
 
-	//TODO
-	//if err := s.endp.target.Deliver(*s.ctx, bufr); err != nil {
-	//	return err
-	//}
+	// TODO: Disk buffering.
+	buf, err := module.BufferInMemory(r)
+	if err != nil {
+		s.log.Printf("I/O error: %v", err)
+		return err
+	}
 
-	s.endp.Log.Printf("accepted message from %s (%s), delivery ID = %s", s.ctx.SrcHostname, s.ctx.SrcAddr, s.ctx.DeliveryID)
+	if err := s.delivery.Body(header, buf); err != nil {
+		s.log.Printf("I/O error: %v", err)
+		return err
+	}
+
+	if err := s.delivery.Commit(); err != nil {
+		s.log.Printf("I/O error: %v", err)
+	}
+
+	s.log.Printf("message delivered")
 
 	return nil
 }
 
 type SMTPEndpoint struct {
-	Auth      module.AuthProvider
-	serv      *smtp.Server
-	name      string
-	listeners []net.Listener
-	target    module.DeliveryTarget
+	Auth       module.AuthProvider
+	serv       *smtp.Server
+	name       string
+	listeners  []net.Listener
+	dispatcher module.DeliveryTarget
 
 	authAlwaysRequired bool
 
@@ -173,9 +224,12 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, &ioDebug)
 	cfg.Bool("debug", true, &endp.Log.Debug)
 	cfg.Bool("submission", false, &submission)
-	cfg.Custom("target", false, true, nil, deliveryDirective, &endp.target)
-
-	_, err = cfg.Process()
+	cfg.AllowUnknown()
+	unmatched, err := cfg.Process()
+	if err != nil {
+		return err
+	}
+	endp.dispatcher, err = NewDispatcher(cfg.Globals, unmatched)
 	if err != nil {
 		return err
 	}
@@ -277,7 +331,7 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Sess
 }
 
 func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
-	ctx := module.DeliveryContext{
+	ctx := &module.DeliveryContext{
 		Anonymous:    anonymous,
 		AuthUser:     username,
 		AuthPassword: password,
@@ -302,7 +356,8 @@ func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, 
 
 	return &SMTPSession{
 		endp: endp,
-		ctx:  &ctx,
+		ctx:  ctx,
+		log:  SMTPCtxLog(endp.Log, ctx),
 	}
 }
 
