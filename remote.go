@@ -221,6 +221,7 @@ func (rd *remoteDelivery) Commit() error {
 
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
+		rd.rt.Log.Debugf("disconnected from %s (delivery ID = %s)", conn.serverName, rd.ctx.DeliveryID)
 		conn.Close()
 	}
 	return nil

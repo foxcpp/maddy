@@ -127,6 +127,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	}
 
 	s.log.Printf("message delivered")
+	s.delivery = nil
 
 	return nil
 }
