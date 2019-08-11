@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/syslog"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func (l *Logger) Debugf(format string, val ...interface{}) {
 	if !l.Debug {
 		return
 	}
-	l.log(true, fmt.Sprintf(format+"\n", val...))
+	l.log(true, fmt.Sprintf(format, val...))
 }
 
 func (l *Logger) Debugln(val ...interface{}) {
@@ -35,7 +36,7 @@ func (l *Logger) Debugln(val ...interface{}) {
 }
 
 func (l *Logger) Printf(format string, val ...interface{}) {
-	l.log(false, fmt.Sprintf(format+"\n", val...))
+	l.log(false, fmt.Sprintf(format, val...))
 }
 
 func (l *Logger) Println(val ...interface{}) {
@@ -85,7 +86,7 @@ func WriterLog(w io.Writer) FuncLog {
 		if debug {
 			str = "[debug] " + str
 		}
-		str = t.Format("02.01.06 15:04:05") + " " + str
+		str = t.Format("02.01.06 15:04:05") + " " + strings.TrimSuffix(str, "\n") + "\n"
 		if _, err := io.WriteString(w, str); err != nil {
 			fmt.Fprintf(os.Stderr, "!!! Failed to write message to log: %v\n", err)
 		}
@@ -101,9 +102,9 @@ func Syslog() (FuncLog, error) {
 	return func(t time.Time, debug bool, str string) {
 		var err error
 		if debug {
-			err = w.Debug(str)
+			err = w.Debug(strings.TrimSuffix(str, "\n") + "\n")
 		} else {
-			err = w.Info(str)
+			err = w.Info(strings.TrimSuffix(str, "\n") + "\n")
 		}
 
 		if err != nil {
