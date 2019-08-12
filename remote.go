@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -228,6 +229,8 @@ func (rd *remoteDelivery) Close() error {
 }
 
 func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection, error) {
+	domain = strings.ToLower(domain)
+
 	if c, ok := rd.connections[domain]; ok {
 		return c, nil
 	}
