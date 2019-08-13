@@ -10,7 +10,7 @@ type DeliveryTarget interface {
 
 type Delivery interface {
 	AddRcpt(rcptTo string) error
-	Body(header textproto.Header, body BodyBuffer) error
+	Body(header textproto.Header, body Buffer) error
 
 	Abort() error
 	Commit() error

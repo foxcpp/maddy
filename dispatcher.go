@@ -226,7 +226,7 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd dispatcherDelivery) Body(header textproto.Header, body module.BodyBuffer) error {
+func (dd dispatcherDelivery) Body(header textproto.Header, body module.Buffer) error {
 	var headerLock sync.RWMutex
 	if err := dd.globalChecksState.CheckBody(dd.cancelCtx, &headerLock, header, body); err != nil {
 		return err

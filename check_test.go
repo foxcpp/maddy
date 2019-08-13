@@ -49,7 +49,7 @@ func (tcs *testCheckState) CheckRcpt(ctx context.Context, to string) error {
 	return tcs.check.rcptErr
 }
 
-func (tcs *testCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.BodyBuffer) error {
+func (tcs *testCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.Buffer) error {
 	return tcs.check.bodyErr
 }
 
