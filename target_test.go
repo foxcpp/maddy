@@ -71,7 +71,7 @@ func (dtd *testTargetDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dtd *testTargetDelivery) Body(header textproto.Header, buf module.BodyBuffer) error {
+func (dtd *testTargetDelivery) Body(header textproto.Header, buf module.Buffer) error {
 	if dtd.tgt.bodyErr != nil {
 		return dtd.tgt.bodyErr
 	}

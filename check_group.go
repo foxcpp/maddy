@@ -57,7 +57,7 @@ func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) error {
 	return syncGroup.Wait()
 }
 
-func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.BodyBuffer) error {
+func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.Buffer) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
 		syncGroup.Go(func() error { return state.CheckBody(childCtx, headerLock, header, body) })

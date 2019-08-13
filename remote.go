@@ -139,7 +139,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (rd *remoteDelivery) Body(header textproto.Header, b module.BodyBuffer) error {
+func (rd *remoteDelivery) Body(header textproto.Header, b module.Buffer) error {
 	errChans := make(map[string]chan error, len(rd.connections))
 	for domain := range rd.connections {
 		errChans[domain] = make(chan error)
