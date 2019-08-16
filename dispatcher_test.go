@@ -2,64 +2,11 @@ package maddy
 
 import (
 	"errors"
-	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/module"
 )
-
-func doTestDelivery(t *testing.T, d *Dispatcher, from string, to []string) {
-	t.Helper()
-
-	body := module.MemoryBuffer{Slice: []byte("foobar")}
-	ctx := module.DeliveryContext{
-		DontTraceSender: true,
-		DeliveryID:      "testing",
-	}
-	delivery, err := d.Start(&ctx, from)
-	if err != nil {
-		t.Fatalf("unexpected Start err: %v", err)
-	}
-	for _, rcpt := range to {
-		if err := delivery.AddRcpt(rcpt); err != nil {
-			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
-		}
-	}
-	if err := delivery.Body(textproto.Header{}, body); err != nil {
-		t.Fatalf("unexpected Body err: %v", err)
-	}
-	if err := delivery.Commit(); err != nil {
-		t.Fatalf("unexpected Commit err: %v", err)
-	}
-}
-
-func checkTestMessage(t *testing.T, tgt *testTarget, indx int, sender string, rcpt []string) {
-	t.Helper()
-
-	if len(tgt.messages) <= indx {
-		t.Errorf("wrong amount of messages received, want at least %d, got %d", indx+1, len(tgt.messages))
-		return
-	}
-	msg := tgt.messages[indx]
-
-	if msg.ctx.DeliveryID != "testing" {
-		t.Errorf("empty delivery context for passed message? %+v", msg.ctx)
-	}
-	if msg.mailFrom != sender {
-		t.Errorf("wrong sender, want %s, got %s", sender, msg.mailFrom)
-	}
-
-	sort.Strings(rcpt)
-	sort.Strings(msg.rcptTo)
-	if !reflect.DeepEqual(msg.rcptTo, rcpt) {
-		t.Errorf("wrong recipients, want %v, got %v", rcpt, msg.rcptTo)
-	}
-	if string(msg.body) != "foobar" {
-		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.body))
-	}
-}
 
 func TestDispatcher_AllToTarget(t *testing.T) {
 	target := testTarget{}
@@ -73,7 +20,7 @@ func TestDispatcher_AllToTarget(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -105,7 +52,7 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -142,7 +89,7 @@ func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -178,7 +125,7 @@ func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.org"})
@@ -216,7 +163,7 @@ func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -250,7 +197,7 @@ func TestDispatcher_PerSourceReject(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("go away")},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -285,7 +232,7 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	delivery, err := d.Start(&module.DeliveryContext{DeliveryID: "testing"}, "sender@example.com")
@@ -327,7 +274,7 @@ func TestDispatcher_PostmasterRcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "disappointed-user@example.com", []string{"postmaster"})
@@ -356,7 +303,7 @@ func TestDispatcher_PostmasterSrc(t *testing.T) {
 				rejectErr: errors.New("go away"),
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "postmaster", []string{"disappointed-user@example.com"})
@@ -394,7 +341,7 @@ func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
 				rejectErr: errors.New("go away"),
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "POSTMastER", []string{"disappointed-user@example.com"})
@@ -427,7 +374,7 @@ func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"POSTMastER"})
@@ -460,7 +407,7 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	// Simple checks for violations that can make dispatcher misbehave.
@@ -488,7 +435,7 @@ func TestDispatcher_TwoRcptToOneTarget(t *testing.T) {
 				},
 			},
 		},
-		Log: testLogger("dispatcher"),
+		Log: testLogger(t, "dispatcher"),
 	}
 
 	doTestDelivery(t, &d, "sender@example.com", []string{"recipient@example.com", "recipient@example.org"})

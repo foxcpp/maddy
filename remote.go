@@ -192,15 +192,13 @@ func (rd *remoteDelivery) Body(header textproto.Header, b module.Buffer) error {
 		err := <-errChans[domain]
 		if err != nil {
 			if isTemporaryErr(err) {
-				partialErr.Successful = append(partialErr.TemporaryFailed, conn.recipients...)
+				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, conn.recipients...)
 			} else {
-				partialErr.Successful = append(partialErr.Failed, conn.recipients...)
+				partialErr.Failed = append(partialErr.Failed, conn.recipients...)
 			}
 			for _, rcpt := range conn.recipients {
 				partialErr.Errs[rcpt] = err
 			}
-		} else {
-			partialErr.Successful = append(partialErr.Successful, conn.recipients...)
 		}
 	}
 
