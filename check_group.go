@@ -36,6 +36,7 @@ type checkGroupState struct {
 func (cgs *checkGroupState) CheckConnection(ctx context.Context) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
+		state := state
 		syncGroup.Go(func() error { return state.CheckConnection(childCtx) })
 	}
 	return syncGroup.Wait()
@@ -44,6 +45,7 @@ func (cgs *checkGroupState) CheckConnection(ctx context.Context) error {
 func (cgs *checkGroupState) CheckSender(ctx context.Context, from string) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
+		state := state
 		syncGroup.Go(func() error { return state.CheckSender(childCtx, from) })
 	}
 	return syncGroup.Wait()
@@ -52,6 +54,7 @@ func (cgs *checkGroupState) CheckSender(ctx context.Context, from string) error 
 func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
+		state := state
 		syncGroup.Go(func() error { return state.CheckRcpt(childCtx, to) })
 	}
 	return syncGroup.Wait()
@@ -60,6 +63,7 @@ func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) error {
 func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.Buffer) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
+		state := state
 		syncGroup.Go(func() error { return state.CheckBody(childCtx, headerLock, header, body) })
 	}
 	return syncGroup.Wait()
