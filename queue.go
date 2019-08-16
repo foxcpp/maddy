@@ -253,7 +253,9 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body modul
 	}
 
 	if len(acceptedRcpts) == 0 {
-		delivery.Abort()
+		if err := delivery.Abort(); err != nil {
+			q.Log.Printf("delivery.Abort failed: %v (delivery ID = %s)", err, meta.Ctx.DeliveryID)
+		}
 		return perr
 	}
 
@@ -280,7 +282,9 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body modul
 		expandToPartialErr(err)
 		// No recipients succeeded.
 		if len(perr.TemporaryFailed)+len(perr.Failed) == len(acceptedRcpts) {
-			delivery.Abort()
+			if err := delivery.Abort(); err != nil {
+				q.Log.Printf("delivery.Abort failed: %v (delivery ID = %s)", err, meta.Ctx.DeliveryID)
+			}
 			return perr
 		}
 	}
@@ -419,7 +423,7 @@ func (q *Queue) readDiskQueue() error {
 		nextTryTime := meta.LastAttempt
 		nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
 
-		if nextTryTime.Sub(time.Now()) < q.postInitDelay {
+		if time.Until(nextTryTime) < q.postInitDelay {
 			nextTryTime = time.Now().Add(q.postInitDelay)
 		}
 
