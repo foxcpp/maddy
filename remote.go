@@ -146,10 +146,9 @@ func (rd *remoteDelivery) Body(header textproto.Header, b module.Buffer) error {
 	}
 
 	for i, conn := range rd.connections {
+		errCh := errChans[i]
 		conn := conn
 		go func() {
-			errCh := errChans[i]
-
 			bodyW, err := conn.Data()
 			if err != nil {
 				rd.rt.Log.Printf("DATA failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
@@ -248,7 +247,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	for _, addr := range addrs {
 		if stsPolicy != nil && !stsPolicy.Match(addr) {
 			rd.rt.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS stsPolicy (%v) (delivery ID = %s)", addr, stsPolicy.MX, rd.ctx.DeliveryID)
-			err = ErrNoMXMatchedBySTS
+			lastErr = ErrNoMXMatchedBySTS
 			continue
 		}
 		conn.serverName = addr
