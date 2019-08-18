@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
@@ -49,7 +50,7 @@ func (tcs *testCheckState) CheckRcpt(ctx context.Context, to string) error {
 	return tcs.check.rcptErr
 }
 
-func (tcs *testCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.Buffer) error {
+func (tcs *testCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error {
 	return tcs.check.bodyErr
 }
 

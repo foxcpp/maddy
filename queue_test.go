@@ -11,6 +11,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
@@ -99,7 +100,7 @@ func (utd *unreliableTargetDelivery) AddRcpt(rcptTo string) error {
 	return nil
 }
 
-func (utd *unreliableTargetDelivery) Body(header textproto.Header, body module.Buffer) error {
+func (utd *unreliableTargetDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	r, _ := body.Open()
 	utd.msg.body, _ = ioutil.ReadAll(r)
 

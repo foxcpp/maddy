@@ -16,6 +16,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -139,7 +140,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (rd *remoteDelivery) Body(header textproto.Header, b module.Buffer) error {
+func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 	errChans := make(map[string]chan error, len(rd.connections))
 	for domain := range rd.connections {
 		errChans[domain] = make(chan error)
