@@ -16,6 +16,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -111,7 +112,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	}
 
 	// TODO: Disk buffering.
-	buf, err := module.BufferInMemory(r)
+	buf, err := buffer.BufferInMemory(r)
 	if err != nil {
 		s.log.Printf("I/O error: %v", err)
 		return err

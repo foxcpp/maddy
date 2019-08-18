@@ -17,6 +17,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -176,7 +177,7 @@ func (q *Queue) worker() {
 	}
 }
 
-func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body module.Buffer) {
+func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
 	id := meta.Ctx.DeliveryID
 	q.Log.Debugf("delivery attempt #%d for delivery ID = %s", meta.TriesCount+1, id)
 
@@ -224,7 +225,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body m
 	q.wheel.Add(nextTryTime, id)
 }
 
-func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body module.Buffer) PartialError {
+func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) PartialError {
 	perr := PartialError{
 		Errs: map[string]error{},
 	}
@@ -300,7 +301,7 @@ type queueDelivery struct {
 	meta *QueueMetadata
 
 	header textproto.Header
-	body   module.Buffer
+	body   buffer.Buffer
 }
 
 func (qd *queueDelivery) AddRcpt(rcptTo string) error {
@@ -308,7 +309,7 @@ func (qd *queueDelivery) AddRcpt(rcptTo string) error {
 	return nil
 }
 
-func (qd *queueDelivery) Body(header textproto.Header, body module.Buffer) error {
+func (qd *queueDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	// Body buffer initially passed to us may not be valid after "delivery" to queue completes.
 	// storeNewMessage returns a new buffer object created from message blob stored on disk.
 	storedBody, err := qd.q.storeNewMessage(qd.meta, header, body)
@@ -439,7 +440,7 @@ func (q *Queue) readDiskQueue() error {
 	return nil
 }
 
-func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, body module.Buffer) (module.Buffer, error) {
+func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) (buffer.Buffer, error) {
 	id := meta.Ctx.DeliveryID
 
 	headerPath := filepath.Join(q.location, id+".header")
@@ -480,7 +481,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		return nil, err
 	}
 
-	return module.FileBuffer{Path: bodyPath}, nil
+	return buffer.FileBuffer{Path: bodyPath}, nil
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
@@ -540,7 +541,7 @@ func (q *Queue) tryRemoveDanglingFile(name string) {
 	q.Log.Printf("removed dangling file %s", name)
 }
 
-func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, module.Buffer, error) {
+func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, buffer.Buffer, error) {
 	meta, err := q.readMessageMeta(id)
 	if err != nil {
 		return nil, textproto.Header{}, nil, err
@@ -554,7 +555,7 @@ func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, module
 		}
 		return nil, textproto.Header{}, nil, nil
 	}
-	body := module.FileBuffer{Path: bodyPath}
+	body := buffer.FileBuffer{Path: bodyPath}
 
 	headerPath := filepath.Join(q.location, id+".header")
 	headerFile, err := os.Open(headerPath)

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -226,7 +227,7 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd dispatcherDelivery) Body(header textproto.Header, body module.Buffer) error {
+func (dd dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	var headerLock sync.RWMutex
 	if err := dd.globalChecksState.CheckBody(dd.cancelCtx, &headerLock, header, body); err != nil {
 		return err

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/module"
 	"golang.org/x/sync/errgroup"
 )
@@ -60,7 +61,7 @@ func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) error {
 	return syncGroup.Wait()
 }
 
-func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body module.Buffer) error {
+func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error {
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
 		state := state

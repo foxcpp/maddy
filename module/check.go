@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/buffer"
 )
 
 // Check is the module interface that is meant for read-only (with the
@@ -35,7 +36,7 @@ type CheckState interface {
 	//
 	// Check code should use passed mutex when working with the message header.
 	// Body can be read without locking it since it is read-only.
-	CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body Buffer) error
+	CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error
 
 	// Close is called after the message processing ends, even if any of the
 	// Check* functions return an error.

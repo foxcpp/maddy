@@ -1,13 +1,20 @@
-package module
+package buffer
 
-import "bytes"
+import (
+	"bytes"
+)
 
+// TODO: Remove this interface from here, it is no longer necessary.
 type Byter interface {
 	Bytes() []byte
 }
 
 // BytesReader is a wrapper for bytes.Reader that stores the original []byte
 // value and allows to retrieve it.
+//
+// It is meant for passing to libraries that expect a io.Reader
+// but apply certain optimizations when the Reader implements
+// Bytes() interface.
 type BytesReader struct {
 	*bytes.Reader
 	value []byte

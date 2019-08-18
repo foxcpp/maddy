@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/module"
 )
@@ -76,7 +77,7 @@ func (dtd *testTargetDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dtd *testTargetDelivery) Body(header textproto.Header, buf module.Buffer) error {
+func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) error {
 	if dtd.tgt.bodyErr != nil {
 		return dtd.tgt.bodyErr
 	}
@@ -109,7 +110,7 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := module.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
 	ctx := module.DeliveryContext{
 		DontTraceSender: true,
 		DeliveryID:      encodedID,
