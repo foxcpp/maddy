@@ -204,12 +204,12 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		if delivery, ok = dd.deliveries[target]; !ok {
 			delivery, err = target.Start(dd.ctx, dd.sourceAddr)
 			if err != nil {
-				dd.log.Debugf("dispatcher.Start(%s) failure, dispatcher = %s (%s): %v (delivery ID = %s)",
+				dd.log.Debugf("target.Start(%s) failure, target = %s (%s): %v (delivery ID = %s)",
 					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err, dd.ctx.DeliveryID)
 				return err
 			}
 
-			dd.log.Debugf("dispatcher.Start(%s) ok, dispatcher = %s (%s) (delivery ID = %s)",
+			dd.log.Debugf("target.Start(%s) ok, target = %s (%s) (delivery ID = %s)",
 				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), dd.ctx.DeliveryID)
 
 			dd.deliveries[target] = delivery
