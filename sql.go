@@ -1,10 +1,10 @@
 package maddy
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
@@ -31,15 +32,106 @@ type SQLStorage struct {
 	storagePerDomain bool
 	authPerDomain    bool
 	authDomains      []string
+	resolver         Resolver
 }
 
-type Literal struct {
-	io.Reader
-	length int
+type sqlDelivery struct {
+	sqlm     *SQLStorage
+	ctx      *module.DeliveryContext
+	d        *imapsql.Delivery
+	mailFrom string
 }
 
-func (l Literal) Len() int {
-	return l.length
+func LookupAddr(r Resolver, ip net.IP) (string, error) {
+	names, err := r.LookupAddr(context.Background(), ip.String())
+	if err != nil || len(names) == 0 {
+		return "", err
+	}
+	return strings.TrimRight(names[0], "."), nil
+}
+
+func generateReceived(r Resolver, ctx *module.DeliveryContext, mailFrom, rcptTo string) string {
+	var received string
+	if !ctx.DontTraceSender {
+		received += "from " + ctx.SrcHostname
+		if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
+			domain, err := LookupAddr(r, tcpAddr.IP)
+			if err != nil {
+				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
+			} else {
+				received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
+			}
+		}
+	}
+	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(mailFrom))
+	received += fmt.Sprintf(" with %s id %s", ctx.SrcProto, ctx.DeliveryID)
+	received += fmt.Sprintf(" for %s; %s", rcptTo, time.Now().Format(time.RFC1123Z))
+	return received
+}
+
+func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
+	var accountName string
+	// Side note: <postmaster> address will be always accepted
+	// and delivered to "postmaster" account for both cases.
+	if sd.sqlm.storagePerDomain {
+		accountName = rcptTo
+	} else {
+		var err error
+		accountName, _, err = splitAddress(rcptTo)
+		if err != nil {
+			return &smtp.SMTPError{
+				Code:         501,
+				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
+				Message:      err.Error(),
+			}
+		}
+	}
+
+	// This header is added to the message only for that recipient.
+	// go-imap-sql does certain optimizations to store the message
+	// with small amount of per-recipient data in a efficient way.
+	userHeader := textproto.Header{}
+	userHeader.Add("Delivered-To", rcptTo)
+	userHeader.Add("Received", generateReceived(sd.sqlm.resolver, sd.ctx, sd.mailFrom, rcptTo))
+
+	if err := sd.d.AddRcpt(accountName, userHeader); err != nil {
+		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
+			return &smtp.SMTPError{
+				Code:         550,
+				EnhancedCode: smtp.EnhancedCode{5, 1, 1},
+				Message:      "User doesn't exist",
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func (sd *sqlDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+	header = header.Copy()
+	header.Add("Return-Path", "<"+sanitizeString(sd.mailFrom)+">")
+	return sd.d.BodyParsed(header, sd.ctx.BodyLength, body)
+}
+
+func (sd *sqlDelivery) Abort() error {
+	return sd.d.Abort()
+}
+
+func (sd *sqlDelivery) Commit() error {
+	return sd.d.Commit()
+}
+
+func (sqlm *SQLStorage) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+	d, err := sqlm.back.StartDelivery()
+	if err != nil {
+		return nil, err
+	}
+	return &sqlDelivery{
+		sqlm:     sqlm,
+		ctx:      ctx,
+		d:        d,
+		mailFrom: mailFrom,
+	}, nil
 }
 
 func (sqlm *SQLStorage) Name() string {
@@ -54,6 +146,7 @@ func NewSQLStorage(_, instName string) (module.Module, error) {
 	return &SQLStorage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},
+		resolver: net.DefaultResolver,
 	}, nil
 }
 
@@ -160,90 +253,6 @@ func (sqlm *SQLStorage) GetOrCreateUser(username string) (backend.User, error) {
 	}
 
 	return sqlm.back.GetOrCreateUser(accountName)
-}
-
-func (sqlm *SQLStorage) Deliver(ctx module.DeliveryContext, body io.Reader) error {
-	var seekable io.ReadSeeker
-	if len(ctx.To) > 1 {
-		var err error
-		seekable, err = seekableBody(body)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, rcpt := range ctx.To {
-		parts := strings.Split(rcpt, "@")
-		if len(parts) != 2 {
-			sqlm.Log.Println("malformed address:", rcpt)
-			return errors.New("Deliver: missing domain part")
-		}
-
-		u, err := sqlm.back.GetUser(parts[0])
-		if err != nil {
-			sqlm.Log.Debugf("failed to get user for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
-			if err == imapsql.ErrUserDoesntExists {
-				return &smtp.SMTPError{
-					Code:    550,
-					Message: "Local mailbox doesn't exists",
-				}
-			}
-			return err
-		}
-
-		// TODO: We need to handle Ctx["spam"] here.
-		tgtMbox := "INBOX"
-
-		mbox, err := u.GetMailbox(tgtMbox)
-		if err != nil {
-			if err == backend.ErrNoSuchMailbox {
-				// Create INBOX if it doesn't exists.
-				sqlm.Log.Debugln("creating inbox for", rcpt)
-				if err := u.CreateMailbox(tgtMbox); err != nil {
-					sqlm.Log.Debugln("inbox creation failed for", rcpt)
-					return err
-				}
-				mbox, err = u.GetMailbox(tgtMbox)
-				if err != nil {
-					return err
-				}
-			} else {
-				sqlm.Log.Printf("failed to get inbox for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
-				return err
-			}
-		}
-
-		ctx.Header.Add("Return-Path", "<"+sanitizeString(ctx.From)+">")
-		ctx.Header.Add("Delivered-To", sanitizeString(rcpt))
-
-		headerBlob := bytes.Buffer{}
-		if err := textproto.WriteHeader(&headerBlob, ctx.Header); err != nil {
-			return err
-		}
-
-		var msgReader io.Reader
-		if len(ctx.To) > 1 {
-			msgReader = io.MultiReader(&headerBlob, seekable)
-		} else {
-			msgReader = io.MultiReader(&headerBlob, body)
-		}
-
-		msg := Literal{
-			Reader: msgReader,
-			length: headerBlob.Len() + ctx.BodyLength,
-		}
-		if err := mbox.CreateMessage([]string{}, time.Now(), msg); err != nil {
-			sqlm.Log.Printf("failed to save msg for %s (delivery ID = %s): %v", rcpt, ctx.DeliveryID, err)
-			return err
-		}
-
-		if len(ctx.To) > 1 {
-			if _, err := seekable.Seek(0, io.SeekStart); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func init() {

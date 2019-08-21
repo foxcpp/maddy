@@ -112,11 +112,12 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	}
 
 	// TODO: Disk buffering.
-	buf, err := buffer.BufferInMemory(r)
+	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
 		s.log.Printf("I/O error: %v", err)
 		return err
 	}
+	s.ctx.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
