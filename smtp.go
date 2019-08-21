@@ -139,7 +139,7 @@ type SMTPEndpoint struct {
 	serv       *smtp.Server
 	name       string
 	listeners  []net.Listener
-	dispatcher module.DeliveryTarget
+	dispatcher *Dispatcher
 
 	authAlwaysRequired bool
 
@@ -236,6 +236,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	if err != nil {
 		return err
 	}
+	endp.dispatcher.Log = log.Logger{Name: "smtp/dispatcher", Debug: endp.Log.Debug}
 
 	// endp.submission can be set to true by NewSMTPEndpoint, leave it on
 	// even if directive is missing.
