@@ -11,8 +11,7 @@ require (
 	github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca
 	github.com/emersion/go-msgauth v0.2.0
 	github.com/emersion/go-smtp v0.11.1
-	github.com/foxcpp/go-imap-backend-tests v0.0.0-20190615132041-281c43ad777b // indirect
-	github.com/foxcpp/go-imap-sql v0.3.1
+	github.com/foxcpp/go-imap-sql v0.3.2-0.20190821212600-0d4a8738a5f9
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1
 	github.com/lib/pq v1.1.1
