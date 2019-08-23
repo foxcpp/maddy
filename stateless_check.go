@@ -4,18 +4,30 @@ import (
 	"context"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/maddy/buffer"
 	"github.com/emersion/maddy/config"
+	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 )
 
 type (
 	StatelessCheckContext struct {
-		Resolver    Resolver
+		// Resolver that should be used by the check for DNS queries.
+		Resolver Resolver
+
 		DeliveryCtx *module.DeliveryContext
-		CancelCtx   context.Context
+
+		// CancelCtx is cancelled if check should be
+		// aborted (e.g. its result is no longer meaningful).
+		CancelCtx context.Context
+
+		// Logger that should be used by the check for logging, note that it is
+		// already wrapped to append Delivery ID to all messages so check code
+		// should not do the same.
+		Logger log.Logger
 	}
 	FuncConnCheck   func(checkContext StatelessCheckContext) error
 	FuncSenderCheck func(checkContext StatelessCheckContext, mailFrom string) error
@@ -27,6 +39,7 @@ type statelessCheck struct {
 	modName  string
 	instName string
 	resolver Resolver
+	logger   log.Logger
 
 	connCheck   FuncConnCheck
 	senderCheck FuncSenderCheck
@@ -39,6 +52,16 @@ type statelessCheckState struct {
 	deliveryCtx *module.DeliveryContext
 }
 
+func deliveryLogger(l log.Logger, ctx *module.DeliveryContext) log.Logger {
+	return log.Logger{
+		Out: func(t time.Time, debug bool, str string) {
+			l.Out(t, debug, str+"(delivery ID = "+ctx.DeliveryID+")")
+		},
+		Name:  l.Name,
+		Debug: l.Debug,
+	}
+}
+
 func (s statelessCheckState) CheckConnection(ctx context.Context) error {
 	if s.c.connCheck == nil {
 		return nil
@@ -48,6 +71,7 @@ func (s statelessCheckState) CheckConnection(ctx context.Context) error {
 		Resolver:    s.c.resolver,
 		DeliveryCtx: s.deliveryCtx,
 		CancelCtx:   ctx,
+		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
 	})
 }
 
@@ -60,6 +84,7 @@ func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) e
 		Resolver:    s.c.resolver,
 		DeliveryCtx: s.deliveryCtx,
 		CancelCtx:   ctx,
+		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
 	}, mailFrom)
 }
 
@@ -72,6 +97,7 @@ func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) error
 		Resolver:    s.c.resolver,
 		DeliveryCtx: s.deliveryCtx,
 		CancelCtx:   ctx,
+		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
 	}, rcptTo)
 }
 
@@ -84,6 +110,7 @@ func (s statelessCheckState) CheckBody(ctx context.Context, headerLock *sync.RWM
 		Resolver:    s.c.resolver,
 		DeliveryCtx: s.deliveryCtx,
 		CancelCtx:   ctx,
+		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
 	}, headerLock, header, body)
 }
 
@@ -98,8 +125,10 @@ func (c *statelessCheck) NewMessage(ctx *module.DeliveryContext) (module.CheckSt
 	}, nil
 }
 
-func (c *statelessCheck) Init(*config.Map) error {
-	return nil
+func (c *statelessCheck) Init(m *config.Map) error {
+	m.Bool("debug", true, &c.logger.Debug)
+	_, err := m.Process()
+	return err
 }
 
 func (c *statelessCheck) Name() string {
@@ -121,6 +150,7 @@ func RegisterStatelessCheck(name string, connCheck FuncConnCheck, senderCheck Fu
 			modName:  modName,
 			instName: instName,
 			resolver: net.DefaultResolver,
+			logger:   log.Logger{Name: modName},
 
 			connCheck:   connCheck,
 			senderCheck: senderCheck,
@@ -128,14 +158,24 @@ func RegisterStatelessCheck(name string, connCheck FuncConnCheck, senderCheck Fu
 			bodyCheck:   bodyCheck,
 		}, nil
 	})
+
+	// Here is the problem with global configuration.
+	// We can't grab it here because this function is likely
+	// called from init(). This RegisterInstance call
+	// needs to be moved somewhere after global config parsing
+	// so we will be able to pass globals to config.Map constructed
+	// here and then let Init access it.
+	// TODO.
+
 	module.RegisterInstance(&statelessCheck{
 		modName:  name,
 		instName: name,
 		resolver: net.DefaultResolver,
+		logger:   log.Logger{Name: name},
 
 		connCheck:   connCheck,
 		senderCheck: senderCheck,
 		rcptCheck:   rcptCheck,
 		bodyCheck:   bodyCheck,
-	}, nil)
+	}, &config.Map{Block: &config.Node{}})
 }
