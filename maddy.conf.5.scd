@@ -153,6 +153,24 @@ maddy architecture consists of several components called "modules". Each module
 does have its separate configuration block. The module can be used multiple times
 with different configurations by giving each configuration block unique name.
 
+If a module needs to use functionality of the other module, it references
+the used configuration block in its configuration. Here is the example:
+```
+module1 config1 {
+    blah_blah
+}
+
+module2 config2 {
+    # This directive means that the module2 with configuration
+    # block config2 will module1 for some of its functionality. For
+    # example, it may send messages to it for some handling (filtering
+    # or delivery, you got the idea). module1 will handle them in accordance
+    # with the config1 block.
+    target config1
+}
+```
+
+
 Generic syntax for module configuration block is as follows:
 
 ```
@@ -417,6 +435,150 @@ imaps://127.0.0.1:143
 imap://0.0.0.0
 ```
 
+# DISPATCHING DIRECTIVES
+
+maddy have a generic framework for message filtering and simple
+per-sender/per-recipient routing dispatcher.
+
+Below are directives you can use in the configuration of the modules that
+act as a message sources (e.g. a SMTP endpoint).
+
+## check { ... }
+
+List of the configuration block names for checks that should
+be executed on all incoming messages. In most cases, checks have
+implicitly defined top-level configuration block, so you don't have
+to declare your own.
+
+If any of the used checks fails - message will be rejected.
+
+Example:
+```
+check {
+    # Reference implicitly defined default configuration.
+    check_source_hostname
+
+    # Inline definition.
+    check_source_mx {
+         # Configuration for check_source_mx goes here.
+         debug
+    }
+}
+```
+
+## reject [smtp code] [smtp enhanced code] [error description]
+
+Messages handled by the configuration block with this directive will be rejected
+with the specified SMTP error.
+
+If you aren't sure which codes to use, use 541 and 5.4.0 with your message or just
+leave all arguments out, the error description will say "message is rejected
+due to policy reasons" which is usually what you want to mean.
+
+'reject' can't be used in the same block with 'deliver_to' or 'destination/source' directives.
+
+Example:
+```
+reject 541 5.4.0 "We don't like example.org, go away"
+```
+
+## source <rules...> { ... }
+
+Handle messages with MAIL FROM value (sender address) matching any of the rules in
+accordance with the specified configuration block.
+
+"Rule" is either a domain or a complete address. Duplicate rules are not allowed.
+
+A source block can contain the following directives: 'destination'/'default_destination',
+'check', 'deliver_to`, 'reject'. If you use the 'source' directive, then you must also use
+the 'default_source' directive to specify how to handle messages with senders not matched
+by any rules.
+
+A 'source' block can't be used with other directives at the same level.
+
+Example:
+```
+# All messages coming from example.org domain will be delivered
+# to local_mailboxes.
+source example.org {
+    deliver_to local_mailboxes
+}
+# Messages coming from different domains will be rejected.
+default_source {
+    reject 521 5.0.0 "Go away"
+}
+
+# You can't put the following directives at the same level as blocks above:
+# reject
+# deliver_to whatever
+# destination ...
+# default_destination
+```
+
+## destination <rule...> { ... }
+
+Handle messages with RCPT TO value (recipient address) matching any of the rules in
+accordance with the specified configuration block.
+
+"Rule" is either a domain or a complete address. Duplicate rules are not allowed.
+
+Note that messages with multiple recipients are split into multiple messages if
+they have recipients matched by multiple blocks. Each block will see the message
+only with recipients matched by its rules.
+
+A destination block can contain the following directives: 'deliver_to', 'reject','check'.
+If you use the 'destination' directive then you must also use the 'default_destination'
+directive to specify how to handle messages with recipients not matched by any rules.
+
+A 'destination' block can't be used with other directives at the same level.
+
+Example:
+```
+# Messages with recipients at example.com domain will be
+# delivered to local_mailboxes target.
+destination example.com {
+    deliver_to local_mailboxes
+}
+
+# Messages with other recipients will be rejected.
+default_destination {
+    rejected 541 5.0.0 "User not local"
+}
+```
+
+
+
+Complete configuration example using all of the mentioned directives:
+```
+check {
+    # Run a check to make sure source SMTP server identification
+    # is legit.
+    check_source_hostname
+}
+
+# Messages coming from senders at example.org will be handled in
+# accordance with the following configuration block.
+source example.org {
+    # We are example.com, so deliver all messages with recipients
+    # at example.com to our local mailboxes.
+    destination example.com {
+        deliver_to local_mailboxes
+    }
+
+    # We don't do anything with recipients at different domains
+    # because we are not an open relay, thus we reject them.
+    default_destination {
+        reject 521 5.0.0 "User not local"
+    }
+}
+
+# We do our business only with example.org, so reject all
+# other senders.
+default_source {
+    reject
+}
+```
+
 # IMAP MODULE
 
 IMAP4rev1 server endpoint. Endpoints are special-case modules that use config
@@ -460,13 +622,16 @@ Enable verbose logging only for this configuration block.
 ESMTP server endpoint. Endpoints are special-case modules that use config
 directive arguments to specify listening addresses.
 
+See DISPATCHING DIRECTIVES for the description of the
+conditional message dispatching and filtering configuration.
+
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     auth pam
     hostname emersion.fr
 
-    target dummy
+    ...
 }
 ```
 
@@ -598,6 +763,10 @@ queue {
 
 Valid configuration directives:
 
+## target <config block>
+
+Delivery target to use for delivery. You probably want to use 'remote' here.
+
 ## location
 
 File system directory to use to store queued messages.
@@ -713,11 +882,8 @@ smtp smtp://0.0.0.0 {
 All modules in this section run one check on message and either cause it to be
 rejected.
 
-They all implement filter interface and have configuration blocks defined
-implicitly so you use them like that:
-```
-filter check_source_hostname
-```
+They all implement check interface and have configuration blocks defined
+implicitly so you use then without an explicit block definition.
 
 ## check_source_hostname
 
@@ -737,7 +903,7 @@ specified in EHLO/HELO command.
 # DUMMY MODULE
 
 No-op module. It doesn't need to be configured explicitly and can be referenced
-using "dummy" name. It can act as a filter, delivery target, and auth.
+using "dummy" name. It can act as a delivery target or auth.
 provider. In the latter case, it will accept any credentials, allowing any
 client to authenticate using any username and password (use with care!).
 
