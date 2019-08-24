@@ -23,7 +23,7 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 	var othersRaw []config.Node
 	for _, node := range nodes {
 		switch node.Name {
-		case "checks":
+		case "check":
 			if len(node.Children) == 0 {
 				return dispatcherCfg{}, config.NodeErr(&node, "empty checks block")
 			}
@@ -89,7 +89,7 @@ func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) 
 	var othersRaw []config.Node
 	for _, node := range nodes {
 		switch node.Name {
-		case "checks":
+		case "check":
 			if len(node.Children) == 0 {
 				return sourceBlock{}, config.NodeErr(&node, "empty checks block")
 			}
@@ -151,7 +151,7 @@ func parseDispatcherRcptCfg(globals map[string]interface{}, nodes []config.Node)
 	rcpt := rcptBlock{}
 	for _, node := range nodes {
 		switch node.Name {
-		case "checks":
+		case "check":
 			if len(node.Children) == 0 {
 				return nil, config.NodeErr(&node, "empty checks block")
 			}
