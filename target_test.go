@@ -15,7 +15,7 @@ import (
 )
 
 type msg struct {
-	ctx      *module.DeliveryContext
+	msgMeta  *module.MsgMetadata
 	mailFrom string
 	rcptTo   []string
 	body     []byte
@@ -59,10 +59,10 @@ type testTargetDelivery struct {
 	committed bool
 }
 
-func (dt *testTarget) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (dt *testTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &testTargetDelivery{
 		tgt: dt,
-		msg: msg{ctx: ctx.DeepCopy(), mailFrom: mailFrom},
+		msg: msg{msgMeta: msgMeta.DeepCopy(), mailFrom: mailFrom},
 	}, dt.startErr
 }
 
@@ -111,9 +111,9 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	encodedID := hex.EncodeToString(IDRaw[:])
 
 	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
-	ctx := module.DeliveryContext{
+	ctx := module.MsgMetadata{
 		DontTraceSender: true,
-		DeliveryID:      encodedID,
+		ID:              encodedID,
 	}
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
@@ -152,8 +152,8 @@ func checkMsg(t *testing.T, msg *msg, sender string, rcpt []string) {
 	idRaw := sha1.Sum([]byte(t.Name()))
 	encodedId := hex.EncodeToString(idRaw[:])
 
-	if msg.ctx.DeliveryID != encodedId {
-		t.Errorf("empty or wrong delivery context for passed message? %+v", msg.ctx)
+	if msg.msgMeta.ID != encodedId {
+		t.Errorf("empty or wrong delivery context for passed message? %+v", msg.msgMeta)
 	}
 	if msg.mailFrom != sender {
 		t.Errorf("wrong sender, want %s, got %s", sender, msg.mailFrom)

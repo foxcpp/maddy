@@ -127,11 +127,11 @@ func (utd *unreliableTargetDelivery) Commit() error {
 	return nil
 }
 
-func (ut *unreliableTarget) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (ut *unreliableTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &unreliableTargetDelivery{
 		ut: ut,
 		msg: msg{
-			ctx:      ctx,
+			msgMeta:  msgMeta,
 			mailFrom: mailFrom,
 		},
 	}, nil
@@ -177,7 +177,7 @@ func checkQueueDir(t *testing.T, q *Queue, expectedIDs []string) {
 
 		_, ok := expectedMap[nameParts[0]]
 		if !ok {
-			t.Errorf("message with unexpected Delivery ID %s is stored in queue store", nameParts[0])
+			t.Errorf("message with unexpected Msg ID %s is stored in queue store", nameParts[0])
 			continue
 		}
 
@@ -186,7 +186,7 @@ func checkQueueDir(t *testing.T, q *Queue, expectedIDs []string) {
 
 	for id, found := range expectedMap {
 		if !found {
-			t.Errorf("expected message with Delivery ID %s is missing from queue store", id)
+			t.Errorf("expected message with Msg ID %s is missing from queue store", id)
 		}
 	}
 }

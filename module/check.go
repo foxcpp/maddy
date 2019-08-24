@@ -13,7 +13,7 @@ import (
 type Check interface {
 	// NewMessage initializing the "internal" check state required for
 	// processing of the new message.
-	NewMessage(ctx *DeliveryContext) (CheckState, error)
+	NewMessage(msgMeta *MsgMetadata) (CheckState, error)
 }
 
 type CheckState interface {

@@ -18,14 +18,14 @@ type (
 		// Resolver that should be used by the check for DNS queries.
 		Resolver Resolver
 
-		DeliveryCtx *module.DeliveryContext
+		MsgMeta *module.MsgMetadata
 
 		// CancelCtx is cancelled if check should be
 		// aborted (e.g. its result is no longer meaningful).
 		CancelCtx context.Context
 
 		// Logger that should be used by the check for logging, note that it is
-		// already wrapped to append Delivery ID to all messages so check code
+		// already wrapped to append Msg ID to all messages so check code
 		// should not do the same.
 		Logger log.Logger
 	}
@@ -48,14 +48,14 @@ type statelessCheck struct {
 }
 
 type statelessCheckState struct {
-	c           *statelessCheck
-	deliveryCtx *module.DeliveryContext
+	c       *statelessCheck
+	msgMeta *module.MsgMetadata
 }
 
-func deliveryLogger(l log.Logger, ctx *module.DeliveryContext) log.Logger {
+func deliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 	return log.Logger{
 		Out: func(t time.Time, debug bool, str string) {
-			l.Out(t, debug, str+"(delivery ID = "+ctx.DeliveryID+")")
+			l.Out(t, debug, str+"(msg ID = "+msgMeta.ID+")")
 		},
 		Name:  l.Name,
 		Debug: l.Debug,
@@ -68,10 +68,10 @@ func (s statelessCheckState) CheckConnection(ctx context.Context) error {
 	}
 
 	return s.c.connCheck(StatelessCheckContext{
-		Resolver:    s.c.resolver,
-		DeliveryCtx: s.deliveryCtx,
-		CancelCtx:   ctx,
-		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
+		Resolver:  s.c.resolver,
+		MsgMeta:   s.msgMeta,
+		CancelCtx: ctx,
+		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	})
 }
 
@@ -81,10 +81,10 @@ func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) e
 	}
 
 	return s.c.senderCheck(StatelessCheckContext{
-		Resolver:    s.c.resolver,
-		DeliveryCtx: s.deliveryCtx,
-		CancelCtx:   ctx,
-		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
+		Resolver:  s.c.resolver,
+		MsgMeta:   s.msgMeta,
+		CancelCtx: ctx,
+		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, mailFrom)
 }
 
@@ -94,10 +94,10 @@ func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) error
 	}
 
 	return s.c.rcptCheck(StatelessCheckContext{
-		Resolver:    s.c.resolver,
-		DeliveryCtx: s.deliveryCtx,
-		CancelCtx:   ctx,
-		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
+		Resolver:  s.c.resolver,
+		MsgMeta:   s.msgMeta,
+		CancelCtx: ctx,
+		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, rcptTo)
 }
 
@@ -107,10 +107,10 @@ func (s statelessCheckState) CheckBody(ctx context.Context, headerLock *sync.RWM
 	}
 
 	return s.c.bodyCheck(StatelessCheckContext{
-		Resolver:    s.c.resolver,
-		DeliveryCtx: s.deliveryCtx,
-		CancelCtx:   ctx,
-		Logger:      deliveryLogger(s.c.logger, s.deliveryCtx),
+		Resolver:  s.c.resolver,
+		MsgMeta:   s.msgMeta,
+		CancelCtx: ctx,
+		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, headerLock, header, body)
 }
 
@@ -118,10 +118,10 @@ func (s statelessCheckState) Close() error {
 	return nil
 }
 
-func (c *statelessCheck) NewMessage(ctx *module.DeliveryContext) (module.CheckState, error) {
+func (c *statelessCheck) NewMessage(ctx *module.MsgMetadata) (module.CheckState, error) {
 	return statelessCheckState{
-		c:           c,
-		deliveryCtx: ctx,
+		c:       c,
+		msgMeta: ctx,
 	}, nil
 }
 

@@ -22,7 +22,7 @@ import (
 	"github.com/emersion/maddy/module"
 )
 
-func SMTPCtxLog(l log.Logger, ctx *module.DeliveryContext) log.Logger {
+func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 	out := l.Out
 	if out == nil {
 		out = log.DefaultLogger.Out
@@ -30,7 +30,7 @@ func SMTPCtxLog(l log.Logger, ctx *module.DeliveryContext) log.Logger {
 
 	return log.Logger{
 		Out: func(t time.Time, debug bool, str string) {
-			ctxInfo := fmt.Sprintf(", HELO = %s, IP = %s, MAIL FROM = %s, delivery ID = %s", ctx.SrcHostname, ctx.SrcAddr, ctx.From, ctx.DeliveryID)
+			ctxInfo := fmt.Sprintf(", HELO = %s, IP = %s, MAIL FROM = %s, msg ID = %s", msgMeta.SrcHostname, msgMeta.SrcAddr, msgMeta.OriginalFrom, msgMeta.ID)
 			out(t, debug, str+ctxInfo)
 		},
 		Debug: l.Debug,
@@ -41,7 +41,7 @@ func SMTPCtxLog(l log.Logger, ctx *module.DeliveryContext) log.Logger {
 type SMTPSession struct {
 	endp     *SMTPEndpoint
 	delivery module.Delivery
-	ctx      *module.DeliveryContext
+	msgMeta  *module.MsgMetadata
 	log      log.Logger
 }
 
@@ -64,12 +64,12 @@ func (s *SMTPSession) Mail(from string) error {
 			Message: "Temporary internal error, try again later",
 		}
 	}
-	s.ctx.DeliveryID = hex.EncodeToString(rawID)
-	s.ctx.From = from
+	s.msgMeta.ID = hex.EncodeToString(rawID)
+	s.msgMeta.OriginalFrom = from
 
 	s.log.Printf("incoming message")
 
-	s.delivery, err = s.endp.dispatcher.Start(s.ctx, from)
+	s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, from)
 	if err != nil {
 		s.log.Printf("sender rejected: %v", err)
 		return err
@@ -105,7 +105,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	}
 
 	if s.endp.submission {
-		if err := SubmissionPrepare(s.ctx); err != nil {
+		if err := SubmissionPrepare(s.msgMeta, header); err != nil {
 			s.log.Printf("malformed header or I/O error: %v", err)
 			return err
 		}
@@ -117,7 +117,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 		s.log.Printf("I/O error: %v", err)
 		return err
 	}
-	s.ctx.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
+	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
@@ -335,7 +335,7 @@ func (endp *SMTPEndpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Sess
 }
 
 func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
-	ctx := &module.DeliveryContext{
+	ctx := &module.MsgMetadata{
 		Anonymous:    anonymous,
 		AuthUser:     username,
 		AuthPassword: password,
@@ -343,7 +343,6 @@ func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, 
 		SrcHostname:  state.Hostname,
 		SrcAddr:      state.RemoteAddr,
 		OurHostname:  endp.serv.Domain,
-		Ctx:          make(map[string]interface{}),
 	}
 
 	if endp.serv.LMTP {
@@ -359,9 +358,9 @@ func (endp *SMTPEndpoint) newSession(anonymous bool, username, password string, 
 	}
 
 	return &SMTPSession{
-		endp: endp,
-		ctx:  ctx,
-		log:  SMTPCtxLog(endp.Log, ctx),
+		endp:    endp,
+		msgMeta: ctx,
+		log:     MsgMetaLog(endp.Log, ctx),
 	}
 }
 

@@ -71,8 +71,8 @@ type Queue struct {
 }
 
 type QueueMetadata struct {
-	Ctx  *module.DeliveryContext
-	From string
+	MsgMeta *module.MsgMetadata
+	From    string
 
 	// Recipients that should be tried next.
 	// May or may not be equal to PartialError.TemporaryFailed.
@@ -178,11 +178,11 @@ func (q *Queue) worker() {
 }
 
 func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
-	id := meta.Ctx.DeliveryID
-	q.Log.Debugf("delivery attempt #%d for delivery ID = %s", meta.TriesCount+1, id)
+	id := meta.MsgMeta.ID
+	q.Log.Debugf("delivery attempt #%d for msg ID = %s", meta.TriesCount+1, id)
 
 	partialErr := q.deliver(meta, header, body)
-	q.Log.Debugf("failures: permanently: %v, temporary: %v, errors: %v (delivery ID = %s)", partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs, id)
+	q.Log.Debugf("failures: permanently: %v, temporary: %v, errors: %v (msg ID = %s)", partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs, id)
 	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
 		// Attempt either fully succeeded or completely failed.
 		// TODO: Send a bounce message.
@@ -220,7 +220,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 
 	nextTryTime := time.Now()
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
-	q.Log.Printf("%d attempt failed for (delivery ID = %s), will retry in %v (at %v)", meta.TriesCount, id, time.Until(nextTryTime), nextTryTime)
+	q.Log.Printf("%d attempt failed for (msg ID = %s), will retry in %v (at %v)", meta.TriesCount, id, time.Until(nextTryTime), nextTryTime)
 
 	q.wheel.Add(nextTryTime, id)
 }
@@ -230,7 +230,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		Errs: map[string]error{},
 	}
 
-	delivery, err := q.Target.Start(meta.Ctx, meta.From)
+	delivery, err := q.Target.Start(meta.MsgMeta, meta.From)
 	if err != nil {
 		perr.Failed = append(perr.Failed, meta.To...)
 		for _, rcpt := range meta.To {
@@ -255,7 +255,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	if len(acceptedRcpts) == 0 {
 		if err := delivery.Abort(); err != nil {
-			q.Log.Printf("delivery.Abort failed: %v (delivery ID = %s)", err, meta.Ctx.DeliveryID)
+			q.Log.Printf("delivery.Abort failed: %v (msg ID = %s)", err, meta.MsgMeta.ID)
 		}
 		return perr
 	}
@@ -284,7 +284,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		// No recipients succeeded.
 		if len(perr.TemporaryFailed)+len(perr.Failed) == len(acceptedRcpts) {
 			if err := delivery.Abort(); err != nil {
-				q.Log.Printf("delivery.Abort failed: %v (delivery ID = %s)", err, meta.Ctx.DeliveryID)
+				q.Log.Printf("delivery.Abort failed: %v (msg ID = %s)", err, meta.MsgMeta.ID)
 			}
 			return perr
 		}
@@ -324,7 +324,7 @@ func (qd *queueDelivery) Body(header textproto.Header, body buffer.Buffer) error
 
 func (qd *queueDelivery) Abort() error {
 	if qd.body != nil {
-		qd.q.removeFromDisk(qd.meta.Ctx.DeliveryID)
+		qd.q.removeFromDisk(qd.meta.MsgMeta.ID)
 	}
 	return nil
 }
@@ -346,9 +346,9 @@ func (qd *queueDelivery) Commit() error {
 	return nil
 }
 
-func (q *Queue) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (q *Queue) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	meta := &QueueMetadata{
-		Ctx:         ctx,
+		MsgMeta:     msgMeta,
 		From:        mailFrom,
 		RcptErrs:    map[string]*smtp.SMTPError{},
 		LastAttempt: time.Now(),
@@ -362,15 +362,15 @@ func (q *Queue) removeFromDisk(id string) {
 	// will detect and report it.
 	headerPath := filepath.Join(q.location, id+".header")
 	if err := os.Remove(headerPath); err != nil {
-		q.Log.Printf("failed to remove header from disk: %v (delivery ID = %s)", err, id)
+		q.Log.Printf("failed to remove header from disk: %v (msg ID = %s)", err, id)
 	}
 	bodyPath := filepath.Join(q.location, id+".body")
 	if err := os.Remove(bodyPath); err != nil {
-		q.Log.Printf("failed to remove body from disk: %v (delivery ID = %s)", err, id)
+		q.Log.Printf("failed to remove body from disk: %v (msg ID = %s)", err, id)
 	}
 	metaPath := filepath.Join(q.location, id+".meta")
 	if err := os.Remove(metaPath); err != nil {
-		q.Log.Printf("failed to remove meta-data from disk: %v (delivery ID = %s)", err, id)
+		q.Log.Printf("failed to remove meta-data from disk: %v (msg ID = %s)", err, id)
 	}
 }
 
@@ -393,18 +393,18 @@ func (q *Queue) readDiskQueue() error {
 
 		meta, err := q.readMessageMeta(id)
 		if err != nil {
-			q.Log.Printf("failed to read meta-data, skipping: %v (delivery ID = %s)", err, id)
+			q.Log.Printf("failed to read meta-data, skipping: %v (msg ID = %s)", err, id)
 			continue
 		}
 
 		// Check header file existence.
 		if _, err := os.Stat(filepath.Join(q.location, id+".header")); err != nil {
 			if os.IsNotExist(err) {
-				q.Log.Printf("header file doesn't exist for delivery ID = %s", id)
+				q.Log.Printf("header file doesn't exist for msg ID = %s", id)
 				q.tryRemoveDanglingFile(id + ".meta")
 				q.tryRemoveDanglingFile(id + ".body")
 			} else {
-				q.Log.Printf("skipping nonstat'able header file: %v (delivery ID = %s)", err, id)
+				q.Log.Printf("skipping nonstat'able header file: %v (msg ID = %s)", err, id)
 			}
 			continue
 		}
@@ -412,11 +412,11 @@ func (q *Queue) readDiskQueue() error {
 		// Check body file existence.
 		if _, err := os.Stat(filepath.Join(q.location, id+".body")); err != nil {
 			if os.IsNotExist(err) {
-				q.Log.Printf("body file doesn't exist for delivery ID = %s", id)
+				q.Log.Printf("body file doesn't exist for msg ID = %s", id)
 				q.tryRemoveDanglingFile(id + ".meta")
 				q.tryRemoveDanglingFile(id + ".header")
 			} else {
-				q.Log.Printf("skipping nonstat'able body file: %v (delivery ID = %s)", err, id)
+				q.Log.Printf("skipping nonstat'able body file: %v (msg ID = %s)", err, id)
 			}
 			continue
 		}
@@ -428,7 +428,7 @@ func (q *Queue) readDiskQueue() error {
 			nextTryTime = time.Now().Add(q.postInitDelay)
 		}
 
-		q.Log.Debugf("will try to deliver (delivery ID = %s) in %v (%v)", id, time.Until(nextTryTime), nextTryTime)
+		q.Log.Debugf("will try to deliver (msg ID = %s) in %v (%v)", id, time.Until(nextTryTime), nextTryTime)
 		q.wheel.Add(nextTryTime, id)
 		loadedCount++
 	}
@@ -441,7 +441,7 @@ func (q *Queue) readDiskQueue() error {
 }
 
 func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) (buffer.Buffer, error) {
-	id := meta.Ctx.DeliveryID
+	id := meta.MsgMeta.ID
 
 	headerPath := filepath.Join(q.location, id+".header")
 	headerFile, err := os.Create(headerPath)
@@ -485,7 +485,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
-	metaPath := filepath.Join(q.location, meta.Ctx.DeliveryID+".meta")
+	metaPath := filepath.Join(q.location, meta.MsgMeta.ID+".meta")
 	file, err := os.Create(metaPath)
 	if err != nil {
 		return err
@@ -493,10 +493,10 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	defer file.Close()
 
 	metaCopy := *meta
-	metaCopy.Ctx = meta.Ctx.DeepCopy()
+	metaCopy.MsgMeta = meta.MsgMeta.DeepCopy()
 
-	if _, ok := metaCopy.Ctx.SrcAddr.(*net.TCPAddr); !ok {
-		meta.Ctx.SrcAddr = nil
+	if _, ok := metaCopy.MsgMeta.SrcAddr.(*net.TCPAddr); !ok {
+		meta.MsgMeta.SrcAddr = nil
 	}
 
 	if err := json.NewEncoder(file).Encode(metaCopy); err != nil {
@@ -518,8 +518,8 @@ func (q *Queue) readMessageMeta(id string) (*QueueMetadata, error) {
 	// net.Addr can't be deserialized because we don't know concrete type. For
 	// this reason we assume that SrcAddr is TCPAddr, if it is not - we drop it
 	// during serialization (see updateMetadataOnDisk).
-	meta.Ctx = &module.DeliveryContext{}
-	meta.Ctx.SrcAddr = &net.TCPAddr{}
+	meta.MsgMeta = &module.MsgMetadata{}
+	meta.MsgMeta.SrcAddr = &net.TCPAddr{}
 
 	if err := json.NewDecoder(file).Decode(meta); err != nil {
 		return nil, err

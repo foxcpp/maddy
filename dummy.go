@@ -27,7 +27,7 @@ func (d *Dummy) Init(_ *config.Map) error {
 	return nil
 }
 
-func (d *Dummy) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (d *Dummy) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return dummyDelivery{}, nil
 }
 

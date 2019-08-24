@@ -17,21 +17,21 @@ type CheckGroup struct {
 	checks []module.Check
 }
 
-func (cg *CheckGroup) NewMessage(ctx *module.DeliveryContext) (module.CheckState, error) {
+func (cg *CheckGroup) NewMessage(msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	states := make([]module.CheckState, 0, len(cg.checks))
 	for _, check := range cg.checks {
-		state, err := check.NewMessage(ctx)
+		state, err := check.NewMessage(msgMeta)
 		if err != nil {
 			return nil, err
 		}
 		states = append(states, state)
 	}
-	return &checkGroupState{ctx, states}, nil
+	return &checkGroupState{msgMeta, states}, nil
 }
 
 type checkGroupState struct {
-	ctx    *module.DeliveryContext
-	states []module.CheckState
+	msgMeta *module.MsgMetadata
+	states  []module.CheckState
 }
 
 func (cgs *checkGroupState) CheckConnection(ctx context.Context) error {

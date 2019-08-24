@@ -6,7 +6,7 @@ import (
 )
 
 type DeliveryTarget interface {
-	Start(ctx *DeliveryContext, mailFrom string) (Delivery, error)
+	Start(msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
 }
 
 type Delivery interface {

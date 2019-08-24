@@ -99,16 +99,16 @@ type remoteConnection struct {
 type remoteDelivery struct {
 	rt       *RemoteTarget
 	mailFrom string
-	ctx      *module.DeliveryContext
+	msgMeta  *module.MsgMetadata
 
 	connections map[string]*remoteConnection
 }
 
-func (rt *RemoteTarget) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (rt *RemoteTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &remoteDelivery{
 		rt:          rt,
 		mailFrom:    mailFrom,
-		ctx:         ctx,
+		msgMeta:     msgMeta,
 		connections: map[string]*remoteConnection{},
 	}, nil
 }
@@ -132,7 +132,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	}
 
 	if err := conn.Rcpt(to); err != nil {
-		rd.rt.Log.Printf("RCPT TO failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+		rd.rt.Log.Printf("RCPT TO failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 		return err
 	}
 
@@ -152,29 +152,29 @@ func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 		go func() {
 			bodyW, err := conn.Data()
 			if err != nil {
-				rd.rt.Log.Printf("DATA failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				rd.rt.Log.Printf("DATA failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 				errCh <- err
 				return
 			}
 			bodyR, err := b.Open()
 			if err != nil {
-				rd.rt.Log.Printf("failed to open body buffer: %v (delivery ID = %s)", err, rd.ctx.DeliveryID)
+				rd.rt.Log.Printf("failed to open body buffer: %v (msg ID = %s)", err, rd.msgMeta.ID)
 				errCh <- err
 				return
 			}
 			if err = textproto.WriteHeader(bodyW, header); err != nil {
-				rd.rt.Log.Printf("header write failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				rd.rt.Log.Printf("header write failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 				errCh <- err
 				return
 			}
 			if _, err = io.Copy(bodyW, bodyR); err != nil {
-				rd.rt.Log.Printf("body write failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				rd.rt.Log.Printf("body write failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 				errCh <- err
 				return
 			}
 
 			if err := bodyW.Close(); err != nil {
-				rd.rt.Log.Printf("body write final failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+				rd.rt.Log.Printf("body write final failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 				errCh <- err
 				return
 			}
@@ -220,7 +220,7 @@ func (rd *remoteDelivery) Commit() error {
 
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
-		rd.rt.Log.Debugf("disconnected from %s (delivery ID = %s)", conn.serverName, rd.ctx.DeliveryID)
+		rd.rt.Log.Debugf("disconnected from %s (msg ID = %s)", conn.serverName, rd.msgMeta.ID)
 		conn.Close()
 	}
 	return nil
@@ -247,7 +247,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	conn := &remoteConnection{}
 	for _, addr := range addrs {
 		if stsPolicy != nil && !stsPolicy.Match(addr) {
-			rd.rt.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS stsPolicy (%v) (delivery ID = %s)", addr, stsPolicy.MX, rd.ctx.DeliveryID)
+			rd.rt.Log.Printf("ignoring MX record for %s, as it is not matched by MTS-STS stsPolicy (%v) (msg ID = %s)", addr, stsPolicy.MX, rd.msgMeta.ID)
 			lastErr = ErrNoMXMatchedBySTS
 			continue
 		}
@@ -255,22 +255,22 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 
 		conn.Client, err = connectToServer(rd.rt.hostname, addr, rd.rt.requireTLS)
 		if err != nil {
-			rd.rt.Log.Debugf("failed to connect to %s: %v (delivery ID = %s)", addr, err, rd.ctx.DeliveryID)
+			rd.rt.Log.Debugf("failed to connect to %s: %v (msg ID = %s)", addr, err, rd.msgMeta.ID)
 			lastErr = err
 			continue
 		}
 	}
 	if conn.Client == nil {
-		rd.rt.Log.Printf("no usable MX servers found for %s, last error (%s): %v (delivery ID = %s)", domain, conn.serverName, lastErr, rd.ctx.DeliveryID)
+		rd.rt.Log.Printf("no usable MX servers found for %s, last error (%s): %v (msg ID = %s)", domain, conn.serverName, lastErr, rd.msgMeta.ID)
 		return nil, lastErr
 	}
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
-		rd.rt.Log.Printf("MAIL FROM failed: %v (server = %s, delivery ID = %s)", err, conn.serverName, rd.ctx.DeliveryID)
+		rd.rt.Log.Printf("MAIL FROM failed: %v (server = %s, msg ID = %s)", err, conn.serverName, rd.msgMeta.ID)
 		return nil, err
 	}
 
-	rd.rt.Log.Debugf("connected to %s (delivery ID = %s)", conn.serverName, rd.ctx.DeliveryID)
+	rd.rt.Log.Debugf("connected to %s (msg ID = %s)", conn.serverName, rd.msgMeta.ID)
 	rd.connections[domain] = conn
 
 	return conn, nil
