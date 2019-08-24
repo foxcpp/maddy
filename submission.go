@@ -6,25 +6,27 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/emersion/maddy/log"
 	"github.com/emersion/maddy/module"
 	"github.com/google/uuid"
 )
 
-func SubmissionPrepare(ctx *module.DeliveryContext) error {
-	ctx.DontTraceSender = true
+func SubmissionPrepare(msgMeta *module.MsgMetadata, header textproto.Header) error {
+	msgMeta.DontTraceSender = true
 
-	if ctx.Header.Get("Message-ID") == "" {
+	if header.Get("Message-ID") == "" {
 		msgId, err := uuid.NewRandom()
 		if err != nil {
 			return errors.New("Message-ID generation failed")
 		}
-		log.Debugf("adding missing Message-ID header to message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
-		ctx.Header.Set("Message-ID", "<"+msgId.String()+"@"+ctx.OurHostname+">")
+		// TODO: Move this function to smtpSession and use its logger.
+		log.Debugf("adding missing Message-ID header to message from %s (%s)", msgMeta.SrcHostname, msgMeta.SrcAddr)
+		header.Set("Message-ID", "<"+msgId.String()+"@"+msgMeta.OurHostname+">")
 	}
 
-	if ctx.Header.Get("From") == "" {
+	if header.Get("From") == "" {
 		return &smtp.SMTPError{
 			Code:    554,
 			Message: "Message does not contains a From header field",
@@ -32,7 +34,7 @@ func SubmissionPrepare(ctx *module.DeliveryContext) error {
 	}
 
 	for _, hdr := range [...]string{"Sender"} {
-		if value := ctx.Header.Get(hdr); value != "" {
+		if value := header.Get(hdr); value != "" {
 			if _, err := mail.ParseAddress(value); err != nil {
 				return &smtp.SMTPError{
 					Code:    554,
@@ -42,7 +44,7 @@ func SubmissionPrepare(ctx *module.DeliveryContext) error {
 		}
 	}
 	for _, hdr := range [...]string{"To", "Cc", "Bcc", "Reply-To"} {
-		if value := ctx.Header.Get(hdr); value != "" {
+		if value := header.Get(hdr); value != "" {
 			if _, err := mail.ParseAddressList(value); err != nil {
 				return &smtp.SMTPError{
 					Code:    554,
@@ -52,7 +54,7 @@ func SubmissionPrepare(ctx *module.DeliveryContext) error {
 		}
 	}
 
-	addrs, err := mail.ParseAddressList(ctx.Header.Get("From"))
+	addrs, err := mail.ParseAddressList(header.Get("From"))
 	if err != nil {
 		return &smtp.SMTPError{
 			Code:    554,
@@ -62,14 +64,14 @@ func SubmissionPrepare(ctx *module.DeliveryContext) error {
 
 	// https://tools.ietf.org/html/rfc5322#section-3.6.2
 	// If From contains multiple addresses, Sender field must be present.
-	if len(addrs) > 1 && ctx.Header.Get("Sender") == "" {
+	if len(addrs) > 1 && header.Get("Sender") == "" {
 		return &smtp.SMTPError{
 			Code:    554,
 			Message: "Missing Sender header field",
 		}
 	}
 
-	if dateHdr := ctx.Header.Get("Date"); dateHdr != "" {
+	if dateHdr := header.Get("Date"); dateHdr != "" {
 		_, err := time.Parse("Mon, 2 Jan 2006 15:04:05 -0700", dateHdr)
 		if err != nil {
 			return &smtp.SMTPError{
@@ -78,8 +80,8 @@ func SubmissionPrepare(ctx *module.DeliveryContext) error {
 			}
 		}
 	} else {
-		log.Debugf("adding missing Date header to message from %s (%s)", ctx.SrcHostname, ctx.SrcAddr)
-		ctx.Header.Set("Date", time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
+		log.Debugf("adding missing Date header to message from %s (%s)", msgMeta.SrcHostname, msgMeta.SrcAddr)
+		header.Set("Date", time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 
 	return nil

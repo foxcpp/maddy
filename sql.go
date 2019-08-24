@@ -37,7 +37,7 @@ type SQLStorage struct {
 
 type sqlDelivery struct {
 	sqlm     *SQLStorage
-	ctx      *module.DeliveryContext
+	msgMeta  *module.MsgMetadata
 	d        *imapsql.Delivery
 	mailFrom string
 }
@@ -50,11 +50,11 @@ func LookupAddr(r Resolver, ip net.IP) (string, error) {
 	return strings.TrimRight(names[0], "."), nil
 }
 
-func generateReceived(r Resolver, ctx *module.DeliveryContext, mailFrom, rcptTo string) string {
+func generateReceived(r Resolver, msgMeta *module.MsgMetadata, mailFrom, rcptTo string) string {
 	var received string
-	if !ctx.DontTraceSender {
-		received += "from " + ctx.SrcHostname
-		if tcpAddr, ok := ctx.SrcAddr.(*net.TCPAddr); ok {
+	if !msgMeta.DontTraceSender {
+		received += "from " + msgMeta.SrcHostname
+		if tcpAddr, ok := msgMeta.SrcAddr.(*net.TCPAddr); ok {
 			domain, err := LookupAddr(r, tcpAddr.IP)
 			if err != nil {
 				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
@@ -63,8 +63,8 @@ func generateReceived(r Resolver, ctx *module.DeliveryContext, mailFrom, rcptTo 
 			}
 		}
 	}
-	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", sanitizeString(ctx.OurHostname), sanitizeString(mailFrom))
-	received += fmt.Sprintf(" with %s id %s", ctx.SrcProto, ctx.DeliveryID)
+	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", sanitizeString(msgMeta.OurHostname), sanitizeString(mailFrom))
+	received += fmt.Sprintf(" with %s id %s", msgMeta.SrcProto, msgMeta.ID)
 	received += fmt.Sprintf(" for %s; %s", rcptTo, time.Now().Format(time.RFC1123Z))
 	return received
 }
@@ -92,7 +92,7 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 	// with small amount of per-recipient data in a efficient way.
 	userHeader := textproto.Header{}
 	userHeader.Add("Delivered-To", rcptTo)
-	userHeader.Add("Received", generateReceived(sd.sqlm.resolver, sd.ctx, sd.mailFrom, rcptTo))
+	userHeader.Add("Received", generateReceived(sd.sqlm.resolver, sd.msgMeta, sd.mailFrom, rcptTo))
 
 	if err := sd.d.AddRcpt(accountName, userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
@@ -110,7 +110,7 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 func (sd *sqlDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	header = header.Copy()
 	header.Add("Return-Path", "<"+sanitizeString(sd.mailFrom)+">")
-	return sd.d.BodyParsed(header, sd.ctx.BodyLength, body)
+	return sd.d.BodyParsed(header, sd.msgMeta.BodyLength, body)
 }
 
 func (sd *sqlDelivery) Abort() error {
@@ -121,14 +121,14 @@ func (sd *sqlDelivery) Commit() error {
 	return sd.d.Commit()
 }
 
-func (sqlm *SQLStorage) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (sqlm *SQLStorage) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	d, err := sqlm.back.StartDelivery()
 	if err != nil {
 		return nil, err
 	}
 	return &sqlDelivery{
 		sqlm:     sqlm,
-		ctx:      ctx,
+		msgMeta:  msgMeta,
 		d:        d,
 		mailFrom: mailFrom,
 	}, nil

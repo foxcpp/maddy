@@ -64,16 +64,16 @@ func splitAddress(addr string) (mailbox, domain string, err error) {
 	}
 }
 
-func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module.Delivery, error) {
+func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
 		rcptChecksState: make(map[*rcptBlock]module.CheckState),
 		deliveries:      make(map[module.DeliveryTarget]module.Delivery),
-		ctx:             ctx,
+		msgMeta:         msgMeta,
 		cancelCtx:       context.Background(),
 		log:             &d.Log,
 	}
 
-	globalChecksState, err := d.globalChecks.NewMessage(ctx)
+	globalChecksState, err := d.globalChecks.NewMessage(msgMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -101,21 +101,21 @@ func (d *Dispatcher) Start(ctx *module.DeliveryContext, mailFrom string) (module
 		if !ok {
 			// Fallback to the default source block.
 			sourceBlock = d.defaultSource
-			dd.log.Debugf("sender %s matched by default rule (delivery ID = %s)", mailFrom, ctx.DeliveryID)
+			dd.log.Debugf("sender %s matched by default rule (msg ID = %s)", mailFrom, msgMeta.ID)
 		} else {
-			dd.log.Debugf("sender %s matched by domain rule '%s' (delivery ID = %s)", mailFrom, strings.ToLower(domain), ctx.DeliveryID)
+			dd.log.Debugf("sender %s matched by domain rule '%s' (msg ID = %s)", mailFrom, strings.ToLower(domain), msgMeta.ID)
 		}
 	} else {
-		dd.log.Debugf("sender %s matched by address rule '%s' (delivery ID = %s)", mailFrom, strings.ToLower(mailFrom), ctx.DeliveryID)
+		dd.log.Debugf("sender %s matched by address rule '%s' (msg ID = %s)", mailFrom, strings.ToLower(mailFrom), msgMeta.ID)
 	}
 
 	if sourceBlock.rejectErr != nil {
-		dd.log.Debugf("sender %s rejected with error: %v (delivery ID = %s)", mailFrom, sourceBlock.rejectErr, ctx.DeliveryID)
+		dd.log.Debugf("sender %s rejected with error: %v (msg ID = %s)", mailFrom, sourceBlock.rejectErr, msgMeta.ID)
 		return nil, sourceBlock.rejectErr
 	}
 	dd.sourceBlock = sourceBlock
 
-	sourceChecksState, err := sourceBlock.checks.NewMessage(ctx)
+	sourceChecksState, err := sourceBlock.checks.NewMessage(msgMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ type dispatcherDelivery struct {
 	sourceBlock sourceBlock
 
 	deliveries map[module.DeliveryTarget]module.Delivery
-	ctx        *module.DeliveryContext
+	msgMeta    *module.MsgMetadata
 	cancelCtx  context.Context
 }
 
@@ -163,23 +163,23 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		if !ok {
 			// Fallback to the default source block.
 			rcptBlock = dd.sourceBlock.defaultRcpt
-			dd.log.Debugf("recipient %s matched by default rule (delivery ID = %s)", to, dd.ctx.DeliveryID)
+			dd.log.Debugf("recipient %s matched by default rule (msg ID = %s)", to, dd.msgMeta.ID)
 		} else {
-			dd.log.Debugf("recipient %s matched by domain rule '%s' (delivery ID = %s)", to, strings.ToLower(domain), dd.ctx.DeliveryID)
+			dd.log.Debugf("recipient %s matched by domain rule '%s' (msg ID = %s)", to, strings.ToLower(domain), dd.msgMeta.ID)
 		}
 	} else {
-		dd.log.Debugf("recipient %s matched by address rule '%s' (delivery ID = %s)", to, strings.ToLower(to), dd.ctx.DeliveryID)
+		dd.log.Debugf("recipient %s matched by address rule '%s' (msg ID = %s)", to, strings.ToLower(to), dd.msgMeta.ID)
 	}
 
 	if rcptBlock.rejectErr != nil {
-		dd.log.Debugf("recipient %s rejected: %v (delivery ID = %s)", to, rcptBlock.rejectErr, dd.ctx.DeliveryID)
+		dd.log.Debugf("recipient %s rejected: %v (msg ID = %s)", to, rcptBlock.rejectErr, dd.msgMeta.ID)
 		return rcptBlock.rejectErr
 	}
 
 	var rcptChecksState module.CheckState
 	if rcptChecksState, ok = dd.rcptChecksState[rcptBlock]; !ok {
 		var err error
-		rcptChecksState, err = rcptBlock.checks.NewMessage(dd.ctx)
+		rcptChecksState, err = rcptBlock.checks.NewMessage(dd.msgMeta)
 		if err != nil {
 			return err
 		}
@@ -202,26 +202,26 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		var delivery module.Delivery
 		var err error
 		if delivery, ok = dd.deliveries[target]; !ok {
-			delivery, err = target.Start(dd.ctx, dd.sourceAddr)
+			delivery, err = target.Start(dd.msgMeta, dd.sourceAddr)
 			if err != nil {
-				dd.log.Debugf("target.Start(%s) failure, target = %s (%s): %v (delivery ID = %s)",
-					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err, dd.ctx.DeliveryID)
+				dd.log.Debugf("target.Start(%s) failure, target = %s (%s): %v (msg ID = %s)",
+					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err, dd.msgMeta.ID)
 				return err
 			}
 
-			dd.log.Debugf("target.Start(%s) ok, target = %s (%s) (delivery ID = %s)",
-				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), dd.ctx.DeliveryID)
+			dd.log.Debugf("target.Start(%s) ok, target = %s (%s) (msg ID = %s)",
+				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), dd.msgMeta.ID)
 
 			dd.deliveries[target] = delivery
 		}
 
 		if err := delivery.AddRcpt(to); err != nil {
-			dd.log.Debugf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v (delivery ID = %s)",
-				to, delivery, err, dd.ctx.DeliveryID)
+			dd.log.Debugf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v (msg ID = %s)",
+				to, delivery, err, dd.msgMeta.ID)
 			return err
 		}
-		dd.log.Debugf("delivery.AddRcpt(%s) ok, Delivery object = %T (delivery ID = %v)",
-			to, delivery, dd.ctx.DeliveryID)
+		dd.log.Debugf("delivery.AddRcpt(%s) ok, Delivery object = %T (msg ID = %v)",
+			to, delivery, dd.msgMeta.ID)
 	}
 
 	return nil
@@ -235,12 +235,12 @@ func (dd dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) e
 
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Body(header, body); err != nil {
-			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v (delivery ID = %s)",
-				delivery, err, dd.ctx.DeliveryID)
+			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v (msg ID = %s)",
+				delivery, err, dd.msgMeta.ID)
 			return err
 		}
-		dd.log.Debugf("delivery.Body ok, Delivery object = %T (delivery ID = %v)",
-			delivery, dd.ctx.DeliveryID)
+		dd.log.Debugf("delivery.Body ok, Delivery object = %T (msg ID = %v)",
+			delivery, dd.msgMeta.ID)
 	}
 	return nil
 }
@@ -248,13 +248,13 @@ func (dd dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) e
 func (dd dispatcherDelivery) Commit() error {
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Commit(); err != nil {
-			dd.log.Debugf("delivery.Commit failure, Delivery object = %T: %v (delivery ID = %s)",
-				delivery, err, dd.ctx.DeliveryID)
+			dd.log.Debugf("delivery.Commit failure, Delivery object = %T: %v (msg ID = %s)",
+				delivery, err, dd.msgMeta.ID)
 			// No point in Committing remaining deliveries, everything is broken already.
 			return err
 		}
-		dd.log.Debugf("delivery.Commit ok, Delivery object = %T (delivery ID = %s)",
-			delivery, dd.ctx.DeliveryID)
+		dd.log.Debugf("delivery.Commit ok, Delivery object = %T (msg ID = %s)",
+			delivery, dd.msgMeta.ID)
 	}
 	return nil
 }
@@ -263,14 +263,14 @@ func (dd dispatcherDelivery) Abort() error {
 	var lastErr error
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Abort(); err != nil {
-			dd.log.Debugf("delivery.Abort failure, Delivery object = %T: %v (delivery ID = %s)",
-				delivery, err, dd.ctx.DeliveryID)
+			dd.log.Debugf("delivery.Abort failure, Delivery object = %T: %v (msg ID = %s)",
+				delivery, err, dd.msgMeta.ID)
 			lastErr = err
 			// Continue anyway and try to Abort all remaining delivery objects.
 		}
-		dd.log.Debugf("delivery.Abort ok, Delivery object = %T (delivery ID = %s)",
-			delivery, dd.ctx.DeliveryID)
+		dd.log.Debugf("delivery.Abort ok, Delivery object = %T (msg ID = %s)",
+			delivery, dd.msgMeta.ID)
 	}
-	dd.log.Debugf("delivery aborted (delivery ID = %s)", dd.ctx.DeliveryID)
+	dd.log.Debugf("delivery aborted (msg ID = %s)", dd.msgMeta.ID)
 	return lastErr
 }

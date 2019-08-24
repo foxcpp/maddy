@@ -17,8 +17,8 @@ type testCheck struct {
 	bodyErr   error
 }
 
-func (tc *testCheck) NewMessage(ctx *module.DeliveryContext) (module.CheckState, error) {
-	return &testCheckState{ctx, tc}, nil
+func (tc *testCheck) NewMessage(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+	return &testCheckState{msgMeta, tc}, nil
 }
 
 func (tc *testCheck) Init(*config.Map) error {
@@ -34,8 +34,8 @@ func (tc *testCheck) InstanceName() string {
 }
 
 type testCheckState struct {
-	ctx   *module.DeliveryContext
-	check *testCheck
+	msgMeta *module.MsgMetadata
+	check   *testCheck
 }
 
 func (tcs *testCheckState) CheckConnection(ctx context.Context) error {

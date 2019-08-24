@@ -10,9 +10,9 @@ import (
 )
 
 func checkSrcRDNS(ctx StatelessCheckContext) error {
-	tcpAddr, ok := ctx.DeliveryCtx.SrcAddr.(*net.TCPAddr)
+	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		log.Debugf("non TCP/IP source (%v), skipped", ctx.DeliveryCtx.SrcAddr)
+		log.Debugf("non TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
 		return nil
 	}
 
@@ -22,7 +22,7 @@ func checkSrcRDNS(ctx StatelessCheckContext) error {
 		return errors.New("could look up rDNS address for source")
 	}
 
-	srcDomain := strings.TrimRight(ctx.DeliveryCtx.SrcHostname, ".")
+	srcDomain := strings.TrimRight(ctx.MsgMeta.SrcHostname, ".")
 
 	for _, name := range names {
 		if strings.TrimRight(name, ".") == srcDomain {
@@ -45,9 +45,9 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 		return errors.New("check_source_mx: <postmaster> is not allowed")
 	}
 
-	tcpAddr, ok := ctx.DeliveryCtx.SrcAddr.(*net.TCPAddr)
+	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.DeliveryCtx.SrcAddr)
+		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
 		return nil
 	}
 
@@ -58,8 +58,8 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 	}
 
 	for _, mx := range srcMx {
-		if mx.Host == ctx.DeliveryCtx.SrcHostname || mx.Host == tcpAddr.IP.String() {
-			ctx.Logger.Debugf("MX record %s matches %v (%v)", mx.Host, ctx.DeliveryCtx.SrcHostname, tcpAddr.IP)
+		if mx.Host == ctx.MsgMeta.SrcHostname || mx.Host == tcpAddr.IP.String() {
+			ctx.Logger.Debugf("MX record %s matches %v (%v)", mx.Host, ctx.MsgMeta.SrcHostname, tcpAddr.IP)
 			return nil
 		}
 
@@ -73,35 +73,35 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 
 		for _, addr := range addrs {
 			if addr.IP.Equal(tcpAddr.IP) {
-				ctx.Logger.Debugf("MX record %s matches %v (%v), OK", mx.Host, ctx.DeliveryCtx.SrcHostname, tcpAddr.IP)
+				ctx.Logger.Debugf("MX record %s matches %v (%v), OK", mx.Host, ctx.MsgMeta.SrcHostname, tcpAddr.IP)
 				return nil
 			}
 		}
 	}
-	ctx.Logger.Printf("no matching MX records for %s (%s)", ctx.DeliveryCtx.SrcHostname, tcpAddr.IP)
+	ctx.Logger.Printf("no matching MX records for %s (%s)", ctx.MsgMeta.SrcHostname, tcpAddr.IP)
 	return errors.New("domain in MAIL FROM has no MX record for itself")
 }
 
 func checkSrcHostname(ctx StatelessCheckContext) error {
-	tcpAddr, ok := ctx.DeliveryCtx.SrcAddr.(*net.TCPAddr)
+	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.DeliveryCtx.SrcAddr)
+		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
 		return nil
 	}
 
-	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.DeliveryCtx.SrcHostname)
+	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
 	if err != nil {
-		log.Printf("%s does not resolve", ctx.DeliveryCtx.SrcHostname)
+		log.Printf("%s does not resolve", ctx.MsgMeta.SrcHostname)
 		return errors.New("source hostname does not resolve")
 	}
 
 	for _, ip := range srcIPs {
 		if tcpAddr.IP.Equal(ip.IP) {
-			ctx.Logger.Debugf("A/AAA record found for %s for %s domain", tcpAddr.IP, ctx.DeliveryCtx.SrcHostname)
+			ctx.Logger.Debugf("A/AAA record found for %s for %s domain", tcpAddr.IP, ctx.MsgMeta.SrcHostname)
 			return nil
 		}
 	}
-	ctx.Logger.Printf("no A/AAA records found for %s for %s domain", tcpAddr.IP, ctx.DeliveryCtx.SrcHostname)
+	ctx.Logger.Printf("no A/AAA records found for %s for %s domain", tcpAddr.IP, ctx.MsgMeta.SrcHostname)
 	return errors.New("source hostname does not resolve to source address")
 }
 

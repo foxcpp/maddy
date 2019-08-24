@@ -203,12 +203,12 @@ func TestDispatcher_PerSourceReject(t *testing.T) {
 
 	doTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
 
-	_, err := d.Start(&module.DeliveryContext{DeliveryID: "testing"}, "sender2@example.com")
+	_, err := d.Start(&module.MsgMetadata{ID: "testing"}, "sender2@example.com")
 	if err == nil {
 		t.Error("expected error for delivery.Start, got nil")
 	}
 
-	_, err = d.Start(&module.DeliveryContext{DeliveryID: "testing"}, "sender2@example.org")
+	_, err = d.Start(&module.MsgMetadata{ID: "testing"}, "sender2@example.org")
 	if err == nil {
 		t.Error("expected error for delivery.Start, got nil")
 	}
@@ -236,7 +236,7 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 		Log: testLogger(t, "dispatcher"),
 	}
 
-	delivery, err := d.Start(&module.DeliveryContext{DeliveryID: "testing"}, "sender@example.com")
+	delivery, err := d.Start(&module.MsgMetadata{ID: "testing"}, "sender@example.com")
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
@@ -413,7 +413,7 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 
 	// Simple checks for violations that can make dispatcher misbehave.
 	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@", "that@is@definiely@broken"} {
-		_, err := d.Start(&module.DeliveryContext{DeliveryID: "testing"}, addr)
+		_, err := d.Start(&module.MsgMetadata{ID: "testing"}, addr)
 		if err == nil {
 			t.Errorf("%s is accepted as valid address", addr)
 		}
