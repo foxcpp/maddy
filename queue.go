@@ -450,7 +450,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	}
 	defer headerFile.Close()
 
-	if err := textproto.WriteHeader(headerFile, meta.Ctx.Header); err != nil {
+	if err := textproto.WriteHeader(headerFile, header); err != nil {
 		q.tryRemoveDanglingFile(id + ".header")
 		return nil, err
 	}
