@@ -183,12 +183,6 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 
 	partialErr := q.deliver(meta, header, body)
 	q.Log.Debugf("failures: permanently: %v, temporary: %v, errors: %v (msg ID = %s)", partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs, id)
-	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
-		// Attempt either fully succeeded or completely failed.
-		// TODO: Send a bounce message.
-		q.removeFromDisk(id)
-		return
-	}
 
 	// Save permanent errors information for reporting in bounce message.
 	meta.FailedRcpts = append(meta.FailedRcpts, partialErr.Failed...)
@@ -211,8 +205,21 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	}
 	meta.To = partialErr.TemporaryFailed
 
-	meta.TriesCount++
 	meta.LastAttempt = time.Now()
+	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
+		// Attempt either fully succeeded or completely failed.
+		// TODO: Send a bounce message.
+		if meta.TriesCount == q.maxTries {
+			q.Log.Printf("gave up trying to deliver to %v, errors: %v (msg ID = %s)", meta.TemporaryFailedRcpts, meta.RcptErrs, id)
+		}
+		if len(meta.FailedRcpts) != 0 {
+			q.Log.Printf("permanently failed to deliver to %v, errors: %v (msg ID = %s)", meta.FailedRcpts, meta.RcptErrs, id)
+		}
+		q.removeFromDisk(id)
+		return
+	}
+
+	meta.TriesCount++
 
 	if err := q.updateMetadataOnDisk(meta); err != nil {
 		q.Log.Printf("failed to update meta-data: %v", err)
