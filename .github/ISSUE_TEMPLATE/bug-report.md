@@ -1,6 +1,10 @@
 ---
-title: 'Bug report'
+name: Bug report
+about: If you think something is broken
+title: Bug report
 labels: bug
+assignees: ''
+
 ---
 
 # Describe the bug
