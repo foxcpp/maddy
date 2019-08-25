@@ -295,7 +295,7 @@ is not set. The default value can be changed using -X linker flag during
 compilation:
 
 ```
-go build --ldflags '-X github.com/emersion/maddy.defaultStateDirectory=/opt/maddy/state'
+go build --ldflags '-X github.com/foxcpp/maddy.defaultStateDirectory=/opt/maddy/state'
 ```
 
 ## libexecdir <directory>
@@ -306,7 +306,7 @@ $MADDYLIBEXEC is not set. The default value can be changed using -X linker
 flag during compilation:
 
 ```
-go build --ldflags '-X github.com/emersion/maddy.defaultLibexecDirectory=/opt/maddy/bin'
+go build --ldflags '-X github.com/foxcpp/maddy.defaultLibexecDirectory=/opt/maddy/bin'
 ```
 
 ## debug [yes/no]

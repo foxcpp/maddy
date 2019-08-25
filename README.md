@@ -10,7 +10,7 @@ IMAP server functionality in one application.
 **⚠️ Warning:** maddy is in development, many important features are missing, there
 are bugs and performance can be bad.
 
-Feel free to join the IRC channel: ##emersion on irc.freenode.net.
+Feel free to join the IRC channel: ##maddy on irc.freenode.net.
 
 ## Getting started
 
@@ -23,7 +23,7 @@ Also you need to enable modules support to get the right version. Set
 
 ```shell
 export GO111MODULE=on
-go get github.com/emersion/maddy/cmd/maddy@master
+go get github.com/foxcpp/maddy/cmd/maddy@master
 ```
 
 You can also compile and install helper binaries from

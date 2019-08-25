@@ -36,10 +36,9 @@ IMAP server functionality in one application.
 
 # AUTHORS
 
-Maintained by Simon Ser <contact@emersion.fr> and Max Mazurov
-<fox.cpp@disroot.org>, who are assisted by other open-source contributors. For
-more information about maddy development, see
-https://github.com/emersion/maddy.
+Maintained by Max Mazurov <fox.cpp@disroot.org>, who are assisted by other
+open-source contributors. For more information about maddy development, see
+https://github.com/foxcpp/maddy.
 
 # SEE ALSO
 
