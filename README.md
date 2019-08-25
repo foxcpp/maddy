@@ -10,7 +10,7 @@ IMAP server functionality in one application.
 **⚠️ Warning:** maddy is in development, many important features are missing, there
 are bugs and performance can be bad.
 
-Feel free to join the IRC channel: ##maddy on irc.freenode.net.
+Feel free to join the IRC channel: [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy).
 
 ## Getting started
 
