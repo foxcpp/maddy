@@ -12,8 +12,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/log"
 )
 
 func tlsDirective(m *config.Map, node *config.Node) (interface{}, error) {

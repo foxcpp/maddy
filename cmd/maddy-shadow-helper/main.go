@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/emersion/maddy/shadow"
+	"github.com/foxcpp/maddy/shadow"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/emersion/maddy
+module github.com/foxcpp/maddy
 
 require (
 	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46

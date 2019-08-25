@@ -2,7 +2,7 @@ package module
 
 import (
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/maddy/buffer"
+	"github.com/foxcpp/maddy/buffer"
 )
 
 type DeliveryTarget interface {

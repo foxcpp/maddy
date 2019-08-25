@@ -6,7 +6,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/emersion/maddy/log"
+	"github.com/foxcpp/maddy/log"
 )
 
 func checkSrcRDNS(ctx StatelessCheckContext) error {

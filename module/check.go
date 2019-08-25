@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/maddy/buffer"
+	"github.com/foxcpp/maddy/buffer"
 )
 
 // Check is the module interface that is meant for read-only (with the

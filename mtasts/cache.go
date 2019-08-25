@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/emersion/maddy/log"
+	"github.com/foxcpp/maddy/log"
 )
 
 func downloadPolicy(domain string) (*Policy, error) {

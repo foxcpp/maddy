@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/maddy/buffer"
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/buffer"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/module"
 )
 
 type msg struct {

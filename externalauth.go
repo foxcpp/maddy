@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/module"
 )
 
 type ExternalAuth struct {

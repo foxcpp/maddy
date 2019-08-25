@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/emersion/maddy"
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
+	"github.com/foxcpp/maddy"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/log"
 )
 
 func main() {

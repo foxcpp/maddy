@@ -8,8 +8,8 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/emersion/maddy/log"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/module"
 	"github.com/google/uuid"
 )
 

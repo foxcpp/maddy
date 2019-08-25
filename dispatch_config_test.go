@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-smtp"
-	"github.com/emersion/maddy/config"
+	"github.com/foxcpp/maddy/config"
 )
 
 func policyError(code int) error {

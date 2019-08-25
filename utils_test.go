@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emersion/maddy/log"
+	"github.com/foxcpp/maddy/log"
 )
 
 func testLogger(t *testing.T, name string) log.Logger {

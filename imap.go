@@ -13,9 +13,9 @@ import (
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/go-message"
 	_ "github.com/emersion/go-message/charset"
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/module"
 
 	appendlimit "github.com/emersion/go-imap-appendlimit"
 	compress "github.com/emersion/go-imap-compress"

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/emersion/go-smtp"
-	"github.com/emersion/maddy/config"
+	"github.com/foxcpp/maddy/config"
 )
 
 type dispatcherCfg struct {

@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/maddy/buffer"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/buffer"
+	"github.com/foxcpp/maddy/module"
 	"golang.org/x/sync/errgroup"
 )
 

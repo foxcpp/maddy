@@ -16,10 +16,10 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/emersion/maddy/buffer"
-	"github.com/emersion/maddy/config"
-	"github.com/emersion/maddy/log"
-	"github.com/emersion/maddy/module"
+	"github.com/foxcpp/maddy/buffer"
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/module"
 )
 
 func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
