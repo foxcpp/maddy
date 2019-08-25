@@ -230,7 +230,7 @@ func TestDispatcherCfg(t *testing.T) {
 
 func TestDispatcherCfg_GlobalChecks(t *testing.T) {
 	str := `
-		checks {
+		check {
 			test_check
 		}
 		default_destination {
@@ -252,7 +252,7 @@ func TestDispatcherCfg_GlobalChecks(t *testing.T) {
 func TestDispatcherCfg_SourceChecks(t *testing.T) {
 	str := `
 		source example.org {
-			checks {
+			check {
 				test_check
 			}
 
@@ -277,7 +277,7 @@ func TestDispatcherCfg_SourceChecks(t *testing.T) {
 func TestDispatcherCfg_RcptChecks(t *testing.T) {
 	str := `
 		destination example.org {
-			checks {
+			check {
 				test_check
 			}
 
