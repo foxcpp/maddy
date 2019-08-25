@@ -40,6 +40,8 @@ type sqlDelivery struct {
 	msgMeta  *module.MsgMetadata
 	d        *imapsql.Delivery
 	mailFrom string
+
+	addedRcpts map[string]struct{}
 }
 
 func LookupAddr(r Resolver, ip net.IP) (string, error) {
@@ -87,6 +89,11 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 		}
 	}
 
+	accountName = strings.ToLower(accountName)
+	if _, ok := sd.addedRcpts[accountName]; ok {
+		return nil
+	}
+
 	// This header is added to the message only for that recipient.
 	// go-imap-sql does certain optimizations to store the message
 	// with small amount of per-recipient data in a efficient way.
@@ -94,7 +101,7 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 	userHeader.Add("Delivered-To", rcptTo)
 	userHeader.Add("Received", generateReceived(sd.sqlm.resolver, sd.msgMeta, sd.mailFrom, rcptTo))
 
-	if err := sd.d.AddRcpt(accountName, userHeader); err != nil {
+	if err := sd.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
 			return &smtp.SMTPError{
 				Code:         550,
@@ -104,6 +111,8 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 		}
 		return err
 	}
+
+	sd.addedRcpts[accountName] = struct{}{}
 	return nil
 }
 
@@ -127,10 +136,11 @@ func (sqlm *SQLStorage) Start(msgMeta *module.MsgMetadata, mailFrom string) (mod
 		return nil, err
 	}
 	return &sqlDelivery{
-		sqlm:     sqlm,
-		msgMeta:  msgMeta,
-		d:        d,
-		mailFrom: mailFrom,
+		sqlm:       sqlm,
+		msgMeta:    msgMeta,
+		d:          d,
+		mailFrom:   mailFrom,
+		addedRcpts: map[string]struct{}{},
 	}, nil
 }
 
