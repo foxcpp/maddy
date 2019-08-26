@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/mholt/caddy/caddyfile"
+	"github.com/foxcpp/maddy/config/lexer"
 )
 
 // Node struct describes a parsed configurtion block or a simple directive.
@@ -38,7 +38,7 @@ type Node struct {
 }
 
 type parseContext struct {
-	caddyfile.Dispenser
+	lexer.Dispenser
 	nesting  int
 	snippets map[string][]Node
 
@@ -192,7 +192,7 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 
 func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, err error) {
 	ctx := parseContext{
-		Dispenser:    caddyfile.NewDispenser(location, r),
+		Dispenser:    lexer.NewDispenser(location, r),
 		snippets:     make(map[string][]Node),
 		nesting:      -1,
 		fileLocation: location,
