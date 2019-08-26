@@ -221,7 +221,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	cfg.UInt("write_timeout", false, false, 60, &writeTimeoutSecs)
 	cfg.UInt("read_timeout", false, false, 600, &readTimeoutSecs)
 	cfg.Int("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
-	cfg.Int("max_recipients", false, false, 255, &endp.serv.MaxRecipients)
+	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
 	cfg.Custom("tls", true, true, nil, tlsDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, &ioDebug)
