@@ -38,31 +38,21 @@ func cleanQueue(t *testing.T, q *Queue) {
 }
 
 func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Queue {
-	q := &Queue{
-		Log: testLogger(t, "queue"),
-		// Retry immediately since our tests do not rely on time anyhow
-		// This also a great opportunity to see whether TimeWheel handles
-		// edge case time values properly.
-		initialRetryTime: 0 * time.Millisecond,
-		retryTimeScale:   1,
-		maxTries:         5,
-		wheel:            NewTimeWheel(),
-		location:         dir,
-		Target:           target,
-	}
+	mod, _ := NewQueue("", "queue")
+	q := mod.(*Queue)
+	q.Log = testLogger(t, "queue")
+	q.initialRetryTime = 0
+	q.retryTimeScale = 1
+	q.postInitDelay = 0
+	q.maxTries = 5
+	q.location = dir
+	q.Target = target
 
 	if !testing.Verbose() {
 		q.Log = log.Logger{Name: "", Out: log.WriterLog(ioutil.Discard)}
 	}
 
-	// Crippled version of Queue.Init logic.
-
-	if err := q.readDiskQueue(); err != nil {
-		t.Fatal("failed to read disk queue:", err)
-	}
-
-	q.workersWg.Add(1)
-	go q.worker()
+	q.start(1)
 
 	return q
 }

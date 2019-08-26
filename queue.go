@@ -103,9 +103,7 @@ func NewQueue(_, instName string) (module.Module, error) {
 }
 
 func (q *Queue) Init(cfg *config.Map) error {
-	q.wheel = NewTimeWheel()
 	var workers int
-
 	cfg.Bool("debug", true, &q.Log.Debug)
 	cfg.Int("max_tries", false, false, 8, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
@@ -129,6 +127,13 @@ func (q *Queue) Init(cfg *config.Map) error {
 	if err := os.MkdirAll(q.location, os.ModePerm); err != nil {
 		return err
 	}
+
+	return q.start(workers)
+}
+
+func (q *Queue) start(workers int) error {
+	q.wheel = NewTimeWheel()
+
 	if err := q.readDiskQueue(); err != nil {
 		return err
 	}
@@ -139,7 +144,6 @@ func (q *Queue) Init(cfg *config.Map) error {
 		q.workersWg.Add(1)
 		go q.worker()
 	}
-
 	return nil
 }
 
@@ -379,6 +383,7 @@ func (q *Queue) removeFromDisk(id string) {
 	if err := os.Remove(metaPath); err != nil {
 		q.Log.Printf("failed to remove meta-data from disk: %v (msg ID = %s)", err, id)
 	}
+	q.Log.Debugf("removed message from disk (msg ID = %s)", id)
 }
 
 func (q *Queue) readDiskQueue() error {
