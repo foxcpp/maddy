@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
@@ -66,6 +68,7 @@ func splitAddress(addr string) (mailbox, domain string, err error) {
 
 func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
+		d:               d,
 		rcptChecksState: make(map[*rcptBlock]module.CheckState),
 		deliveries:      make(map[module.DeliveryTarget]module.Delivery),
 		msgMeta:         msgMeta,
@@ -85,6 +88,10 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		return nil, err
 	}
 	dd.globalChecksState = globalChecksState
+
+	if err := dd.checkScore(); err != nil {
+		return nil, err
+	}
 
 	// TODO: Init global modificators, run RewriteSender.
 
@@ -127,6 +134,10 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	}
 	dd.sourceChecksState = sourceChecksState
 
+	if err := dd.checkScore(); err != nil {
+		return nil, err
+	}
+
 	// TODO: Init per-sender modificators, run RewriteSender.
 
 	dd.sourceAddr = mailFrom
@@ -135,6 +146,7 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 }
 
 type dispatcherDelivery struct {
+	d                 *Dispatcher
 	globalChecksState module.CheckState
 	sourceChecksState module.CheckState
 	rcptChecksState   map[*rcptBlock]module.CheckState
@@ -196,6 +208,10 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		return err
 	}
 
+	if err := dd.checkScore(); err != nil {
+		return err
+	}
+
 	// TODO: Init per-rcpt modificators, run RewriteRcpt.
 
 	for _, target := range rcptBlock.targets {
@@ -230,6 +246,10 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 func (dd dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	var headerLock sync.RWMutex
 	if err := dd.globalChecksState.CheckBody(dd.cancelCtx, &headerLock, header, body); err != nil {
+		return err
+	}
+
+	if err := dd.checkScore(); err != nil {
 		return err
 	}
 
@@ -273,4 +293,19 @@ func (dd dispatcherDelivery) Abort() error {
 	}
 	dd.log.Debugf("delivery aborted (msg ID = %s)", dd.msgMeta.ID)
 	return lastErr
+}
+
+func (dd dispatcherDelivery) checkScore() error {
+	checksScore := atomic.LoadInt32(&dd.msgMeta.ChecksScore)
+	if checksScore >= int32(dd.d.rejectScore) {
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+			Message:      "Message is rejected due to multiple local policy violations, contact postmaster for details",
+		}
+	}
+	if checksScore >= int32(dd.d.quarantineScore) {
+		dd.msgMeta.Quarantine.Set(true)
+	}
+	return nil
 }

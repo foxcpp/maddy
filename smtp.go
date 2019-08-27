@@ -52,6 +52,7 @@ func (s *SMTPSession) Reset() {
 		}
 		s.delivery = nil
 	}
+	s.msgMeta.ChecksScore = 0
 }
 
 func (s *SMTPSession) Mail(from string) error {

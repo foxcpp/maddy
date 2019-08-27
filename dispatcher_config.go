@@ -13,6 +13,14 @@ type dispatcherCfg struct {
 	globalChecks  CheckGroup
 	perSource     map[string]sourceBlock
 	defaultSource sourceBlock
+
+	// If MsgMeta.CheckScore is migher than that value,
+	// message will be rejected.
+	rejectScore int
+
+	// If MsgMeta.CheckScore is migher than that value,
+	// MsgMeta.Quarantine will be set.
+	quarantineScore int
 }
 
 func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node) (dispatcherCfg, error) {
@@ -55,6 +63,26 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 				return dispatcherCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
 			}
 			defaultSrcRaw = node.Children
+		case "quarantine_score":
+			if len(node.Args) != 1 {
+				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
+			}
+
+			quarantineScore, err := strconv.Atoi(node.Args[0])
+			if err != nil {
+				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
+			}
+			cfg.rejectScore = quarantineScore
+		case "reject_score":
+			if len(node.Args) != 1 {
+				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
+			}
+
+			rejectScore, err := strconv.Atoi(node.Args[0])
+			if err != nil {
+				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
+			}
+			cfg.rejectScore = rejectScore
 		default:
 			othersRaw = append(othersRaw, node)
 		}
