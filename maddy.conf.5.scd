@@ -728,6 +728,11 @@ want to use this for server-based RDBMS.
 If directory path is not specified - it will be derived from configuration
 block name ('$MADDYSTATE/sql-NAME-fsstore').
 
+## junk_mailbox <name>
+
+Default directory to put quarantined messages in. Note that this setting is not used if user 
+does have a mailbox with "Junk" special-use attribute. 
+
 ## sqlite_exclusive_lock
 ## sqlite_cache_size <value>
 ## sqlite_busy_timeout <value>

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -32,7 +33,9 @@ type SQLStorage struct {
 	storagePerDomain bool
 	authPerDomain    bool
 	authDomains      []string
-	resolver         Resolver
+	junkMbox         string
+
+	resolver Resolver
 }
 
 type sqlDelivery struct {
@@ -117,6 +120,12 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 }
 
 func (sd *sqlDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+	if sd.msgMeta.Quarantine.IsSet() {
+		if err := sd.d.SpecialMailbox(specialuse.Junk, sd.sqlm.junkMbox); err != nil {
+			return err
+		}
+	}
+
 	header = header.Copy()
 	header.Add("Return-Path", "<"+sanitizeString(sd.mailFrom)+">")
 	return sd.d.BodyParsed(header, sd.msgMeta.BodyLength, body)
@@ -176,6 +185,7 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, &opts.ExclusiveLock)
+	cfg.String("junk_mailbox", false, false, "Junk", &sqlm.junkMbox)
 
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "", nil
