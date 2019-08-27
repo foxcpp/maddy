@@ -55,11 +55,10 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	//  - instance name of an existing module
 	// single argument + block
 	//  - module name, inline definition
-	// two arguments + block
+	// two+ arguments + block
 	//  - module name and instance name, inline definition
-	//
-	// two arguments, no block
-	//  - invalid
+	// two+ arguments, no block
+	//  - module name and instance name, inline definition, empty config block
 
 	if len(args) == 0 {
 		return config.NodeErr(inlineCfg, "at least one argument is required")
@@ -67,12 +66,12 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 
 	var modObj module.Module
 	var err error
-	if inlineCfg.Children != nil {
+	if inlineCfg.Children != nil || len(args) > 1 {
 		modName := args[0]
 
 		modAliases := args[1:]
 		instName := ""
-		if len(args) == 2 {
+		if len(args) >= 2 {
 			modAliases = args[2:]
 			instName = args[1]
 		}
