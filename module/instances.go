@@ -12,13 +12,14 @@ var (
 		mod Module
 		cfg *config.Map
 	})
+	aliases = make(map[string]string)
 
 	Initialized = make(map[string]bool)
 )
 
-// Register adds module instance to the global registry.
+// RegisterInstance adds module instance to the global registry.
 //
-// Instnace name must be unique. Second RegisterInstance with same instance
+// Instance name must be unique. Second RegisterInstance with same instance
 // name will replace previous.
 func RegisterInstance(inst Module, cfg *config.Map) {
 	instances[inst.InstanceName()] = struct {
@@ -27,7 +28,20 @@ func RegisterInstance(inst Module, cfg *config.Map) {
 	}{inst, cfg}
 }
 
+// RegisterAlias creates an association between a certain name and instance name.
+//
+// After RegisterAlias, module.GetInstance(aliasName) will return the same
+// result as module.GetInstance(instName).
+func RegisterAlias(aliasName, instName string) {
+	aliases[aliasName] = instName
+}
+
 func HasInstance(name string) bool {
+	aliasedName := aliases[name]
+	if aliasedName != "" {
+		name = aliasedName
+	}
+
 	_, ok := instances[name]
 	return ok
 }
@@ -38,6 +52,11 @@ func HasInstance(name string) bool {
 // Error is returned if module initialization fails or module instance does not
 // exists.
 func GetInstance(name string) (Module, error) {
+	aliasedName := aliases[name]
+	if aliasedName != "" {
+		name = aliasedName
+	}
+
 	mod, ok := instances[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown module instance: %s", name)

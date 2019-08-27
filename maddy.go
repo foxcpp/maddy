@@ -36,10 +36,12 @@ func Start(cfg []config.Node) error {
 
 	for _, block := range unmatched {
 		var instName string
+		var modAliases []string
 		if len(block.Args) == 0 {
 			instName = block.Name
 		} else {
 			instName = block.Args[0]
+			modAliases = block.Args[1:]
 		}
 
 		modName := block.Name
@@ -54,13 +56,20 @@ func Start(cfg []config.Node) error {
 		}
 
 		log.Debugln("module create", modName, instName)
-		inst, err := factory(modName, instName)
+		inst, err := factory(modName, instName, modAliases)
 		if err != nil {
 			return err
 		}
 
 		block := block
 		module.RegisterInstance(inst, config.NewMap(globals.Values, &block))
+		for _, alias := range modAliases {
+			if module.HasInstance(alias) {
+				return config.NodeErr(&block, "module instance named %s already exists", alias)
+			}
+			module.RegisterAlias(alias, instName)
+			log.Debugln("module alias", alias, "->", instName)
+		}
 		instances[instName] = modInfo{instance: inst, cfg: block}
 	}
 

@@ -138,6 +138,7 @@ type SMTPEndpoint struct {
 	Auth       module.AuthProvider
 	serv       *smtp.Server
 	name       string
+	aliases    []string
 	listeners  []net.Listener
 	dispatcher *Dispatcher
 
@@ -158,9 +159,10 @@ func (endp *SMTPEndpoint) InstanceName() string {
 	return endp.name
 }
 
-func NewSMTPEndpoint(modName, instName string) (module.Module, error) {
+func NewSMTPEndpoint(modName, instName string, aliases []string) (module.Module, error) {
 	endp := &SMTPEndpoint{
 		name:       instName,
+		aliases:    aliases,
 		submission: modName == "submission",
 		Log:        log.Logger{Name: "smtp"},
 	}
@@ -177,8 +179,9 @@ func (endp *SMTPEndpoint) Init(cfg *config.Map) error {
 		endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
 	}
 
-	addresses := make([]Address, 0, len(cfg.Block.Args))
-	for _, addr := range cfg.Block.Args {
+	args := append([]string{endp.name}, endp.aliases...)
+	addresses := make([]Address, 0, len(args))
+	for _, addr := range args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
 			return fmt.Errorf("smtp: invalid address: %s", addr)

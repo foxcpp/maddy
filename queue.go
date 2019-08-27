@@ -91,7 +91,7 @@ type QueueMetadata struct {
 	LastAttempt time.Time
 }
 
-func NewQueue(_, instName string) (module.Module, error) {
+func NewQueue(_, instName string, _ []string) (module.Module, error) {
 	return &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,

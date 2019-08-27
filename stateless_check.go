@@ -145,7 +145,7 @@ func (c *statelessCheck) InstanceName() string {
 // It creates the module and its instance with the specified name that implement module.Check interface
 // and runs passed functions when corresponding module.CheckState methods are called.
 func RegisterStatelessCheck(name string, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
-	module.Register(name, func(modName, instName string) (module.Module, error) {
+	module.Register(name, func(modName, instName string, aliases []string) (module.Module, error) {
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,

@@ -16,11 +16,7 @@ Config matchers for module interfaces.
 */
 
 // createInlineModule is a helper function for config matchers that can create inline modules.
-func createInlineModule(modName, instName string) (module.Module, error) {
-	if instName != "" && module.HasInstance(instName) {
-		return nil, fmt.Errorf("module instance named %s already exists", instName)
-	}
-
+func createInlineModule(modName, instName string, aliases []string) (module.Module, error) {
 	newMod := module.Get(modName)
 	if newMod == nil {
 		return nil, fmt.Errorf("unknown module: %s", modName)
@@ -28,7 +24,7 @@ func createInlineModule(modName, instName string) (module.Module, error) {
 
 	log.Debugln("module create", modName, instName, "(inline)")
 
-	return newMod(modName, instName)
+	return newMod(modName, instName, aliases)
 }
 
 // initInlineModule constructs "faked" config tree and passes it to module
@@ -37,13 +33,7 @@ func createInlineModule(modName, instName string) (module.Module, error) {
 // args must contain at least one argument, otherwise initInlineModule panics.
 func initInlineModule(modObj module.Module, globals map[string]interface{}, args []string, block *config.Node) error {
 	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
-	return modObj.Init(config.NewMap(globals, &config.Node{
-		Name:     args[0],
-		Args:     args[1:],
-		Children: block.Children,
-		File:     block.File,
-		Line:     block.Line,
-	}))
+	return modObj.Init(config.NewMap(globals, block))
 }
 
 // moduleFromNode does all work to create or get existing module object with a certain type.
@@ -53,8 +43,8 @@ func initInlineModule(modObj module.Module, globals map[string]interface{}, args
 // inlineCfg should contain configuration directives for inline declarations.
 // args should contain values that are used to create module.
 // It should be either module name + instance name or just module name. Further extensions
-// may add other string arguments (currently, they can be accessed by module code using
-// Values field of config.Map passed to Init).
+// may add other string arguments (currently, they can be accessed by module instances
+// as aliases argument to constructor).
 //
 // It checks using reflection whether it is possible to store a module object into modObj
 // pointer (e.g. it implements all necessary interfaces) and stores it if everything is fine.
@@ -80,15 +70,17 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	if inlineCfg.Children != nil {
 		modName := args[0]
 
+		modAliases := args[1:]
 		instName := ""
 		if len(args) == 2 {
+			modAliases = args[2:]
 			instName = args[1]
 		}
 
-		modObj, err = createInlineModule(modName, instName)
+		modObj, err = createInlineModule(modName, instName, modAliases)
 	} else {
 		if len(args) != 1 {
-			return config.NodeErr(inlineCfg, "exactly one argument is required")
+			return config.NodeErr(inlineCfg, "exactly one argument is required for reference to existing module")
 		}
 		modObj, err = module.GetInstance(args[0])
 	}

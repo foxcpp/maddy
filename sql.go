@@ -152,7 +152,7 @@ func (sqlm *SQLStorage) InstanceName() string {
 	return sqlm.instName
 }
 
-func NewSQLStorage(_, instName string) (module.Module, error) {
+func NewSQLStorage(_, instName string, _ []string) (module.Module, error) {
 	return &SQLStorage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},

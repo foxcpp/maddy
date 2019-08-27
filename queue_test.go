@@ -38,7 +38,7 @@ func cleanQueue(t *testing.T, q *Queue) {
 }
 
 func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Queue {
-	mod, _ := NewQueue("", "queue")
+	mod, _ := NewQueue("", "queue", nil)
 	q := mod.(*Queue)
 	q.Log = testLogger(t, "queue")
 	q.initialRetryTime = 0

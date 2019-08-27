@@ -59,7 +59,7 @@ func (tcs *testCheckState) Close() error {
 }
 
 func init() {
-	module.Register("test_check", func(modName, instanceName string) (module.Module, error) {
+	module.Register("test_check", func(modName, instanceName string, aliases []string) (module.Module, error) {
 		return &testCheck{}, nil
 	})
 	module.RegisterInstance(&testCheck{}, nil)

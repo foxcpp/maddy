@@ -41,7 +41,7 @@ type RemoteTarget struct {
 
 var _ module.DeliveryTarget = &RemoteTarget{}
 
-func NewRemoteTarget(_, instName string) (module.Module, error) {
+func NewRemoteTarget(_, instName string, _ []string) (module.Module, error) {
 	return &RemoteTarget{
 		name:        instName,
 		resolver:    net.DefaultResolver,

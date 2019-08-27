@@ -25,7 +25,7 @@ type ExternalAuth struct {
 	Log log.Logger
 }
 
-func NewExternalAuth(modName, instName string) (module.Module, error) {
+func NewExternalAuth(modName, instName string, _ []string) (module.Module, error) {
 	ea := &ExternalAuth{
 		modName:  modName,
 		instName: instName,

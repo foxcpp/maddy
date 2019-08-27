@@ -27,6 +27,7 @@ import (
 
 type IMAPEndpoint struct {
 	name      string
+	aliases   []string
 	serv      *imapserver.Server
 	listeners []net.Listener
 	Auth      module.AuthProvider
@@ -39,10 +40,11 @@ type IMAPEndpoint struct {
 	Log log.Logger
 }
 
-func NewIMAPEndpoint(_, instName string) (module.Module, error) {
+func NewIMAPEndpoint(_, instName string, aliases []string) (module.Module, error) {
 	endp := &IMAPEndpoint{
-		name: instName,
-		Log:  log.Logger{Name: "imap"},
+		name:    instName,
+		aliases: aliases,
+		Log:     log.Logger{Name: "imap"},
 	}
 	endp.name = instName
 
@@ -71,8 +73,9 @@ func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
 	}
 
-	addresses := make([]Address, 0, len(cfg.Block.Args))
-	for _, addr := range cfg.Block.Args {
+	args := append([]string{endp.name}, endp.aliases...)
+	addresses := make([]Address, 0, len(args))
+	for _, addr := range args {
 		saddr, err := standardizeAddress(addr)
 		if err != nil {
 			return fmt.Errorf("imap: invalid address: %s", endp.name)

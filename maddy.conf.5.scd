@@ -174,13 +174,15 @@ module2 config2 {
 Generic syntax for module configuration block is as follows:
 
 ```
-module_name config_block_name {
+module_name config_block_name optional_aliases... {
     configuration
     directives
     for_this
     module
 }
 ```
+If you specify more than one config_block_name, they all will be usable.
+Basically, they will be aliased to the first name.
 
 If config_block_name is omitted, it will be the same as module_name.
 Configuration block name must be unique across all configuration.
