@@ -42,10 +42,10 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 	}
 	if domain == "" {
 		// TODO: Make it configurable whether <postmaster> is allowed.
-		return errors.New("check_source_mx: <postmaster> is not allowed")
+		return errors.New("<postmaster> is not allowed")
 	}
 
-	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
+	_, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
 		return nil
@@ -54,32 +54,14 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
 		ctx.Logger.Debugf("%s does not resolve", domain)
-		return errors.New("could not find MX records for from domain")
+		return errors.New("could not find MX records for MAIL FROM domain")
 	}
 
-	for _, mx := range srcMx {
-		if mx.Host == ctx.MsgMeta.SrcHostname || mx.Host == tcpAddr.IP.String() {
-			ctx.Logger.Debugf("MX record %s matches %v (%v)", mx.Host, ctx.MsgMeta.SrcHostname, tcpAddr.IP)
-			return nil
-		}
-
-		// MX record may contain hostname that will resolve to source hostname, check that too.
-		addrs, err := ctx.Resolver.LookupIPAddr(context.Background(), mx.Host)
-		if err != nil {
-			// TODO: Actually check whether mx.Host is a domain.
-			// Probably that was an IP.
-			continue
-		}
-
-		for _, addr := range addrs {
-			if addr.IP.Equal(tcpAddr.IP) {
-				ctx.Logger.Debugf("MX record %s matches %v (%v), OK", mx.Host, ctx.MsgMeta.SrcHostname, tcpAddr.IP)
-				return nil
-			}
-		}
+	if len(srcMx) == 0 {
+		return errors.New("domain in MAIL FROM has no MX records")
 	}
-	ctx.Logger.Printf("no matching MX records for %s (%s)", ctx.MsgMeta.SrcHostname, tcpAddr.IP)
-	return errors.New("domain in MAIL FROM has no MX record for itself")
+
+	return nil
 }
 
 func checkSrcHostname(ctx StatelessCheckContext) error {

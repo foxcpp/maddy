@@ -894,8 +894,7 @@ server IP.
 
 ## check_source_mx
 
-Check that domain in MAIL FROM command does have a MX record pointing to
-source server.
+Check that domain in MAIL FROM command does have a MX record.
 
 ## check_source_rdns
 
