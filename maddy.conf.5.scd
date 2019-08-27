@@ -879,7 +879,7 @@ smtp smtp://0.0.0.0 {
 }
 ```
 
-# CHECK_* MODULES
+# CHECK MODULES
 
 All modules in this section run one check on message and either cause it to be
 rejected.
@@ -887,16 +887,16 @@ rejected.
 They all implement check interface and have configuration blocks defined
 implicitly so you use then without an explicit block definition.
 
-## check_source_hostname
+## require_matching_ehlo
 
 Check that source server hostname (from EHLO/HELO command) resolves to source
 server IP.
 
-## check_source_mx
+## require_mx_record
 
 Check that domain in MAIL FROM command does have a MX record.
 
-## check_source_rdns
+## require_matching_rdns
 
 Check that source server IP does have a PTR record point to the domain
 specified in EHLO/HELO command.

@@ -9,7 +9,7 @@ import (
 	"github.com/foxcpp/maddy/log"
 )
 
-func checkSrcRDNS(ctx StatelessCheckContext) error {
+func requireMatchingRDNS(ctx StatelessCheckContext) error {
 	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		log.Debugf("non TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
@@ -35,7 +35,7 @@ func checkSrcRDNS(ctx StatelessCheckContext) error {
 	return errors.New("rDNS name does not match source hostname")
 }
 
-func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
+func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
 	_, domain, err := splitAddress(mailFrom)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func checkSrcMX(ctx StatelessCheckContext, mailFrom string) error {
 	return nil
 }
 
-func checkSrcHostname(ctx StatelessCheckContext) error {
+func requireMatchingEHLO(ctx StatelessCheckContext) error {
 	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
@@ -88,7 +88,7 @@ func checkSrcHostname(ctx StatelessCheckContext) error {
 }
 
 func init() {
-	RegisterStatelessCheck("check_source_rdns", checkSrcRDNS, nil, nil, nil)
-	RegisterStatelessCheck("check_source_mx", nil, checkSrcMX, nil, nil)
-	RegisterStatelessCheck("check_source_hostname", checkSrcHostname, nil, nil, nil)
+	RegisterStatelessCheck("require_matching_rdns", requireMatchingRDNS, nil, nil, nil)
+	RegisterStatelessCheck("require_mx_record", nil, requireMXRecord, nil, nil)
+	RegisterStatelessCheck("require_matching_ehlo", requireMatchingEHLO, nil, nil, nil)
 }
