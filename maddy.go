@@ -1,7 +1,6 @@
 package maddy
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -48,11 +47,11 @@ func Start(cfg []config.Node) error {
 
 		factory := module.Get(modName)
 		if factory == nil {
-			return fmt.Errorf("%s:%d: unknown module: %s", block.File, block.Line, modName)
+			return config.NodeErr(&block, "unknown module: %s", modName)
 		}
 
 		if module.HasInstance(instName) {
-			return fmt.Errorf("%s:%d: module instance named %s already exists", block.File, block.Line, instName)
+			return config.NodeErr(&block, "config block named %s already exists", instName)
 		}
 
 		log.Debugln("module create", modName, instName)
@@ -65,7 +64,7 @@ func Start(cfg []config.Node) error {
 		module.RegisterInstance(inst, config.NewMap(globals.Values, &block))
 		for _, alias := range modAliases {
 			if module.HasInstance(alias) {
-				return config.NodeErr(&block, "module instance named %s already exists", alias)
+				return config.NodeErr(&block, "config block named %s already exists", alias)
 			}
 			module.RegisterAlias(alias, instName)
 			log.Debugln("module alias", alias, "->", instName)

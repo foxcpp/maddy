@@ -59,7 +59,7 @@ func GetInstance(name string) (Module, error) {
 
 	mod, ok := instances[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown module instance: %s", name)
+		return nil, fmt.Errorf("unknown config block: %s", name)
 	}
 
 	// Break circular dependencies.

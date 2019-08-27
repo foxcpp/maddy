@@ -80,7 +80,7 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 		modObj, err = createInlineModule(modName, instName, modAliases)
 	} else {
 		if len(args) != 1 {
-			return config.NodeErr(inlineCfg, "exactly one argument is required for reference to existing module")
+			return config.NodeErr(inlineCfg, "exactly one argument is to use existing config block")
 		}
 		modObj, err = module.GetInstance(args[0])
 	}
