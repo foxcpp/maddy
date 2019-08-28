@@ -67,9 +67,7 @@ func deliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 
 	return log.Logger{
 		Out: func(t time.Time, debug bool, str string) {
-			if l.Out != nil {
-				out(t, debug, str+"(msg ID = "+msgMeta.ID+")")
-			}
+			out(t, debug, str+" (msg ID = "+msgMeta.ID+")")
 		},
 		Name:  l.Name,
 		Debug: l.Debug,

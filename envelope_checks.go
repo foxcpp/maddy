@@ -64,7 +64,7 @@ func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
-		ctx.Logger.Debugf("%s does not resolve", domain)
+		ctx.Logger.Printf("%s does not resolve", domain)
 		return &smtp.SMTPError{
 			Code:         501,
 			EnhancedCode: smtp.EnhancedCode{5, 7, 27},
@@ -73,6 +73,7 @@ func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
 	}
 
 	if len(srcMx) == 0 {
+		ctx.Logger.Printf("%s got no MX records", domain)
 		return &smtp.SMTPError{
 			Code:         501,
 			EnhancedCode: smtp.EnhancedCode{5, 7, 27},
