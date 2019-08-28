@@ -33,7 +33,7 @@ func createInlineModule(modName, instName string, aliases []string) (module.Modu
 // Init function to make it look like it is defined at top-level.
 //
 // args must contain at least one argument, otherwise initInlineModule panics.
-func initInlineModule(modObj module.Module, globals map[string]interface{}, args []string, block *config.Node) error {
+func initInlineModule(modObj module.Module, globals map[string]interface{}, block *config.Node) error {
 	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
 	return modObj.Init(config.NewMap(globals, block))
 }
@@ -99,7 +99,7 @@ func moduleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))
 
 	if inlineCfg.Children != nil {
-		if err := initInlineModule(modObj, globals, args, inlineCfg); err != nil {
+		if err := initInlineModule(modObj, globals, inlineCfg); err != nil {
 			return err
 		}
 	}
