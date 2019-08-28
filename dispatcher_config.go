@@ -14,13 +14,13 @@ type dispatcherCfg struct {
 	perSource     map[string]sourceBlock
 	defaultSource sourceBlock
 
-	// If MsgMeta.CheckScore is migher than that value,
+	// If MsgMeta.CheckScore is higher than that value,
 	// message will be rejected.
-	rejectScore int
+	rejectScore *int
 
-	// If MsgMeta.CheckScore is migher than that value,
+	// If MsgMeta.CheckScore is higher than that value,
 	// MsgMeta.Quarantine will be set.
-	quarantineScore int
+	quarantineScore *int
 }
 
 func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node) (dispatcherCfg, error) {
@@ -72,7 +72,7 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 			if err != nil {
 				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
 			}
-			cfg.rejectScore = quarantineScore
+			cfg.rejectScore = &quarantineScore
 		case "reject_score":
 			if len(node.Args) != 1 {
 				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
@@ -82,7 +82,7 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 			if err != nil {
 				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
 			}
-			cfg.rejectScore = rejectScore
+			cfg.rejectScore = &rejectScore
 		default:
 			othersRaw = append(othersRaw, node)
 		}

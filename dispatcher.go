@@ -305,14 +305,14 @@ func (dd dispatcherDelivery) Abort() error {
 
 func (dd dispatcherDelivery) checkScore() error {
 	checksScore := atomic.LoadInt32(&dd.msgMeta.ChecksScore)
-	if checksScore >= int32(dd.d.rejectScore) {
+	if dd.d.rejectScore != nil && checksScore >= int32(*dd.d.rejectScore) {
 		return &smtp.SMTPError{
 			Code:         550,
 			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
 			Message:      "Message is rejected due to multiple local policy violations, contact postmaster for details",
 		}
 	}
-	if checksScore >= int32(dd.d.quarantineScore) {
+	if dd.d.rejectScore != nil && checksScore >= int32(*dd.d.quarantineScore) {
 		dd.msgMeta.Quarantine.Set(true)
 	}
 	return nil
