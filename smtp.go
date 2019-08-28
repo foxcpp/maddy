@@ -76,7 +76,7 @@ func (s *SMTPSession) Mail(from string) error {
 	s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, from)
 	if err != nil {
 		s.log.Printf("sender rejected: %v", err)
-		return s.wrapErr(errInternal)
+		return s.wrapErr(err)
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (s *SMTPSession) Rcpt(to string) error {
 	if err != nil {
 		s.log.Printf("recipient rejected: %v, RCPT TO = %s", err, to)
 	}
-	return s.wrapErr(errInternal)
+	return s.wrapErr(err)
 }
 
 func (s *SMTPSession) Logout() error {
@@ -105,13 +105,13 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		s.log.Printf("malformed header or I/O error: %v", err)
-		return s.wrapErr(errInternal)
+		return s.wrapErr(err)
 	}
 
 	if s.endp.submission {
 		if err := SubmissionPrepare(s.msgMeta, header); err != nil {
 			s.log.Printf("malformed header or I/O error: %v", err)
-			return s.wrapErr(errInternal)
+			return s.wrapErr(err)
 		}
 	}
 
@@ -125,12 +125,12 @@ func (s *SMTPSession) Data(r io.Reader) error {
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return s.wrapErr(errInternal)
+		return s.wrapErr(err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return s.wrapErr(errInternal)
+		return s.wrapErr(err)
 	}
 
 	s.log.Printf("message delivered")
