@@ -210,63 +210,6 @@ func (cfa checkFailAction) apply(msgMeta *module.MsgMetadata, err error) error {
 	return nil
 }
 
-type checkFailAction struct {
-	quarantine  bool
-	reject      bool
-	scoreAdjust int
-}
-
-func checkFailActionDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	if len(node.Args) == 0 {
-		return nil, m.MatchErr("expected at least 1 argument")
-	}
-	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
-	}
-
-	switch node.Args[0] {
-	case "reject", "quarantine":
-		if len(node.Args) > 1 {
-			return nil, m.MatchErr("too many arguments")
-		}
-		return checkFailAction{
-			reject:     node.Args[0] == "reject",
-			quarantine: node.Args[0] == "quarantine",
-		}, nil
-	case "score":
-		if len(node.Args) != 2 {
-			return nil, m.MatchErr("expected 2 arguments")
-		}
-		scoreAdj, err := strconv.Atoi(node.Args[1])
-		if err != nil {
-			return nil, m.MatchErr("%v", err)
-		}
-		return checkFailAction{
-			scoreAdjust: scoreAdj,
-		}, nil
-	default:
-		return nil, m.MatchErr("invalid action")
-	}
-}
-
-func (cfa checkFailAction) apply(msgMeta *module.MsgMetadata, err error) error {
-	if err == nil {
-		return nil
-	}
-
-	if cfa.quarantine {
-		msgMeta.Quarantine.Set(true)
-	}
-	if cfa.scoreAdjust != 0 {
-		atomic.AddInt32(&msgMeta.ChecksScore, int32(cfa.scoreAdjust))
-		return nil
-	}
-	if cfa.reject {
-		return err
-	}
-	return nil
-}
-
 func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, m.MatchErr("expected at least 1 argument")
