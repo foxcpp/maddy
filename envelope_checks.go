@@ -18,7 +18,7 @@ func requireMatchingRDNS(ctx StatelessCheckContext) error {
 
 	names, err := ctx.Resolver.LookupAddr(context.Background(), tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
-		log.Printf("rDNS query for %v failed: %v", tcpAddr.IP, err)
+		ctx.Logger.Printf("rDNS query for %v failed: %v", tcpAddr.IP, err)
 		return errors.New("could look up rDNS address for source")
 	}
 
@@ -73,7 +73,7 @@ func requireMatchingEHLO(ctx StatelessCheckContext) error {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
 	if err != nil {
-		log.Printf("%s does not resolve", ctx.MsgMeta.SrcHostname)
+		ctx.Logger.Printf("%s does not resolve", ctx.MsgMeta.SrcHostname)
 		return errors.New("source hostname does not resolve")
 	}
 
