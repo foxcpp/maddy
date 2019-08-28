@@ -7,6 +7,7 @@ require (
 	github.com/emersion/go-imap-compress v0.0.0-20170105185004-f036eda44681
 	github.com/emersion/go-imap-idle v0.0.0-20190519112320-2704abd7050e
 	github.com/emersion/go-imap-move v0.0.0-20190710073258-6e5a51a5b342
+	github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.10.7
 	github.com/emersion/go-msgauth v0.2.0

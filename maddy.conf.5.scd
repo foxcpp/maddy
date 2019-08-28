@@ -886,11 +886,23 @@ smtp smtp://0.0.0.0 {
 
 # CHECK MODULES
 
-All modules in this section run one check on message and either cause it to be
-rejected.
+All modules in this section run one check on message and quarantine 
+(or reject, for some checks) the message if it fails.
 
 They all implement check interface and have configuration blocks defined
 implicitly so you use then without an explicit block definition.
+
+All modules in this list support the following directives:
+- debug
+  Enable verbose logging for this module.
+- fail_action reject
+  Reject the message instead of quarantining it.
+- fail_action quarantine
+  Quarantine the message, this is the default for most checks.
+- fail_action score <number>
+  Increase checks score by <number> (can be negative to decrease it).
+- ok_score <number>
+  Increase checks score by <number> if check passed (can be negative to decrease it).
 
 ## require_matching_ehlo
 

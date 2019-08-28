@@ -88,7 +88,10 @@ func requireMatchingEHLO(ctx StatelessCheckContext) error {
 }
 
 func init() {
-	RegisterStatelessCheck("require_matching_rdns", requireMatchingRDNS, nil, nil, nil)
-	RegisterStatelessCheck("require_mx_record", nil, requireMXRecord, nil, nil)
-	RegisterStatelessCheck("require_matching_ehlo", requireMatchingEHLO, nil, nil, nil)
+	RegisterStatelessCheck("require_matching_rdns", checkFailAction{quarantine: true},
+		requireMatchingRDNS, nil, nil, nil)
+	RegisterStatelessCheck("require_mx_record", checkFailAction{quarantine: true},
+		nil, requireMXRecord, nil, nil)
+	RegisterStatelessCheck("require_matching_ehlo", checkFailAction{quarantine: true},
+		requireMatchingEHLO, nil, nil, nil)
 }

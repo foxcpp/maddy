@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -41,6 +42,12 @@ type statelessCheck struct {
 	resolver Resolver
 	logger   log.Logger
 
+	// One used by Init if config option is not passed by a user.
+	defaultFailAction checkFailAction
+	// The actual fail action that should be applied.
+	failAction checkFailAction
+	okScore    int
+
 	connCheck   FuncConnCheck
 	senderCheck FuncSenderCheck
 	rcptCheck   FuncRcptCheck
@@ -67,12 +74,16 @@ func (s statelessCheckState) CheckConnection(ctx context.Context) error {
 		return nil
 	}
 
-	return s.c.connCheck(StatelessCheckContext{
+	err := s.c.connCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	})
+	if err == nil {
+		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
+	}
+	return s.c.failAction.apply(s.msgMeta, err)
 }
 
 func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) error {
@@ -80,12 +91,16 @@ func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) e
 		return nil
 	}
 
-	return s.c.senderCheck(StatelessCheckContext{
+	err := s.c.senderCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, mailFrom)
+	if err == nil {
+		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
+	}
+	return s.c.failAction.apply(s.msgMeta, err)
 }
 
 func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) error {
@@ -93,12 +108,16 @@ func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) error
 		return nil
 	}
 
-	return s.c.rcptCheck(StatelessCheckContext{
+	err := s.c.rcptCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, rcptTo)
+	if err == nil {
+		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
+	}
+	return s.c.failAction.apply(s.msgMeta, err)
 }
 
 func (s statelessCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error {
@@ -106,12 +125,16 @@ func (s statelessCheckState) CheckBody(ctx context.Context, headerLock *sync.RWM
 		return nil
 	}
 
-	return s.c.bodyCheck(StatelessCheckContext{
+	err := s.c.bodyCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, headerLock, header, body)
+	if err == nil {
+		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
+	}
+	return s.c.failAction.apply(s.msgMeta, err)
 }
 
 func (s statelessCheckState) Close() error {
@@ -127,6 +150,10 @@ func (c *statelessCheck) NewMessage(ctx *module.MsgMetadata) (module.CheckState,
 
 func (c *statelessCheck) Init(m *config.Map) error {
 	m.Bool("debug", true, &c.logger.Debug)
+	m.Custom("fail_action", false, false,
+		func() (interface{}, error) {
+			return c.defaultFailAction, nil
+		}, checkFailActionDirective, &c.failAction)
 	_, err := m.Process()
 	return err
 }
@@ -144,13 +171,15 @@ func (c *statelessCheck) InstanceName() string {
 //
 // It creates the module and its instance with the specified name that implement module.Check interface
 // and runs passed functions when corresponding module.CheckState methods are called.
-func RegisterStatelessCheck(name string, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
+func RegisterStatelessCheck(name string, defaultFailAction checkFailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
 	module.Register(name, func(modName, instName string, aliases []string) (module.Module, error) {
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,
 			resolver: net.DefaultResolver,
 			logger:   log.Logger{Name: modName},
+
+			defaultFailAction: defaultFailAction,
 
 			connCheck:   connCheck,
 			senderCheck: senderCheck,
@@ -172,6 +201,8 @@ func RegisterStatelessCheck(name string, connCheck FuncConnCheck, senderCheck Fu
 		instName: name,
 		resolver: net.DefaultResolver,
 		logger:   log.Logger{Name: name},
+
+		failAction: defaultFailAction,
 
 		connCheck:   connCheck,
 		senderCheck: senderCheck,
