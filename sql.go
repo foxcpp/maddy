@@ -87,7 +87,7 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 			return &smtp.SMTPError{
 				Code:         501,
 				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
-				Message:      err.Error(),
+				Message:      "Invalid recipient address: " + err.Error(),
 			}
 		}
 	}

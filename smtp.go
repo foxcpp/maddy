@@ -45,6 +45,12 @@ type SMTPSession struct {
 	log      log.Logger
 }
 
+var errInternal = &smtp.SMTPError{
+	Code:         451,
+	EnhancedCode: smtp.EnhancedCode{4, 0, 0},
+	Message:      "Internal server error",
+}
+
 func (s *SMTPSession) Reset() {
 	if s.delivery != nil {
 		if err := s.delivery.Abort(); err != nil {
@@ -60,10 +66,7 @@ func (s *SMTPSession) Mail(from string) error {
 	_, err := rand.Read(rawID)
 	if err != nil {
 		s.endp.Log.Printf("rand.Rand error: %v", err)
-		return &smtp.SMTPError{
-			Code:    451,
-			Message: "Temporary internal error, try again later",
-		}
+		return errInternal
 	}
 	s.msgMeta.ID = hex.EncodeToString(rawID)
 	s.msgMeta.OriginalFrom = from
@@ -116,17 +119,18 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return err
+		return errInternal
 	}
 	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return err
+		return errInternal
 	}
 
 	if err := s.delivery.Commit(); err != nil {
 		s.log.Printf("I/O error: %v", err)
+		return errInternal
 	}
 
 	s.log.Printf("message delivered")

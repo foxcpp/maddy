@@ -101,7 +101,11 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		// Then try domain-only.
 		_, domain, err := splitAddress(mailFrom)
 		if err != nil {
-			return nil, err
+			return nil, &smtp.SMTPError{
+				Code:         501,
+				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
+				Message:      "Invalid sender address: " + err.Error(),
+			}
 		}
 
 		sourceBlock, ok = d.perSource[strings.ToLower(domain)]
@@ -168,7 +172,11 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		// Then try domain-only.
 		_, domain, err := splitAddress(to)
 		if err != nil {
-			return err
+			return &smtp.SMTPError{
+				Code:         501,
+				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
+				Message:      "Invalid recipient address: " + err.Error(),
+			}
 		}
 
 		rcptBlock, ok = dd.sourceBlock.perRcpt[strings.ToLower(domain)]
