@@ -689,7 +689,7 @@ block name.
 
 Alias to smtp module with submission directive used by default.
 
-## SQL MODULE
+# SQL MODULE
 
 SQL-based storage backend. Can be used as a storage backend (for IMAP),
 authentication provider (IMAP & SMTP) or delivery target (SMTP).
