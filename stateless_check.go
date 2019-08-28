@@ -60,9 +60,16 @@ type statelessCheckState struct {
 }
 
 func deliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
+	out := l.Out
+	if out == nil {
+		out = log.DefaultLogger.Out
+	}
+
 	return log.Logger{
 		Out: func(t time.Time, debug bool, str string) {
-			l.Out(t, debug, str+"(msg ID = "+msgMeta.ID+")")
+			if l.Out != nil {
+				out(t, debug, str+"(msg ID = "+msgMeta.ID+")")
+			}
 		},
 		Name:  l.Name,
 		Debug: l.Debug,
@@ -201,8 +208,6 @@ func RegisterStatelessCheck(name string, defaultFailAction checkFailAction, conn
 		instName: name,
 		resolver: net.DefaultResolver,
 		logger:   log.Logger{Name: name},
-
-		failAction: defaultFailAction,
 
 		connCheck:   connCheck,
 		senderCheck: senderCheck,
