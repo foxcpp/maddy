@@ -66,7 +66,7 @@ func (s *SMTPSession) Mail(from string) error {
 	_, err := rand.Read(rawID)
 	if err != nil {
 		s.endp.Log.Printf("rand.Rand error: %v", err)
-		return errInternal
+		return s.wrapErr(errInternal)
 	}
 	s.msgMeta.ID = hex.EncodeToString(rawID)
 	s.msgMeta.OriginalFrom = from
@@ -76,7 +76,7 @@ func (s *SMTPSession) Mail(from string) error {
 	s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, from)
 	if err != nil {
 		s.log.Printf("sender rejected: %v", err)
-		return err
+		return s.wrapErr(errInternal)
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (s *SMTPSession) Rcpt(to string) error {
 	if err != nil {
 		s.log.Printf("recipient rejected: %v, RCPT TO = %s", err, to)
 	}
-	return err
+	return s.wrapErr(errInternal)
 }
 
 func (s *SMTPSession) Logout() error {
@@ -105,13 +105,13 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		s.log.Printf("malformed header or I/O error: %v", err)
-		return err
+		return s.wrapErr(errInternal)
 	}
 
 	if s.endp.submission {
 		if err := SubmissionPrepare(s.msgMeta, header); err != nil {
 			s.log.Printf("malformed header or I/O error: %v", err)
-			return err
+			return s.wrapErr(errInternal)
 		}
 	}
 
@@ -119,24 +119,39 @@ func (s *SMTPSession) Data(r io.Reader) error {
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return errInternal
+		return s.wrapErr(errInternal)
 	}
 	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return errInternal
+		return s.wrapErr(errInternal)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
 		s.log.Printf("I/O error: %v", err)
-		return errInternal
+		return s.wrapErr(errInternal)
 	}
 
 	s.log.Printf("message delivered")
 	s.delivery = nil
 
 	return nil
+}
+
+func (s *SMTPSession) wrapErr(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if smtpErr, ok := err.(*smtp.SMTPError); ok {
+		return &smtp.SMTPError{
+			Code:         smtpErr.Code,
+			EnhancedCode: smtpErr.EnhancedCode,
+			Message:      smtpErr.Message + " (msg ID = " + s.msgMeta.ID + ")",
+		}
+	}
+	return fmt.Errorf("%v (msg ID = %s)", err, s.msgMeta.ID)
 }
 
 type SMTPEndpoint struct {
