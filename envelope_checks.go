@@ -2,10 +2,10 @@ package maddy
 
 import (
 	"context"
-	"errors"
 	"net"
 	"strings"
 
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/log"
 )
 
@@ -19,7 +19,11 @@ func requireMatchingRDNS(ctx StatelessCheckContext) error {
 	names, err := ctx.Resolver.LookupAddr(context.Background(), tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
 		ctx.Logger.Printf("rDNS query for %v failed: %v", tcpAddr.IP, err)
-		return errors.New("could look up rDNS address for source")
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 25},
+			Message:      "could look up rDNS address for source",
+		}
 	}
 
 	srcDomain := strings.TrimRight(ctx.MsgMeta.SrcHostname, ".")
@@ -31,8 +35,11 @@ func requireMatchingRDNS(ctx StatelessCheckContext) error {
 		}
 	}
 	ctx.Logger.Printf("no PTR records for %v IP pointing to %s", tcpAddr.IP, srcDomain)
-	// TODO: Use SMTPError with enhanced codes. Also for remaining checks.
-	return errors.New("rDNS name does not match source hostname")
+	return &smtp.SMTPError{
+		Code:         550,
+		EnhancedCode: smtp.EnhancedCode{5, 7, 25},
+		Message:      "rDNS name does not match source hostname",
+	}
 }
 
 func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
@@ -42,7 +49,11 @@ func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
 	}
 	if domain == "" {
 		// TODO: Make it configurable whether <postmaster> is allowed.
-		return errors.New("<postmaster> is not allowed")
+		return &smtp.SMTPError{
+			Code:         501,
+			EnhancedCode: smtp.EnhancedCode{5, 1, 8},
+			Message:      "<postmaster> is not allowed",
+		}
 	}
 
 	_, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
@@ -54,11 +65,19 @@ func requireMXRecord(ctx StatelessCheckContext, mailFrom string) error {
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
 		ctx.Logger.Debugf("%s does not resolve", domain)
-		return errors.New("could not find MX records for MAIL FROM domain")
+		return &smtp.SMTPError{
+			Code:         501,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 27},
+			Message:      "could not find MX records for MAIL FROM domain",
+		}
 	}
 
 	if len(srcMx) == 0 {
-		return errors.New("domain in MAIL FROM has no MX records")
+		return &smtp.SMTPError{
+			Code:         501,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 27},
+			Message:      "domain in MAIL FROM has no MX records",
+		}
 	}
 
 	return nil
@@ -73,8 +92,13 @@ func requireMatchingEHLO(ctx StatelessCheckContext) error {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
 	if err != nil {
-		ctx.Logger.Printf("%s does not resolve", ctx.MsgMeta.SrcHostname)
-		return errors.New("source hostname does not resolve")
+		ctx.Logger.Printf("%s does not resolve: %v", ctx.MsgMeta.SrcHostname, err)
+		// TODO: Check whether lookup is failed due to temporary error and reject with 4xx code.
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+			Message:      "DNS lookup failure during policy check",
+		}
 	}
 
 	for _, ip := range srcIPs {
@@ -84,7 +108,11 @@ func requireMatchingEHLO(ctx StatelessCheckContext) error {
 		}
 	}
 	ctx.Logger.Printf("no A/AAA records found for %s for %s domain", tcpAddr.IP, ctx.MsgMeta.SrcHostname)
-	return errors.New("source hostname does not resolve to source address")
+	return &smtp.SMTPError{
+		Code:         550,
+		EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+		Message:      "no matching A/AAA records found for EHLO hostname",
+	}
 }
 
 func init() {
