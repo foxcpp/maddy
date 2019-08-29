@@ -72,7 +72,7 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 			if err != nil {
 				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
 			}
-			cfg.rejectScore = &quarantineScore
+			cfg.quarantineScore = &quarantineScore
 		case "reject_score":
 			if len(node.Args) != 1 {
 				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
