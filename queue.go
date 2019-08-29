@@ -670,7 +670,13 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 
 	rcptInfo := make([]dsn.RecipientInfo, 0, len(meta.RcptErrs))
 	for rcpt, err := range meta.RcptErrs {
-		// TODO: Translate aliased addresses back to preserve confidentiality.
+		if meta.MsgMeta.OriginalRcpts != nil {
+			originalRcpt := meta.MsgMeta.OriginalRcpts[rcpt]
+			if originalRcpt != "" {
+				rcpt = originalRcpt
+			}
+		}
+
 		rcptInfo = append(rcptInfo, dsn.RecipientInfo{
 			FinalRecipient: rcpt,
 			Action:         dsn.ActionFailed,

@@ -76,6 +76,17 @@ type MsgMetadata struct {
 	//
 	// It should be accessed using only atomic operations.
 	ChecksScore int32
+
+	// OriginalRcpts contains the mapping from the final recipient to the
+	// recipient that was presented by the client.
+	//
+	// Modules that rewrite recipients should update this mapping (and
+	// initialize it, if needed).
+	//
+	// It should be used when reporting information back to client (via DSN,
+	// for example) to prevent disclosing information about aliases
+	// which is usually unwanted.
+	OriginalRcpts map[string]string
 }
 
 // DeepCopy creates a copy of the MsgMetadata structure, also
