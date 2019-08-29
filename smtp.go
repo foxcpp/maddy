@@ -61,14 +61,19 @@ func (s *SMTPSession) Reset() {
 	s.msgMeta.ChecksScore = 0
 }
 
-func (s *SMTPSession) Mail(from string) error {
+func generateMsgID() (string, error) {
 	rawID := make([]byte, 32)
 	_, err := rand.Read(rawID)
+	return hex.EncodeToString(rawID), err
+}
+
+func (s *SMTPSession) Mail(from string) error {
+	var err error
+	s.msgMeta.ID, err = generateMsgID()
 	if err != nil {
 		s.endp.Log.Printf("rand.Rand error: %v", err)
 		return s.wrapErr(errInternal)
 	}
-	s.msgMeta.ID = hex.EncodeToString(rawID)
 	s.msgMeta.OriginalFrom = from
 
 	s.log.Printf("incoming message")

@@ -2,6 +2,7 @@ package maddy
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/dsn"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
@@ -41,7 +43,10 @@ func (pe PartialError) Error() string {
 type Queue struct {
 	name     string
 	location string
+	hostname string
 	wheel    *TimeWheel
+
+	dsnDispatcher *Dispatcher
 
 	// Retry delay is calculated using the following formula:
 	// initialRetryTime * retryTimeScale ^ (TriesCount - 1)
@@ -87,8 +92,13 @@ type QueueMetadata struct {
 	RcptErrs map[string]*smtp.SMTPError
 
 	// Amount of times delivery *already tried*.
-	TriesCount  int
-	LastAttempt time.Time
+	TriesCount int
+
+	FirstAttempt time.Time
+	LastAttempt  time.Time
+
+	// Whether this is a delivery notification.
+	DSN bool
 }
 
 func NewQueue(_, instName string, _ []string) (module.Module, error) {
@@ -109,6 +119,10 @@ func (q *Queue) Init(cfg *config.Map) error {
 	cfg.Int("workers", false, false, 16, &workers)
 	cfg.String("location", false, false, "", &q.location)
 	cfg.Custom("target", false, true, nil, deliveryDirective, &q.Target)
+	cfg.String("hostname", true, true, "", &q.hostname)
+	cfg.Custom("bounce", false, false, nil, func(m *config.Map, node *config.Node) (interface{}, error) {
+		return NewDispatcher(m.Globals, node.Children)
+	}, &q.dsnDispatcher)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -194,7 +208,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		var smtpErr *smtp.SMTPError
 		var ok bool
 		if smtpErr, ok = rcptErr.(*smtp.SMTPError); !ok {
-			smtpErr := &smtp.SMTPError{
+			smtpErr = &smtp.SMTPError{
 				Code:         554,
 				EnhancedCode: smtp.EnhancedCode{5, 0, 0},
 				Message:      rcptErr.Error(),
@@ -212,12 +226,14 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	meta.LastAttempt = time.Now()
 	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
 		// Attempt either fully succeeded or completely failed.
-		// TODO: Send a bounce message.
 		if meta.TriesCount == q.maxTries {
 			q.Log.Printf("gave up trying to deliver to %v, errors: %v (msg ID = %s)", meta.TemporaryFailedRcpts, meta.RcptErrs, id)
 		}
 		if len(meta.FailedRcpts) != 0 {
 			q.Log.Printf("permanently failed to deliver to %v, errors: %v (msg ID = %s)", meta.FailedRcpts, meta.RcptErrs, id)
+		}
+		if !meta.DSN {
+			q.emitDSN(meta, header)
 		}
 		q.removeFromDisk(id)
 		return
@@ -241,7 +257,12 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		Errs: map[string]error{},
 	}
 
-	delivery, err := q.Target.Start(meta.MsgMeta, meta.From)
+	target := q.Target
+	if meta.DSN {
+		target = q.dsnDispatcher
+	}
+
+	delivery, err := target.Start(meta.MsgMeta, meta.From)
 	if err != nil {
 		perr.Failed = append(perr.Failed, meta.To...)
 		for _, rcpt := range meta.To {
@@ -359,10 +380,23 @@ func (qd *queueDelivery) Commit() error {
 
 func (q *Queue) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	meta := &QueueMetadata{
-		MsgMeta:     msgMeta,
-		From:        mailFrom,
-		RcptErrs:    map[string]*smtp.SMTPError{},
-		LastAttempt: time.Now(),
+		MsgMeta:      msgMeta,
+		From:         mailFrom,
+		RcptErrs:     map[string]*smtp.SMTPError{},
+		FirstAttempt: time.Now(),
+		LastAttempt:  time.Now(),
+	}
+	return &queueDelivery{q: q, meta: meta}, nil
+}
+
+func (q *Queue) StartDSN(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	meta := &QueueMetadata{
+		DSN:          true,
+		MsgMeta:      msgMeta,
+		From:         mailFrom,
+		RcptErrs:     map[string]*smtp.SMTPError{},
+		FirstAttempt: time.Now(),
+		LastAttempt:  time.Now(),
 	}
 	return &queueDelivery{q: q, meta: meta}, nil
 }
@@ -594,6 +628,85 @@ func (q *Queue) InstanceName() string {
 
 func (q *Queue) Name() string {
 	return "queue"
+}
+
+func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
+	// If, apparently, we have no DSN dispatcher configured - do nothing.
+	if q.dsnDispatcher == nil {
+		return
+	}
+
+	dsnID, err := generateMsgID()
+	if err != nil {
+		q.Log.Printf("rand.Rand error: %v", err)
+		return
+	}
+
+	// TODO: Local domain should be actually used for MsgID in DSN.
+	dsnEnvelope := dsn.Envelope{
+		MsgID: "<" + dsnID + "@" + q.hostname + ">",
+		From:  "MAILER-DAEMON",
+		To:    meta.From,
+	}
+	mtaInfo := dsn.ReportingMTAInfo{
+		ReportingMTA:    q.hostname,
+		XSender:         meta.From,
+		XMessageID:      meta.MsgMeta.ID,
+		ArrivalDate:     meta.FirstAttempt,
+		LastAttemptDate: meta.LastAttempt,
+	}
+	if !meta.MsgMeta.DontTraceSender {
+		mtaInfo.ReceivedFromMTA = meta.MsgMeta.SrcHostname
+	}
+
+	rcptInfo := make([]dsn.RecipientInfo, 0, len(meta.RcptErrs))
+	for rcpt, err := range meta.RcptErrs {
+		// TODO: Translate aliased addresses back to preserve confidentiality.
+		rcptInfo = append(rcptInfo, dsn.RecipientInfo{
+			FinalRecipient: rcpt,
+			Action:         dsn.ActionFailed,
+			Status:         err.EnhancedCode,
+			DiagnosticCode: err,
+		})
+	}
+
+	var dsnBodyBlob bytes.Buffer
+	dsnHeader, err := dsn.GenerateDSN(dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
+	if err != nil {
+		q.Log.Printf("failed to generate fail DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+		return
+	}
+	dsnBody := buffer.MemoryBuffer{Slice: dsnBodyBlob.Bytes()}
+
+	dsnMeta := &module.MsgMetadata{
+		ID:          dsnID,
+		SrcProto:    "",
+		SrcHostname: q.hostname,
+		OurHostname: q.hostname,
+	}
+	q.Log.Printf("generated failed DSN, msg ID = %s, DSN ID = %s", meta.MsgMeta.ID, dsnID)
+
+	dsnDelivery, err := q.StartDSN(dsnMeta, meta.From)
+	if err != nil {
+		q.Log.Printf("failed to enqueue DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+		return
+	}
+	defer func() {
+		if err != nil {
+			q.Log.Printf("failed to enqueue DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+			dsnDelivery.Abort()
+		}
+	}()
+
+	if err = dsnDelivery.AddRcpt(meta.From); err != nil {
+		return
+	}
+	if err = dsnDelivery.Body(dsnHeader, dsnBody); err != nil {
+		return
+	}
+	if err = dsnDelivery.Commit(); err != nil {
+		return
+	}
 }
 
 func init() {

@@ -794,6 +794,15 @@ is permanent error occured during previous attempt.
 
 Default is 4.
 
+## bounce { ... }
+
+The block specified with the bounce directive specifies how DSN (Delivery Status Notification)
+messages should be routed. The syntax of directives inside this block is described in
+DISPATCHING DIRECTIVES section.
+
+If this is block is not present in configuration, DSNs will not be generated. Note, however,
+this is not what you want most of the time.
+
 ## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
