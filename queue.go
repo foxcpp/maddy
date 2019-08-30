@@ -206,11 +206,12 @@ func (q *Queue) worker() {
 }
 
 func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
-	id := meta.MsgMeta.ID
-	q.Log.Debugf("delivery attempt #%d for msg ID = %s", meta.TriesCount+1, id)
+	dl := deliveryLogger(q.Log, meta.MsgMeta)
+	dl.Debugf("delivery attempt #%d", meta.TriesCount+1)
 
 	partialErr := q.deliver(meta, header, body)
-	q.Log.Debugf("failures: permanently: %v, temporary: %v, errors: %v (msg ID = %s)", partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs, id)
+	dl.Debugf("failures: permanently: %v, temporary: %v, errors: %v",
+		partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs)
 
 	// Save permanent errors information for reporting in bounce message.
 	meta.FailedRcpts = append(meta.FailedRcpts, partialErr.Failed...)
@@ -237,32 +238,33 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
 		// Attempt either fully succeeded or completely failed.
 		if meta.TriesCount == q.maxTries {
-			q.Log.Printf("gave up trying to deliver to %v, errors: %v (msg ID = %s)", meta.TemporaryFailedRcpts, meta.RcptErrs, id)
+			dl.Printf("gave up trying to deliver to %v, errors: %v", meta.TemporaryFailedRcpts, meta.RcptErrs)
 		}
 		if len(meta.FailedRcpts) != 0 {
-			q.Log.Printf("permanently failed to deliver to %v, errors: %v (msg ID = %s)", meta.FailedRcpts, meta.RcptErrs, id)
+			dl.Printf("permanently failed to deliver to %v, errors: %v", meta.FailedRcpts, meta.RcptErrs)
 		}
 		if !meta.DSN {
 			q.emitDSN(meta, header)
 		}
-		q.removeFromDisk(id)
+		q.removeFromDisk(meta.MsgMeta)
 		return
 	}
 
 	meta.TriesCount++
 
 	if err := q.updateMetadataOnDisk(meta); err != nil {
-		q.Log.Printf("failed to update meta-data: %v", err)
+		dl.Printf("failed to update meta-data: %v", err)
 	}
 
 	nextTryTime := time.Now()
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
-	q.Log.Printf("%d attempt failed for (msg ID = %s), will retry in %v (at %v)", meta.TriesCount, id, time.Until(nextTryTime), nextTryTime)
+	dl.Printf("%d attempt failed, will retry in %v (at %v)", meta.TriesCount, time.Until(nextTryTime), nextTryTime)
 
-	q.wheel.Add(nextTryTime, id)
+	q.wheel.Add(nextTryTime, meta.MsgMeta.ID)
 }
 
 func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) PartialError {
+	dl := deliveryLogger(q.Log, meta.MsgMeta)
 	perr := PartialError{
 		Errs: map[string]error{},
 	}
@@ -297,7 +299,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	if len(acceptedRcpts) == 0 {
 		if err := delivery.Abort(); err != nil {
-			q.Log.Printf("delivery.Abort failed: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+			dl.Printf("delivery.Abort failed: %v", err)
 		}
 		return perr
 	}
@@ -326,7 +328,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		// No recipients succeeded.
 		if len(perr.TemporaryFailed)+len(perr.Failed) == len(acceptedRcpts) {
 			if err := delivery.Abort(); err != nil {
-				q.Log.Printf("delivery.Abort failed: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+				dl.Printf("delivery.Abort failed: %v", err)
 			}
 			return perr
 		}
@@ -366,7 +368,7 @@ func (qd *queueDelivery) Body(header textproto.Header, body buffer.Buffer) error
 
 func (qd *queueDelivery) Abort() error {
 	if qd.body != nil {
-		qd.q.removeFromDisk(qd.meta.MsgMeta.ID)
+		qd.q.removeFromDisk(qd.meta.MsgMeta)
 	}
 	return nil
 }
@@ -411,23 +413,26 @@ func (q *Queue) StartDSN(msgMeta *module.MsgMetadata, mailFrom string) (module.D
 	return &queueDelivery{q: q, meta: meta}, nil
 }
 
-func (q *Queue) removeFromDisk(id string) {
+func (q *Queue) removeFromDisk(msgMeta *module.MsgMetadata) {
+	id := msgMeta.ID
+	dl := deliveryLogger(q.Log, msgMeta)
+
 	// Order is important.
 	// If we remove header and body but can't remove meta now - readDiskQueue
 	// will detect and report it.
 	headerPath := filepath.Join(q.location, id+".header")
 	if err := os.Remove(headerPath); err != nil {
-		q.Log.Printf("failed to remove header from disk: %v (msg ID = %s)", err, id)
+		dl.Printf("failed to remove header from disk: %v", err)
 	}
 	bodyPath := filepath.Join(q.location, id+".body")
 	if err := os.Remove(bodyPath); err != nil {
-		q.Log.Printf("failed to remove body from disk: %v (msg ID = %s)", err, id)
+		dl.Printf("failed to remove body from disk: %v", err)
 	}
 	metaPath := filepath.Join(q.location, id+".meta")
 	if err := os.Remove(metaPath); err != nil {
-		q.Log.Printf("failed to remove meta-data from disk: %v (msg ID = %s)", err, id)
+		dl.Printf("failed to remove meta-data from disk: %v", err)
 	}
-	q.Log.Debugf("removed message from disk (msg ID = %s)", id)
+	dl.Debugf("removed message from disk")
 }
 
 func (q *Queue) readDiskQueue() error {
@@ -686,9 +691,10 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	}
 
 	var dsnBodyBlob bytes.Buffer
+	dl := deliveryLogger(q.Log, meta.MsgMeta)
 	dsnHeader, err := dsn.GenerateDSN(dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
 	if err != nil {
-		q.Log.Printf("failed to generate fail DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+		dl.Printf("failed to generate fail DSN: %v", err)
 		return
 	}
 	dsnBody := buffer.MemoryBuffer{Slice: dsnBodyBlob.Bytes()}
@@ -699,16 +705,16 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 		SrcHostname: q.hostname,
 		OurHostname: q.hostname,
 	}
-	q.Log.Printf("generated failed DSN, msg ID = %s, DSN ID = %s", meta.MsgMeta.ID, dsnID)
+	dl.Printf("generated failed DSN, DSN ID = %s", dsnID)
 
 	dsnDelivery, err := q.StartDSN(dsnMeta, "MAILER-DAEMON@"+q.autogenMsgDomain)
 	if err != nil {
-		q.Log.Printf("failed to enqueue DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+		dl.Printf("failed to enqueue DSN: %v", err)
 		return
 	}
 	defer func() {
 		if err != nil {
-			q.Log.Printf("failed to enqueue DSN: %v (msg ID = %s)", err, meta.MsgMeta.ID)
+			dl.Printf("failed to enqueue DSN: %v", err)
 			dsnDelivery.Abort()
 		}
 	}()
