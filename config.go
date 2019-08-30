@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"sync/atomic"
 
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
@@ -192,22 +191,19 @@ func checkFailActionDirective(m *config.Map, node *config.Node) (interface{}, er
 	}
 }
 
-func (cfa checkFailAction) apply(msgMeta *module.MsgMetadata, err error) error {
-	if err == nil {
-		return nil
+// apply merges the result of check execution with action configuration specified
+// in the check configuration.
+func (cfa checkFailAction) apply(originalRes module.CheckResult) module.CheckResult {
+	if originalRes.RejectErr == nil {
+		return originalRes
 	}
 
-	if cfa.quarantine {
-		msgMeta.Quarantine.Set(true)
+	originalRes.Quarantine = cfa.quarantine
+	originalRes.ScoreAdjust = int32(cfa.scoreAdjust)
+	if !cfa.reject {
+		originalRes.RejectErr = nil
 	}
-	if cfa.scoreAdjust != 0 {
-		atomic.AddInt32(&msgMeta.ChecksScore, int32(cfa.scoreAdjust))
-		return nil
-	}
-	if cfa.reject {
-		return err
-	}
-	return nil
+	return originalRes
 }
 
 func logOutput(m *config.Map, node *config.Node) (interface{}, error) {

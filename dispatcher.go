@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
@@ -24,6 +23,7 @@ import (
 // source (Submission, SMTP, JMAP modules) implementation.
 type Dispatcher struct {
 	dispatcherCfg
+	hostname string
 
 	Log log.Logger
 }
@@ -74,24 +74,25 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		msgMeta:         msgMeta,
 		cancelCtx:       context.Background(),
 		log:             &d.Log,
+		checkScore:      0,
 	}
 
 	globalChecksState, err := d.globalChecks.NewMessage(msgMeta)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := globalChecksState.CheckConnection(dd.cancelCtx); err != nil {
+	defer func() {
+		if err != nil {
+			globalChecksState.Close()
+		}
+	}()
+	if err := dd.checkResult(globalChecksState.CheckConnection(dd.cancelCtx)); err != nil {
 		return nil, err
 	}
-	if err := globalChecksState.CheckSender(dd.cancelCtx, mailFrom); err != nil {
+	if err := dd.checkResult(globalChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
 		return nil, err
 	}
 	dd.globalChecksState = globalChecksState
-
-	if err := dd.checkScore(); err != nil {
-		return nil, err
-	}
 
 	// TODO: Init global modificators, run RewriteSender.
 
@@ -130,23 +131,24 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	if err != nil {
 		return nil, err
 	}
-	if err := sourceChecksState.CheckConnection(dd.cancelCtx); err != nil {
+	defer func() {
+		if err != nil {
+			sourceChecksState.Close()
+		}
+	}()
+	if err := dd.checkResult(sourceChecksState.CheckConnection(dd.cancelCtx)); err != nil {
 		return nil, err
 	}
-	if err := sourceChecksState.CheckSender(dd.cancelCtx, mailFrom); err != nil {
+	if err := dd.checkResult(sourceChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
 		return nil, err
 	}
 	dd.sourceChecksState = sourceChecksState
-
-	if err := dd.checkScore(); err != nil {
-		return nil, err
-	}
 
 	// TODO: Init per-sender modificators, run RewriteSender.
 
 	dd.sourceAddr = mailFrom
 
-	return dd, nil
+	return &dd, nil
 }
 
 type dispatcherDelivery struct {
@@ -163,9 +165,12 @@ type dispatcherDelivery struct {
 	deliveries map[module.DeliveryTarget]module.Delivery
 	msgMeta    *module.MsgMetadata
 	cancelCtx  context.Context
+	checkScore int32
+	authRes    []authres.Result
+	header     textproto.Header
 }
 
-func (dd dispatcherDelivery) AddRcpt(to string) error {
+func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	// First try to match against complete address.
 	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(to)]
 	if !ok {
@@ -203,20 +208,17 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 		if err != nil {
 			return err
 		}
-		if err := rcptChecksState.CheckConnection(dd.cancelCtx); err != nil {
+
+		if err := dd.checkResult(rcptChecksState.CheckConnection(dd.cancelCtx)); err != nil {
 			return err
 		}
-		if err := rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr); err != nil {
+		if err := dd.checkResult(rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr)); err != nil {
 			return err
 		}
 		dd.rcptChecksState[rcptBlock] = rcptChecksState
 	}
 
-	if err := rcptChecksState.CheckRcpt(dd.cancelCtx, to); err != nil {
-		return err
-	}
-
-	if err := dd.checkScore(); err != nil {
+	if err := dd.checkResult(rcptChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
 		return err
 	}
 
@@ -251,14 +253,26 @@ func (dd dispatcherDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	var headerLock sync.RWMutex
-	if err := dd.globalChecksState.CheckBody(dd.cancelCtx, &headerLock, header, body); err != nil {
+func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+	if err := dd.checkResult(dd.globalChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
 		return err
 	}
-
-	if err := dd.checkScore(); err != nil {
+	if err := dd.checkResult(dd.sourceChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
 		return err
+	}
+	for _, rcptChecksState := range dd.rcptChecksState {
+		if err := dd.checkResult(rcptChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
+			return err
+		}
+	}
+
+	// After results for all checks are checked, authRes will be populated with values
+	// we should put into Authentication-Results header.
+	if len(dd.authRes) != 0 {
+		header.Add("Authentication-Results", authres.Format(dd.d.hostname, dd.authRes))
+	}
+	for field := dd.header.Fields(); field.Next(); {
+		header.Add(field.Key(), field.Value())
 	}
 
 	for _, delivery := range dd.deliveries {
@@ -303,17 +317,34 @@ func (dd dispatcherDelivery) Abort() error {
 	return lastErr
 }
 
-func (dd dispatcherDelivery) checkScore() error {
-	checksScore := atomic.LoadInt32(&dd.msgMeta.ChecksScore)
-	if dd.d.rejectScore != nil && checksScore >= int32(*dd.d.rejectScore) {
+func (dd *dispatcherDelivery) checkResult(checkResult module.CheckResult) error {
+	if checkResult.RejectErr != nil {
+		return checkResult.RejectErr
+	}
+	if checkResult.Quarantine {
+		dd.log.Printf("quarantined message due to check result (msg ID = %s)", dd.msgMeta.ID)
+		dd.msgMeta.Quarantine = true
+	}
+	dd.checkScore += checkResult.ScoreAdjust
+	if dd.d.rejectScore != nil && dd.checkScore >= int32(*dd.d.rejectScore) {
+		dd.log.Debugf("score %d >= %d, rejecting (msg ID = %s)", dd.checkScore, *dd.d.rejectScore, dd.msgMeta.ID)
 		return &smtp.SMTPError{
 			Code:         550,
 			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
-			Message:      "Message is rejected due to multiple local policy violations, contact postmaster for details",
+			Message:      fmt.Sprintf("Message is rejected due to multiple local policy violations (score %d)", dd.checkScore),
 		}
 	}
-	if dd.d.rejectScore != nil && checksScore >= int32(*dd.d.quarantineScore) {
-		dd.msgMeta.Quarantine.Set(true)
+	if dd.d.quarantineScore != nil && dd.checkScore >= int32(*dd.d.quarantineScore) {
+		if !dd.msgMeta.Quarantine {
+			dd.log.Printf("quarantined message due to score %d >= %d (msg ID = %s)", dd.checkScore, *dd.d.quarantineScore, dd.msgMeta.ID)
+		}
+		dd.msgMeta.Quarantine = true
+	}
+	if len(checkResult.AuthResult) != 0 {
+		dd.authRes = append(dd.authRes, checkResult.AuthResult...)
+	}
+	for field := checkResult.Header.Fields(); field.Next(); {
+		dd.header.Add(field.Key(), field.Value())
 	}
 	return nil
 }

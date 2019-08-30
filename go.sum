@@ -30,6 +30,8 @@ github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca h1:OYhqtJI4
 github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca/go.mod h1:3h+HsGTCFHmk4ngJ2IV/YPhdlaOcR6hcgqM3yca9v7c=
 github.com/emersion/go-message v0.10.7 h1:wVC8P985qmmL9PGV/VlkBikVqFirxTeYv9xi+YyCprU=
 github.com/emersion/go-message v0.10.7/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
+github.com/emersion/go-message v0.10.8-0.20190830183645-45550ec58166 h1:VxKFnMomTb8u1qiwfMkmjZDoGz4onMQlsDLgXaq54qo=
+github.com/emersion/go-message v0.10.8-0.20190830183645-45550ec58166/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-msgauth v0.2.0 h1:/Ynvbm+9AWssfv31PXZb1S519Wp/2uyImbjwRWCaN00=
 github.com/emersion/go-msgauth v0.2.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=

@@ -2,9 +2,9 @@ package module
 
 import (
 	"context"
-	"sync"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-msgauth/authres"
 	"github.com/foxcpp/maddy/buffer"
 )
 
@@ -21,24 +21,49 @@ type CheckState interface {
 	//
 	// Result may be cached for the whole client connection so this function
 	// may not be called sometimes.
-	CheckConnection(ctx context.Context) error
+	CheckConnection(ctx context.Context) CheckResult
 
 	// CheckSender is executed once when client sends the message sender
 	// information (e.g. on the MAIL FROM command).
-	CheckSender(ctx context.Context, mailFrom string) error
+	CheckSender(ctx context.Context, mailFrom string) CheckResult
 
 	// CheckRcpt is executed for each recipient when its address is received
 	// from the client (e.g. on the RCPT TO command).
-	CheckRcpt(ctx context.Context, rcptTo string) error
+	CheckRcpt(ctx context.Context, rcptTo string) CheckResult
 
 	// CheckBody is executed once after the message body is received and
 	// buffered in memory or on disk.
 	//
 	// Check code should use passed mutex when working with the message header.
 	// Body can be read without locking it since it is read-only.
-	CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error
+	CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) CheckResult
 
 	// Close is called after the message processing ends, even if any of the
 	// Check* functions return an error.
 	Close() error
+}
+
+type CheckResult struct {
+	// RejectErr is the error that is reported to the message source
+	// if check decided that the message should be rejected.
+	RejectErr error
+
+	// Quarantine is the flag that specifies that the message
+	// is considered "possibly malicious" and should be
+	// put into Junk mailbox.
+	//
+	// This value is copied into MsgMetadata by the dispatcher.
+	Quarantine bool
+
+	// ScoreAdjust is the value that is added to the MsgMetadata.CheckScore
+	// by the dispatcher after check execution.
+	ScoreAdjust int32
+
+	// AuthResult is the information that is supposed to
+	// be included in Authentication-Results header.
+	AuthResult []authres.Result
+
+	// Header is the header fields that should be
+	// added to the header after all checks.
+	Header textproto.Header
 }

@@ -58,7 +58,6 @@ func (s *SMTPSession) Reset() {
 		}
 		s.delivery = nil
 	}
-	s.msgMeta.ChecksScore = 0
 }
 
 func generateMsgID() (string, error) {
@@ -264,6 +263,7 @@ func (endp *SMTPEndpoint) setConfig(cfg *config.Map) error {
 	if err != nil {
 		return err
 	}
+	endp.dispatcher.hostname = endp.serv.Domain
 	endp.dispatcher.Log = log.Logger{Name: "smtp/dispatcher", Debug: endp.Log.Debug}
 
 	// endp.submission can be set to true by NewSMTPEndpoint, leave it on

@@ -3,9 +3,6 @@ package module
 import (
 	"crypto/tls"
 	"net"
-	"sync/atomic"
-
-	"github.com/foxcpp/maddy/atomicbool"
 )
 
 // MsgMetadata structure contains all information about the origin of
@@ -68,14 +65,10 @@ type MsgMetadata struct {
 	// Quarantine is a message flag that is should be set if message is
 	// considered "suspicious" and should be put into "Junk" folder
 	// in the storage.
-	Quarantine atomicbool.AtomicBool
-
-	// ChecksScore is used to determine how likely the message it spam.
-	// Scale of the values and points where message is quarantined or rejected
-	// are determined by user in configuration.
 	//
-	// It should be accessed using only atomic operations.
-	ChecksScore int32
+	// This field should not be modified by the checks that verify
+	// the message. It is set only by the message dispatcher.
+	Quarantine bool
 
 	// OriginalRcpts contains the mapping from the final recipient to the
 	// recipient that was presented by the client.
@@ -96,8 +89,6 @@ type MsgMetadata struct {
 // - SrcAddr is not copied and copy field references original value.
 func (msgMeta *MsgMetadata) DeepCopy() *MsgMetadata {
 	cpy := *msgMeta
-	msgMeta.Quarantine = msgMeta.Quarantine.Copy()
-	msgMeta.ChecksScore = atomic.LoadInt32(&msgMeta.ChecksScore)
 	// There is no good way to copy net.Addr, but it should not be
 	// modified by anything anyway so we are safe.
 	return &cpy

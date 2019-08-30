@@ -19,6 +19,7 @@ type msg struct {
 	mailFrom string
 	rcptTo   []string
 	body     []byte
+	header   textproto.Header
 }
 
 type testTarget struct {
@@ -62,7 +63,7 @@ type testTargetDelivery struct {
 func (dt *testTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &testTargetDelivery{
 		tgt: dt,
-		msg: msg{msgMeta: msgMeta.DeepCopy(), mailFrom: mailFrom},
+		msg: msg{msgMeta: msgMeta, mailFrom: mailFrom},
 	}, dt.startErr
 }
 
@@ -81,6 +82,8 @@ func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) 
 	if dtd.tgt.bodyErr != nil {
 		return dtd.tgt.bodyErr
 	}
+
+	dtd.msg.header = header
 
 	body, err := buf.Open()
 	if err != nil {
@@ -132,6 +135,38 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	}
 
 	return encodedID
+}
+
+func doTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
+	t.Helper()
+
+	IDRaw := sha1.Sum([]byte(t.Name()))
+	encodedID := hex.EncodeToString(IDRaw[:])
+
+	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	ctx := module.MsgMetadata{
+		DontTraceSender: true,
+		ID:              encodedID,
+	}
+	delivery, err := tgt.Start(&ctx, from)
+	if err != nil {
+		return encodedID, err
+	}
+	for _, rcpt := range to {
+		if err := delivery.AddRcpt(rcpt); err != nil {
+			delivery.Abort()
+			return encodedID, err
+		}
+	}
+	if err := delivery.Body(textproto.Header{}, body); err != nil {
+		delivery.Abort()
+		return encodedID, err
+	}
+	if err := delivery.Commit(); err != nil {
+		return encodedID, err
+	}
+
+	return encodedID, err
 }
 
 func checkTestMessage(t *testing.T, tgt *testTarget, indx int, sender string, rcpt []string) {

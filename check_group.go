@@ -3,8 +3,11 @@ package maddy
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-msgauth/authres"
+	"github.com/foxcpp/maddy/atomicbool"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/module"
 	"golang.org/x/sync/errgroup"
@@ -34,40 +37,81 @@ type checkGroupState struct {
 	states  []module.CheckState
 }
 
-func (cgs *checkGroupState) CheckConnection(ctx context.Context) error {
+func (cgs *checkGroupState) runAndMergeResults(ctx context.Context, runner func(context.Context, module.CheckState) module.CheckResult) module.CheckResult {
+	var (
+		checkScore     int32
+		quarantineFlag atomicbool.AtomicBool
+		authRes        []authres.Result
+		authResLock    sync.Mutex
+		header         textproto.Header
+		headerLock     sync.Mutex
+	)
+
 	syncGroup, childCtx := errgroup.WithContext(ctx)
 	for _, state := range cgs.states {
 		state := state
-		syncGroup.Go(func() error { return state.CheckConnection(childCtx) })
+		syncGroup.Go(func() error {
+			subCheckRes := runner(childCtx, state)
+
+			// We check the length because we don't want to take locks
+			// when it is not necessary.
+			if len(subCheckRes.AuthResult) != 0 {
+				authResLock.Lock()
+				authRes = append(authRes, subCheckRes.AuthResult...)
+				authResLock.Unlock()
+			}
+			if subCheckRes.Header.Len() != 0 {
+				headerLock.Lock()
+				for field := subCheckRes.Header.Fields(); field.Next(); {
+					header.Add(field.Key(), field.Value())
+				}
+				headerLock.Unlock()
+			}
+
+			if subCheckRes.ScoreAdjust != 0 {
+				atomic.AddInt32(&checkScore, subCheckRes.ScoreAdjust)
+			}
+			if subCheckRes.Quarantine {
+				quarantineFlag.Set(true)
+			}
+			if subCheckRes.RejectErr != nil {
+				return subCheckRes.RejectErr
+			}
+			return nil
+		})
 	}
-	return syncGroup.Wait()
+	err := syncGroup.Wait()
+	return module.CheckResult{
+		RejectErr:   err,
+		Quarantine:  quarantineFlag.IsSet(),
+		ScoreAdjust: checkScore,
+		AuthResult:  authRes,
+		Header:      header,
+	}
 }
 
-func (cgs *checkGroupState) CheckSender(ctx context.Context, from string) error {
-	syncGroup, childCtx := errgroup.WithContext(ctx)
-	for _, state := range cgs.states {
-		state := state
-		syncGroup.Go(func() error { return state.CheckSender(childCtx, from) })
-	}
-	return syncGroup.Wait()
+func (cgs *checkGroupState) CheckConnection(ctx context.Context) module.CheckResult {
+	return cgs.runAndMergeResults(ctx, func(childCtx context.Context, state module.CheckState) module.CheckResult {
+		return state.CheckConnection(childCtx)
+	})
 }
 
-func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) error {
-	syncGroup, childCtx := errgroup.WithContext(ctx)
-	for _, state := range cgs.states {
-		state := state
-		syncGroup.Go(func() error { return state.CheckRcpt(childCtx, to) })
-	}
-	return syncGroup.Wait()
+func (cgs *checkGroupState) CheckSender(ctx context.Context, from string) module.CheckResult {
+	return cgs.runAndMergeResults(ctx, func(childCtx context.Context, state module.CheckState) module.CheckResult {
+		return state.CheckSender(childCtx, from)
+	})
 }
 
-func (cgs *checkGroupState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error {
-	syncGroup, childCtx := errgroup.WithContext(ctx)
-	for _, state := range cgs.states {
-		state := state
-		syncGroup.Go(func() error { return state.CheckBody(childCtx, headerLock, header, body) })
-	}
-	return syncGroup.Wait()
+func (cgs *checkGroupState) CheckRcpt(ctx context.Context, to string) module.CheckResult {
+	return cgs.runAndMergeResults(ctx, func(childCtx context.Context, state module.CheckState) module.CheckResult {
+		return state.CheckRcpt(childCtx, to)
+	})
+}
+
+func (cgs *checkGroupState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
+	return cgs.runAndMergeResults(ctx, func(childCtx context.Context, state module.CheckState) module.CheckResult {
+		return state.CheckBody(childCtx, header, body)
+	})
 }
 
 func (cgs *checkGroupState) Close() error {

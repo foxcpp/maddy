@@ -458,7 +458,13 @@ be executed on all incoming messages. In most cases, checks have
 implicitly defined top-level configuration block, so you don't have
 to declare your own.
 
-If any of the used checks fails - message will be rejected.
+The way check failure is handled is defined by the check itself, 
+usually message will be quarantined.
+
+Note that if check that inspects the body is placed placed inside the
+destination block, its will affect the message for all 
+recipients. It's implementation deficiency and this behavior may 
+change in future versions, don't rely on it. 
 
 Example:
 ```

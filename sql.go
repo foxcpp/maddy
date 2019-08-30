@@ -120,7 +120,7 @@ func (sd *sqlDelivery) AddRcpt(rcptTo string) error {
 }
 
 func (sd *sqlDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if sd.msgMeta.Quarantine.IsSet() {
+	if sd.msgMeta.Quarantine {
 		if err := sd.d.SpecialMailbox(specialuse.Junk, sd.sqlm.junkMbox); err != nil {
 			return err
 		}

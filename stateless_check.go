@@ -3,8 +3,6 @@ package maddy
 import (
 	"context"
 	"net"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -30,10 +28,10 @@ type (
 		// should not do the same.
 		Logger log.Logger
 	}
-	FuncConnCheck   func(checkContext StatelessCheckContext) error
-	FuncSenderCheck func(checkContext StatelessCheckContext, mailFrom string) error
-	FuncRcptCheck   func(checkContext StatelessCheckContext, rcptTo string) error
-	FuncBodyCheck   func(checkContext StatelessCheckContext, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error
+	FuncConnCheck   func(checkContext StatelessCheckContext) module.CheckResult
+	FuncSenderCheck func(checkContext StatelessCheckContext, mailFrom string) module.CheckResult
+	FuncRcptCheck   func(checkContext StatelessCheckContext, rcptTo string) module.CheckResult
+	FuncBodyCheck   func(checkContext StatelessCheckContext, header textproto.Header, body buffer.Buffer) module.CheckResult
 )
 
 type statelessCheck struct {
@@ -74,72 +72,60 @@ func deliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 	}
 }
 
-func (s statelessCheckState) CheckConnection(ctx context.Context) error {
+func (s statelessCheckState) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.c.connCheck == nil {
-		return nil
+		return module.CheckResult{}
 	}
 
-	err := s.c.connCheck(StatelessCheckContext{
+	originalRes := s.c.connCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	})
-	if err == nil {
-		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
-	}
-	return s.c.failAction.apply(s.msgMeta, err)
+	return s.c.failAction.apply(originalRes)
 }
 
-func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) error {
+func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) module.CheckResult {
 	if s.c.senderCheck == nil {
-		return nil
+		return module.CheckResult{}
 	}
 
-	err := s.c.senderCheck(StatelessCheckContext{
+	originalRes := s.c.senderCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, mailFrom)
-	if err == nil {
-		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
-	}
-	return s.c.failAction.apply(s.msgMeta, err)
+	return s.c.failAction.apply(originalRes)
 }
 
-func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) error {
+func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult {
 	if s.c.rcptCheck == nil {
-		return nil
+		return module.CheckResult{}
 	}
 
-	err := s.c.rcptCheck(StatelessCheckContext{
+	originalRes := s.c.rcptCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
 	}, rcptTo)
-	if err == nil {
-		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
-	}
-	return s.c.failAction.apply(s.msgMeta, err)
+	return s.c.failAction.apply(originalRes)
 }
 
-func (s statelessCheckState) CheckBody(ctx context.Context, headerLock *sync.RWMutex, header textproto.Header, body buffer.Buffer) error {
+func (s statelessCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.bodyCheck == nil {
-		return nil
+		return module.CheckResult{}
 	}
 
-	err := s.c.bodyCheck(StatelessCheckContext{
+	originalRes := s.c.bodyCheck(StatelessCheckContext{
 		Resolver:  s.c.resolver,
 		MsgMeta:   s.msgMeta,
 		CancelCtx: ctx,
 		Logger:    deliveryLogger(s.c.logger, s.msgMeta),
-	}, headerLock, header, body)
-	if err == nil {
-		atomic.AddInt32(&s.msgMeta.ChecksScore, int32(s.c.okScore))
-	}
-	return s.c.failAction.apply(s.msgMeta, err)
+	}, header, body)
+	return s.c.failAction.apply(originalRes)
 }
 
 func (s statelessCheckState) Close() error {
@@ -176,6 +162,12 @@ func (c *statelessCheck) InstanceName() string {
 //
 // It creates the module and its instance with the specified name that implement module.Check interface
 // and runs passed functions when corresponding module.CheckState methods are called.
+//
+// Note about CheckResult that is returned by the functions:
+// StatelessCheck supports different action types based on the user configuration, but the particular check
+// code doesn't need to know about it. It should assume that it is always "reject" and hence it should
+// populate RejectErr field of the result object with the relevant error description. Fields ScoreAdjust and
+// Quarantine will be ignored.
 func RegisterStatelessCheck(name string, defaultFailAction checkFailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
 	module.Register(name, func(modName, instName string, aliases []string) (module.Module, error) {
 		return &statelessCheck{
