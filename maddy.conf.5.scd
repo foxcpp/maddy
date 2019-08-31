@@ -921,6 +921,9 @@ implicitly so you use then without an explicit block definition.
 All modules in this list support the following directives:
 - debug
   Enable verbose logging for this module.
+- fail_action ignore
+  Ignore the check failure, useful for testing deployments to see
+  how useful it is.
 - fail_action reject
   Reject the message instead of quarantining it.
 - fail_action quarantine

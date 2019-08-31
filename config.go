@@ -167,7 +167,7 @@ func checkFailActionDirective(m *config.Map, node *config.Node) (interface{}, er
 	}
 
 	switch node.Args[0] {
-	case "reject", "quarantine":
+	case "reject", "quarantine", "ignore":
 		if len(node.Args) > 1 {
 			return nil, m.MatchErr("too many arguments")
 		}
