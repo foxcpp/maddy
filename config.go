@@ -231,7 +231,7 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 			}
 			return nil, nil
 		default:
-			w, err := os.OpenFile(arg, os.O_RDWR, os.ModePerm)
+			w, err := os.OpenFile(arg, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}
