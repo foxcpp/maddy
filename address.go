@@ -44,11 +44,7 @@ func (a Address) String() string {
 	}
 	s += host
 
-	if a.Port != "" &&
-		((scheme == "imaps" && a.Port != "993") ||
-			(scheme == "imap" && a.Port != "143") ||
-			(scheme == "smtps" && a.Port != "465") ||
-			(scheme == "smtp" && a.Port != "25")) {
+	if a.Port != "" {
 		s += ":" + a.Port
 	}
 	if a.Path != "" {
