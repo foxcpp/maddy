@@ -137,7 +137,7 @@ func (s *SMTPSession) Data(r io.Reader) error {
 		return s.wrapErr(err)
 	}
 
-	s.log.Printf("message delivered")
+	s.log.Printf("message accepted")
 	s.delivery = nil
 
 	return nil
