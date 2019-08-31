@@ -174,7 +174,11 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 	var fsstoreLocation string
 	appendlimitVal := int64(-1)
 
-	opts := imapsql.Opts{}
+	opts := imapsql.Opts{
+		// Prevent deadlock if nobody is listening for updates (e.g. no IMAP
+		// configured).
+		LazyUpdatesInit: true,
+	}
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)

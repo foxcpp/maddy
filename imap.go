@@ -73,6 +73,12 @@ func (endp *IMAPEndpoint) Init(cfg *config.Map) error {
 		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
 	}
 
+	// Call Updates once at start, some storage backends initialize update
+	// channel lazily and may not generate updates at all unless it is called.
+	if endp.updater.Updates() != nil {
+		return fmt.Errorf("imap: failed to init backend: nil update channel")
+	}
+
 	args := append([]string{endp.name}, endp.aliases...)
 	addresses := make([]Address, 0, len(args))
 	for _, addr := range args {
