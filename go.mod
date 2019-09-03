@@ -13,11 +13,10 @@ require (
 	github.com/emersion/go-msgauth v0.2.0
 	github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e // indirect
 	github.com/emersion/go-smtp v0.11.2
-	github.com/foxcpp/go-imap-sql v0.3.2-0.20190821212600-0d4a8738a5f9
+	github.com/foxcpp/go-imap-sql v0.3.2-0.20190903221526-717d50a323df
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/uuid v1.1.1
-	github.com/json-iterator/go v1.1.7 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-sqlite3 v1.11.0

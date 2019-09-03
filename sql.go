@@ -211,6 +211,8 @@ func (sqlm *SQLStorage) Init(cfg *config.Map) error {
 		return err
 	}
 
+	opts.Log = &sqlm.Log
+
 	if sqlm.authPerDomain && sqlm.authDomains == nil {
 		return errors.New("sql: auth_domains must be set if auth_perdomain is used")
 	}
