@@ -7,7 +7,7 @@ import (
 var (
 	defaultConfigDirectory  = "/etc/maddy"
 	defaultStateDirectory   = "/var/lib/maddy"
-	defaultLibexecDirectory = "/usr/libexec/maddy"
+	defaultLibexecDirectory = "/usr/lib/maddy"
 )
 
 func ConfigDirectory() string {

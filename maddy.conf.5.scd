@@ -309,7 +309,7 @@ go build --ldflags '-X github.com/foxcpp/maddy.defaultStateDirectory=/opt/maddy/
 ## libexecdir <directory>
 
 Change the directory where all auxiliary binaries are stored.
-Default is $MADDYLIBEXEC environment variable or `/usr/libexec/maddy` if
+Default is $MADDYLIBEXEC environment variable or `/usr/lib/maddy` if
 $MADDYLIBEXEC is not set. The default value can be changed using -X linker
 flag during compilation:
 
