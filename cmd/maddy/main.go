@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", filepath.Join(maddy.ConfigDirectory(), "maddy.conf"), "path to configuration file")
+	configPath := flag.String("config", filepath.Join(config.ConfigDirectory(), "maddy.conf"), "path to configuration file")
 	debugFlag := flag.Bool("debug", false, "enable debug logging early")
 	profileEndpoint := flag.String("debug.pprof", "", "enable live profiler HTTP endpoint and listen on the specified endpoint")
 	blockProfileRate := flag.Int("debug.blockprofrate", 0, "set blocking profile rate")

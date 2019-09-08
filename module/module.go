@@ -1,6 +1,7 @@
-// Package module contains interfaces implemented by maddy modules.
+// Package module contains modules registry and interfaces implemented
+// by modules.
 //
-// They are moved to separate package to prevent circular dependencies.
+// Interfaces are placed here to prevent circular dependencies.
 //
 // Each interface required by maddy for operation is provided by some object
 // called "module".  This includes authentication, storage backends, DKIM,
