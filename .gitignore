@@ -34,5 +34,5 @@ cmd/maddy-*-helper/maddy-*-helper
 
 # Some directories that may be created during test-runs
 # in repo directory.
-mtasts-cache
-*queue
+cmd/maddy/*mtasts-cache
+cmd/maddy/*queue
