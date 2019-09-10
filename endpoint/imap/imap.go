@@ -76,7 +76,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 	// Call Updates once at start, some storage backends initialize update
 	// channel lazily and may not generate updates at all unless it is called.
-	if endp.updater.Updates() != nil {
+	if endp.updater.Updates() == nil {
 		return fmt.Errorf("imap: failed to init backend: nil update channel")
 	}
 
