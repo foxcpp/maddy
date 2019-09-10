@@ -70,7 +70,7 @@ func (a *Auth) CheckPlain(username, password string) bool {
 	ent, err := Lookup(username)
 	if err != nil {
 		if err != ErrNoSuchUser {
-			a.Log.Printf("%v, username = %s", username)
+			a.Log.Printf("%v, username = %s", err, username)
 		}
 		return false
 	}
@@ -87,7 +87,7 @@ func (a *Auth) CheckPlain(username, password string) bool {
 
 	if err := ent.VerifyPassword(password); err != nil {
 		if err != ErrWrongPassword {
-			a.Log.Println(os.Stderr, err)
+			a.Log.Printf("%v", err)
 		}
 		a.Log.Debugf("password verification failed, username = %s", username)
 		return false
