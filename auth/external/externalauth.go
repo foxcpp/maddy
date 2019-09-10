@@ -3,11 +3,8 @@ package external
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/foxcpp/maddy/auth"
 	"github.com/foxcpp/maddy/config"
@@ -58,27 +55,11 @@ func (ea *ExternalAuth) Init(cfg *config.Map) error {
 
 	if ea.helperPath != "" {
 		ea.Log.Debugln("using helper:", ea.helperPath)
-		return nil
+	} else {
+		ea.helperPath = filepath.Join(config.LibexecDirectory(cfg.Globals), "maddy-auth-helper")
 	}
-
-	helperName := "maddy-auth-helper"
-	switch ea.modName {
-	case "pam":
-		helperName = "maddy-pam-helper"
-	case "shadow":
-		helperName = "maddy-shadow-helper"
-	}
-
-	switch ea.modName {
-	case "pam", "shadow":
-		if ea.perDomain {
-			return errors.New("PAM/shadow authentication does not support per-domain namespacing (auth_perdomain)")
-		}
-	}
-
-	ea.helperPath = filepath.Join(config.LibexecDirectory(cfg.Globals), helperName)
 	if _, err := os.Stat(ea.helperPath); err != nil {
-		return fmt.Errorf("no %s authentication support, %s is not found in %s and no custom path is set", ea.modName, config.LibexecDirectory(cfg.Globals), helperName)
+		return fmt.Errorf("%s doesn't exist", ea.helperPath)
 	}
 
 	ea.Log.Debugln("using helper:", ea.helperPath)
@@ -92,46 +73,9 @@ func (ea *ExternalAuth) CheckPlain(username, password string) bool {
 		return false
 	}
 
-	cmd := exec.Command(ea.helperPath)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		ea.Log.Println("failed to obtain stdin pipe for helper process:", err)
-		return false
-	}
-
-	if err := cmd.Start(); err != nil {
-		ea.Log.Println("failed to start helper process:", err)
-		return false
-	}
-
-	if _, err := io.WriteString(stdin, accountName+"\n"); err != nil {
-		ea.Log.Println("failed to write stdin of helper process:", err)
-		return false
-	}
-	if _, err := io.WriteString(stdin, password+"\n"); err != nil {
-		ea.Log.Println("failed to write stdin of helper process:", err)
-		return false
-	}
-
-	if err := cmd.Wait(); err != nil {
-		ea.Log.Debugln(err)
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			// Exit code 1 is for authentication failure.
-			// Exit code 2 is for other errors.
-			if exitErr.ExitCode() == 2 {
-				ea.Log.Println(strings.TrimSpace(string(exitErr.Stderr)))
-			}
-		} else {
-			ea.Log.Println("failed to wait for helper process:", err)
-		}
-		return false
-	}
-
-	return true
+	return AuthUsingHelper(ea.Log, ea.helperPath, accountName, password)
 }
 
 func init() {
 	module.Register("extauth", NewExternalAuth)
-	module.Register("pam", NewExternalAuth)
-	module.Register("shadow", NewExternalAuth)
 }

@@ -13,6 +13,8 @@ import (
 
 	// Import packages for side-effect of module registration.
 	_ "github.com/foxcpp/maddy/auth/external"
+	_ "github.com/foxcpp/maddy/auth/pam"
+	_ "github.com/foxcpp/maddy/auth/shadow"
 	_ "github.com/foxcpp/maddy/check/dns"
 	_ "github.com/foxcpp/maddy/endpoint/imap"
 	_ "github.com/foxcpp/maddy/endpoint/smtp"

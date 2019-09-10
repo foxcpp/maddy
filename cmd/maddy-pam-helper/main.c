@@ -2,18 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <security/pam_appl.h>
+#include "pam.h"
 
 /*
 I really doubt it is a good idea to bring Go to the binary whose primary task
 is to call libpam using CGo anyway.
 */
-
-static struct pam_response *reply;
-
-static int conv_func(int num_msg, const struct pam_message **msg, struct pam_response **resp, void *appdata_ptr) {
-    *resp = reply;
-    return PAM_SUCCESS;
-}
 
 int run(void) {
     char *username = NULL, *password = NULL;
@@ -33,41 +27,18 @@ int run(void) {
 
     // Cut trailing \n.
     if (username_len > 0) {
-        username[username_len-1] = 0;
+        username[username_len - 1] = 0;
     }
     if (password_len > 0) {
-        password[password_len-1] = 0;
+        password[password_len - 1] = 0;
     }
 
-    const struct pam_conv local_conv = { conv_func, NULL };
-    pam_handle_t *local_auth = NULL;
-    int status = pam_start("maddy", username, &local_conv, &local_auth);
-    if (status != PAM_SUCCESS) {
-        fprintf(stderr, "pam_start: %s\n", pam_strerror(local_auth, status));
-        return 2;
-    }
-
-    reply = malloc(sizeof(struct pam_response));
-    if (reply == NULL) {
-        fprintf(stderr, "malloc returned NULL\n");
-        return 2;
-    }
-    reply->resp = password;
-    reply->resp_retcode = 0;
-    status = pam_authenticate(local_auth, PAM_SILENT|PAM_DISALLOW_NULL_AUTHTOK);
-    if (status != PAM_SUCCESS) {
-        if (status == PAM_AUTH_ERR || status == PAM_USER_UNKNOWN) {
-            return 1;
-        } else {
-            fprintf(stderr, "pam_authenticate: %s\n", pam_strerror(local_auth, status));
-            return 2;
+    struct error_obj err = run_pam_auth(username, password);
+    if (err.status != 0) {
+        if (err.status == 2) {
+            fprintf(stderr, "%s: %s\n", err.func_name, err.error_msg);
         }
-    }
-
-    status = pam_end(local_auth, status);
-    if (status != PAM_SUCCESS) {
-            fprintf(stderr, "pam_end: %s\n", pam_strerror(local_auth, status));
-            return 2;
+        return err.status;
     }
 
     return 0;

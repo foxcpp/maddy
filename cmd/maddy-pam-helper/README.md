@@ -7,7 +7,7 @@ privileged objects necessary to run PAM authentication.
 
 It is really easy to build it using any GCC:
 ```
-gcc main.c -lpam -o maddy-pam-helper
+gcc pam.c main.c -lpam -o maddy-pam-helper
 ```
 
 Yes, it is not a Go binary.

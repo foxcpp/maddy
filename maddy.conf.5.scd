@@ -874,7 +874,7 @@ Valid configuration directives:
 
 ## helper <file_path>
 
-Location of the helper binary.
+Location of the helper binary. Default is $MADDYLIBEXEC/maddy-auth-helper
 
 ## debug [yes/no]
 
@@ -888,26 +888,67 @@ Override corresponding global directives.
 
 # PAM MODULE
 
-Same as 'extauth' module but looks for maddy-pam-helper binary by default
-which implements authentication using the PAM stack.
+Implements authentication using libpam. Alternatively it can be configured to use
+helper binary like extauth does. 
+
+maddy should be built with CGo support enabled (default if C compiler is available) 
+to use this module without 'use_helper' directive. 
 
 ```
-pam
 smtp smtp://0.0.0.0 {
-    auth pam
+    auth pam { }
 }
+```
+
+## debug [yes/no]
+
+Verbose log only for this configuration block.
+
+## use_helper
+
+Use $MADDYLIBEXEC/maddy-pam-helper instead of directly calling libpam.
+You need to use that if:
+1. maddy is not compiled with CGo support, but maddy-pam-helper is built separately.
+2. maddy is running as an unprivileged user and used PAM configuration requires additional 
+privileges (e.g. when using system accounts).
+
+For 2, you need to make maddy-pam-helper binary setuid, see 
+cmd/maddy-pam-helper/README.md in source tree for details. 
+
+TL;DR (assuming you have maddy group):
+```
+chown root:maddy /usr/lib/maddy/maddy-pam-helper
+chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 ```
 
 # SHADOW MODULE
 
-Same as 'extauth' module but looks for maddy-shadow-helper binary by default
-which implements authentication using local shadow database (/etc/shadow).
+Implements authentication by reading /etc/shadow. Alternatively it can be 
+configured to use helper binary like extauth does. 
 
 ```
-shadow
 smtp smtp://0.0.0.0 {
-	auth shadow
+	auth shadow { }
 }
+```
+
+## debug [yes/no]
+
+Verbose log only for this configuration block.
+
+## use_helper
+
+Use $MADDYLIBEXEC/maddy-shadow-helper instead of directly reading /etc/shadow.
+You need to use that if maddy is running as an unprivileged user 
+privileges (e.g. when using system accounts).
+
+You need to make maddy-shadow-helper binary setuid, see 
+cmd/maddy-shadow-helper/README.md in source tree for details. 
+
+TL;DR (assuming you have maddy group):
+```
+chown root:maddy /usr/lib/maddy/maddy-shadow-helper
+chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
 ```
 
 # CHECK MODULES
