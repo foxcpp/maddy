@@ -262,7 +262,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		}
 		conn.serverName = addr
 
-		conn.Client, err = connectToServer(rd.rt.hostname, addr, rd.rt.requireTLS)
+		conn.Client, err = connectToServer(rd.rt.hostname, addr, rd.rt.requireTLS || stsPolicy != nil)
 		if err != nil {
 			rd.Log.Debugf("failed to connect to %s: %v", addr, err)
 			lastErr = err
