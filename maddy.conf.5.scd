@@ -692,6 +692,15 @@ Use an authentication module with a specified configuration block name.
 Preprocess messages before pushing them to target and require authentication
 for all operations. You should use it for Submission protocol endpoints.
 
+## defer_sender_reject [yes/no]
+
+Run sender-based checks and dispatching logic when first RCPT TO command
+is received. This allows maddy to log recipient address of the rejected
+message and also improves interoperability with (improperly implemented) 
+clients that don't expect an error early in session.
+
+Enabled by default. Disable with 'defer_sender_reject no'.
+
 ## target <block_name>
 
 Deliver messages to the delivery target defined by a specified configuration

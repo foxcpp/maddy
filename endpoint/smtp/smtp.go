@@ -41,10 +41,11 @@ func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 }
 
 type Session struct {
-	endp     *Endpoint
-	delivery module.Delivery
-	msgMeta  *module.MsgMetadata
-	log      log.Logger
+	endp        *Endpoint
+	delivery    module.Delivery
+	deliveryErr error
+	msgMeta     *module.MsgMetadata
+	log         log.Logger
 }
 
 var errInternal = &smtp.SMTPError{
@@ -73,16 +74,33 @@ func (s *Session) Mail(from string) error {
 
 	s.log.Printf("incoming message")
 
-	s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, from)
-	if err != nil {
-		s.log.Printf("sender rejected: %v", err)
-		return s.wrapErr(err)
+	if !s.endp.deferServerReject {
+		s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		if err != nil {
+			s.log.Printf("sender rejected: %v", err)
+			return s.wrapErr(err)
+		}
 	}
 
 	return nil
 }
 
 func (s *Session) Rcpt(to string) error {
+	if s.delivery == nil {
+		if s.deliveryErr != nil {
+			s.log.Printf("sender rejected (repeated): %v, RCPT TO = %s", s.deliveryErr, to)
+			return s.wrapErr(s.deliveryErr)
+		}
+
+		var err error
+		s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		if err != nil {
+			s.log.Printf("sender rejected (deferred): %v, RCPT TO = %s", err, to)
+			s.deliveryErr = err
+			return s.wrapErr(err)
+		}
+	}
+
 	err := s.delivery.AddRcpt(to)
 	if err != nil {
 		s.log.Printf("recipient rejected: %v, RCPT TO = %s", err, to)
@@ -163,8 +181,8 @@ type Endpoint struct {
 	dispatcher *dispatcher.Dispatcher
 
 	authAlwaysRequired bool
-
-	submission bool
+	submission         bool
+	deferServerReject  bool
 
 	listenersWg sync.WaitGroup
 
@@ -250,6 +268,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("submission", false, false, &submission)
+	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.AllowUnknown()
 	unmatched, err := cfg.Process()
 	if err != nil {
