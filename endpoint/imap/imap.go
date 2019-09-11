@@ -61,9 +61,9 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	cfg.Custom("auth", false, true, nil, modconfig.AuthDirective, &endp.Auth)
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, endpoint.TLSDirective, &endp.tlsConfig)
-	cfg.Bool("insecure_auth", false, &insecureAuth)
-	cfg.Bool("io_debug", false, &ioDebug)
-	cfg.Bool("debug", true, &endp.Log.Debug)
+	cfg.Bool("insecure_auth", false, false, &insecureAuth)
+	cfg.Bool("io_debug", false, false, &ioDebug)
+	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}

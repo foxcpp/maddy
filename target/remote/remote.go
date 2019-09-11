@@ -61,8 +61,8 @@ func New(_, instName string, _ []string) (module.Module, error) {
 func (rt *Target) Init(cfg *config.Map) error {
 	cfg.String("hostname", true, true, "", &rt.hostname)
 	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory(cfg.Globals), "mtasts-cache"), &rt.mtastsCache.Location)
-	cfg.Bool("debug", true, &rt.Log.Debug)
-	cfg.Bool("require_tls", false, &rt.requireTLS)
+	cfg.Bool("debug", true, false, &rt.Log.Debug)
+	cfg.Bool("require_tls", false, false, &rt.requireTLS)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}

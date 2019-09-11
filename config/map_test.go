@@ -314,10 +314,10 @@ func TestMapBool(t *testing.T) {
 	m := NewMap(nil, &cfg)
 
 	foo, bar, baz, boo := false, false, false, false
-	m.Bool("foo", false, &foo)
-	m.Bool("bar", false, &bar)
-	m.Bool("baz", false, &baz)
-	m.Bool("boo", false, &boo)
+	m.Bool("foo", false, false, &foo)
+	m.Bool("bar", false, false, &bar)
+	m.Bool("baz", false, false, &baz)
+	m.Bool("boo", false, false, &boo)
 
 	_, err := m.Process()
 	if err != nil {

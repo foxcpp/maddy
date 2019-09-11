@@ -37,8 +37,8 @@ func (a *Auth) InstanceName() string {
 }
 
 func (a *Auth) Init(cfg *config.Map) error {
-	cfg.Bool("debug", true, &a.Log.Debug)
-	cfg.Bool("use_helper", false, &a.useHelper)
+	cfg.Bool("debug", true, false, &a.Log.Debug)
+	cfg.Bool("use_helper", false, false, &a.useHelper)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}

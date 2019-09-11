@@ -196,13 +196,13 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
 	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
-	cfg.Bool("debug", true, &store.Log.Debug)
-	cfg.Bool("storage_perdomain", true, &store.storagePerDomain)
-	cfg.Bool("auth_perdomain", true, &store.authPerDomain)
+	cfg.Bool("debug", true, false, &store.Log.Debug)
+	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
+	cfg.Bool("auth_perdomain", true, false, &store.authPerDomain)
 	cfg.StringList("auth_domains", true, false, nil, &store.authDomains)
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
-	cfg.Bool("sqlite3_exclusive_lock", false, &opts.ExclusiveLock)
+	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
 
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {

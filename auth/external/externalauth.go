@@ -42,8 +42,8 @@ func (ea *ExternalAuth) InstanceName() string {
 }
 
 func (ea *ExternalAuth) Init(cfg *config.Map) error {
-	cfg.Bool("debug", true, &ea.Log.Debug)
-	cfg.Bool("auth_perdomain", true, &ea.perDomain)
+	cfg.Bool("debug", false, false, &ea.Log.Debug)
+	cfg.Bool("auth_perdomain", true, false, &ea.perDomain)
 	cfg.StringList("auth_domains", true, false, nil, &ea.domains)
 	cfg.String("helper", false, false, "", &ea.helperPath)
 	if _, err := cfg.Process(); err != nil {

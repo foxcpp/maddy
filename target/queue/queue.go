@@ -124,7 +124,7 @@ func NewQueue(_, instName string, _ []string) (module.Module, error) {
 
 func (q *Queue) Init(cfg *config.Map) error {
 	var workers int
-	cfg.Bool("debug", true, &q.Log.Debug)
+	cfg.Bool("debug", true, false, &q.Log.Debug)
 	cfg.Int("max_tries", false, false, 8, &q.maxTries)
 	cfg.Int("workers", false, false, 16, &workers)
 	cfg.String("location", false, false, "", &q.location)

@@ -125,13 +125,13 @@ func (c *statelessCheck) NewMessage(ctx *module.MsgMetadata) (module.CheckState,
 	}, nil
 }
 
-func (c *statelessCheck) Init(m *config.Map) error {
-	m.Bool("debug", true, &c.logger.Debug)
-	m.Custom("fail_action", false, false,
+func (c *statelessCheck) Init(cfg *config.Map) error {
+	cfg.Bool("debug", true, false, &c.logger.Debug)
+	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
 			return c.defaultFailAction, nil
 		}, failActionDirective, &c.failAction)
-	_, err := m.Process()
+	_, err := cfg.Process()
 	return err
 }
 

@@ -67,13 +67,15 @@ func (m *Map) AllowUnknown() {
 }
 
 // Bool maps presence of some configuration directive to a boolean variable.
+// Additionally, 'name yes' and 'name no' are mapped to true and false
+// correspondingly.
 //
 // I.e. if directive 'io_debug' exists in processed configuration block or in
 // the global configuration (if inheritGlobal is true) then Process will store
 // true in target variable.
-func (m *Map) Bool(name string, inheritGlobal bool, store *bool) {
+func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
-		return false, nil
+		return defaultVal, nil
 	}, func(m *Map, node *Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare block here")
@@ -332,6 +334,8 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 // defaultVal is a factory function that should return the default value for
 // the variable. It will be used if no value is set in the config. It can be
 // nil if required is true.
+// Note that if inheritGlobal is true, defaultVal of the global directive
+// will be used instead.
 //
 // mapper is a function that should convert configuration directive arguments
 // into variable value.  Both functions may fail with errors, configuration
