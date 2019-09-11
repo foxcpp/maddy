@@ -22,13 +22,13 @@ func failActionDirective(m *config.Map, node *config.Node) (interface{}, error) 
 	}
 
 	switch node.Args[0] {
-	case "Reject", "Quarantine", "ignore":
+	case "reject", "quarantine", "ignore":
 		if len(node.Args) > 1 {
 			return nil, m.MatchErr("too many arguments")
 		}
 		return FailAction{
-			Reject:     node.Args[0] == "Reject",
-			Quarantine: node.Args[0] == "Quarantine",
+			Reject:     node.Args[0] == "reject",
+			Quarantine: node.Args[0] == "quarantine",
 		}, nil
 	case "score":
 		if len(node.Args) != 2 {
