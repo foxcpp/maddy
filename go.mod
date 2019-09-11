@@ -1,5 +1,7 @@
 module github.com/foxcpp/maddy
 
+go 1.12
+
 require (
 	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46
 	github.com/emersion/go-imap v1.0.0
