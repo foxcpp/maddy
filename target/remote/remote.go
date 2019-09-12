@@ -357,6 +357,15 @@ func (rt *Target) lookupTargetServers(domain string) ([]string, error) {
 		return nil, err
 	}
 
+	// Fallback to A/AAA RR when no MX records are present as
+	// required by RFC 5321 Section 5.1.
+	if len(records) == 0 {
+		records = append(records, &net.MX{
+			Host: domain,
+			Pref: 0,
+		})
+	}
+
 	sort.Slice(records, func(i, j int) bool {
 		return records[i].Pref < records[j].Pref
 	})
