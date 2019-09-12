@@ -19,11 +19,11 @@ func lookupAddr(r dns.Resolver, ip net.IP) (string, error) {
 	return strings.TrimRight(names[0], "."), nil
 }
 
-func SanitizeString(raw string) string {
+func SanitizeForHeader(raw string) string {
 	return strings.Replace(raw, "\n", "", -1)
 }
 
-func GenerateReceived(r dns.Resolver, msgMeta *module.MsgMetadata, mailFrom, rcptTo string) string {
+func GenerateReceived(r dns.Resolver, msgMeta *module.MsgMetadata, ourHostname, mailFrom, rcptTo string) string {
 	var received string
 	if !msgMeta.DontTraceSender {
 		received += "from " + msgMeta.SrcHostname
@@ -38,7 +38,7 @@ func GenerateReceived(r dns.Resolver, msgMeta *module.MsgMetadata, mailFrom, rcp
 			}
 		}
 	}
-	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", SanitizeString(msgMeta.OurHostname), SanitizeString(mailFrom))
+	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", SanitizeForHeader(ourHostname), SanitizeForHeader(mailFrom))
 	received += fmt.Sprintf(" with %s id %s", msgMeta.SrcProto, msgMeta.ID)
 	if rcptTo != "" {
 		received += fmt.Sprintf(" for %s", rcptTo)

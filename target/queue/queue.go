@@ -712,7 +712,6 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 		ID:          dsnID,
 		SrcProto:    "",
 		SrcHostname: q.hostname,
-		OurHostname: q.hostname,
 	}
 	dl.Printf("generated failed DSN, DSN ID = %s", dsnID)
 

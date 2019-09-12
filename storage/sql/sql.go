@@ -43,6 +43,7 @@ type Storage struct {
 	authPerDomain    bool
 	authDomains      []string
 	junkMbox         string
+	hostname         string
 
 	resolver dns.Resolver
 }
@@ -84,7 +85,7 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 	// with small amount of per-recipient data in a efficient way.
 	userHeader := textproto.Header{}
 	userHeader.Add("Delivered-To", rcptTo)
-	userHeader.Add("Received", target.GenerateReceived(d.store.resolver, d.msgMeta, d.mailFrom, rcptTo))
+	userHeader.Add("Received", target.GenerateReceived(d.store.resolver, d.msgMeta, d.store.hostname, d.mailFrom, rcptTo))
 
 	if err := d.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
@@ -109,7 +110,7 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 	}
 
 	header = header.Copy()
-	header.Add("Return-Path", "<"+target.SanitizeString(d.mailFrom)+">")
+	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
 	return d.d.BodyParsed(header, d.msgMeta.BodyLength, body)
 }
 
@@ -172,6 +173,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
+	cfg.String("hostname", true, true, "", &store.hostname)
 
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "", nil

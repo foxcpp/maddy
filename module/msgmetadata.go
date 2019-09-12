@@ -48,12 +48,6 @@ type MsgMetadata struct {
 	// network address of client.
 	SrcAddr net.Addr
 
-	// Our domain.
-	// TODO: Strictly speaking, this field should not be here
-	// and should be passed explicitly to functions and objects
-	// that need it.
-	OurHostname string
-
 	// If set - no SrcHostname and SrcAddr will be added to Received
 	// header. These fields are still written to the server log.
 	DontTraceSender bool

@@ -156,9 +156,9 @@ func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 	// 'for' field in Received is useful, otherwise it is a privacy
 	// risk and reveals other recipients.
 	if len(rd.recipients) == 1 {
-		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.mailFrom, rd.recipients[0]))
+		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.rt.hostname, rd.mailFrom, rd.recipients[0]))
 	} else {
-		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.mailFrom, ""))
+		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.rt.hostname, rd.mailFrom, ""))
 	}
 
 	errChans := make(map[string]chan error, len(rd.connections))

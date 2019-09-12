@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func SubmissionPrepare(msgMeta *module.MsgMetadata, header textproto.Header) error {
+func SubmissionPrepare(msgMeta *module.MsgMetadata, header textproto.Header, ourHostname string) error {
 	msgMeta.DontTraceSender = true
 
 	if header.Get("Message-ID") == "" {
@@ -23,7 +23,7 @@ func SubmissionPrepare(msgMeta *module.MsgMetadata, header textproto.Header) err
 		}
 		// TODO: Move this function to smtpSession and use its logger.
 		log.Debugf("adding missing Message-ID header to message from %s (%s)", msgMeta.SrcHostname, msgMeta.SrcAddr)
-		header.Set("Message-ID", "<"+msgId.String()+"@"+msgMeta.OurHostname+">")
+		header.Set("Message-ID", "<"+msgId.String()+"@"+ourHostname+">")
 	}
 
 	if header.Get("From") == "" {

@@ -127,7 +127,7 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	if s.endp.submission {
-		if err := SubmissionPrepare(s.msgMeta, header); err != nil {
+		if err := SubmissionPrepare(s.msgMeta, header, s.endp.serv.Domain); err != nil {
 			s.log.Printf("malformed header or I/O error: %v", err)
 			return s.wrapErr(err)
 		}
@@ -385,7 +385,6 @@ func (endp *Endpoint) newSession(anonymous bool, username, password string, stat
 		SrcTLSState:  state.TLS,
 		SrcHostname:  state.Hostname,
 		SrcAddr:      state.RemoteAddr,
-		OurHostname:  endp.serv.Domain,
 	}
 
 	if endp.serv.LMTP {
