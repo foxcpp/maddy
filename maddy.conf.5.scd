@@ -147,6 +147,43 @@ smtp smtp://0.0.0.0 {
 The imported file can introduce new snippets and they can be referenced in any
 processed configuration file.
 
+## Duration values
+
+Directives that accept duration use the following format: A sequence of decimal digits with an optional fraction and 
+unit suffix (zero can be specified without a suffix). If multiple values are specified, they
+will be added.
+
+Valid unit suffixes: "h" (hours), "m" (minutes), "s" (seconds), "ms" (milliseconds).
+Implementation also accepts us and ns for microseconds and nanoseconds, but these 
+values are useless in practice.
+
+Examples:
+```
+1h
+1h 5m 
+1h5m
+0
+```
+
+## Data size values
+
+Similar to duration values, but fractions are not allowed and suffixes are different. 
+
+Valid unit suffixes: "G" (gibibyte, 1024^3 bytes), "M" (mebibyte, 1024^2 bytes), 
+"K" (kibibyte, 1024 bytes), "B" or "b" (byte).
+
+Examples:
+```
+32M
+3M 5K
+5b
+```
+
+Also note that the following is not valid, unlike Duration values syntax:
+```
+32M5K
+```
+
 # MODULAR FRAMEWORK
 
 maddy architecture consists of several components called "modules". Each module
@@ -670,17 +707,23 @@ Enable verbose logging only for this configuration block.
 Allow plain-text authentication over unencrypted connections. Not recommended!
 Enabled automatically if TLS is disabled.
 
-## read_timeout <value>`
+## read_timeout <duration>`
 
-I/O read timeout in seconds. The default is 10 minutes.
+I/O read timeout. The default is 10 minutes.
 
-## write_timeout <value>
+See SYNTAX for value format (unit suffixes, etc).
 
-I/O write timeout in seconds. The default is 1 minute.
+## write_timeout <duration>
 
-## max_message_size <value>
+I/O write timeout. The default is 1 minute.
 
-Limit the size of incoming messages to value bytes. The default is 32 MiB.
+See SYNTAX for value format (unit suffixes, etc).
+
+## max_message_size <size>
+
+Limit the size of incoming messages to 'size'. The default is 32 MiB.
+
+See SYNTAX for value format (unit suffixes, etc).
 
 ## auth <block_name>
 
@@ -732,9 +775,11 @@ For SQLite3 this is just a file path.
 For MySQL: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
 
-## appendlimit <value>
+## appendlimit <size>
 
-Refuse to accept messages larger than `value` bytes. The default is 32 MiB.
+Don't allow users to add new messages larger than 'size'. The default is 32 MiB.
+
+See SYNTAX for size value format (unit suffixes, etc).
 
 ## debug [yes/no]
 

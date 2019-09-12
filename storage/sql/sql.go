@@ -10,6 +10,7 @@ package sql
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -155,7 +156,7 @@ func New(_, instName string, _ []string) (module.Module, error) {
 func (store *Storage) Init(cfg *config.Map) error {
 	var driver, dsn string
 	var fsstoreLocation string
-	appendlimitVal := int64(-1)
+	appendlimitVal := -1
 
 	opts := imapsql.Opts{
 		// Prevent deadlock if nobody is listening for updates (e.g. no IMAP
@@ -164,7 +165,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	cfg.String("driver", false, true, "", &driver)
 	cfg.String("dsn", false, true, "", &dsn)
-	cfg.Int64("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
+	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
 	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
 	cfg.Bool("auth_perdomain", true, false, &store.authPerDomain)
@@ -215,6 +216,11 @@ func (store *Storage) Init(cfg *config.Map) error {
 	if appendlimitVal == -1 {
 		opts.MaxMsgBytes = nil
 	} else {
+		// int is 64-bit on some platforms, so cut off values we can't actually
+		// use.
+		if appendlimitVal > math.MaxUint32 {
+			return errors.New("sql: appendlimit can't be higher than 2 GiB")
+		}
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}

@@ -251,17 +251,13 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		err        error
 		ioDebug    bool
 		submission bool
-
-		writeTimeoutSecs uint
-		readTimeoutSecs  uint
 	)
 
 	cfg.Custom("auth", false, false, nil, modconfig.AuthDirective, &endp.Auth)
 	cfg.String("hostname", true, true, "", &endp.serv.Domain)
-	// TODO: Parse human-readable duration values.
-	cfg.UInt("write_timeout", false, false, 60, &writeTimeoutSecs)
-	cfg.UInt("read_timeout", false, false, 600, &readTimeoutSecs)
-	cfg.Int("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
+	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
+	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
+	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
 	cfg.Custom("tls", true, true, nil, endpoint.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", false, false, &endp.serv.AllowInsecureAuth)
@@ -286,9 +282,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	if submission {
 		endp.submission = true
 	}
-
-	endp.serv.WriteTimeout = time.Duration(writeTimeoutSecs) * time.Second
-	endp.serv.ReadTimeout = time.Duration(readTimeoutSecs) * time.Second
 
 	if endp.submission {
 		endp.authAlwaysRequired = true

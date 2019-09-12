@@ -1,9 +1,13 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
+	"time"
+	"unicode"
 )
 
 type matcher struct {
@@ -64,6 +68,124 @@ func (m *Map) MatchErr(format string, args ...interface{}) error {
 // of failing.
 func (m *Map) AllowUnknown() {
 	m.allowUnknown = true
+}
+
+// Duration maps configuration directive to a time.Duration variable.
+//
+// Directive must be in form 'name duration' where duration is any string accepted by
+// time.ParseDuration. As an additional requirement, result of time.ParseDuration must not
+// be negative.
+//
+// Note that for convenience, if directive does have multiple arguments, they will be joined
+// without separators. E.g. 'name 1h 2m' will become 'name 1h2m' and so '1h2m' will be passed
+// to time.ParseDuration.
+//
+// See Map.Custom for description of arguments.
+func (m *Map) Duration(name string, inheritGlobal, required bool, defaultVal time.Duration, store *time.Duration) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, m.MatchErr("can't declare block here")
+		}
+		if len(node.Args) == 0 {
+			return nil, m.MatchErr("at least one argument is required")
+		}
+
+		durationStr := strings.Join(node.Args, "")
+		dur, err := time.ParseDuration(durationStr)
+		if err != nil {
+			return nil, m.MatchErr("%v", err)
+		}
+
+		if dur < 0 {
+			return nil, m.MatchErr("duration must not be negative")
+		}
+
+		return dur, nil
+	}, store)
+}
+
+func parseDataSize(s string) (int, error) {
+	if len(s) == 0 {
+		return 0, errors.New("missing a number")
+	}
+
+	// ' ' terminates the number+suffix pair.
+	s = s + " "
+
+	var total int
+	currentDigit := ""
+	suffix := ""
+	for _, ch := range s {
+		if unicode.IsDigit(ch) {
+			if suffix != "" {
+				return 0, errors.New("unexpected digit after a suffix")
+			}
+			currentDigit += string(ch)
+			continue
+		}
+		if ch != ' ' {
+			suffix += string(ch)
+			continue
+		}
+
+		num, err := strconv.Atoi(currentDigit)
+		if err != nil {
+			return 0, err
+		}
+
+		if num < 0 {
+			return 0, errors.New("value must not be negative")
+		}
+
+		switch suffix {
+		case "G":
+			total += num * 1024 * 1024 * 1024
+		case "M":
+			total += num * 1024 * 1024
+		case "K":
+			total += num * 1024
+		case "B", "b":
+			total += num
+		default:
+			if num != 0 {
+				return 0, errors.New("unknown unit suffix: " + suffix)
+			}
+		}
+
+		suffix = ""
+		currentDigit = ""
+	}
+
+	return total, nil
+}
+
+// DataSize maps configuration directive to a int variable, representing data size.
+//
+// Syntax requires unit suffix to be added to the end of string to specify
+// data unit and allows multiple arguments (they will be added together).
+//
+// See Map.Custom for description of arguments.
+func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int, store *int) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, m.MatchErr("can't declare block here")
+		}
+		if len(node.Args) == 0 {
+			return nil, m.MatchErr("at least one argument is required")
+		}
+
+		durationStr := strings.Join(node.Args, " ")
+		dur, err := parseDataSize(durationStr)
+		if err != nil {
+			return nil, m.MatchErr("%v", err)
+		}
+
+		return dur, nil
+	}, store)
 }
 
 // Bool maps presence of some configuration directive to a boolean variable.

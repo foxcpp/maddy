@@ -337,3 +337,35 @@ func TestMapBool(t *testing.T) {
 		t.Errorf("Incorrect value stored in variable boo, want false, got true")
 	}
 }
+
+func TestParseDataSize(t *testing.T) {
+	check := func(s string, ok bool, expected int) {
+		val, err := parseDataSize(s)
+		if err != nil && ok {
+			t.Errorf("unexpected parseDataSize('%s') fail: %v", s, err)
+			return
+		}
+		if err == nil && !ok {
+			t.Errorf("unexpected parseDataSize('%s') success, got %d", s, val)
+			return
+		}
+		if val != expected {
+			t.Errorf("parseDataSize('%s') != %d", s, expected)
+			return
+		}
+	}
+
+	check("1M", true, 1024*1024)
+	check("1K", true, 1024)
+	check("1b", true, 1)
+	check("1M 5b", true, 1024*1024+5)
+	check("1M 5K 5b", true, 1024*1024+5*1024+5)
+	check("0", true, 0)
+	check("1", false, 0)
+	check("1d", false, 0)
+	check("d", false, 0)
+	check("unrelated", false, 0)
+	check("1M5b", false, 0)
+	check("", false, 0)
+	check("-5M", false, 0)
+}
