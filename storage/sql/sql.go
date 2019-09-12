@@ -8,14 +8,12 @@
 package sql
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
@@ -30,6 +28,7 @@ import (
 	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
+	"github.com/foxcpp/maddy/target"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -55,37 +54,6 @@ type delivery struct {
 	mailFrom string
 
 	addedRcpts map[string]struct{}
-}
-
-func LookupAddr(r dns.Resolver, ip net.IP) (string, error) {
-	names, err := r.LookupAddr(context.Background(), ip.String())
-	if err != nil || len(names) == 0 {
-		return "", err
-	}
-	return strings.TrimRight(names[0], "."), nil
-}
-
-func sanitizeString(raw string) string {
-	return strings.Replace(raw, "\n", "", -1)
-}
-
-func generateReceived(r dns.Resolver, msgMeta *module.MsgMetadata, mailFrom, rcptTo string) string {
-	var received string
-	if !msgMeta.DontTraceSender {
-		received += "from " + msgMeta.SrcHostname
-		if tcpAddr, ok := msgMeta.SrcAddr.(*net.TCPAddr); ok {
-			domain, err := LookupAddr(r, tcpAddr.IP)
-			if err != nil {
-				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
-			} else {
-				received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
-			}
-		}
-	}
-	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", sanitizeString(msgMeta.OurHostname), sanitizeString(mailFrom))
-	received += fmt.Sprintf(" with %s id %s", msgMeta.SrcProto, msgMeta.ID)
-	received += fmt.Sprintf(" for %s; %s", rcptTo, time.Now().Format(time.RFC1123Z))
-	return received
 }
 
 func (d *delivery) AddRcpt(rcptTo string) error {
@@ -116,7 +84,7 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 	// with small amount of per-recipient data in a efficient way.
 	userHeader := textproto.Header{}
 	userHeader.Add("Delivered-To", rcptTo)
-	userHeader.Add("Received", generateReceived(d.store.resolver, d.msgMeta, d.mailFrom, rcptTo))
+	userHeader.Add("Received", target.GenerateReceived(d.store.resolver, d.msgMeta, d.mailFrom, rcptTo))
 
 	if err := d.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
@@ -141,7 +109,7 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 	}
 
 	header = header.Copy()
-	header.Add("Return-Path", "<"+sanitizeString(d.mailFrom)+">")
+	header.Add("Return-Path", "<"+target.SanitizeString(d.mailFrom)+">")
 	return d.d.BodyParsed(header, d.msgMeta.BodyLength, body)
 }
 

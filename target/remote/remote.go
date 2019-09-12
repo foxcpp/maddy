@@ -108,6 +108,7 @@ type remoteDelivery struct {
 	msgMeta  *module.MsgMetadata
 	Log      log.Logger
 
+	recipients  []string
 	connections map[string]*remoteConnection
 }
 
@@ -144,11 +145,22 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 		return err
 	}
 
+	rd.recipients = append(rd.recipients, to)
 	conn.recipients = append(conn.recipients, to)
 	return nil
 }
 
 func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
+	headerCpy := header.Copy()
+	// If we are doing a delivery for a single recipient - then
+	// 'for' field in Received is useful, otherwise it is a privacy
+	// risk and reveals other recipients.
+	if len(rd.recipients) == 1 {
+		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.mailFrom, rd.recipients[0]))
+	} else {
+		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.mailFrom, ""))
+	}
+
 	errChans := make(map[string]chan error, len(rd.connections))
 	for domain := range rd.connections {
 		errChans[domain] = make(chan error)
