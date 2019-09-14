@@ -517,6 +517,26 @@ check {
 }
 ```
 
+## modify { ... }
+
+List of the configuration block names for modifier that should
+be executed on all incoming messages. In most cases, modifier have implicitly defined 
+top-level configuration block, so you don't have to declare your own.
+
+Message modifier are similar to checks with the difference in that
+checks purpose is to verify whether the message is legitimate and valid
+per local policy, while modifier purpose is to post-process message
+and its metadata before final delivery.
+
+For example, modifier can replace recipient address to make message
+delivered to the different mailbox or it can cryptographically sign
+outgoing message (e.g. using DKIM protocol). Some modifier can perform
+multiple modifications on the message.
+
+NOTE: Modifiers that affect the message header or source address can
+be used only globally or on per-source basis, they will be no-op
+inside destination blocks.
+
 ## reject [smtp code] [smtp enhanced code] [error description]
 
 Messages handled by the configuration block with this directive will be rejected
@@ -541,9 +561,9 @@ accordance with the specified configuration block.
 "Rule" is either a domain or a complete address. Duplicate rules are not allowed.
 
 A source block can contain the following directives: 'destination'/'default_destination',
-'check', 'deliver_to`, 'reject'. If you use the 'source' directive, then you must also use
-the 'default_source' directive to specify how to handle messages with senders not matched
-by any rules.
+'check', 'modify', 'deliver_to`, 'reject'. If you use the 'source' directive, then you 
+must also use the 'default_source' directive to specify how to handle messages 
+with senders not matched by any rules.
 
 A 'source' block can't be used with other directives at the same level.
 
@@ -577,9 +597,10 @@ Note that messages with multiple recipients are split into multiple messages if
 they have recipients matched by multiple blocks. Each block will see the message
 only with recipients matched by its rules.
 
-A destination block can contain the following directives: 'deliver_to', 'reject','check'.
-If you use the 'destination' directive then you must also use the 'default_destination'
-directive to specify how to handle messages with recipients not matched by any rules.
+A destination block can contain the following directives: 'deliver_to', 'reject','check',
+'modify'. If you use the 'destination' directive then you must also use the
+'default_destination' directive to specify how to handle messages with recipients 
+not matched by any rules.
 
 A 'destination' block can't be used with other directives at the same level.
 

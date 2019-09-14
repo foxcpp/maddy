@@ -41,7 +41,7 @@ func (l *Logger) Printf(format string, val ...interface{}) {
 }
 
 func (l *Logger) Println(val ...interface{}) {
-	l.log(false, strings.TrimSuffix(fmt.Sprintln(val...), "\n"))
+	l.log(false, fmt.Sprintln(val...))
 }
 
 func (l *Logger) Write(s []byte) (int, error) {

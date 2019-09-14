@@ -16,7 +16,7 @@ type Check struct {
 	BodyRes   module.CheckResult
 }
 
-func (c *Check) NewMessage(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &checkState{msgMeta, c}, nil
 }
 

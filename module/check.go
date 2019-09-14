@@ -11,9 +11,9 @@ import (
 // Check is the module interface that is meant for read-only (with the
 // exception of the message header modifications) (meta-)data checking.
 type Check interface {
-	// NewMessage initializing the "internal" check state required for
+	// CheckStateForMsg initializes the "internal" check state required for
 	// processing of the new message.
-	NewMessage(msgMeta *MsgMetadata) (CheckState, error)
+	CheckStateForMsg(msgMeta *MsgMetadata) (CheckState, error)
 }
 
 type CheckState interface {

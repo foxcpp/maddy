@@ -20,10 +20,10 @@ type Group struct {
 	Checks []module.Check
 }
 
-func (g *Group) NewMessage(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (g *Group) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	states := make([]module.CheckState, 0, len(g.Checks))
 	for _, check := range g.Checks {
-		state, err := check.NewMessage(msgMeta)
+		state, err := check.CheckStateForMsg(msgMeta)
 		if err != nil {
 			return nil, err
 		}

@@ -13,12 +13,13 @@ import (
 	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/modify"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
 )
 
 // Dispatcher is a object that is responsible for selecting delivery targets
-// for the message and running necessary checks and modificators.
+// for the message and running necessary checks and modifier.
 //
 // It implements module.DeliveryTarget.
 //
@@ -33,6 +34,7 @@ type Dispatcher struct {
 
 type sourceBlock struct {
 	checks      check.Group
+	modifiers   modify.Group
 	rejectErr   error
 	perRcpt     map[string]*rcptBlock
 	defaultRcpt *rcptBlock
@@ -40,6 +42,7 @@ type sourceBlock struct {
 
 type rcptBlock struct {
 	checks    check.Group
+	modifiers modify.Group
 	rejectErr error
 	targets   []module.DeliveryTarget
 }
@@ -52,18 +55,21 @@ func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatch
 }
 
 func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	// FIXME: Split that function. It is too huge.
+
 	dl := target.DeliveryLogger(d.Log, msgMeta)
 	dd := dispatcherDelivery{
-		d:               d,
-		rcptChecksState: make(map[*rcptBlock]module.CheckState),
-		deliveries:      make(map[module.DeliveryTarget]module.Delivery),
-		msgMeta:         msgMeta,
-		cancelCtx:       context.Background(),
-		log:             &dl,
-		checkScore:      0,
+		d:                  d,
+		rcptChecksState:    make(map[*rcptBlock]module.CheckState),
+		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
+		deliveries:         make(map[module.DeliveryTarget]module.Delivery),
+		msgMeta:            msgMeta,
+		cancelCtx:          context.Background(),
+		log:                &dl,
+		checkScore:         0,
 	}
 
-	globalChecksState, err := d.globalChecks.NewMessage(msgMeta)
+	globalChecksState, err := d.globalChecks.CheckStateForMsg(msgMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +86,20 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	}
 	dd.globalChecksState = globalChecksState
 
-	// TODO: Init global modificators, run RewriteSender.
+	globalModifiersState, err := d.globalModifiers.ModStateForMsg(msgMeta)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			globalModifiersState.Close()
+		}
+	}()
+	mailFrom, err = globalModifiersState.RewriteSender(mailFrom)
+	if err != nil {
+		return nil, err
+	}
+	dd.globalModifiersState = globalModifiersState
 
 	// First try to match against complete address.
 	sourceBlock, ok := d.perSource[strings.ToLower(mailFrom)]
@@ -113,7 +132,7 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	}
 	dd.sourceBlock = sourceBlock
 
-	sourceChecksState, err := sourceBlock.checks.NewMessage(msgMeta)
+	sourceChecksState, err := sourceBlock.checks.CheckStateForMsg(msgMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +149,20 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	}
 	dd.sourceChecksState = sourceChecksState
 
-	// TODO: Init per-sender modificators, run RewriteSender.
+	sourceModifiersState, err := sourceBlock.modifiers.ModStateForMsg(msgMeta)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			sourceModifiersState.Close()
+		}
+	}()
+	mailFrom, err = sourceModifiersState.RewriteSender(mailFrom)
+	if err != nil {
+		return nil, err
+	}
+	dd.sourceModifiersState = sourceModifiersState
 
 	dd.sourceAddr = mailFrom
 
@@ -138,10 +170,15 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 }
 
 type dispatcherDelivery struct {
-	d                 *Dispatcher
+	d *Dispatcher
+
 	globalChecksState module.CheckState
 	sourceChecksState module.CheckState
 	rcptChecksState   map[*rcptBlock]module.CheckState
+
+	globalModifiersState module.ModifierState
+	sourceModifiersState module.ModifierState
+	rcptModifiersState   map[*rcptBlock]module.ModifierState
 
 	log *log.Logger
 
@@ -157,6 +194,21 @@ type dispatcherDelivery struct {
 }
 
 func (dd *dispatcherDelivery) AddRcpt(to string) error {
+	// TODO: Add missing global check and source check calls.
+
+	newTo, err := dd.globalModifiersState.RewriteRcpt(to)
+	if err != nil {
+		return err
+	}
+	dd.log.Debugln("global rcpt modifiers:", to, "=>", newTo)
+	to = newTo
+	newTo, err = dd.sourceModifiersState.RewriteRcpt(to)
+	if err != nil {
+		return err
+	}
+	dd.log.Debugln("per-source rcpt modifiers:", to, "=>", newTo)
+	to = newTo
+
 	// First try to match against complete address.
 	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(to)]
 	if !ok {
@@ -190,7 +242,7 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	var rcptChecksState module.CheckState
 	if rcptChecksState, ok = dd.rcptChecksState[rcptBlock]; !ok {
 		var err error
-		rcptChecksState, err = rcptBlock.checks.NewMessage(dd.msgMeta)
+		rcptChecksState, err = rcptBlock.checks.CheckStateForMsg(dd.msgMeta)
 		if err != nil {
 			return err
 		}
@@ -208,7 +260,31 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 		return err
 	}
 
-	// TODO: Init per-rcpt modificators, run RewriteRcpt.
+	var rcptModifiersState module.ModifierState
+	if rcptModifiersState, ok = dd.rcptModifiersState[rcptBlock]; !ok {
+		var err error
+		rcptModifiersState, err = rcptBlock.modifiers.ModStateForMsg(dd.msgMeta)
+		if err != nil {
+			return err
+		}
+
+		newSender, err := rcptModifiersState.RewriteSender(dd.sourceAddr)
+		if err == nil && newSender != dd.sourceAddr {
+			dd.log.Printf("Per-recipient modifier changed sender address. This is not supported and will "+
+				"be ignored. RCPT TO = %s, original MAIL FROM = %s, modified MAIL FROM = %s",
+				to, dd.sourceAddr, newSender)
+		}
+
+		dd.rcptModifiersState[rcptBlock] = rcptModifiersState
+	}
+
+	newTo, err = rcptModifiersState.RewriteRcpt(to)
+	if err != nil {
+		rcptModifiersState.Close()
+		return err
+	}
+	dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
+	to = newTo
 
 	for _, target := range rcptBlock.targets {
 		var delivery module.Delivery
@@ -259,6 +335,15 @@ func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) 
 		header.Add(field.Key(), field.Value())
 	}
 
+	// Run modifiers after Authentication-Results addition to make
+	// sure signatures, etc will cover it.
+	if err := dd.globalModifiersState.RewriteBody(header, body); err != nil {
+		return err
+	}
+	if err := dd.sourceModifiersState.RewriteBody(header, body); err != nil {
+		return err
+	}
+
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Body(header, body); err != nil {
 			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v", delivery, err)
@@ -270,6 +355,12 @@ func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) 
 }
 
 func (dd dispatcherDelivery) Commit() error {
+	dd.globalModifiersState.Close()
+	dd.sourceModifiersState.Close()
+	for _, modifiers := range dd.rcptModifiersState {
+		modifiers.Close()
+	}
+
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Commit(); err != nil {
 			dd.log.Debugf("delivery.Commit failure, Delivery object = %T: %v", delivery, err)
@@ -282,6 +373,12 @@ func (dd dispatcherDelivery) Commit() error {
 }
 
 func (dd dispatcherDelivery) Abort() error {
+	dd.globalModifiersState.Close()
+	dd.sourceModifiersState.Close()
+	for _, modifiers := range dd.rcptModifiersState {
+		modifiers.Close()
+	}
+
 	var lastErr error
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Abort(); err != nil {

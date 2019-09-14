@@ -118,7 +118,7 @@ func (s statelessCheckState) Close() error {
 	return nil
 }
 
-func (c *statelessCheck) NewMessage(ctx *module.MsgMetadata) (module.CheckState, error) {
+func (c *statelessCheck) CheckStateForMsg(ctx *module.MsgMetadata) (module.CheckState, error) {
 	return statelessCheckState{
 		c:       c,
 		msgMeta: ctx,

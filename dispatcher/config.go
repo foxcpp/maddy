@@ -10,12 +10,14 @@ import (
 	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
+	"github.com/foxcpp/maddy/modify"
 )
 
 type dispatcherCfg struct {
-	globalChecks  check.Group
-	perSource     map[string]sourceBlock
-	defaultSource sourceBlock
+	globalChecks    check.Group
+	globalModifiers modify.Group
+	perSource       map[string]sourceBlock
+	defaultSource   sourceBlock
 
 	// If MsgMeta.CheckScore is higher than that value,
 	// message will be rejected.
@@ -41,6 +43,16 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 
 			var err error
 			cfg.globalChecks, err = parseChecksGroup(globals, node.Children)
+			if err != nil {
+				return dispatcherCfg{}, err
+			}
+		case "modify":
+			if len(node.Children) == 0 {
+				return dispatcherCfg{}, config.NodeErr(&node, "empty modifiers block")
+			}
+
+			var err error
+			cfg.globalModifiers, err = parseModifiersGroup(globals, node.Children)
 			if err != nil {
 				return dispatcherCfg{}, err
 			}
@@ -130,6 +142,16 @@ func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) 
 			if err != nil {
 				return sourceBlock{}, err
 			}
+		case "modify":
+			if len(node.Children) == 0 {
+				return sourceBlock{}, config.NodeErr(&node, "empty modifiers block")
+			}
+
+			var err error
+			src.modifiers, err = parseModifiersGroup(globals, node.Children)
+			if err != nil {
+				return sourceBlock{}, err
+			}
 		case "destination":
 			rcptBlock, err := parseDispatcherRcptCfg(globals, node.Children)
 			if err != nil {
@@ -189,6 +211,16 @@ func parseDispatcherRcptCfg(globals map[string]interface{}, nodes []config.Node)
 
 			var err error
 			rcpt.checks, err = parseChecksGroup(globals, node.Children)
+			if err != nil {
+				return nil, err
+			}
+		case "modify":
+			if len(node.Children) == 0 {
+				return nil, config.NodeErr(&node, "empty modifiers block")
+			}
+
+			var err error
+			rcpt.modifiers, err = parseModifiersGroup(globals, node.Children)
 			if err != nil {
 				return nil, err
 			}
@@ -290,6 +322,19 @@ func parseChecksGroup(globals map[string]interface{}, nodes []config.Node) (chec
 		checks.Checks = append(checks.Checks, msgCheck)
 	}
 	return checks, nil
+}
+
+func parseModifiersGroup(globals map[string]interface{}, nodes []config.Node) (modify.Group, error) {
+	modifiers := modify.Group{}
+	for _, child := range nodes {
+		modifier, err := modconfig.MsgModifier(globals, append([]string{child.Name}, child.Args...), &child)
+		if err != nil {
+			return modify.Group{}, err
+		}
+
+		modifiers.Modifiers = append(modifiers.Modifiers, modifier)
+	}
+	return modifiers, nil
 }
 
 func validDispatchRule(rule string) bool {
