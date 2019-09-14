@@ -55,9 +55,6 @@ func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatch
 }
 
 func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	// FIXME: Split that function. It is too huge.
-
-	dl := target.DeliveryLogger(d.Log, msgMeta)
 	dd := dispatcherDelivery{
 		d:                  d,
 		rcptChecksState:    make(map[*rcptBlock]module.CheckState),
@@ -65,59 +62,123 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		deliveries:         make(map[module.DeliveryTarget]module.Delivery),
 		msgMeta:            msgMeta,
 		cancelCtx:          context.Background(),
-		log:                &dl,
+		log:                target.DeliveryLogger(d.Log, msgMeta),
 		checkScore:         0,
 	}
 
-	globalChecksState, err := d.globalChecks.CheckStateForMsg(msgMeta)
-	if err != nil {
+	if err := dd.start(msgMeta, mailFrom); err != nil {
+		dd.close()
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			globalChecksState.Close()
-		}
-	}()
+
+	return &dd, nil
+}
+
+func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
+	var err error
+
+	if err := dd.initRunGlobalChecks(msgMeta, mailFrom); err != nil {
+		return err
+	}
+	if mailFrom, err = dd.initRunGlobalModifiers(msgMeta, mailFrom); err != nil {
+		return err
+	}
+
+	sourceBlock, err := dd.srcBlockForAddr(mailFrom)
+	if err != nil {
+		return err
+	}
+	if sourceBlock.rejectErr != nil {
+		dd.log.Debugf("sender %s rejected with error: %v", mailFrom, sourceBlock.rejectErr)
+		return sourceBlock.rejectErr
+	}
+	dd.sourceBlock = sourceBlock
+
+	if err := dd.initRunSourceChecks(sourceBlock, msgMeta, mailFrom); err != nil {
+		return err
+	}
+
+	sourceModifiersState, err := sourceBlock.modifiers.ModStateForMsg(msgMeta)
+	if err != nil {
+		return err
+	}
+	mailFrom, err = sourceModifiersState.RewriteSender(mailFrom)
+	if err != nil {
+		return err
+	}
+	dd.sourceModifiersState = sourceModifiersState
+
+	dd.sourceAddr = mailFrom
+	return nil
+}
+
+func (dd *dispatcherDelivery) initRunGlobalChecks(msgMeta *module.MsgMetadata, mailFrom string) error {
+	globalChecksState, err := dd.d.globalChecks.CheckStateForMsg(msgMeta)
+	if err != nil {
+		return err
+	}
 	if err := dd.checkResult(globalChecksState.CheckConnection(dd.cancelCtx)); err != nil {
-		return nil, err
+		globalChecksState.Close()
+		return err
 	}
 	if err := dd.checkResult(globalChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
-		return nil, err
+		globalChecksState.Close()
+		return err
 	}
 	dd.globalChecksState = globalChecksState
+	return nil
+}
 
-	globalModifiersState, err := d.globalModifiers.ModStateForMsg(msgMeta)
+func (dd *dispatcherDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
+	globalModifiersState, err := dd.d.globalModifiers.ModStateForMsg(msgMeta)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	defer func() {
-		if err != nil {
-			globalModifiersState.Close()
-		}
-	}()
 	mailFrom, err = globalModifiersState.RewriteSender(mailFrom)
 	if err != nil {
-		return nil, err
+		globalModifiersState.Close()
+		return "", err
 	}
 	dd.globalModifiersState = globalModifiersState
+	return mailFrom, nil
+}
 
+func (dd *dispatcherDelivery) initRunSourceChecks(srcBlock sourceBlock, msgMeta *module.MsgMetadata, mailFrom string) error {
+	sourceChecksState, err := srcBlock.checks.CheckStateForMsg(msgMeta)
+	if err != nil {
+		return err
+	}
+	if err := dd.checkResult(sourceChecksState.CheckConnection(dd.cancelCtx)); err != nil {
+		sourceChecksState.Close()
+		return err
+	}
+	if err := dd.checkResult(sourceChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
+		sourceChecksState.Close()
+		return err
+	}
+	dd.sourceChecksState = sourceChecksState
+	return nil
+}
+
+func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
 	// First try to match against complete address.
-	sourceBlock, ok := d.perSource[strings.ToLower(mailFrom)]
+	srcBlock, ok := dd.d.perSource[strings.ToLower(mailFrom)]
 	if !ok {
 		// Then try domain-only.
 		_, domain, err := address.Split(mailFrom)
 		if err != nil {
-			return nil, &smtp.SMTPError{
+			dd.close()
+			return sourceBlock{}, &smtp.SMTPError{
 				Code:         501,
 				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
 				Message:      "Invalid sender address: " + err.Error(),
 			}
 		}
 
-		sourceBlock, ok = d.perSource[strings.ToLower(domain)]
+		srcBlock, ok = dd.d.perSource[strings.ToLower(domain)]
 		if !ok {
 			// Fallback to the default source block.
-			sourceBlock = d.defaultSource
+			srcBlock = dd.d.defaultSource
 			dd.log.Debugf("sender %s matched by default rule", mailFrom)
 		} else {
 			dd.log.Debugf("sender %s matched by domain rule '%s'", mailFrom, strings.ToLower(domain))
@@ -125,48 +186,7 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	} else {
 		dd.log.Debugf("sender %s matched by address rule '%s'", mailFrom, strings.ToLower(mailFrom))
 	}
-
-	if sourceBlock.rejectErr != nil {
-		dd.log.Debugf("sender %s rejected with error: %v", mailFrom, sourceBlock.rejectErr)
-		return nil, sourceBlock.rejectErr
-	}
-	dd.sourceBlock = sourceBlock
-
-	sourceChecksState, err := sourceBlock.checks.CheckStateForMsg(msgMeta)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			sourceChecksState.Close()
-		}
-	}()
-	if err := dd.checkResult(sourceChecksState.CheckConnection(dd.cancelCtx)); err != nil {
-		return nil, err
-	}
-	if err := dd.checkResult(sourceChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
-		return nil, err
-	}
-	dd.sourceChecksState = sourceChecksState
-
-	sourceModifiersState, err := sourceBlock.modifiers.ModStateForMsg(msgMeta)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			sourceModifiersState.Close()
-		}
-	}()
-	mailFrom, err = sourceModifiersState.RewriteSender(mailFrom)
-	if err != nil {
-		return nil, err
-	}
-	dd.sourceModifiersState = sourceModifiersState
-
-	dd.sourceAddr = mailFrom
-
-	return &dd, nil
+	return srcBlock, nil
 }
 
 type dispatcherDelivery struct {
@@ -180,7 +200,7 @@ type dispatcherDelivery struct {
 	sourceModifiersState module.ModifierState
 	rcptModifiersState   map[*rcptBlock]module.ModifierState
 
-	log *log.Logger
+	log log.Logger
 
 	sourceAddr  string
 	sourceBlock sourceBlock
@@ -194,7 +214,12 @@ type dispatcherDelivery struct {
 }
 
 func (dd *dispatcherDelivery) AddRcpt(to string) error {
-	// TODO: Add missing global check and source check calls.
+	if err := dd.checkResult(dd.globalChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
+		return err
+	}
+	if err := dd.checkResult(dd.sourceChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
+		return err
+	}
 
 	newTo, err := dd.globalModifiersState.RewriteRcpt(to)
 	if err != nil {
@@ -209,29 +234,9 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	dd.log.Debugln("per-source rcpt modifiers:", to, "=>", newTo)
 	to = newTo
 
-	// First try to match against complete address.
-	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(to)]
-	if !ok {
-		// Then try domain-only.
-		_, domain, err := address.Split(to)
-		if err != nil {
-			return &smtp.SMTPError{
-				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
-				Message:      "Invalid recipient address: " + err.Error(),
-			}
-		}
-
-		rcptBlock, ok = dd.sourceBlock.perRcpt[strings.ToLower(domain)]
-		if !ok {
-			// Fallback to the default source block.
-			rcptBlock = dd.sourceBlock.defaultRcpt
-			dd.log.Debugf("recipient %s matched by default rule", to)
-		} else {
-			dd.log.Debugf("recipient %s matched by domain rule '%s'", to, strings.ToLower(domain))
-		}
-	} else {
-		dd.log.Debugf("recipient %s matched by address rule '%s'", to, strings.ToLower(to))
+	rcptBlock, err := dd.rcptBlockForAddr(to)
+	if err != nil {
+		return err
 	}
 
 	if rcptBlock.rejectErr != nil {
@@ -239,43 +244,17 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 		return rcptBlock.rejectErr
 	}
 
-	var rcptChecksState module.CheckState
-	if rcptChecksState, ok = dd.rcptChecksState[rcptBlock]; !ok {
-		var err error
-		rcptChecksState, err = rcptBlock.checks.CheckStateForMsg(dd.msgMeta)
-		if err != nil {
-			return err
-		}
-
-		if err := dd.checkResult(rcptChecksState.CheckConnection(dd.cancelCtx)); err != nil {
-			return err
-		}
-		if err := dd.checkResult(rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr)); err != nil {
-			return err
-		}
-		dd.rcptChecksState[rcptBlock] = rcptChecksState
+	rcptChecksState, err := dd.getRcptChecks(rcptBlock)
+	if err != nil {
+		return err
 	}
-
 	if err := dd.checkResult(rcptChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
 		return err
 	}
 
-	var rcptModifiersState module.ModifierState
-	if rcptModifiersState, ok = dd.rcptModifiersState[rcptBlock]; !ok {
-		var err error
-		rcptModifiersState, err = rcptBlock.modifiers.ModStateForMsg(dd.msgMeta)
-		if err != nil {
-			return err
-		}
-
-		newSender, err := rcptModifiersState.RewriteSender(dd.sourceAddr)
-		if err == nil && newSender != dd.sourceAddr {
-			dd.log.Printf("Per-recipient modifier changed sender address. This is not supported and will "+
-				"be ignored. RCPT TO = %s, original MAIL FROM = %s, modified MAIL FROM = %s",
-				to, dd.sourceAddr, newSender)
-		}
-
-		dd.rcptModifiersState[rcptBlock] = rcptModifiersState
+	rcptModifiersState, err := dd.getRcptModifiers(rcptBlock, to)
+	if err != nil {
+		return err
 	}
 
 	newTo, err = rcptModifiersState.RewriteRcpt(to)
@@ -286,21 +265,10 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
 	to = newTo
 
-	for _, target := range rcptBlock.targets {
-		var delivery module.Delivery
-		var err error
-		if delivery, ok = dd.deliveries[target]; !ok {
-			delivery, err = target.Start(dd.msgMeta, dd.sourceAddr)
-			if err != nil {
-				dd.log.Debugf("target.Start(%s) failure, target = %s (%s): %v",
-					dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name(), err)
-				return err
-			}
-
-			dd.log.Debugf("target.Start(%s) ok, target = %s (%s)",
-				dd.sourceAddr, target.(module.Module).InstanceName(), target.(module.Module).Name())
-
-			dd.deliveries[target] = delivery
+	for _, tgt := range rcptBlock.targets {
+		delivery, err := dd.getDelivery(tgt)
+		if err != nil {
+			return err
 		}
 
 		if err := delivery.AddRcpt(to); err != nil {
@@ -355,11 +323,7 @@ func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) 
 }
 
 func (dd dispatcherDelivery) Commit() error {
-	dd.globalModifiersState.Close()
-	dd.sourceModifiersState.Close()
-	for _, modifiers := range dd.rcptModifiersState {
-		modifiers.Close()
-	}
+	dd.close()
 
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Commit(); err != nil {
@@ -372,12 +336,31 @@ func (dd dispatcherDelivery) Commit() error {
 	return nil
 }
 
-func (dd dispatcherDelivery) Abort() error {
-	dd.globalModifiersState.Close()
-	dd.sourceModifiersState.Close()
+func (dd *dispatcherDelivery) close() {
+	// these fields can be nil if delivery is partially initialized (in Dispatcher.Start method)
+	if dd.globalChecksState != nil {
+		dd.globalChecksState.Close()
+	}
+	if dd.sourceChecksState != nil {
+		dd.sourceChecksState.Close()
+	}
+	for _, check_ := range dd.rcptChecksState {
+		check_.Close()
+	}
+
+	if dd.globalModifiersState != nil {
+		dd.globalModifiersState.Close()
+	}
+	if dd.sourceModifiersState != nil {
+		dd.sourceModifiersState.Close()
+	}
 	for _, modifiers := range dd.rcptModifiersState {
 		modifiers.Close()
 	}
+}
+
+func (dd dispatcherDelivery) Abort() error {
+	dd.close()
 
 	var lastErr error
 	for _, delivery := range dd.deliveries {
@@ -422,4 +405,97 @@ func (dd *dispatcherDelivery) checkResult(checkResult module.CheckResult) error 
 		dd.header.Add(field.Key(), field.Value())
 	}
 	return nil
+}
+
+func (dd *dispatcherDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
+	// First try to match against complete address.
+	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(rcptTo)]
+	if !ok {
+		// Then try domain-only.
+		_, domain, err := address.Split(rcptTo)
+		if err != nil {
+			return nil, &smtp.SMTPError{
+				Code:         501,
+				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
+				Message:      "Invalid recipient address: " + err.Error(),
+			}
+		}
+
+		rcptBlock, ok = dd.sourceBlock.perRcpt[strings.ToLower(domain)]
+		if !ok {
+			// Fallback to the default source block.
+			rcptBlock = dd.sourceBlock.defaultRcpt
+			dd.log.Debugf("recipient %s matched by default rule", rcptTo)
+		} else {
+			dd.log.Debugf("recipient %s matched by domain rule '%s'", rcptTo, strings.ToLower(domain))
+		}
+	} else {
+		dd.log.Debugf("recipient %s matched by address rule '%s'", rcptTo, strings.ToLower(rcptTo))
+	}
+	return rcptBlock, nil
+}
+
+func (dd *dispatcherDelivery) getRcptChecks(rcptBlock *rcptBlock) (module.CheckState, error) {
+	rcptChecksState, ok := dd.rcptChecksState[rcptBlock]
+	if ok {
+		return rcptChecksState, nil
+	}
+
+	rcptChecksState, err := rcptBlock.checks.CheckStateForMsg(dd.msgMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := dd.checkResult(rcptChecksState.CheckConnection(dd.cancelCtx)); err != nil {
+		rcptChecksState.Close()
+		return nil, err
+	}
+	if err := dd.checkResult(rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr)); err != nil {
+		rcptChecksState.Close()
+		return nil, err
+	}
+	dd.rcptChecksState[rcptBlock] = rcptChecksState
+	return rcptChecksState, nil
+}
+
+func (dd *dispatcherDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
+	rcptModifiersState, ok := dd.rcptModifiersState[rcptBlock]
+	if ok {
+		return rcptModifiersState, nil
+	}
+
+	rcptModifiersState, err := rcptBlock.modifiers.ModStateForMsg(dd.msgMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	newSender, err := rcptModifiersState.RewriteSender(dd.sourceAddr)
+	if err == nil && newSender != dd.sourceAddr {
+		dd.log.Printf("Per-recipient modifier changed sender address. This is not supported and will "+
+			"be ignored. RCPT TO = %s, original MAIL FROM = %s, modified MAIL FROM = %s",
+			rcptTo, dd.sourceAddr, newSender)
+	}
+
+	dd.rcptModifiersState[rcptBlock] = rcptModifiersState
+	return rcptModifiersState, nil
+}
+
+func (dd *dispatcherDelivery) getDelivery(tgt module.DeliveryTarget) (module.Delivery, error) {
+	delivery, ok := dd.deliveries[tgt]
+	if ok {
+		return delivery, nil
+	}
+
+	delivery, err := tgt.Start(dd.msgMeta, dd.sourceAddr)
+	if err != nil {
+		dd.log.Debugf("tgt.Start(%s) failure, target = %s (%s): %v",
+			dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name(), err)
+		return nil, err
+	}
+
+	dd.log.Debugf("tgt.Start(%s) ok, target = %s (%s)",
+		dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name())
+
+	dd.deliveries[tgt] = delivery
+	return delivery, nil
 }

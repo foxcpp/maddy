@@ -10,13 +10,21 @@ import (
 )
 
 type Check struct {
+	InitErr   error
 	ConnRes   module.CheckResult
 	SenderRes module.CheckResult
 	RcptRes   module.CheckResult
 	BodyRes   module.CheckResult
+
+	UnclosedStates int
 }
 
 func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+	if c.InitErr != nil {
+		return nil, c.InitErr
+	}
+
+	c.UnclosedStates++
 	return &checkState{msgMeta, c}, nil
 }
 
@@ -54,6 +62,7 @@ func (cs *checkState) CheckBody(ctx context.Context, header textproto.Header, bo
 }
 
 func (cs *checkState) Close() error {
+	cs.check.UnclosedStates--
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
@@ -40,6 +41,10 @@ func TestDispatcher_NoScoresChecked(t *testing.T) {
 	if target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is quarantined when it shouldn't")
 	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
 }
 
 func TestDispatcher_RejectScore(t *testing.T) {
@@ -72,6 +77,10 @@ func TestDispatcher_RejectScore(t *testing.T) {
 
 	if len(target.Messages) != 0 {
 		t.Fatalf("wrong amount of messages received, want %d, got %d", 0, len(target.Messages))
+	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
 	}
 }
 
@@ -106,6 +115,10 @@ func TestDispatcher_RejectScore_notEnough(t *testing.T) {
 	if target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is quarantined when it shouldn't")
 	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
 }
 
 func TestDispatcher_Quarantine(t *testing.T) {
@@ -137,6 +150,10 @@ func TestDispatcher_Quarantine(t *testing.T) {
 	}
 	if !target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is not quarantined when it should")
+	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
 	}
 }
 
@@ -172,6 +189,10 @@ func TestDispatcher_QuarantineScore(t *testing.T) {
 	if !target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is not quarantined when it should")
 	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
 }
 
 func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
@@ -205,6 +226,10 @@ func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
 	}
 	if target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is quarantined when it shouldn't")
+	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
 	}
 }
 
@@ -242,6 +267,10 @@ func TestDispatcher_BothScores_Quarantined(t *testing.T) {
 	if !target.Messages[0].MsgMeta.Quarantine {
 		t.Fatalf("message is not quarantined when it should")
 	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
 }
 
 func TestDispatcher_BothScores_Rejected(t *testing.T) {
@@ -276,6 +305,10 @@ func TestDispatcher_BothScores_Rejected(t *testing.T) {
 
 	if len(target.Messages) != 0 {
 		t.Fatalf("wrong amount of messages received, want %d, got %d", 0, len(target.Messages))
+	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
 	}
 }
 
@@ -356,6 +389,10 @@ func TestDispatcher_AuthResults(t *testing.T) {
 	if !seen2 {
 		t.Fatalf("Second authRes is missing")
 	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
 }
 
 func TestDispatcher_Headers(t *testing.T) {
@@ -400,5 +437,251 @@ func TestDispatcher_Headers(t *testing.T) {
 	}
 	if target.Messages[0].Header.Get("HDR2") != "2" {
 		t.Fatalf("wrong HDR2 value, want %s, got %s", "1", target.Messages[0].Header.Get("HDR2"))
+	}
+
+	if check1.UnclosedStates != 0 || check2.UnclosedStates != 0 {
+		t.Fatalf("checks state objects leak or double-closed, alive counters: %v, %v", check1.UnclosedStates, check2.UnclosedStates)
+	}
+}
+
+func TestDispatcher_Globalcheck_Errors(t *testing.T) {
+	target := testutils.Target{}
+	check_ := testutils.Check{
+		InitErr:   errors.New("1"),
+		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
+		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
+		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
+		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+	}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			globalChecks: check.Group{Checks: []module.Check{&check_}},
+			perSource:    map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Hostname: "TEST-HOST",
+		Log:      testutils.Logger(t, "dispatcher"),
+	}
+
+	t.Run("init err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.InitErr = nil
+
+	t.Run("conn err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.ConnRes.RejectErr = nil
+
+	t.Run("mail from err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.SenderRes.RejectErr = nil
+
+	t.Run("rcpt to err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.RcptRes.RejectErr = nil
+
+	t.Run("body err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.BodyRes.RejectErr = nil
+
+	t.Run("no err", func(t *testing.T) {
+		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+	})
+
+	if check_.UnclosedStates != 0 {
+		t.Fatalf("check state objects leak or double-closed, counters: %d", check_.UnclosedStates)
+	}
+}
+
+func TestDispatcher_SourceCheck_Errors(t *testing.T) {
+	target := testutils.Target{}
+	check_ := testutils.Check{
+		InitErr:   errors.New("1"),
+		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
+		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
+		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
+		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+	}
+	globalCheck := testutils.Check{}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			globalChecks: check.Group{Checks: []module.Check{&globalCheck}},
+			perSource:    map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				checks:  check.Group{Checks: []module.Check{&check_}},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Hostname: "TEST-HOST",
+		Log:      testutils.Logger(t, "dispatcher"),
+	}
+
+	t.Run("init err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.InitErr = nil
+
+	t.Run("conn err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.ConnRes.RejectErr = nil
+
+	t.Run("mail from err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.SenderRes.RejectErr = nil
+
+	t.Run("rcpt to err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.RcptRes.RejectErr = nil
+
+	t.Run("body err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.BodyRes.RejectErr = nil
+
+	t.Run("no err", func(t *testing.T) {
+		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+	})
+
+	if check_.UnclosedStates != 0 || globalCheck.UnclosedStates != 0 {
+		t.Fatalf("check state objects leak or double-closed, counters: %d, %d",
+			check_.UnclosedStates, globalCheck.UnclosedStates)
+	}
+}
+
+func TestDispatcher_RcptCheck_Errors(t *testing.T) {
+	target := testutils.Target{}
+	check_ := testutils.Check{
+		InitErr:   errors.New("1"),
+		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
+		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
+		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
+		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+	}
+	// Added to check whether it leaks.
+	globalCheck := testutils.Check{}
+	sourceCheck := testutils.Check{}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			globalChecks: check.Group{Checks: []module.Check{&globalCheck}},
+			perSource:    map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				checks:  check.Group{Checks: []module.Check{&check_}},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Hostname: "TEST-HOST",
+		Log:      testutils.Logger(t, "dispatcher"),
+	}
+
+	t.Run("init err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.InitErr = nil
+
+	t.Run("conn err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.ConnRes.RejectErr = nil
+
+	t.Run("mail from err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.SenderRes.RejectErr = nil
+
+	t.Run("rcpt to err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.RcptRes.RejectErr = nil
+
+	t.Run("body err", func(t *testing.T) {
+		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	check_.BodyRes.RejectErr = nil
+
+	t.Run("no err", func(t *testing.T) {
+		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+	})
+
+	if check_.UnclosedStates != 0 || sourceCheck.UnclosedStates != 0 || globalCheck.UnclosedStates != 0 {
+		t.Fatalf("check state objects leak or double-closed, counters: %d, %d, %d",
+			check_.UnclosedStates, sourceCheck.UnclosedStates, globalCheck.UnclosedStates)
 	}
 }
