@@ -55,6 +55,8 @@ func (l Logger) DebugWriter() *Logger {
 }
 
 func (l *Logger) log(debug bool, s string) {
+	s = strings.TrimRight(s, "\n\t ")
+
 	if l.Name != "" {
 		s = l.Name + ": " + s
 	}
