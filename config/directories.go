@@ -1,39 +1,29 @@
 package config
 
-import (
-	"os"
-)
-
 var (
-	defaultConfigDirectory  = "/etc/maddy"
-	defaultStateDirectory   = "/var/lib/maddy"
-	defaultLibexecDirectory = "/usr/lib/maddy"
+	// StateDirectory contains the path to the directory that
+	// should be used to store any data that should be
+	// preserved between sessions.
+	//
+	// Value of this variable must not change after initialization
+	// in cmd/maddy/main.go.
+	StateDirectory string
+
+	// RuntimeDirectory contains the path to the directory that
+	// should be used to store any temporary data.
+	//
+	// It should be preferred over os.TempDir, which is
+	// global and world-readable on most systems, while
+	// RuntimeDirectory can be dedicated for maddy.
+	//
+	// Value of this variable must not change after initialization
+	// in cmd/maddy/main.go.
+	RuntimeDirectory string
+
+	// LibexecDirectory contains the path to the directory
+	// where helper binaries should be searched.
+	//
+	// Value of this variable must not change after initialization
+	// in cmd/maddy/main.go.
+	LibexecDirectory string
 )
-
-func ConfigDirectory() string {
-	return defaultConfigDirectory
-}
-
-func StateDirectory(globals map[string]interface{}) string {
-	if dir := os.Getenv("MADDYSTATE"); dir != "" {
-		return dir
-	}
-
-	if val, ok := globals["statedir"]; ok && val.(string) != "" {
-		return val.(string)
-	}
-
-	return defaultStateDirectory
-}
-
-func LibexecDirectory(globals map[string]interface{}) string {
-	if dir := os.Getenv("MADDYLIBEXEC"); dir != "" {
-		return dir
-	}
-
-	if val, ok := globals["libexecdir"]; ok && val.(string) != "" {
-		return val.(string)
-	}
-
-	return defaultLibexecDirectory
-}

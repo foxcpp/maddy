@@ -334,28 +334,6 @@ log syslog /var/log/maddy.log
 *Note:* Maddy does not perform log files rotation, this is the job of the
 logrotate daemon.
 
-## statedir <directory>
-
-Change directory used for all state-related files.
-Default is $MADDYSTATE environment variable or `/var/lib/maddy` if $MADDYSTATE
-is not set. The default value can be changed using -X linker flag during
-compilation:
-
-```
-go build --ldflags '-X github.com/foxcpp/maddy.defaultStateDirectory=/opt/maddy/state'
-```
-
-## libexecdir <directory>
-
-Change the directory where all auxiliary binaries are stored.
-Default is $MADDYLIBEXEC environment variable or `/usr/lib/maddy` if
-$MADDYLIBEXEC is not set. The default value can be changed using -X linker
-flag during compilation:
-
-```
-go build --ldflags '-X github.com/foxcpp/maddy.defaultLibexecDirectory=/opt/maddy/bin'
-```
-
 ## debug [yes/no]
 
 Enable verbose logging. You don't need that unless you are reporting a bug.

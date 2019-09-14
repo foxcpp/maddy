@@ -184,7 +184,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 			if store.instName == "" {
 				return nil, errors.New("sql: need explicit fsstore location for inline definition")
 			}
-			return filepath.Join(config.StateDirectory(cfg.Globals), "sql-"+store.instName+"-fsstore"), nil
+			return filepath.Join(config.StateDirectory, "sql-"+store.instName+"-fsstore"), nil
 		case 1:
 			return node.Args[0], nil
 		default:
@@ -204,7 +204,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	if fsstoreLocation != "" {
 		if !filepath.IsAbs(fsstoreLocation) {
-			fsstoreLocation = filepath.Join(config.StateDirectory(cfg.Globals), fsstoreLocation)
+			fsstoreLocation = filepath.Join(config.StateDirectory, fsstoreLocation)
 		}
 
 		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {

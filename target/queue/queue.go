@@ -150,10 +150,10 @@ func (q *Queue) Init(cfg *config.Map) error {
 		return errors.New("queue: need explicit location directive or config block name if defined inline")
 	}
 	if q.location == "" {
-		q.location = filepath.Join(config.StateDirectory(cfg.Globals), q.name)
+		q.location = filepath.Join(config.StateDirectory, q.name)
 	}
 	if !filepath.IsAbs(q.location) {
-		q.location = filepath.Join(config.StateDirectory(cfg.Globals), q.location)
+		q.location = filepath.Join(config.StateDirectory, q.location)
 	}
 
 	// TODO: Check location write permissions.

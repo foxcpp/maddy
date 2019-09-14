@@ -60,7 +60,7 @@ func New(_, instName string, _ []string) (module.Module, error) {
 
 func (rt *Target) Init(cfg *config.Map) error {
 	cfg.String("hostname", true, true, "", &rt.hostname)
-	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory(cfg.Globals), "mtasts-cache"), &rt.mtastsCache.Location)
+	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Bool("require_tls", false, false, &rt.requireTLS)
 	if _, err := cfg.Process(); err != nil {
@@ -68,7 +68,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	}
 
 	if !filepath.IsAbs(rt.mtastsCache.Location) {
-		rt.mtastsCache.Location = filepath.Join(config.StateDirectory(cfg.Globals), rt.mtastsCache.Location)
+		rt.mtastsCache.Location = filepath.Join(config.StateDirectory, rt.mtastsCache.Location)
 	}
 	if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
 		return err

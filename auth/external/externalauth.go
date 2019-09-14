@@ -56,7 +56,7 @@ func (ea *ExternalAuth) Init(cfg *config.Map) error {
 	if ea.helperPath != "" {
 		ea.Log.Debugln("using helper:", ea.helperPath)
 	} else {
-		ea.helperPath = filepath.Join(config.LibexecDirectory(cfg.Globals), "maddy-auth-helper")
+		ea.helperPath = filepath.Join(config.LibexecDirectory, "maddy-auth-helper")
 	}
 	if _, err := os.Stat(ea.helperPath); err != nil {
 		return fmt.Errorf("%s doesn't exist", ea.helperPath)

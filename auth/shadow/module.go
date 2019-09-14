@@ -44,9 +44,9 @@ func (a *Auth) Init(cfg *config.Map) error {
 	}
 
 	if a.useHelper {
-		a.helperPath = filepath.Join(config.LibexecDirectory(cfg.Globals), "maddy-shadow-helper")
+		a.helperPath = filepath.Join(config.LibexecDirectory, "maddy-shadow-helper")
 		if _, err := os.Stat(a.helperPath); err != nil {
-			return fmt.Errorf("shadow: no helper binary (maddy-shadow-helper) found in %s", config.LibexecDirectory(cfg.Globals))
+			return fmt.Errorf("shadow: no helper binary (maddy-shadow-helper) found in %s", config.LibexecDirectory)
 		}
 	} else {
 		f, err := os.Open("/etc/shadow")

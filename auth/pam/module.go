@@ -46,9 +46,9 @@ func (a *Auth) Init(cfg *config.Map) error {
 	}
 
 	if a.useHelper {
-		a.helperPath = filepath.Join(config.LibexecDirectory(cfg.Globals), "maddy-pam-helper")
+		a.helperPath = filepath.Join(config.LibexecDirectory, "maddy-pam-helper")
 		if _, err := os.Stat(a.helperPath); err != nil {
-			return fmt.Errorf("pam: no helper binary (maddy-pam-helper) found in %s", config.LibexecDirectory(cfg.Globals))
+			return fmt.Errorf("pam: no helper binary (maddy-pam-helper) found in %s", config.LibexecDirectory)
 		}
 	}
 
