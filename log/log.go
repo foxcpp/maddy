@@ -73,24 +73,25 @@ func (l *Logger) log(debug bool, s string) {
 	// Logging is disabled - do nothing.
 }
 
-var DefaultLogger = Logger{Out: StderrLog()}
+var DefaultLogger = Logger{Out: WriterLog(os.Stderr, false)}
 
 func Debugf(format string, val ...interface{}) { DefaultLogger.Debugf(format, val...) }
 func Debugln(val ...interface{})               { DefaultLogger.Debugln(val...) }
 func Printf(format string, val ...interface{}) { DefaultLogger.Printf(format, val...) }
 func Println(val ...interface{})               { DefaultLogger.Println(val...) }
 
-func StderrLog() FuncLog {
-	return WriterLog(os.Stderr)
-}
-
-func WriterLog(w io.Writer) FuncLog {
+func WriterLog(w io.Writer, timestamp bool) FuncLog {
 	return func(t time.Time, debug bool, str string) {
-		if debug {
-			str = "[debug] " + str
+		builder := strings.Builder{}
+		if timestamp {
+			builder.WriteString(t.Format("02.01.06 15:04:05.000 "))
 		}
-		str = t.Format("02.01.06 15:04:05.000") + " " + strings.TrimSuffix(str, "\n") + "\n"
-		if _, err := io.WriteString(w, str); err != nil {
+		if debug {
+			builder.WriteString("[debug] ")
+		}
+		builder.WriteString(str)
+		builder.WriteRune('\n')
+		if _, err := io.WriteString(w, builder.String()); err != nil {
 			fmt.Fprintf(os.Stderr, "!!! Failed to write message to log: %v\n", err)
 		}
 	}
@@ -105,9 +106,9 @@ func Syslog() (FuncLog, error) {
 	return func(t time.Time, debug bool, str string) {
 		var err error
 		if debug {
-			err = w.Debug(strings.TrimSuffix(str, "\n") + "\n")
+			err = w.Debug(str + "\n")
 		} else {
-			err = w.Info(strings.TrimSuffix(str, "\n") + "\n")
+			err = w.Info(str + "\n")
 		}
 
 		if err != nil {

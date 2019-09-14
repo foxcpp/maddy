@@ -316,6 +316,8 @@ Write log to one of more "targets".
 The target can be one or the following:
 - stderr
 Write logs to stderr, this is the default.
+- stderr_ts
+Write logs to stderr with timestamps.
 - syslog
 Send logs to the local syslog daemon.
 - off

@@ -25,7 +25,9 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 	for _, arg := range node.Args {
 		switch arg {
 		case "stderr":
-			outs = append(outs, log.StderrLog())
+			outs = append(outs, log.WriterLog(os.Stderr, false))
+		case "stderr_ts":
+			outs = append(outs, log.WriterLog(os.Stderr, true))
 		case "syslog":
 			syslogOut, err := log.Syslog()
 			if err != nil {
@@ -43,7 +45,7 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}
 
-			outs = append(outs, log.WriterLog(w))
+			outs = append(outs, log.WriterLog(w, true))
 		}
 	}
 
@@ -54,5 +56,5 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 func defaultLogOutput() (interface{}, error) {
-	return log.StderrLog(), nil
+	return log.WriterLog(os.Stderr, false), nil
 }
