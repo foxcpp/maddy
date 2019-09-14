@@ -1,0 +1,64 @@
+[Unit]
+Description=maddy mail server
+After=network.target
+
+[Service]
+# For systemd before 235. Assumes pre-existing user & group.
+User=maddy
+Group=maddy
+
+# cd to state directory to make sure any relative paths
+# in config will be relative to it unless handled specially.
+WorkingDirectory=/var/lib/maddy
+
+# For systemd 235+. systemd will take care of user accounts
+# directories and permissions.
+DynamicUser=true
+ConfigurationDirectory=maddy
+StateDirectory=maddy
+ReadOnlyPaths=/usr/lib/maddy
+
+# Strict sandboxing. You have no reason to trust code written by strangers from GitHub.
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectHostname=true
+ProtectControlGroups=true
+
+# Additional sandboxing. You need to disable all of these options
+# for privileged helper binaries (for system auth) to work correctly.
+NoNewPrivileges=true
+PrivateDevices=true
+DeviceAllow=/dev/syslog
+RestrictSUIDSGID=true
+ProtectKernelModules=true
+MemoryDenyWriteExecute=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+
+# Graceful shutdown with a reasonable timeout.
+TimeoutStopSec=7s
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Required to bind on ports lower than 1024.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Force all files created by maddy to be only readable by it.
+UMask=0027
+
+# Bump FD limitations. Even idle mail server can have a lot of FDs open (think
+# of idle IMAP connections, especially ones abandoned on the other end and
+# slowly timing out).
+LimitNOFILE=131072
+
+# Limit processes count to something reasonable to
+# prevent resources exhausting due to big amounts of helper
+# processes launched.
+LimitNPROC=512
+
+Restart=on-abnormal
+
+ExecStart=/usr/bin/maddy
