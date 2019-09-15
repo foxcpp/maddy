@@ -75,19 +75,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if log.DefaultLogger.Debug {
-		// Insert 'debug' directive so other config blocks will inherit it.
-		skipInsert := false
-		for _, node := range cfg {
-			if node.Name == "debug" {
-				skipInsert = true
-			}
-		}
-		if !skipInsert {
-			cfg = append(cfg, config.Node{Name: "debug"})
-		}
-	}
-
 	// Make sure all paths we are going to use are absolute
 	// before we change the working directory.
 	config.StateDirectory, err = filepath.Abs(config.StateDirectory)
