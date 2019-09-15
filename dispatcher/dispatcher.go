@@ -61,7 +61,6 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
 		deliveries:         make(map[module.DeliveryTarget]module.Delivery),
 		msgMeta:            msgMeta,
-		cancelCtx:          context.Background(),
 		log:                target.DeliveryLogger(d.Log, msgMeta),
 		checkScore:         0,
 	}
@@ -117,11 +116,11 @@ func (dd *dispatcherDelivery) initRunGlobalChecks(msgMeta *module.MsgMetadata, m
 	if err != nil {
 		return err
 	}
-	if err := dd.checkResult(globalChecksState.CheckConnection(dd.cancelCtx)); err != nil {
+	if err := dd.checkResult(globalChecksState.CheckConnection(context.TODO())); err != nil {
 		globalChecksState.Close()
 		return err
 	}
-	if err := dd.checkResult(globalChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
+	if err := dd.checkResult(globalChecksState.CheckSender(context.TODO(), mailFrom)); err != nil {
 		globalChecksState.Close()
 		return err
 	}
@@ -148,11 +147,11 @@ func (dd *dispatcherDelivery) initRunSourceChecks(srcBlock sourceBlock, msgMeta 
 	if err != nil {
 		return err
 	}
-	if err := dd.checkResult(sourceChecksState.CheckConnection(dd.cancelCtx)); err != nil {
+	if err := dd.checkResult(sourceChecksState.CheckConnection(context.TODO())); err != nil {
 		sourceChecksState.Close()
 		return err
 	}
-	if err := dd.checkResult(sourceChecksState.CheckSender(dd.cancelCtx, mailFrom)); err != nil {
+	if err := dd.checkResult(sourceChecksState.CheckSender(context.TODO(), mailFrom)); err != nil {
 		sourceChecksState.Close()
 		return err
 	}
@@ -214,10 +213,10 @@ type dispatcherDelivery struct {
 }
 
 func (dd *dispatcherDelivery) AddRcpt(to string) error {
-	if err := dd.checkResult(dd.globalChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
+	if err := dd.checkResult(dd.globalChecksState.CheckRcpt(context.TODO(), to)); err != nil {
 		return err
 	}
-	if err := dd.checkResult(dd.sourceChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
+	if err := dd.checkResult(dd.sourceChecksState.CheckRcpt(context.TODO(), to)); err != nil {
 		return err
 	}
 
@@ -248,7 +247,7 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	if err != nil {
 		return err
 	}
-	if err := dd.checkResult(rcptChecksState.CheckRcpt(dd.cancelCtx, to)); err != nil {
+	if err := dd.checkResult(rcptChecksState.CheckRcpt(context.TODO(), to)); err != nil {
 		return err
 	}
 
@@ -282,14 +281,14 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 }
 
 func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if err := dd.checkResult(dd.globalChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
+	if err := dd.checkResult(dd.globalChecksState.CheckBody(context.TODO(), header, body)); err != nil {
 		return err
 	}
-	if err := dd.checkResult(dd.sourceChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
+	if err := dd.checkResult(dd.sourceChecksState.CheckBody(context.TODO(), header, body)); err != nil {
 		return err
 	}
 	for _, rcptChecksState := range dd.rcptChecksState {
-		if err := dd.checkResult(rcptChecksState.CheckBody(dd.cancelCtx, header, body)); err != nil {
+		if err := dd.checkResult(rcptChecksState.CheckBody(context.TODO(), header, body)); err != nil {
 			return err
 		}
 	}
@@ -446,11 +445,11 @@ func (dd *dispatcherDelivery) getRcptChecks(rcptBlock *rcptBlock) (module.CheckS
 		return nil, err
 	}
 
-	if err := dd.checkResult(rcptChecksState.CheckConnection(dd.cancelCtx)); err != nil {
+	if err := dd.checkResult(rcptChecksState.CheckConnection(context.TODO())); err != nil {
 		rcptChecksState.Close()
 		return nil, err
 	}
-	if err := dd.checkResult(rcptChecksState.CheckSender(dd.cancelCtx, dd.sourceAddr)); err != nil {
+	if err := dd.checkResult(rcptChecksState.CheckSender(context.TODO(), dd.sourceAddr)); err != nil {
 		rcptChecksState.Close()
 		return nil, err
 	}
