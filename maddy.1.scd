@@ -2,7 +2,7 @@ maddy(1) "maddy mail server"
 
 # NAME
 
-maddy - simple SMTP+IMAP mail server
+maddy - Simple, fast, secure all-in-one mail server.
 
 # SYNOPSIS
 
@@ -10,8 +10,9 @@ maddy - simple SMTP+IMAP mail server
 
 # DESCRIPTION
 
-Maddy implements Mail Transfer agent (MTA), Mail Submission Agent (MSA) and
-IMAP server functionality in one application.
+Maddy is Mail Transfer agent (MTA), Mail Delivery Agent (MDA), Mail Submission Agent (MSA),
+IMAP server and a set of other essential protocols/schemes necessary
+to run secure email server implemented in one executable.
 
 # OPTIONS
 

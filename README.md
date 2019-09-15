@@ -2,69 +2,247 @@
 
 [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
 
-Simple, fast IMAP+SMTP mail server.
+Simple, fast, secure all-in-one mail server.
 
-Maddy implements Mail Transfer agent (MTA), Mail Submission Agent (MSA), Mail Delivery Agent (MDA) and
-IMAP server functionality in one application.
+**⚠️ Disclaimer: maddy is in early development, many planned features are missing and bugs are waiting to eat your messages**
 
-**⚠️ Warning:** maddy is in development, many important features are missing, there
-are bugs and performance can be bad.
+Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you have
+any questions or just want to talk about maddy.
 
-Feel free to join the IRC channel: [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy).
+## Table of contents
 
-## Getting started
+- [Features](#features)
+- [Installation](#installation)
+- [Building from source](#building-from-source)
+  - [Dependencies](#dependencies)
+  - [Building](#building)
+- [Quick start](#quick-start)
+  - [systemd unit](#systemd-unit)
+- [SQL-based database](#sql-based-database)
+  - [PostgreSQL instead of SQLite](#postgresql-instead-of-sqlite)
+- [System authentication helper binaries](#system-authentication-helper-binaries)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
-### Installation
+## Features
 
-You need Go 1.11.4 or newer. A C compiler is required for SQLite3 storage support, 
-you can disable SQLite3 support by passing `-tags 'nosqlite3'` to `go build`. 
-Also you need to enable modules support to get the right version. Set
-`GO111MODULE` environment variable to `on`.
+- Single binary for easy deployment
+- Minimal configuration changes required to get almost complete email stack running
+- [MTA-STS](https://www.hardenize.com/blog/mta-sts) support
+- DNS sanity checks for incoming deliveries
 
-```shell
-export GO111MODULE=on
-go get github.com/foxcpp/maddy/cmd/maddy@master
+Planned features:
+- Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) verification and signing
+- [DMRAC](https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/) policy support
+- Built-in [backscatter](https://en.wikipedia.org/wiki/Backscatter_(e-mail) mitigation
+- Address aliases support
+- [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing) support
+- DANE support
+- Storage encryption
+- Automatic TLS certificates configuration using Let's Encrypt
+
+## Installation
+
+Pre-built binaries for releases are available [here](https://github.com/foxcpp/maddy/releases).
+
+## Building from source
+
+#### Dependencies 
+
+- Go toolchain (1.11.4 or newer)
+  
+  If your distribution ships an outdated Go version, you can use
+  following commands to get a newer version:
+  ```
+  go get golang.org/dl/go1.13
+  go1.13 download
+  ```
+  
+- C compiler (**optional**, set CGO_ENABLED env. variable to 0 to disable)
+
+  Required for SQLite3-based storage (default configuration) and PAM authentication.
+  SQLite3 support can be disabled using nosqlite3 build tag:
+  ```
+  gobuild -tags 'nosqlite3' 
+  ```
+ 
+- libpam (**optional**, not needed by default)
+
+  Used for PAM auth helper binary or direct PAM use, later is disabled by default 
+  and can be enabled using 'libpam' build tag (e.g. `go build -tags 'libpam nosqlite3'`)
+  
+**Note:** Main executable built with CGO_ENABLED=0 does not depend on any system library
+and can be moved freely between systems. Executable built without libpam but with CGO_ENABLED=1 
+
+### Building
+
+```
+cd cmd/maddy
+go build 
 ```
 
-You can also compile and install helper binaries from
-[cmd/maddy-pam-helper](cmd/maddy-pam-helper/README.md) and
-[cmd/maddy-shadow-helper](cmd/maddy-shadow-helper/README.md). See corresponding
-README files for details.
+`maddy` executable will be created in current directory, you probably want to 
+copy it to a system directory (like `/usr/local/bin`).
 
-### Configuration
+## Quick start
+
+You need to make sure configuration is placed in /etc/maddy/maddy.conf
+(copy maddy.conf from this repo) and also /var/lib/maddy and /run/maddy exist
+and writable.
+
+Then, simply run the executable:
+```
+maddy 
+```
+
+You can specify custom locations for all directories and config file, so
+here is no need to mess with directories in your system:
+```
+maddy -config /maddy.conf -state /state -runtime /tmp 
+```
+maddy will create specified directories for you.
+
+### systemd unit
+
+Alternatively, you can use the systemd unit file from [dist/](dist) directory in this repo.
+It will automatically set-up user account and directories. Additionally, it 
+will apply strict sandbox to maddy to ensure additional security.
+
+You need a relatively new systemd version (235+) both of these things to work
+properly. Otherwise, you still have to manually create a user account and 
+the state + runtime directories with read-write permissions for 
+the maddy user. 
+
+## Configuration
 
 Start by copying contents of the [maddy.conf](maddy.conf) to
 `/etc/maddy/maddy.conf` (default configuration location).
 
-With this configuration, maddy will create an SQLite3 database for messages in
-/var/lib/maddy and use it to store all messages. You need to ensure that this
-directory exists and maddy can write to it.
+You need to change the following directives to your values:
+- `tls cert_file key_file` 
+  Change to paths to TLS certificate and key.
+- `hostname`
+  Server identifier. Put your domain here if you have only one server.
+- `autogenerated_msg_domain`
+  Put the "main" domain you are handling messages for here.
+- `auth_domains`, `destination` in `smtp` and `submission` blocks
+  Change to the list of domains you are handling messages for.
+
+With that configuration you will get the following:
+- SQLite-based storage for messages
+- Authentication using SQLite-based virtual users DB (use [imapsql-ctl]( https://github.com/foxcpp/go-imap-sql/tree/master/cmd/imapsql-ctl) to create user accounts)
+- SMTP endpoint for incoming messages on 25 port.
+- SMTP Submission endpoint for messages from your users, on both 587 (STARTTLS) 
+and 465 (TLS) ports.
+- IMAP endpoint for access to user mailboxes, on both 143 (STARTTLS) and 
+993 (TLS) ports.
+- Two basic DNS checks for incoming messages
 
 Configuration syntax, high-level structure, and all implemented options are
 documented in maddy.conf(5) man page.
 
-You can view page source [here](maddy.conf.5.scd) (it is readable!) or
-generate man page using [scdoc](https://git.sr.ht/~sircmpwn/scdoc) utility:
-```
-scdoc < maddy.conf.5.scd > maddy.conf.5
-```
+## SQL-based database
 
-## go-imap-sql database management
+Currently, the only supported storage and authentication DB implementation
+is SQL-based go-imap-sql library.
 
-go-imap-sql is the main storage backend used by maddy. You might want to take a
-look at https://github.com/foxcpp/go-imap-sql and
-https://github.com/foxcpp/go-imap-sql/tree/master/cmd/imapsql-ctl for how to
-configure and use it. 
+Use the following commands to install the `imapsql-ctl` utility:
 ```
 export GO111MODULE=on
-go get github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl
+go get github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl@dev
 ```
 
-You need imapsql-ctl tool to create user accounts. Here is the command to use:
+It can be used to create/delete virtual users as well as mailboxes
+and messages in them.
+
+Here is the command to use to create a new virtual user `NAME`:
 ```
 imapsql-ctl --driver DRIVER --dsn DSN users create NAME
 ```
 
+Replace DRIVER and DSN with your values from maddy config.
+For default configuration it is `--driver sqlite3 --dsn /var/lib/maddy/all.db`.
+
+### PostgreSQL instead of SQLite
+
+If you want to use PostgreSQL instead of SQLite 3 (e.g. you want better access concurrency), here is 
+what you need to do:
+
+1. Install, configure and start PostgreSQL server
+
+There is plenty of tutorials on the web. Note that you need PostgreSQL 9.6 or newer.
+
+2. Create the database and user role for maddy
+
+```
+psql -U postgres -c 'CREATE USER maddy'
+psql -U postgres -c 'CREATE DATABASE maddy'
+```
+
+3. Update maddy.conf to use PostgreSQL and that database
+
+```
+sql {
+    driver postgres
+    dsn user=maddy dbname=maddy sslmode=disable
+}
+```
+
+Add `host=` option is server is running on the different machine 
+(configure TLS and remove `sslmode=disable` then!).
+
+See https://godoc.org/github.com/lib/pq for driver options documentation.
+
+4. Consider using fsstore
+
+By default, maddy will store messages in table rows. This requires lesser amount of internal 
+bookkeeping and works fine in most cases.
+
+However, you may want to make maddy store message in a filesystem directory instead.
+To do so add `fsstore` directive to the `sql` config block.
+
+You may optionally specify the directory to use instead of default (/var/lib/maddy/sql-sql-fsstore):
+```
+sql {
+    ...
+    fsstore /var/lib/maddy/s3-messages
+}
+```
+
+## Documentation
+
+Configuration reference is maintained as a single man page 
+in the [scdoc](https://git.sr.ht/~sircmpwn/scdoc) format.
+You can view page source [here](maddy.conf.5.scd) (it is readable).
+
+Tutorials and misc articles will be added to
+the [project wiki](https://github.com/foxcpp/maddy/wiki).
+
+## System authentication helper binaries
+
+By default maddy is running as a unprivileged user, meaning it can't read
+system account passwords. There are two options:
+- Run maddy as a privileged user instead (not recommended)
+
+This way you can use maddy without messing with helper binaries, but that
+will also give maddy a little bit too many permissions.
+  
+- Let maddy start privileged (setuid) helper binary to perform authentication
+
+Compile [cmd/maddy-pam-helper](cmd/maddy-pam-helper) and/or
+[cmd/maddy-shadow-helper](cmd/maddy-shadow-helper).
+
+Put them into `/var/lib/maddy` and make them setuid (there are also other
+more restrictive options, check README in the binary directories).
+
+Add `use_helper` to `pam` or `shadow` configuration block in your config.
+Modify systemd unit to use less strict sandbox and disable DynamicUser.
+
+## Contributing
+
+See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
 ## License
 
-MIT
+MIT. Just do whatever you want.
