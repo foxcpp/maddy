@@ -32,7 +32,10 @@ IMAP server functionality in one application.
 *-runtime* _path_
 	Path to the runtime directory. Temporary data will be stored here.
 	It is not recommended to use tmpfs for it since runtime directory is used only 
-	for large objects that can't be stored in RAM directly. 
+	for large objects that can't be stored in RAM directly.
+
+*-log* _targets..._
+	Logging targets. Format is the same as 'log' config directive. 
 
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.

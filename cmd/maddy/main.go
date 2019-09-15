@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/foxcpp/maddy"
 	"github.com/foxcpp/maddy/config"
@@ -15,6 +16,8 @@ import (
 
 func main() {
 	configPath := flag.String("config", filepath.Join(ConfigDirectory, "maddy.conf"), "path to configuration file")
+
+	logTargets := flag.String("log", "stderr", "default logging target(s)")
 
 	flag.StringVar(&config.StateDirectory, "state", DefaultStateDirectory, "path to the state directory")
 	flag.StringVar(&config.LibexecDirectory, "libexec", DefaultLibexecDirectory, "path to the libexec directory")
@@ -26,6 +29,13 @@ func main() {
 	mutexProfileFract := flag.Int("debug.mutexproffract", 0, "set mutex profile fraction)")
 
 	flag.Parse()
+
+	var err error
+	log.DefaultLogger.Out, err = maddy.LogOutputOption(strings.Split(*logTargets, " "))
+	if err != nil {
+		log.Println(err)
+		os.Exit(2)
+	}
 
 	if err := ensureDirectoryWritable(config.StateDirectory); err != nil {
 		log.Println(err)

@@ -21,8 +21,12 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 		return nil, m.MatchErr("can't declare block here")
 	}
 
-	outs := make([]log.FuncLog, 0, len(node.Args))
-	for _, arg := range node.Args {
+	return LogOutputOption(node.Args)
+}
+
+func LogOutputOption(args []string) (log.FuncLog, error) {
+	outs := make([]log.FuncLog, 0, len(args))
+	for _, arg := range args {
 		switch arg {
 		case "stderr":
 			outs = append(outs, log.WriterLog(os.Stderr, false))
@@ -35,7 +39,7 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 			}
 			outs = append(outs, syslogOut)
 		case "off":
-			if len(node.Args) != 1 {
+			if len(args) != 1 {
 				return nil, errors.New("'off' can't be combined with other log targets")
 			}
 			return nil, nil
@@ -56,5 +60,5 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 }
 
 func defaultLogOutput() (interface{}, error) {
-	return log.WriterLog(os.Stderr, false), nil
+	return log.DefaultLogger.Out, nil
 }
