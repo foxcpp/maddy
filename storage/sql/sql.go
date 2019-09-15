@@ -154,7 +154,8 @@ func New(_, instName string, _ []string) (module.Module, error) {
 }
 
 func (store *Storage) Init(cfg *config.Map) error {
-	var driver, dsn string
+	var driver string
+	var dsn []string
 	var fsstoreLocation string
 	appendlimitVal := -1
 
@@ -164,7 +165,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		LazyUpdatesInit: true,
 	}
 	cfg.String("driver", false, true, "", &driver)
-	cfg.String("dsn", false, true, "", &dsn)
+	cfg.StringList("dsn", false, true, nil, &dsn)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
 	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
@@ -225,7 +226,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
 	var err error
-	store.back, err = imapsql.New(driver, dsn, opts)
+	store.back, err = imapsql.New(driver, strings.Join(dsn, " "), opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}
