@@ -9,6 +9,11 @@ includes a description of all usable directives.
 
 Default location of main configuration file is /etc/maddy/maddy.conf.
 
+Note, StateDirectory everywhere in this file refers to the value
+of -state command line argument, which defaults to /var/lib/maddy.
+LibexecDirectory everywhere in this file refers to the value
+of -libexec command line argument, which defaults to /usr/lib/maddy.
+
 # SYNTAX
 
 Configuration consists of newline-delimited "directives". Each directive can
@@ -793,7 +798,7 @@ Store messages in file system directory instead of database rows. You generally
 want to use this for server-based RDBMS.
 
 If directory path is not specified - it will be derived from configuration
-block name ('$MADDYSTATE/sql-NAME-fsstore').
+block name ('StateDirectory/sql-NAME-fsstore').
 
 ## junk_mailbox <name>
 
@@ -845,7 +850,7 @@ Delivery target to use for delivery. You probably want to use 'remote' here.
 
 File system directory to use to store queued messages.
 
-Default is $MADDYSTATE/<configuration_block_name>.
+Default is StateDirectory/<configuration_block_name>.
 
 ## workers <count>
 
@@ -905,7 +910,7 @@ Enable verbose logging only for this configuration block.
 ## mtasts_cache <directory>
 
 Set location of the MTA-STS policies cache directory.
-Default is $MADDYSTATE/mtasts-cache
+Default is StateDirectory/mtasts-cache
 
 # EXTAUTH MODULE
 
@@ -929,7 +934,7 @@ Valid configuration directives:
 
 ## helper <file_path>
 
-Location of the helper binary. Default is $MADDYLIBEXEC/maddy-auth-helper
+Location of the helper binary. Default is LibexecDirectory/maddy-auth-helper
 
 ## debug [yes/no]
 
@@ -961,7 +966,7 @@ Verbose log only for this configuration block.
 
 ## use_helper
 
-Use $MADDYLIBEXEC/maddy-pam-helper instead of directly calling libpam.
+Use LibexecDirectory/maddy-pam-helper instead of directly calling libpam.
 You need to use that if:
 1. maddy is not compiled with CGo support, but maddy-pam-helper is built separately.
 2. maddy is running as an unprivileged user and used PAM configuration requires additional 
@@ -993,7 +998,7 @@ Verbose log only for this configuration block.
 
 ## use_helper
 
-Use $MADDYLIBEXEC/maddy-shadow-helper instead of directly reading /etc/shadow.
+Use LibexecDirectory/maddy-shadow-helper instead of directly reading /etc/shadow.
 You need to use that if maddy is running as an unprivileged user 
 privileges (e.g. when using system accounts).
 
