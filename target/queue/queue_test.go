@@ -12,7 +12,6 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
-	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/testutils"
 )
@@ -50,7 +49,7 @@ func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Qu
 	q.Target = target
 
 	if !testing.Verbose() {
-		q.Log = log.Logger{Name: "", Out: log.WriterLog(ioutil.Discard)}
+		q.Log = testutils.Logger(t, "queue")
 	}
 
 	q.start(1)
