@@ -86,7 +86,6 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 	// with small amount of per-recipient data in a efficient way.
 	userHeader := textproto.Header{}
 	userHeader.Add("Delivered-To", rcptTo)
-	userHeader.Add("Received", target.GenerateReceived(d.store.resolver, d.msgMeta, d.store.hostname, d.mailFrom, rcptTo))
 
 	if err := d.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {

@@ -151,16 +151,6 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 }
 
 func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
-	headerCpy := header.Copy()
-	// If we are doing a delivery for a single recipient - then
-	// 'for' field in Received is useful, otherwise it is a privacy
-	// risk and reveals other recipients.
-	if len(rd.recipients) == 1 {
-		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.rt.hostname, rd.mailFrom, rd.recipients[0]))
-	} else {
-		headerCpy.Add("Received", target.GenerateReceived(rd.rt.resolver, rd.msgMeta, rd.rt.hostname, rd.mailFrom, ""))
-	}
-
 	errChans := make(map[string]chan error, len(rd.connections))
 	for domain := range rd.connections {
 		errChans[domain] = make(chan error)

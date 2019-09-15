@@ -2,47 +2,59 @@ package target
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/module"
 )
-
-func lookupAddr(r dns.Resolver, ip net.IP) (string, error) {
-	names, err := r.LookupAddr(context.Background(), ip.String())
-	if err != nil || len(names) == 0 {
-		return "", err
-	}
-	return strings.TrimRight(names[0], "."), nil
-}
 
 func SanitizeForHeader(raw string) string {
 	return strings.Replace(raw, "\n", "", -1)
 }
 
-func GenerateReceived(r dns.Resolver, msgMeta *module.MsgMetadata, ourHostname, mailFrom, rcptTo string) string {
-	var received string
-	if !msgMeta.DontTraceSender {
-		received += "from " + msgMeta.SrcHostname
+func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostname, mailFrom string) (string, error) {
+	builder := strings.Builder{}
+
+	// Empirically guessed value that should be enough to fit
+	// entire value in most cases.
+	builder.Grow(256 + len(msgMeta.SrcHostname))
+
+	if !msgMeta.DontTraceSender && msgMeta.SrcHostname != "" {
+		builder.WriteString("from ")
+		builder.WriteString(msgMeta.SrcHostname)
 		if tcpAddr, ok := msgMeta.SrcAddr.(*net.TCPAddr); ok {
-			// TODO: Execute rDNS lookup from dispatcher
-			// asynchronously to make sure we don't do it multiple times.
-			domain, err := lookupAddr(r, tcpAddr.IP)
-			if err != nil {
-				received += fmt.Sprintf(" ([%v])", tcpAddr.IP)
-			} else {
-				received += fmt.Sprintf(" (%s [%v])", domain, tcpAddr.IP)
+			builder.WriteString(" (")
+			if msgMeta.SrcRDNSName != nil {
+				rdnsName, err := msgMeta.SrcRDNSName.GetContext(ctx)
+				if err != nil {
+					return "", err
+				}
+				if rdnsName != nil || rdnsName.(string) != "" {
+					builder.WriteString(rdnsName.(string))
+					builder.WriteRune(' ')
+				}
+
 			}
+			builder.WriteRune('[')
+			builder.WriteString(tcpAddr.IP.String())
+			builder.WriteString("])")
 		}
 	}
-	received += fmt.Sprintf(" by %s (envelope-sender <%s>)", SanitizeForHeader(ourHostname), SanitizeForHeader(mailFrom))
-	received += fmt.Sprintf(" with %s id %s", msgMeta.SrcProto, msgMeta.ID)
-	if rcptTo != "" {
-		received += fmt.Sprintf(" for %s", rcptTo)
+
+	builder.WriteString(" by ")
+	builder.WriteString(SanitizeForHeader(ourHostname))
+	builder.WriteString(" (envelope-sender <")
+	builder.WriteString(SanitizeForHeader(mailFrom))
+	builder.WriteString(">)")
+	if msgMeta.SrcProto != "" {
+		builder.WriteString(" with ")
+		builder.WriteString(msgMeta.SrcProto)
 	}
-	received += fmt.Sprintf("; %s", time.Now().Format(time.RFC1123Z))
-	return received
+	builder.WriteString(" id ")
+	builder.WriteString(msgMeta.ID)
+	builder.WriteString("; ")
+	builder.WriteString(time.Now().Format(time.RFC1123Z))
+
+	return builder.String(), nil
 }

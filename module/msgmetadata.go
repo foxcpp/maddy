@@ -3,6 +3,8 @@ package module
 import (
 	"crypto/tls"
 	"net"
+
+	"github.com/foxcpp/maddy/future"
 )
 
 // MsgMetadata structure contains all information about the origin of
@@ -38,15 +40,41 @@ type MsgMetadata struct {
 	AuthPassword string
 
 	// IANA protocol name (SMTP, ESMTP, ESMTPS, etc)
+	//
+	// If message was generated internally - this field will be empty.
 	SrcProto string
 	// If message is received over SMTPS - TLS connection state.
 	SrcTLSState tls.ConnectionState
 	// If message is received over SMTP - this field contains
 	// the hostname sent by client in EHLO/HELO command.
+	//
+	// If message was generated internally - this field will be
+	// be equal to the local hostname.
 	SrcHostname string
 	// If message is received over SMTP - this field contains
 	// network address of client.
+	//
+	// If message was generated internally - this field will be
+	// nil.
 	SrcAddr net.Addr
+
+	// SrcRDNSName is contains the result of Reverse DNS lookup
+	// performed on SrcAddr value.
+	//
+	// Future underlying type is string or untyped nil value.
+	// It's message source responsibility to populate
+	// this field.
+	//
+	// Valid states of this field consumers need to be aware of:
+	// SrcRDNSName = nil
+	//   Reverse DNS lookup is not applicable for that
+	//   message source. Typically the case for messages
+	//   auto-generated internally.
+	// SrcRDNSName != nil, but Get returns nil
+	//   Reverse DNS lookup was attempted, but resulted in
+	//   error. Consumers should assume that the PTR record
+	//   doesn't exist.
+	SrcRDNSName *future.Future
 
 	// If set - no SrcHostname and SrcAddr will be added to Received
 	// header. These fields are still written to the server log.

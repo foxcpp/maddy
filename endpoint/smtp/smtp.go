@@ -2,6 +2,7 @@ package smtp
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -19,9 +20,12 @@ import (
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
 	"github.com/foxcpp/maddy/dispatcher"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/endpoint"
+	"github.com/foxcpp/maddy/future"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
+	"github.com/foxcpp/maddy/target"
 )
 
 func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
@@ -46,6 +50,7 @@ type Session struct {
 	deliveryErr error
 	msgMeta     *module.MsgMetadata
 	log         log.Logger
+	cancelRDNS  func()
 }
 
 var errInternal = &smtp.SMTPError{
@@ -74,6 +79,16 @@ func (s *Session) Mail(from string) error {
 
 	s.log.Printf("incoming message")
 
+	// Left here for future use.
+	mailCtx := context.TODO()
+
+	if s.endp.resolver != nil && s.msgMeta.SrcAddr != nil {
+		rdnsCtx, cancelRDNS := context.WithCancel(mailCtx)
+		s.msgMeta.SrcRDNSName = future.New()
+		s.cancelRDNS = cancelRDNS
+		go s.fetchRDNSName(rdnsCtx)
+	}
+
 	if !s.endp.deferServerReject {
 		s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
@@ -83,6 +98,23 @@ func (s *Session) Mail(from string) error {
 	}
 
 	return nil
+}
+
+func (s *Session) fetchRDNSName(ctx context.Context) {
+	tcpAddr, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
+	if !ok {
+		s.msgMeta.SrcRDNSName.Set(nil)
+		return
+	}
+
+	name, err := dns.LookupAddr(ctx, s.endp.resolver, tcpAddr.IP)
+	if err != nil {
+		s.log.Printf("failed to do RDNS lookup for %v: %v", tcpAddr.IP, err)
+		s.msgMeta.SrcRDNSName.Set(nil)
+		return
+	}
+
+	s.msgMeta.SrcRDNSName.Set(name)
 }
 
 func (s *Session) Rcpt(to string) error {
@@ -115,6 +147,9 @@ func (s *Session) Logout() error {
 		}
 		s.delivery = nil
 	}
+	if s.cancelRDNS != nil {
+		s.cancelRDNS()
+	}
 	return nil
 }
 
@@ -140,6 +175,12 @@ func (s *Session) Data(r io.Reader) error {
 		return s.wrapErr(errInternal)
 	}
 	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
+
+	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.serv.Domain, s.msgMeta.OriginalFrom)
+	if err != nil {
+		return err
+	}
+	header.Add("Received", received)
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Printf("I/O error: %v", err)
@@ -179,6 +220,7 @@ type Endpoint struct {
 	aliases    []string
 	listeners  []net.Listener
 	dispatcher *dispatcher.Dispatcher
+	resolver   dns.Resolver
 
 	authAlwaysRequired bool
 	submission         bool
@@ -202,6 +244,7 @@ func New(modName, instName string, aliases []string) (module.Module, error) {
 		name:       instName,
 		aliases:    aliases,
 		submission: modName == "submission",
+		resolver:   net.DefaultResolver,
 		Log:        log.Logger{Name: "smtp"},
 	}
 	return endp, nil
