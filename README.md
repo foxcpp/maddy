@@ -59,12 +59,15 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
   go1.13 download
   ```
   
+  Obviously, you need to have $GOPATH/bin ($HOME/go/bin by default) in $PATH.
+  Then use `go1.13` instead of `go` in commands below.
+  
 - C compiler (**optional**, set CGO_ENABLED env. variable to 0 to disable)
 
   Required for SQLite3-based storage (default configuration) and PAM authentication.
   SQLite3 support can be disabled using nosqlite3 build tag:
   ```
-  gobuild -tags 'nosqlite3' 
+  go build -tags 'nosqlite3' 
   ```
  
 - libpam (**optional**, not needed by default)
@@ -73,7 +76,8 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
   and can be enabled using 'libpam' build tag (e.g. `go build -tags 'libpam nosqlite3'`)
   
 **Note:** Main executable built with CGO_ENABLED=0 does not depend on any system library
-and can be moved freely between systems. Executable built without libpam but with CGO_ENABLED=1 
+and can be moved freely between systems. Executable built without libpam but with CGO_ENABLED=1 (default)
+depends only on libc. Executable built with libpam depends on system libpam, obviously.
 
 ### Building
 
