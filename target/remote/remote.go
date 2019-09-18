@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	nettextproto "net/textproto"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -142,7 +144,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 
 	if err := conn.Rcpt(to); err != nil {
 		rd.Log.Printf("RCPT TO failed: %v (server = %s)", err, conn.serverName)
-		return err
+		return toSMTPErr(err)
 	}
 
 	rd.recipients = append(rd.recipients, to)
@@ -163,29 +165,29 @@ func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 			bodyW, err := conn.Data()
 			if err != nil {
 				rd.Log.Printf("DATA failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				errCh <- toSMTPErr(err)
 				return
 			}
 			bodyR, err := b.Open()
 			if err != nil {
 				rd.Log.Printf("failed to open body buffer: %v", err)
-				errCh <- err
+				errCh <- toSMTPErr(err)
 				return
 			}
 			if err = textproto.WriteHeader(bodyW, header); err != nil {
 				rd.Log.Printf("header write failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				errCh <- toSMTPErr(err)
 				return
 			}
 			if _, err = io.Copy(bodyW, bodyR); err != nil {
 				rd.Log.Printf("body write failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				errCh <- toSMTPErr(err)
 				return
 			}
 
 			if err := bodyW.Close(); err != nil {
 				rd.Log.Printf("body write final failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				errCh <- toSMTPErr(err)
 				return
 			}
 
@@ -279,7 +281,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
 		rd.Log.Printf("MAIL FROM failed: %v (server = %s)", err, conn.serverName)
-		return nil, err
+		return nil, toSMTPErr(err)
 	}
 
 	rd.Log.Debugf("connected to %s", conn.serverName)
@@ -377,6 +379,49 @@ func (rt *Target) lookupTargetServers(domain string) ([]string, error) {
 		hosts = append(hosts, record.Host)
 	}
 	return hosts, nil
+}
+
+func parseEnhancedCode(s string) (smtp.EnhancedCode, error) {
+	parts := strings.Split(s, ".")
+	if len(parts) != 3 {
+		return smtp.EnhancedCode{}, fmt.Errorf("wrong amount of enhanced code parts")
+	}
+
+	code := smtp.EnhancedCode{}
+	for i, part := range parts {
+		num, err := strconv.Atoi(part)
+		if err != nil {
+			return code, err
+		}
+		code[i] = num
+	}
+	return code, nil
+}
+
+func toSMTPErr(originalErr error) error {
+	protoErr, ok := originalErr.(*nettextproto.Error)
+	if !ok {
+		return originalErr
+	}
+
+	smtpErr := &smtp.SMTPError{
+		Code:    protoErr.Code,
+		Message: protoErr.Msg,
+	}
+
+	parts := strings.SplitN(protoErr.Msg, " ", 2)
+	if len(parts) != 2 {
+		return smtpErr
+	}
+
+	enchCode, err := parseEnhancedCode(parts[0])
+	if err != nil {
+		return smtpErr
+	}
+
+	smtpErr.EnhancedCode = enchCode
+	smtpErr.Message = parts[1]
+	return smtpErr
 }
 
 func init() {
