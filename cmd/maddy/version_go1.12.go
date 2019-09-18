@@ -9,11 +9,10 @@ import (
 
 func printBuildInfo() {
 	if info, ok := debug.ReadBuildInfo(); ok {
-		fmt.Println("maddy", Version)
-		fmt.Println()
-		fmt.Println("Module version:", info.Main.Version)
-		if info.Main.Sum != "" {
-			fmt.Println("Module checksum:", info.Main.Sum)
+		if info.Main.Version == "(devel)" {
+			fmt.Println("maddy", Version)
+		} else {
+			fmt.Println("maddy", info.Main.Version, info.Main.Sum)
 		}
 	} else {
 		fmt.Println("maddy", Version, "(GOPATH build)")
