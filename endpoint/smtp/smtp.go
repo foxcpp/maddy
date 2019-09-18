@@ -245,7 +245,11 @@ func New(modName, instName string, aliases []string) (module.Module, error) {
 		aliases:    aliases,
 		submission: modName == "submission",
 		resolver:   net.DefaultResolver,
-		Log:        log.Logger{Name: "smtp"},
+	}
+	if modName == "submission" {
+		endp.Log = log.Logger{Name: "submission"}
+	} else {
+		endp.Log = log.Logger{Name: "smtp"}
 	}
 	return endp, nil
 }
