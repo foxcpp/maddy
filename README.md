@@ -50,7 +50,7 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
 
 #### Dependencies 
 
-- Go toolchain (1.11.4 or newer)
+- [Go](https://golang.org) toolchain (1.11.4 or newer)
   
   If your distribution ships an outdated Go version, you can use
   following commands to get a newer version:
@@ -67,13 +67,13 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
   Required for SQLite3-based storage (default configuration) and PAM authentication.
   SQLite3 support can be disabled using nosqlite3 build tag:
   ```
-  go build -tags 'nosqlite3' 
+  GO111MODULE=on go get github.com/foxcpp/maddy/cmd/maddy@master -tags 'nosqlite3' 
   ```
  
 - libpam (**optional**, not needed by default)
 
   Used for PAM auth helper binary or direct PAM use, later is disabled by default 
-  and can be enabled using 'libpam' build tag (e.g. `go build -tags 'libpam nosqlite3'`)
+  and can be enabled using 'libpam' build tag (e.g. `go get ... -tags 'libpam nosqlite3'`)
   
 **Note:** Main executable built with CGO_ENABLED=0 does not depend on any system library
 and can be moved freely between systems. Executable built without libpam but with CGO_ENABLED=1 (default)
@@ -81,13 +81,25 @@ depends only on libc. Executable built with libpam depends on system libpam, obv
 
 ### Building
 
+First, make sure Go Modules support is enabled:
 ```
-cd cmd/maddy
-go build 
+export GO111MODULE=on
 ```
 
-`maddy` executable will be created in current directory, you probably want to 
-copy it to a system directory (like `/usr/local/bin`).
+Command to build latest commit from master branch:
+```
+go get github.com/foxcpp/maddy/cmd/maddy@master
+```
+
+Command to build release X.Y.Z:
+```
+go get github.com/foxcpp/maddy/cmd/maddy@vX.Y.Z
+```
+
+There is no need to clone this repo, `go get` command will take care of it.
+
+`maddy` executable  will be placed in $GOPATH/bin directory (defaults to
+$HOME/go/bin).
 
 ## Quick start
 
