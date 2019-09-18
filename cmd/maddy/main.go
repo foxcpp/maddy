@@ -28,7 +28,14 @@ func main() {
 	blockProfileRate := flag.Int("debug.blockprofrate", 0, "set blocking profile rate")
 	mutexProfileFract := flag.Int("debug.mutexproffract", 0, "set mutex profile fraction)")
 
+	printVersion := flag.Bool("v", false, "print version and exit")
+
 	flag.Parse()
+
+	if *printVersion {
+		printBuildInfo()
+		return
+	}
 
 	var err error
 	log.DefaultLogger.Out, err = maddy.LogOutputOption(strings.Split(*logTargets, " "))
