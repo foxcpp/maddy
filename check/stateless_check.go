@@ -130,7 +130,7 @@ func (c *statelessCheck) Init(cfg *config.Map) error {
 	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
 			return c.defaultFailAction, nil
-		}, failActionDirective, &c.failAction)
+		}, FailActionDirective, &c.failAction)
 	_, err := cfg.Process()
 	return err
 }

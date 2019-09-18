@@ -1048,6 +1048,41 @@ Check that domain in MAIL FROM command does have a MX record.
 Check that source server IP does have a PTR record point to the domain
 specified in EHLO/HELO command.
 
+# VERIFY_DKIM MODULE
+
+This is the check module that performs verification of the DKIM signatures
+present on the incoming messages.
+
+It got an implicit configuration block defined like CHECK MODULES above.
+
+
+```
+check {
+    ...
+    verify_dkim
+}
+```
+
+Valid directives:
+
+## debug [yes/no]
+
+Toggle debug logging only for this module.
+
+## no_sig_action ...
+
+Action to take when message without any signature is received.
+Default is 'ignore', as recommended by RFC 6376.
+
+Valid arguments are same as for CHECK MODULES above.
+
+## broken_sig_action ...
+
+Action to take when message with invalid signature is received.
+Default is 'ignore', as recommended by RFC 6376.
+
+Valid arguments are same as for CHECK MODULES above.
+
 # DUMMY MODULE
 
 No-op module. It doesn't need to be configured explicitly and can be referenced

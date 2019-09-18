@@ -13,7 +13,7 @@ type FailAction struct {
 	ScoreAdjust int
 }
 
-func failActionDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func FailActionDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, m.MatchErr("expected at least 1 argument")
 	}
