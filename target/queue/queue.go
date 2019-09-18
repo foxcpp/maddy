@@ -252,7 +252,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		if len(meta.FailedRcpts) != 0 {
 			dl.Printf("permanently failed to deliver to %v, errors: %v", meta.FailedRcpts, meta.RcptErrs)
 		}
-		if !meta.DSN {
+		if (len(meta.FailedRcpts) != 0 || meta.TriesCount == q.maxTries) && !meta.DSN {
 			q.emitDSN(meta, header)
 		}
 		q.removeFromDisk(meta.MsgMeta)
