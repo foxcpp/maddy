@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
@@ -64,13 +65,50 @@ func (ctx *parseContext) resolveImport(node *Node, name string, expansionDepth i
 		}
 		return nil, err
 	}
-	nodes, snips, err := readTree(src, file, expansionDepth+1)
+	nodes, snips, macros, err := readTree(src, file, expansionDepth+1)
 	if err != nil {
 		return nodes, err
 	}
 	for k, v := range snips {
 		ctx.snippets[k] = v
 	}
+	for k, v := range macros {
+		ctx.macros[k] = v
+	}
 
 	return nodes, nil
+}
+
+func (ctx *parseContext) expandMacros(node *Node) error {
+	if strings.HasPrefix(node.Name, "$(") && strings.HasSuffix(node.Name, ")") {
+		return ctx.Err("can't use macro argument as directive name")
+	}
+
+	newArgs := make([]string, 0, len(node.Args))
+	for _, arg := range node.Args {
+		if !strings.HasPrefix(arg, "$(") || !strings.HasSuffix(arg, ")") {
+			newArgs = append(newArgs, arg)
+			continue
+		}
+
+		macroName := arg[2 : len(arg)-1]
+		replacement, ok := ctx.macros[macroName]
+		if !ok {
+			// Undefined macros are expanded to zero arguments.
+			continue
+		}
+
+		newArgs = append(newArgs, replacement...)
+	}
+	node.Args = newArgs
+
+	if node.Children != nil {
+		for i := range node.Children {
+			if err := ctx.expandMacros(&node.Children[i]); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

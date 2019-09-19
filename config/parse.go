@@ -29,6 +29,11 @@ type Node struct {
 	// returns.
 	Snippet bool
 
+	// Macro indicates whether current parsed node is a macro. Always false
+	// for all nodes returned from Read because macros are expanded before it
+	// returns.
+	Macro bool
+
 	// File is the name of node's source file.
 	File string
 
@@ -41,6 +46,7 @@ type parseContext struct {
 	lexer.Dispenser
 	nesting  int
 	snippets map[string][]Node
+	macros   map[string][]string
 
 	fileLocation string
 }
@@ -88,6 +94,16 @@ func (ctx *parseContext) readNode() (Node, error) {
 		node.Args = append(node.Args, ctx.Val())
 	}
 
+	macroName, macroArgs, err := ctx.parseAsMacro(&node)
+	if err != nil {
+		return node, err
+	}
+	if macroName != "" {
+		node.Name = macroName
+		node.Args = macroArgs
+		node.Macro = true
+	}
+
 	return node, nil
 }
 
@@ -103,6 +119,23 @@ func (ctx *parseContext) isSnippet(name string) (bool, string) {
 		return true, name[1 : len(name)-1]
 	}
 	return false, ""
+}
+
+func (ctx *parseContext) parseAsMacro(node *Node) (macroName string, args []string, err error) {
+	if !strings.HasPrefix(node.Name, "$(") {
+		return "", nil, nil
+	}
+	if !strings.HasSuffix(node.Name, ")") {
+		return "", nil, ctx.Err("macro name must end with )")
+	}
+	macroName = node.Name[2 : len(node.Name)-1]
+	if len(node.Args) < 2 {
+		return macroName, nil, ctx.Err("at least 2 arguments are required")
+	}
+	if node.Args[0] != "=" {
+		return macroName, nil, ctx.Err("missing = in macro declaration")
+	}
+	return macroName, node.Args[1:], nil
 }
 
 // readNodes reads nodes from the currently parsed block.
@@ -170,6 +203,21 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 			shouldStop = true
 		}
 
+		if node.Macro {
+			if ctx.nesting != 0 {
+				return res, ctx.Err("macro declarations are only allowed at top-level")
+			}
+
+			// Macro declaration itself can contain macro references.
+			if err := ctx.expandMacros(&node); err != nil {
+				return res, err
+			}
+
+			// = sign is removed by parseAsMacro.
+			// It also cuts $( and ) from name.
+			ctx.macros[node.Name] = node.Args
+			continue
+		}
 		if node.Snippet {
 			if ctx.nesting != 0 {
 				return res, ctx.Err("snippet declarations are only allowed at top-level")
@@ -182,6 +230,10 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 			continue
 		}
 
+		if err := ctx.expandMacros(&node); err != nil {
+			return res, err
+		}
+
 		res = append(res, node)
 		if shouldStop {
 			break
@@ -190,10 +242,11 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 	return res, nil
 }
 
-func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, err error) {
+func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, snips map[string][]Node, macros map[string][]string, err error) {
 	ctx := parseContext{
 		Dispenser:    lexer.NewDispenser(location, r),
 		snippets:     make(map[string][]Node),
+		macros:       map[string][]string{},
 		nesting:      -1,
 		fileLocation: location,
 	}
@@ -209,23 +262,23 @@ func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, s
 	// will see this as it is reading block at nesting level 0.
 	root.Children, err = ctx.readNodes()
 	if err != nil {
-		return root.Children, ctx.snippets, err
+		return root.Children, ctx.snippets, ctx.macros, err
 	}
 
 	// There is no need to check ctx.nesting < 0 because it is checked by readNodes.
 	if ctx.nesting > 0 {
-		return root.Children, ctx.snippets, ctx.Err("unexpected EOF when looking for }")
+		return root.Children, ctx.snippets, ctx.macros, ctx.Err("unexpected EOF when looking for }")
 	}
 
 	if err := ctx.expandImports(&root, expansionDepth); err != nil {
-		return root.Children, ctx.snippets, err
+		return root.Children, ctx.snippets, ctx.macros, err
 	}
 
-	return root.Children, ctx.snippets, nil
+	return root.Children, ctx.snippets, ctx.macros, nil
 }
 
 func Read(r io.Reader, location string) (nodes []Node, err error) {
-	nodes, _, err = readTree(r, location, 0)
+	nodes, _, _, err = readTree(r, location, 0)
 	nodes = expandEnvironment(nodes)
 	return
 }

@@ -389,6 +389,132 @@ var cases = []struct {
 		nil,
 		true,
 	},
+	{
+		"macro expansion, single argument",
+		`$(foo) = bar
+		dir $(foo)`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{"bar"},
+				Children: nil,
+				File:     "test",
+				Line:     2,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, multiple arguments",
+		`$(foo) = bar baz
+		dir $(foo)`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{"bar", "baz"},
+				Children: nil,
+				File:     "test",
+				Line:     2,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, undefined",
+		`dir $(foo)`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{},
+				Children: nil,
+				File:     "test",
+				Line:     1,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, empty",
+		`$(foo) =`,
+		nil,
+		true,
+	},
+	{
+		"macro expansion, name replacement",
+		`$(foo) = a b
+			$(foo) 1`,
+		nil,
+		true,
+	},
+	{
+		"macro expansion, missing =",
+		`$(foo) a b
+			$(foo) 1`,
+		nil,
+		true,
+	},
+	{
+		"macro expansion, not on top level",
+		`a {
+				$(foo) = a b
+			}
+			$(foo) 1`,
+		nil,
+		true,
+	},
+	{
+		"macro expansion, nested",
+		`$(foo) = a
+			$(bar) = $(foo) b
+			dir $(bar)`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{"a", "b"},
+				Children: nil,
+				File:     "test",
+				Line:     3,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, used inside snippet",
+		`$(foo) = a
+			(bar) {
+				dir $(foo)
+			}
+			import bar`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{"a"},
+				Children: nil,
+				File:     "test",
+				Line:     3,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, used inside snippet, defined after",
+		`
+			(bar) {
+				dir $(foo)
+			}
+			$(foo) = a
+			import bar`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{},
+				Children: nil,
+				File:     "test",
+				Line:     3,
+			},
+		},
+		false,
+	},
 }
 
 func printTree(t *testing.T, root *Node, indent int) {
