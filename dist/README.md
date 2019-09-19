@@ -15,3 +15,10 @@ the system to a bare minimum. Subset of these options makes it impossible for
 privileged authentication helper binaries to gain required permissions, so you
 may have to disable it when using system account-based authentication with
 maddy running as a unprivilieged user.
+
+## fail2ban configuration
+
+Configuration files for use with fail2ban. Assume either `backend = systemd` specified
+in system-wide configuration or log file written to /var/log/maddy/maddy.log.
+
+See https://github.com/foxcpp/maddy/wiki/fail2ban-configuration for details.

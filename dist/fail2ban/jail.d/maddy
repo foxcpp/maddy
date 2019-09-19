@@ -1,0 +1,5 @@
+[maddy]
+enabled  = true
+port     = 143,993,587,465,25
+filter   = maddy
+logpath  = /var/log/maddy/maddy.log

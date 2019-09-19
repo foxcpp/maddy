@@ -1,0 +1,2 @@
+[Definition]
+failregex = authentication failed for (.+) \(from <HOST>:[0-9]+\)
