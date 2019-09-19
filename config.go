@@ -13,6 +13,14 @@ import (
 Config matchers for module interfaces.
 */
 
+// logOut structure wraps log.Output and preserves
+// configuration directive it was constructed from, allowing
+// dynamic reinitialization for purposes of log file rotation.
+type logOut struct {
+	args []string
+	log.Output
+}
+
 func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, m.MatchErr("expected at least 1 argument")
@@ -24,16 +32,16 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 	return LogOutputOption(node.Args)
 }
 
-func LogOutputOption(args []string) (log.FuncLog, error) {
-	outs := make([]log.FuncLog, 0, len(args))
+func LogOutputOption(args []string) (log.Output, error) {
+	outs := make([]log.Output, 0, len(args))
 	for _, arg := range args {
 		switch arg {
 		case "stderr":
-			outs = append(outs, log.WriterLog(os.Stderr, false))
+			outs = append(outs, log.WriterOutput(os.Stderr, false))
 		case "stderr_ts":
-			outs = append(outs, log.WriterLog(os.Stderr, true))
+			outs = append(outs, log.WriterOutput(os.Stderr, true))
 		case "syslog":
-			syslogOut, err := log.Syslog()
+			syslogOut, err := log.SyslogOutput()
 			if err != nil {
 				return nil, fmt.Errorf("failed to connect to syslog daemon: %v", err)
 			}
@@ -49,14 +57,14 @@ func LogOutputOption(args []string) (log.FuncLog, error) {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}
 
-			outs = append(outs, log.WriterLog(w, true))
+			outs = append(outs, log.WriteCloserOutput(w, true))
 		}
 	}
 
 	if len(outs) == 1 {
-		return outs[0], nil
+		return logOut{args, outs[0]}, nil
 	}
-	return log.MultiLog(outs...), nil
+	return logOut{args, log.MultiOutput(outs...)}, nil
 }
 
 func defaultLogOutput() (interface{}, error) {

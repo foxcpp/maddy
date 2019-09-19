@@ -45,6 +45,8 @@ func Start(cfg []config.Node) error {
 		return err
 	}
 
+	defer log.DefaultLogger.Out.Close()
+
 	for _, block := range unmatched {
 		var instName string
 		var modAliases []string

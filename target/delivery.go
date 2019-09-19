@@ -14,9 +14,9 @@ func DeliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 	}
 
 	return log.Logger{
-		Out: func(t time.Time, debug bool, str string) {
-			out(t, debug, str+" (msg ID = "+msgMeta.ID+")")
-		},
+		Out: log.FuncOutput(func(t time.Time, debug bool, str string) {
+			out.Write(t, debug, str+" (msg ID = "+msgMeta.ID+")")
+		}, out.Close),
 		Name:  l.Name,
 		Debug: l.Debug,
 	}

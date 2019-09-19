@@ -1,60 +1,75 @@
-// Package log implements minimalistic logging library.
+// Package log implements a minimalistic logging library.
 package log
 
 import (
 	"fmt"
 	"io"
-	"log/syslog"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 )
 
-/*
-Brutal logging library.
-*/
-
-type FuncLog func(t time.Time, debug bool, str string)
-
+// Logger is the structure that writes formatted output
+// to the underlying log.Output object.
+//
+// Logger is stateless and can be copied freely.
+// However, consider that underlying log.Output will not
+// be copied.
+//
+// Each log message is prefixed with logger name.
+// Timestamp and debug flag formatting is done by log.Output.
+//
+// No serialization is provided by Logger, its log.Output
+// responsibility to ensure goroutine-safety if necessary.
 type Logger struct {
-	Out   FuncLog
+	Out   Output
 	Name  string
 	Debug bool
 }
 
-func (l *Logger) Debugf(format string, val ...interface{}) {
+func (l Logger) Debugf(format string, val ...interface{}) {
 	if !l.Debug {
 		return
 	}
 	l.log(true, fmt.Sprintf(format, val...))
 }
 
-func (l *Logger) Debugln(val ...interface{}) {
+func (l Logger) Debugln(val ...interface{}) {
 	if !l.Debug {
 		return
 	}
 	l.log(true, fmt.Sprintln(val...))
 }
 
-func (l *Logger) Printf(format string, val ...interface{}) {
+func (l Logger) Printf(format string, val ...interface{}) {
 	l.log(false, fmt.Sprintf(format, val...))
 }
 
-func (l *Logger) Println(val ...interface{}) {
+func (l Logger) Println(val ...interface{}) {
 	l.log(false, fmt.Sprintln(val...))
 }
 
-func (l *Logger) Write(s []byte) (int, error) {
+// Write implements io.Writer, all bytes sent
+// to it will be written as a separate log messages.
+// No line-buffering is done.
+func (l Logger) Write(s []byte) (int, error) {
 	l.log(false, string(s))
 	return len(s), nil
 }
 
-func (l Logger) DebugWriter() *Logger {
+// DebugWriter returns a writer that will act like Logger.Write
+// but will use debug flag on messages. If Logger.Debug is false,
+// Write method of returned object will be no-op.
+func (l Logger) DebugWriter() io.Writer {
+	if !l.Debug {
+		return ioutil.Discard
+	}
 	l.Debug = true
 	return &l
 }
 
-func (l *Logger) log(debug bool, s string) {
+func (l Logger) log(debug bool, s string) {
 	s = strings.TrimRight(s, "\n\t ")
 
 	if l.Name != "" {
@@ -62,65 +77,25 @@ func (l *Logger) log(debug bool, s string) {
 	}
 
 	if l.Out != nil {
-		l.Out(time.Now(), debug, s)
+		l.Out.Write(time.Now(), debug, s)
 		return
 	}
 	if DefaultLogger.Out != nil {
-		DefaultLogger.Out(time.Now(), debug, s)
+		DefaultLogger.Out.Write(time.Now(), debug, s)
 		return
 	}
 
 	// Logging is disabled - do nothing.
 }
 
-var DefaultLogger = Logger{Out: WriterLog(os.Stderr, false)}
+// DefaultLogger is the global Logger object that is used by
+// package-level logging functions.
+//
+// As with all other Loggers, it is not gorountine-safe on its own,
+// however underlying log.Output may provide necessary serialization.
+var DefaultLogger = Logger{Out: WriterOutput(os.Stderr, false)}
 
 func Debugf(format string, val ...interface{}) { DefaultLogger.Debugf(format, val...) }
 func Debugln(val ...interface{})               { DefaultLogger.Debugln(val...) }
 func Printf(format string, val ...interface{}) { DefaultLogger.Printf(format, val...) }
 func Println(val ...interface{})               { DefaultLogger.Println(val...) }
-
-func WriterLog(w io.Writer, timestamp bool) FuncLog {
-	return func(t time.Time, debug bool, str string) {
-		builder := strings.Builder{}
-		if timestamp {
-			builder.WriteString(t.Format("02.01.06 15:04:05.000 "))
-		}
-		if debug {
-			builder.WriteString("[debug] ")
-		}
-		builder.WriteString(str)
-		builder.WriteRune('\n')
-		if _, err := io.WriteString(w, builder.String()); err != nil {
-			fmt.Fprintf(os.Stderr, "!!! Failed to write message to log: %v\n", err)
-		}
-	}
-}
-
-func Syslog() (FuncLog, error) {
-	w, err := syslog.New(syslog.LOG_MAIL|syslog.LOG_INFO, "maddy")
-	if err != nil {
-		return nil, err
-	}
-
-	return func(t time.Time, debug bool, str string) {
-		var err error
-		if debug {
-			err = w.Debug(str + "\n")
-		} else {
-			err = w.Info(str + "\n")
-		}
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "!!! Failed to send message to syslog daemon: %v\n", err)
-		}
-	}, nil
-}
-
-func MultiLog(outs ...FuncLog) FuncLog {
-	return func(t time.Time, debug bool, str string) {
-		for _, out := range outs {
-			out(t, debug, str)
-		}
-	}
-}

@@ -35,10 +35,10 @@ func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
 	}
 
 	return log.Logger{
-		Out: func(t time.Time, debug bool, str string) {
+		Out: log.FuncOutput(func(t time.Time, debug bool, str string) {
 			ctxInfo := fmt.Sprintf(", HELO = %s, IP = %s, MAIL FROM = %s, msg ID = %s", msgMeta.SrcHostname, msgMeta.SrcAddr, msgMeta.OriginalFrom, msgMeta.ID)
-			out(t, debug, str+ctxInfo)
-		},
+			out.Write(t, debug, str+ctxInfo)
+		}, out.Close),
 		Debug: l.Debug,
 		Name:  l.Name,
 	}
