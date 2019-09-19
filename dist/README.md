@@ -22,3 +22,7 @@ Configuration files for use with fail2ban. Assume either `backend = systemd` spe
 in system-wide configuration or log file written to /var/log/maddy/maddy.log.
 
 See https://github.com/foxcpp/maddy/wiki/fail2ban-configuration for details.
+
+## logrotate configuration
+
+Meant for logs rotation when logging to file is used.

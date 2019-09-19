@@ -1,0 +1,7 @@
+/var/log/maddy/maddy.log {
+    missingok
+    su maddy maddy
+    postrotate
+        /usr/bin/killall -USR1 maddy
+    endscript
+}
