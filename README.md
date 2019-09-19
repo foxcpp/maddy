@@ -156,9 +156,24 @@ and 465 (TLS) ports.
 - IMAP endpoint for access to user mailboxes, on both 143 (STARTTLS) and 
 993 (TLS) ports.
 - Two basic DNS checks for incoming messages
+- DKIM signatures verification
 
 Configuration syntax, high-level structure, and all implemented options are
 documented in maddy.conf(5) man page.
+
+### Mailboxes namespacing
+
+By default, all configured domains will share the same set of mailboxes.
+This means, if you use
+``` 
+$(local_domains) = example.com example.org
+```
+admin@example.com and admin@example.org will refer to the same mailbox.
+
+If you want to make them separate - add `auth_perdomain` and `storage_perdomain` directives
+below.
+
+Note that it will require users to specify full address as username when logging in.
 
 ## SQL-based database
 
