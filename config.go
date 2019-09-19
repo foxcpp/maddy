@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
@@ -34,7 +35,7 @@ func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
 
 func LogOutputOption(args []string) (log.Output, error) {
 	outs := make([]log.Output, 0, len(args))
-	for _, arg := range args {
+	for i, arg := range args {
 		switch arg {
 		case "stderr":
 			outs = append(outs, log.WriterOutput(os.Stderr, false))
@@ -52,7 +53,18 @@ func LogOutputOption(args []string) (log.Output, error) {
 			}
 			return nil, nil
 		default:
-			w, err := os.OpenFile(arg, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+			// Log file paths are converted to absolute to make sure
+			// we will be able to recreate them in right location
+			// after changing working directory to the state dir.
+			absPath, err := filepath.Abs(arg)
+			if err != nil {
+				return nil, err
+			}
+			// We change the actual argument, so logOut object will
+			// keep the absolute path for reinitialization.
+			args[i] = absPath
+
+			w, err := os.OpenFile(absPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}
@@ -69,4 +81,20 @@ func LogOutputOption(args []string) (log.Output, error) {
 
 func defaultLogOutput() (interface{}, error) {
 	return log.DefaultLogger.Out, nil
+}
+
+func reinitLogging() {
+	out, ok := log.DefaultLogger.Out.(logOut)
+	if !ok {
+		log.Println("Can't reinitialize logger because it was replaced before, this is a bug")
+		return
+	}
+
+	newOut, err := LogOutputOption(out.args)
+	if err != nil {
+		log.Println("Can't reinitialize logger:", err)
+		return
+	}
+
+	log.DefaultLogger.Out = newOut
 }

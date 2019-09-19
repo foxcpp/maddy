@@ -100,10 +100,21 @@ func Start(cfg []config.Node) error {
 	}
 
 	sig := make(chan os.Signal, 5)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1)
 
-	s := <-sig
-	log.Printf("signal received (%v), next signal will force immediate shutdown.", s)
+	for {
+		switch s := <-sig; s {
+		case syscall.SIGUSR1:
+			log.Println("SIGUSR1 received, reinitializing logging")
+			reinitLogging()
+		default:
+			log.Printf("signal received (%v), next signal will force immediate shutdown.", s)
+			// break inside switch exits switch, not outer loop
+			goto exitsigloop
+		}
+	}
+exitsigloop:
+
 	go func() {
 		s := <-sig
 		log.Printf("forced shutdown due to signal (%v)!", s)
