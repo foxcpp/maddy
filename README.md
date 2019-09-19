@@ -36,7 +36,7 @@ any questions or just want to talk about maddy.
 Planned features:
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) signing
 - [DMRAC](https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/) policy support
-- Built-in [backscatter](https://en.wikipedia.org/wiki/Backscatter_(e-mail) mitigation
+- Built-in [backscatter](https://en.wikipedia.org/wiki/Backscatter_(e-mail)) mitigation
 - Address aliases support
 - [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing) support
 - DANE support
