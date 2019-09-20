@@ -893,6 +893,9 @@ You probably want to use it with queue module for reliability.
 remote
 ```
 
+If a message check marks message as 'quarantined', remote module
+will refuse to deliver message.
+
 Valid configuration directives:
 
 ## hostname <hostname>

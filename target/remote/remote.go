@@ -125,6 +125,10 @@ func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.De
 }
 
 func (rd *remoteDelivery) AddRcpt(to string) error {
+	if rd.msgMeta.Quarantine {
+		return errors.New("remote: refusing to deliver quarantined message")
+	}
+
 	_, domain, err := address.Split(to)
 	if err != nil {
 		return err
@@ -153,6 +157,10 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 }
 
 func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
+	if rd.msgMeta.Quarantine {
+		return errors.New("remote: refusing to deliver quarantined message")
+	}
+
 	errChans := make(map[string]chan error, len(rd.connections))
 	for domain := range rd.connections {
 		errChans[domain] = make(chan error)
