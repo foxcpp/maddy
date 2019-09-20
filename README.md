@@ -32,13 +32,13 @@ any questions or just want to talk about maddy.
 - [MTA-STS](https://www.hardenize.com/blog/mta-sts) support
 - DNS sanity checks for incoming deliveries
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) verification support
+- [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing) (aka plus-addressing) support
 
 Planned features:
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) signing
 - [DMRAC](https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/) policy support
 - Built-in [backscatter](https://en.wikipedia.org/wiki/Backscatter_(e-mail)) mitigation
 - Address aliases support
-- [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing) support
 - DANE support
 - Storage encryption
 - Automatic TLS certificates configuration using Let's Encrypt
@@ -157,6 +157,7 @@ and 465 (TLS) ports.
 993 (TLS) ports.
 - Two basic DNS checks for incoming messages
 - DKIM signatures verification
+- Subaddressing (aka plus-addressing) support
 
 Configuration syntax, high-level structure, and all implemented options are
 documented in maddy.conf(5) man page.
