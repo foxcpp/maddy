@@ -834,7 +834,7 @@ ensure reliable delivery.
 
 ```
 queue {
-    workers 16
+    max_parallelism 16
     max_tries 8
     target dummy
 }
@@ -852,7 +852,7 @@ File system directory to use to store queued messages.
 
 Default is StateDirectory/<configuration_block_name>.
 
-## workers <count>
+## max_parallelism <count>
 
 Start up to 'count' goroutines for message processing. Basically, this option
 limits amount of messages tried to be delivered concurrently.

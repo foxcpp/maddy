@@ -45,8 +45,15 @@ func (tw *TimeWheel) Add(target time.Time, value interface{}) {
 }
 
 func (tw *TimeWheel) Close() {
+	// Idempotent Close is convenient sometimes.
+	if tw.stopNotify == nil {
+		return
+	}
+
 	tw.stopNotify <- struct{}{}
 	<-tw.stopNotify
+
+	tw.stopNotify = nil
 
 	close(tw.updateNotify)
 	close(tw.dispatch)
