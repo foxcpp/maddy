@@ -23,11 +23,15 @@ type ExternalAuth struct {
 	Log log.Logger
 }
 
-func NewExternalAuth(modName, instName string, _ []string) (module.Module, error) {
+func NewExternalAuth(modName, instName string, _, inlineArgs []string) (module.Module, error) {
 	ea := &ExternalAuth{
 		modName:  modName,
 		instName: instName,
 		Log:      log.Logger{Name: modName},
+	}
+
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("external: inline arguments are not used")
 	}
 
 	return ea, nil

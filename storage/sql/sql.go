@@ -144,7 +144,10 @@ func (store *Storage) InstanceName() string {
 	return store.instName
 }
 
-func New(_, instName string, _ []string) (module.Module, error) {
+func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("sql: inline arguments are not used")
+	}
 	return &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},

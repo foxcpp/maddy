@@ -41,7 +41,10 @@ type Endpoint struct {
 	Log log.Logger
 }
 
-func New(_, instName string, aliases []string) (module.Module, error) {
+func New(_, instName string, aliases, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("imap: inline arguments are not used")
+	}
 	endp := &Endpoint{
 		name:    instName,
 		aliases: aliases,

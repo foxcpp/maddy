@@ -69,7 +69,7 @@ func Start(cfg []config.Node) error {
 		}
 
 		log.Debugln("module create", modName, instName)
-		inst, err := factory(modName, instName, modAliases)
+		inst, err := factory(modName, instName, modAliases, nil)
 		if err != nil {
 			return err
 		}

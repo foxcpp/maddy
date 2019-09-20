@@ -239,7 +239,10 @@ func (endp *Endpoint) InstanceName() string {
 	return endp.name
 }
 
-func New(modName, instName string, aliases []string) (module.Module, error) {
+func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, fmt.Errorf("%s: inline arguments are not used", modName)
+	}
 	endp := &Endpoint{
 		name:       instName,
 		aliases:    aliases,

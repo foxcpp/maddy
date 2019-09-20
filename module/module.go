@@ -50,19 +50,8 @@ type Module interface {
 //
 // Module.InstanceName() of the returned module object should return instName.
 // aliases slice contains other names that can be used to reference created
-// module instance. Here is the example of top-level declarations and the
-// corresponding arguments passed to module constructor:
+// module instance.
 //
-// modname { }
-// Arguments: "modname", "modname", nil.
-//
-// modname instname { }
-// Arguments: "modname", "instname", nil
-//
-// modname instname secondname1 secondname2 { }
-// Arguments: "modname", "instname", []string{"secondname1", "secondname2"}
-//
-// Note modules are allowed to attach additional meaning to used names.
-// For example, endpoint modules use instance name and aliases as addresses
-// to listen on.
-type FuncNewModule func(modName, instName string, aliases []string) (Module, error)
+// If module is defined inline, instName will be empty and all values
+// specified after module name in configuration will be in inlineArgs.
+type FuncNewModule func(modName, instName string, aliases, inlineArgs []string) (Module, error)

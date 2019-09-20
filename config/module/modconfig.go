@@ -18,15 +18,15 @@ import (
 )
 
 // createInlineModule is a helper function for config matchers that can create inline modules.
-func createInlineModule(modName, instName string, aliases []string) (module.Module, error) {
+func createInlineModule(modName string, args []string) (module.Module, error) {
 	newMod := module.Get(modName)
 	if newMod == nil {
 		return nil, fmt.Errorf("unknown module: %s", modName)
 	}
 
-	log.Debugln("module create", modName, instName, "(inline)")
+	log.Debugln("module create", modName, args, "(inline)")
 
-	return newMod(modName, instName, aliases)
+	return newMod(modName, "", nil, args)
 }
 
 // initInlineModule constructs "faked" config tree and passes it to module
@@ -69,16 +69,7 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	var modObj module.Module
 	var err error
 	if inlineCfg.Children != nil || len(args) > 1 {
-		modName := args[0]
-
-		modAliases := args[1:]
-		instName := ""
-		if len(args) >= 2 {
-			modAliases = args[2:]
-			instName = args[1]
-		}
-
-		modObj, err = createInlineModule(modName, instName, modAliases)
+		modObj, err = createInlineModule(args[0], args[1:])
 	} else {
 		if len(args) != 1 {
 			return config.NodeErr(inlineCfg, "exactly one argument is to use existing config block")

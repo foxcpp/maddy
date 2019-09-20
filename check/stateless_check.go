@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/emersion/go-message/textproto"
@@ -155,7 +156,10 @@ func (c *statelessCheck) InstanceName() string {
 // populate RejectErr field of the result object with the relevant error description. Fields ScoreAdjust and
 // Quarantine will be ignored.
 func RegisterStatelessCheck(name string, defaultFailAction FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
-	module.Register(name, func(modName, instName string, aliases []string) (module.Module, error) {
+	module.Register(name, func(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
+		if len(inlineArgs) != 0 {
+			return nil, fmt.Errorf("%s: inline arguments are not used", modName)
+		}
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,

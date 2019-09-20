@@ -112,7 +112,10 @@ type QueueMetadata struct {
 	DSN bool
 }
 
-func NewQueue(_, instName string, _ []string) (module.Module, error) {
+func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("queue: inline arguments are not used")
+	}
 	return &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,

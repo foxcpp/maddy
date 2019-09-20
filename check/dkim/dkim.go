@@ -3,6 +3,7 @@ package dkim
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 
 	"github.com/emersion/go-message/textproto"
@@ -25,7 +26,10 @@ type Check struct {
 	noSigAction     check.FailAction
 }
 
-func New(_, instName string, _ []string) (module.Module, error) {
+func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("verify_dkim: inline arguments are not used")
+	}
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: "verify_dkim"},

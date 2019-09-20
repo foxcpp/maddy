@@ -95,7 +95,7 @@ func (ms modifierState) Close() error {
 }
 
 func init() {
-	module.Register("test_modifier", func(modName, instanceName string, aliases []string) (module.Module, error) {
+	module.Register("test_modifier", func(_, _ string, _, _ []string) (module.Module, error) {
 		return &Modifier{}, nil
 	})
 	module.RegisterInstance(&Modifier{}, nil)

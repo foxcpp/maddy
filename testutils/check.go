@@ -67,7 +67,7 @@ func (cs *checkState) Close() error {
 }
 
 func init() {
-	module.Register("test_check", func(modName, instanceName string, aliases []string) (module.Module, error) {
+	module.Register("test_check", func(_, _ string, _, _ []string) (module.Module, error) {
 		return &Check{}, nil
 	})
 	module.RegisterInstance(&Check{}, nil)

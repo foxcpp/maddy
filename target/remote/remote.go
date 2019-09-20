@@ -49,7 +49,10 @@ type Target struct {
 
 var _ module.DeliveryTarget = &Target{}
 
-func New(_, instName string, _ []string) (module.Module, error) {
+func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("remote: inline arguments are not used")
+	}
 	return &Target{
 		name:        instName,
 		resolver:    net.DefaultResolver,

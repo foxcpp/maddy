@@ -3,6 +3,7 @@
 package shadow
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,10 @@ type Auth struct {
 	Log log.Logger
 }
 
-func New(modName, instName string, _ []string) (module.Module, error) {
+func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("shadow: inline arguments are not used")
+	}
 	return &Auth{
 		instName: instName,
 		Log:      log.Logger{Name: modName},
