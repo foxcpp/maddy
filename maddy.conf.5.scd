@@ -480,6 +480,8 @@ to declare your own.
 The way check failure is handled is defined by the check itself, 
 usually message will be quarantined.
 
+See CHECKS MODULES for what you can use here.
+
 Note that if check that inspects the body is placed placed inside the
 destination block, its will affect the message for all 
 recipients. It's implementation deficiency and this behavior may 
@@ -505,7 +507,7 @@ List of the configuration block names for modifier that should
 be executed on all incoming messages. In most cases, modifier have implicitly defined 
 top-level configuration block, so you don't have to declare your own.
 
-Message modifier are similar to checks with the difference in that
+Message modifiers are similar to checks with the difference in that
 checks purpose is to verify whether the message is legitimate and valid
 per local policy, while modifier purpose is to post-process message
 and its metadata before final delivery.
@@ -514,6 +516,8 @@ For example, modifier can replace recipient address to make message
 delivered to the different mailbox or it can cryptographically sign
 outgoing message (e.g. using DKIM protocol). Some modifier can perform
 multiple modifications on the message.
+
+See MODIFY MODULES for what you can use here.
 
 NOTE: Modifiers that affect the message header or source address can
 be used only globally or on per-source basis, they will be no-op
@@ -1109,6 +1113,37 @@ Action to take when message with invalid signature is received.
 Default is 'ignore', as recommended by RFC 6376.
 
 Valid arguments are same as for CHECK MODULES above.
+
+# REPLACE_SENDER, REPLACE_RCPT
+
+These are modules that simply replace matching address value(s) with another 
+in either MAIL FROM or RCPT TO. 
+
+Matching is done either by full address string or regexp that should match
+entire address (it is implicitly wrapped with ^ and $). In either case, 
+matching is case-insensitive. 
+
+Configuration is done using inline arguments or 'from' and 'to'
+directives. See below for examples.
+
+```
+modify {
+    # Replace addr@example.com with addr@example.org in MAIL FROM (message sender).
+    replace_sender addr@example.com addr@example.org
+
+    # Replace addr@example.com with addr@example.org in RCPT TO (message recipient).
+    replace_rcpt addr@example.com addr@example.org
+
+    # Examples below use replace_sender but work exactly the same way for replace_rcpt.
+
+    # Replace any address matching /-enclosed regexp with com@example.org.
+    replace_sender /(.+)@example.com/ com@example.org
+
+    # You can also reference capture groups in the second argument.  
+    replace_sender /(.+)@example.com/ $1@example.org
+}
+```
+
 
 # DUMMY MODULE
 

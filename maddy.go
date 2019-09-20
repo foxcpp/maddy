@@ -19,6 +19,7 @@ import (
 	_ "github.com/foxcpp/maddy/check/dns"
 	_ "github.com/foxcpp/maddy/endpoint/imap"
 	_ "github.com/foxcpp/maddy/endpoint/smtp"
+	_ "github.com/foxcpp/maddy/modify"
 	_ "github.com/foxcpp/maddy/storage/sql"
 	_ "github.com/foxcpp/maddy/target/queue"
 	_ "github.com/foxcpp/maddy/target/remote"
