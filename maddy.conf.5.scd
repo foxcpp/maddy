@@ -858,13 +858,19 @@ queue {
 }
 ```
 
+## Inline arguments
+
+When used inline, first argument specifies directory to use for storage.
+Relative paths are relative to the StateDirectory. 
+
+
 Valid configuration directives:
 
 ## target <config block>
 
 Delivery target to use for delivery. You probably want to use 'remote' here.
 
-## location
+## location <directory>
 
 File system directory to use to store queued messages.
 
