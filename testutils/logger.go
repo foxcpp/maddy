@@ -11,9 +11,13 @@ import (
 func Logger(t *testing.T, name string) log.Logger {
 	if testing.Verbose() {
 		return log.Logger{
-			Out: log.FuncOutput(func(_ time.Time, _ bool, str string) {
+			Out: log.FuncOutput(func(_ time.Time, debug bool, str string) {
 				t.Helper()
-				t.Log(strings.TrimSuffix(str, "\n"))
+				str = strings.TrimSuffix(str, "\n")
+				if debug {
+					str = "[debug] " + str
+				}
+				t.Log(str)
 			}, func() error {
 				return nil
 			}),
