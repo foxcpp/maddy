@@ -165,7 +165,11 @@ func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, err
 	if !ok {
 		// Then try domain-only.
 		_, domain, err := address.Split(mailFrom)
-		if err != nil {
+		// mailFrom != "" is added as a special condition
+		// instead of extending address.Split because ""
+		// is not a valid RFC 282 address and only a special
+		// value for SMTP.
+		if err != nil && mailFrom != "" {
 			dd.close()
 			return sourceBlock{}, &smtp.SMTPError{
 				Code:         501,

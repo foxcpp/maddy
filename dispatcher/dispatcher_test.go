@@ -71,6 +71,54 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &orgTarget, 0, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
+func TestDispatcher_EmptyMAILFROM(t *testing.T) {
+	target := testutils.Target{InstName: "target"}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Log: testutils.Logger(t, "dispatcher"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
+
+	if len(target.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.Messages))
+	}
+	testutils.CheckTestMessage(t, &target, 0, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
+}
+
+func TestDispatcher_EmptyMAILFROM_ExplicitDest(t *testing.T) {
+	target := testutils.Target{InstName: "target"}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			perSource: map[string]sourceBlock{
+				"": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+			},
+			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
+		},
+		Log: testutils.Logger(t, "dispatcher"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
+
+	if len(target.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.Messages))
+	}
+	testutils.CheckTestMessage(t, &target, 0, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
+}
+
 func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
 	d := Dispatcher{
