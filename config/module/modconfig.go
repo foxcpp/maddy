@@ -89,7 +89,7 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 
 	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))
 
-	if inlineCfg.Children != nil {
+	if inlineCfg.Children != nil || len(args) > 1 {
 		if err := initInlineModule(modObj, globals, inlineCfg); err != nil {
 			return err
 		}
