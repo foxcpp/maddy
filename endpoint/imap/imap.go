@@ -13,6 +13,7 @@ import (
 	compress "github.com/emersion/go-imap-compress"
 	idle "github.com/emersion/go-imap-idle"
 	move "github.com/emersion/go-imap-move"
+	specialuse "github.com/emersion/go-imap-specialuse"
 	unselect "github.com/emersion/go-imap-unselect"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
@@ -194,6 +195,8 @@ func (endp *Endpoint) enableExtensions() error {
 			endp.serv.Enable(children.NewExtension())
 		case "MOVE":
 			endp.serv.Enable(move.NewExtension())
+		case "SPECIAL-USE":
+			endp.serv.Enable(specialuse.NewExtension())
 		}
 	}
 

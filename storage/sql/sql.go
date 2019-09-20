@@ -263,7 +263,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 }
 
 func (store *Storage) IMAPExtensions() []string {
-	return []string{"APPENDLIMIT", "MOVE", "CHILDREN"}
+	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE"}
 }
 
 func (store *Storage) Updates() <-chan backend.Update {
