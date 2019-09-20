@@ -771,7 +771,7 @@ See https://github.com/foxcpp/go-imap-sql for more information.
 
 When sql module is used inline, first and second arguments can optionally
 contain driver and DSN. Thus, you write this:
-``` 
+```
 imap ... {
     storage sql sqlite3 all.db 
 }
