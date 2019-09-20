@@ -276,17 +276,14 @@ something {
 }
 ```
 
-Exceptions to this rule are explicitly noted in the documentation.
-
-*Note* that in certain cases you also have to specify a name for "inline"
-configuration block. This is required when the used module uses configuration
-block name as a key to store persistent data.
+In that syntax, arguments specified after module name are not considered to be
+configuration block names and instead passed directly to the module.
+Some modules use them to allow writing more compact configuration, e.g. sql module
+allows you to specify driver and DSN in the inline arguments this way:
 ```
-smtp ... {
-    deliver queue block_name_here {
-        target remote
-    }
-}
+something {
+    auth sql sqlite3 auth.db
+} 
 ```
 
 
@@ -765,6 +762,27 @@ SQL-based storage backend. Can be used as a storage backend (for IMAP),
 authentication provider (IMAP & SMTP) or delivery target (SMTP).
 
 See https://github.com/foxcpp/go-imap-sql for more information.
+
+## Inline arguments
+
+When sql module is used inline, first and second arguments can optionally
+contain driver and DSN. Thus, you write this:
+``` 
+imap ... {
+    storage sql sqlite3 all.db 
+}
+```
+instead of
+```
+imap ... {
+    storage sql {
+        driver sqlite3
+        dsn all.db
+    }
+}
+```
+
+
 
 Valid configuration directives:
 
