@@ -46,6 +46,9 @@ type Storage struct {
 	junkMbox         string
 	hostname         string
 
+	inlineDriverArg string
+	inlineDSNArg    string
+
 	resolver dns.Resolver
 }
 
@@ -145,14 +148,24 @@ func (store *Storage) InstanceName() string {
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("sql: inline arguments are not used")
-	}
-	return &Storage{
+	store := &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},
 		resolver: net.DefaultResolver,
-	}, nil
+	}
+	switch len(inlineArgs) {
+	case 0:
+		// Not an inline definition or configuration is provided as a block.
+	case 1:
+		return nil, errors.New("sql: specify at least driver and DSN")
+	case 2:
+		store.inlineDriverArg = inlineArgs[0]
+		store.inlineDSNArg = inlineArgs[1]
+	default:
+		store.inlineDriverArg = inlineArgs[0]
+		store.inlineDSNArg = strings.Join(inlineArgs[1:], " ")
+	}
+	return store, nil
 }
 
 func (store *Storage) Init(cfg *config.Map) error {
@@ -166,8 +179,9 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// configured).
 		LazyUpdatesInit: true,
 	}
-	cfg.String("driver", false, true, "", &driver)
-	cfg.StringList("dsn", false, true, nil, &dsn)
+	cfg.String("driver", false, false, store.inlineDriverArg, &driver)
+	cfg.StringList("dsn", false, false, []string{store.inlineDSNArg}, &dsn)
+
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
 	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
@@ -228,7 +242,17 @@ func (store *Storage) Init(cfg *config.Map) error {
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
 	var err error
-	store.back, err = imapsql.New(driver, strings.Join(dsn, " "), opts)
+
+	if driver == "" {
+		return errors.New("sql: driver is not specified")
+	}
+	// Later case is for DSN inline arg being non-existent.
+	if len(dsn) == 0 || (len(dsn) == 1 && dsn[0] == "") {
+		return errors.New("sql: dsn is not specified")
+	}
+	dsnStr := strings.Join(dsn, " ")
+
+	store.back, err = imapsql.New(driver, dsnStr, opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}
