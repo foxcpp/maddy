@@ -1,5 +1,8 @@
 # Distribution files for maddy
 
+**Disclaimer:** Most of the files here are maintained in a "best-effort" way.
+That is, they may break or become outdated from time to time. Caveat emptor.
+
 ## systemd unit
 
 `maddy.service` launches using default config path (/etc/maddy/maddy.conf).
@@ -26,3 +29,8 @@ See https://github.com/foxcpp/maddy/wiki/fail2ban-configuration for details.
 ## logrotate configuration
 
 Meant for logs rotation when logging to file is used.
+
+## vim ftdetect/ftplugin/syntax files
+
+Minimal supplement to make configuration files more readable and help you see
+typos in directive names.
