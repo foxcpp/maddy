@@ -267,10 +267,11 @@ will also give maddy a little bit too many permissions.
 Compile [cmd/maddy-pam-helper](cmd/maddy-pam-helper) and/or
 [cmd/maddy-shadow-helper](cmd/maddy-shadow-helper).
 
-Put them into `/var/lib/maddy` and make them setuid (there are also other
-more restrictive options, check README in the binary directories).
+Put them into `/usr/lib/maddy` and make them setuid root (there are also other
+more restrictive options, check README in the executable directories).
 
 Add `use_helper` to `pam` or `shadow` configuration block in your config.
+
 Modify systemd unit to use less strict sandbox and disable DynamicUser.
 
 ## Contributing
