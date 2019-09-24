@@ -36,6 +36,11 @@ type Delivery interface {
 	// underlying storage until Commit is called. If that is not possible,
 	// Abort should (attempt to) rollback any such changes.
 	//
+	// If Body can't be implemented without per-recipient failures,
+	// then delivery object should also implement PartialDelivery interface
+	// for use by message sources that are able to make sense of per-recipient
+	// errors.
+	//
 	// Here is the example of possible implementation for maildir-based
 	// storage:
 	// Calling Body creates a file in tmp/ directory.
@@ -51,9 +56,7 @@ type Delivery interface {
 
 	// Commit completes message delivery.
 	//
-	// if it fails or not called - no changes should be done to the storage.
-	// However, sometimes (see remote module) it is not possible, see
-	// queue.PartialError for the current solution to make it possible to
-	// report partial delivery failures to the calling code.
+	// It generally should never fail, since failures here jeopardize
+	// atomicity of the delivery if multiple targets are used.
 	Commit() error
 }
