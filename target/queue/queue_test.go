@@ -12,6 +12,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/testutils"
 )
@@ -211,11 +212,7 @@ func TestQueueDelivery_PermanentFail_NonPartial(t *testing.T) {
 
 	dt := unreliableTarget{
 		bodyFailures: []error{
-			&smtp.SMTPError{
-				Code:         500,
-				EnhancedCode: smtp.EnhancedCode{5, 0, 0},
-				Message:      "you shall not pass",
-			},
+			exterrors.WithTemporary(errors.New("you shall not pass"), false),
 		},
 		aborted: make(chan testutils.Msg, 10),
 	}
@@ -381,10 +378,7 @@ func TestQueueDelivery_PermanentRcptReject(t *testing.T) {
 	dt := unreliableTarget{
 		rcptFailures: []map[string]error{
 			{
-				"tester1@example.org": &smtp.SMTPError{
-					Code:    500,
-					Message: "go away",
-				},
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), false),
 			},
 		},
 		committed: make(chan testutils.Msg, 10),
