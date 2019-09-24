@@ -29,6 +29,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/config/module"
 	"github.com/foxcpp/maddy/dispatcher"
 	"github.com/foxcpp/maddy/dsn"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -235,7 +236,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 				EnhancedCode: smtp.EnhancedCode{5, 0, 0},
 				Message:      rcptErr.Error(),
 			}
-			if target.IsTemporaryErr(rcptErr) {
+			if exterrors.IsTemporaryOrUnspec(rcptErr) {
 				smtpErr.Code = 451
 				smtpErr.EnhancedCode = smtp.EnhancedCode{4, 0, 0}
 			}
@@ -297,7 +298,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
 		if err := delivery.AddRcpt(rcpt); err != nil {
-			if target.IsTemporaryErr(err) {
+			if exterrors.IsTemporaryOrUnspec(err) {
 				perr.TemporaryFailed = append(perr.TemporaryFailed, rcpt)
 			} else {
 				perr.Failed = append(perr.Failed, rcpt)
@@ -323,7 +324,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 				perr.Errs[rcpt] = rcptErr
 			}
 		} else {
-			if target.IsTemporaryErr(err) {
+			if exterrors.IsTemporaryOrUnspec(err) {
 				perr.TemporaryFailed = append(perr.TemporaryFailed, acceptedRcpts...)
 			} else {
 				perr.Failed = append(perr.Failed, acceptedRcpts...)
