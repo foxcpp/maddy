@@ -26,12 +26,15 @@ import (
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/dns"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/mtasts"
 	"github.com/foxcpp/maddy/target"
 	"github.com/foxcpp/maddy/target/queue"
 )
+
+var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
 
 type Target struct {
 	name       string
@@ -161,7 +164,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 
 func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 	if rd.msgMeta.Quarantine {
-		return errors.New("remote: refusing to deliver quarantined message")
+		return exterrors.WithTemporary(errors.New("remote: refusing to deliver quarantined message"), false)
 	}
 
 	errChans := make(map[string]chan error, len(rd.connections))
@@ -214,7 +217,7 @@ func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
 	for domain, conn := range rd.connections {
 		err := <-errChans[domain]
 		if err != nil {
-			if target.IsTemporaryErr(err) {
+			if exterrors.IsTemporary(err) {
 				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, conn.recipients...)
 			} else {
 				partialErr.Failed = append(partialErr.Failed, conn.recipients...)
@@ -317,7 +320,7 @@ func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	if err != nil && err != mtasts.ErrNoPolicy {
 		rt.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
 		// TODO: Problems with policy should be treated as temporary ones.
-		return nil, err
+		return nil, exterrors.WithTemporary(err, true)
 	}
 	if stsPolicy != nil && stsPolicy.Mode != mtasts.ModeEnforce {
 		// Throw away policy if it is not enforced, we don't do TLSRPT for now.
@@ -371,7 +374,7 @@ func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client
 			return nil, err
 		}
 	} else if requireTLS {
-		return nil, target.ErrTLSRequired
+		return nil, ErrTLSRequired
 	}
 
 	return cl, nil
@@ -403,6 +406,8 @@ func (rt *Target) lookupTargetServers(domain string) ([]string, error) {
 	return hosts, nil
 }
 
+// TODO: Remove when emersion/go-smtp#64 gets merged.
+
 func parseEnhancedCode(s string) (smtp.EnhancedCode, error) {
 	parts := strings.Split(s, ".")
 	if len(parts) != 3 {
@@ -433,17 +438,18 @@ func toSMTPErr(originalErr error) error {
 
 	parts := strings.SplitN(protoErr.Msg, " ", 2)
 	if len(parts) != 2 {
-		return smtpErr
+		return exterrors.WithTemporary(smtpErr, smtpErr.Code/100 == 4)
 	}
 
 	enchCode, err := parseEnhancedCode(parts[0])
 	if err != nil {
-		return smtpErr
+		return exterrors.WithTemporary(smtpErr, smtpErr.Code/100 == 4)
 	}
 
 	smtpErr.EnhancedCode = enchCode
 	smtpErr.Message = parts[1]
-	return smtpErr
+	// TODO: This will not need this wrapping when emersion/go-smtp#65 gets merged.
+	return exterrors.WithTemporary(smtpErr, smtpErr.Code/100 == 4)
 }
 
 func init() {

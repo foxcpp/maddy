@@ -1,11 +1,11 @@
 package target
 
 import (
-	"errors"
 	"net"
 	"net/textproto"
 
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/target/remote"
 )
 
 func IsTemporaryErr(err error) bool {
@@ -19,12 +19,10 @@ func IsTemporaryErr(err error) bool {
 		return netErr.Temporary()
 	}
 
-	if err == ErrTLSRequired {
+	if err == remote.ErrTLSRequired {
 		return false
 	}
 
 	// Connection error? Assume it is temporary.
 	return true
 }
-
-var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
