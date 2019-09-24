@@ -52,7 +52,7 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
 
 #### Dependencies 
 
-- [Go](https://golang.org) toolchain (1.11.4 or newer)
+- [Go](https://golang.org) toolchain (1.13 or newer)
   
   If your distribution ships an outdated Go version, you can use
   following commands to get a newer version:
