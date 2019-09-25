@@ -174,7 +174,6 @@ func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, err
 		// is not a valid RFC 282 address and only a special
 		// value for SMTP.
 		if err != nil && mailFrom != "" {
-			dd.close()
 			return sourceBlock{}, &smtp.SMTPError{
 				Code:         501,
 				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
