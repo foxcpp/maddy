@@ -175,6 +175,34 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	return encodedID
 }
 
+func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.DeliveryTarget, from string, to []string) string {
+	t.Helper()
+
+	IDRaw := sha1.Sum([]byte(t.Name()))
+	encodedID := hex.EncodeToString(IDRaw[:])
+
+	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	ctx := module.MsgMetadata{
+		DontTraceSender: true,
+		ID:              encodedID,
+	}
+	delivery, err := tgt.Start(&ctx, from)
+	if err != nil {
+		t.Fatalf("unexpected Start err: %v", err)
+	}
+	for _, rcpt := range to {
+		if err := delivery.AddRcpt(rcpt); err != nil {
+			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
+		}
+	}
+	delivery.(module.PartialDelivery).BodyNonAtomic(c, textproto.Header{}, body)
+	if err := delivery.Commit(); err != nil {
+		t.Fatalf("unexpected Commit err: %v", err)
+	}
+
+	return encodedID
+}
+
 func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
 	t.Helper()
 

@@ -54,12 +54,18 @@ func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatch
 	}, err
 }
 
+// Start starts new message delivery, runs connection and sender checks, sender modifiers
+// and selects source block from config to use for handling.
+//
+// Returned module.Delivery implements PartialDelivery. If underlying target doesn't
+// support it, dispatcher will copy the returned error for all recipients handled
+// by target.
 func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
 		d:                  d,
 		rcptChecksState:    make(map[*rcptBlock]module.CheckState),
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
-		deliveries:         make(map[module.DeliveryTarget]module.Delivery),
+		deliveries:         make(map[module.DeliveryTarget]*delivery),
 		msgMeta:            msgMeta,
 		log:                target.DeliveryLogger(d.Log, msgMeta),
 		checkScore:         0,
@@ -195,6 +201,12 @@ func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, err
 	return srcBlock, nil
 }
 
+type delivery struct {
+	module.Delivery
+	// Recipient addresses this delivery object is used for, original values (not modified by RewriteRcpt).
+	recipients []string
+}
+
 type dispatcherDelivery struct {
 	d *Dispatcher
 
@@ -211,7 +223,7 @@ type dispatcherDelivery struct {
 	sourceAddr  string
 	sourceBlock sourceBlock
 
-	deliveries map[module.DeliveryTarget]module.Delivery
+	deliveries map[module.DeliveryTarget]*delivery
 	msgMeta    *module.MsgMetadata
 	cancelCtx  context.Context
 	checkScore int32
@@ -288,22 +300,15 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 			return err
 		}
 		dd.log.Debugf("delivery.AddRcpt(%s) ok, Delivery object = %T", to, delivery)
+		delivery.recipients = append(delivery.recipients, originalTo)
 	}
 
 	return nil
 }
 
 func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if err := dd.checkResult(dd.globalChecksState.CheckBody(context.TODO(), header, body)); err != nil {
+	if err := dd.runBodyChecks(&header, body); err != nil {
 		return err
-	}
-	if err := dd.checkResult(dd.sourceChecksState.CheckBody(context.TODO(), header, body)); err != nil {
-		return err
-	}
-	for _, rcptChecksState := range dd.rcptChecksState {
-		if err := dd.checkResult(rcptChecksState.CheckBody(context.TODO(), header, body)); err != nil {
-			return err
-		}
 	}
 
 	// After results for all checks are checked, authRes will be populated with values
@@ -332,6 +337,72 @@ func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) 
 		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
 	}
 	return nil
+}
+
+// statusCollector wraps StatusCollector and adds reverse translation
+// of recipients for all statuses.]
+//
+// We can't let delivery targets set statuses directly because they see
+// modified addresses (RewriteRcpt) and we are supposed to report
+// statuses using original values. Additionally, we should still avoid
+// collect-and-them-report approach since statuses should be reported
+// as soon as possible (that is required by LMTP).
+type statusCollector struct {
+	originalRcpts map[string]string
+	wrapped       module.StatusCollector
+}
+
+func (sc statusCollector) SetStatus(rcptTo string, err error) {
+	original, ok := sc.originalRcpts[rcptTo]
+	if ok {
+		rcptTo = original
+	}
+	sc.wrapped.SetStatus(rcptTo, err)
+}
+
+func (dd *dispatcherDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+	setStatusAll := func(err error) {
+		for _, delivery := range dd.deliveries {
+			for _, rcpt := range delivery.recipients {
+				c.SetStatus(rcpt, err)
+			}
+		}
+	}
+
+	if err := dd.runBodyChecks(&header, body); err != nil {
+		setStatusAll(err)
+		return
+	}
+
+	// Run modifiers after Authentication-Results addition to make
+	// sure signatures, etc will cover it.
+	if err := dd.globalModifiersState.RewriteBody(header, body); err != nil {
+		setStatusAll(err)
+		return
+	}
+	if err := dd.sourceModifiersState.RewriteBody(header, body); err != nil {
+		setStatusAll(err)
+		return
+	}
+
+	for _, delivery := range dd.deliveries {
+		partDelivery, ok := delivery.Delivery.(module.PartialDelivery)
+		if ok {
+			partDelivery.BodyNonAtomic(statusCollector{
+				originalRcpts: dd.msgMeta.OriginalRcpts,
+				wrapped:       c,
+			}, header, body)
+			continue
+		}
+
+		if err := delivery.Body(header, body); err != nil {
+			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v", delivery, err)
+			for _, rcpt := range delivery.recipients {
+				c.SetStatus(rcpt, err)
+			}
+		}
+		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
+	}
 }
 
 func (dd dispatcherDelivery) Commit() error {
@@ -492,22 +563,48 @@ func (dd *dispatcherDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo stri
 	return rcptModifiersState, nil
 }
 
-func (dd *dispatcherDelivery) getDelivery(tgt module.DeliveryTarget) (module.Delivery, error) {
-	delivery, ok := dd.deliveries[tgt]
+func (dd *dispatcherDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery, error) {
+	delivery_, ok := dd.deliveries[tgt]
 	if ok {
-		return delivery, nil
+		return delivery_, nil
 	}
 
-	delivery, err := tgt.Start(dd.msgMeta, dd.sourceAddr)
+	deliveryObj, err := tgt.Start(dd.msgMeta, dd.sourceAddr)
 	if err != nil {
 		dd.log.Debugf("tgt.Start(%s) failure, target = %s (%s): %v",
 			dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name(), err)
 		return nil, err
 	}
+	delivery_ = &delivery{Delivery: deliveryObj}
 
 	dd.log.Debugf("tgt.Start(%s) ok, target = %s (%s)",
 		dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name())
 
-	dd.deliveries[tgt] = delivery
-	return delivery, nil
+	dd.deliveries[tgt] = delivery_
+	return delivery_, nil
+}
+
+func (dd *dispatcherDelivery) runBodyChecks(header *textproto.Header, body buffer.Buffer) error {
+	if err := dd.checkResult(dd.globalChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
+		return err
+	}
+	if err := dd.checkResult(dd.sourceChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
+		return err
+	}
+	for _, rcptChecksState := range dd.rcptChecksState {
+		if err := dd.checkResult(rcptChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
+			return err
+		}
+	}
+
+	// After results for all checks are checked, authRes will be populated with values
+	// we should put into Authentication-Results header.
+	if len(dd.authRes) != 0 {
+		header.Add("Authentication-Results", authres.Format(dd.d.Hostname, dd.authRes))
+	}
+	for field := dd.header.Fields(); field.Next(); {
+		header.Add(field.Key(), field.Value())
+	}
+
+	return nil
 }
