@@ -95,8 +95,8 @@ type MsgMetadata struct {
 	// OriginalRcpts contains the mapping from the final recipient to the
 	// recipient that was presented by the client.
 	//
-	// Modules that rewrite recipients should update this mapping (and
-	// initialize it, if needed).
+	// Dispatcher will update that field when recipient modifiers
+	// are executed.
 	//
 	// It should be used when reporting information back to client (via DSN,
 	// for example) to prevent disclosing information about aliases

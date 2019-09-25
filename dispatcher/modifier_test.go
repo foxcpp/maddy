@@ -250,6 +250,107 @@ func TestDispatcher_RcptModifier(t *testing.T) {
 	}
 }
 
+func TestDispatcher_RcptModifier_OriginalRcpt(t *testing.T) {
+	target := testutils.Target{}
+	mod := testutils.Modifier{
+		InstName: "test_modifier",
+		RcptTo: map[string]string{
+			"rcpt1@example.com": "rcpt1-alias@example.com",
+			"rcpt2@example.com": "rcpt2-alias@example.com",
+		},
+	}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			globalModifiers: modify.Group{
+				Modifiers: []module.Modifier{mod},
+			},
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Log: testutils.Logger(t, "dispatcher"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+
+	if len(target.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received, want %d, got %d", 1, len(target.Messages))
+	}
+
+	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt1-alias@example.com", "rcpt2-alias@example.com"})
+	original1 := target.Messages[0].MsgMeta.OriginalRcpts["rcpt1-alias@example.com"]
+	if original1 != "rcpt1@example.com" {
+		t.Errorf("wrong OriginalRcpts value for first rcpt, want %s, got %s", "rcpt1@example.com", original1)
+	}
+	original2 := target.Messages[0].MsgMeta.OriginalRcpts["rcpt2-alias@example.com"]
+	if original2 != "rcpt2@example.com" {
+		t.Errorf("wrong OriginalRcpts value for first rcpt, want %s, got %s", "rcpt2@example.com", original2)
+	}
+
+	if mod.UnclosedStates != 0 {
+		t.Fatalf("modifier state objects leak or double-closed, counter: %d", mod.UnclosedStates)
+	}
+}
+
+func TestDispatcher_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
+	target := testutils.Target{}
+	mod1, mod2 := testutils.Modifier{
+		InstName: "first_modifier",
+		RcptTo: map[string]string{
+			"rcpt1@example.com": "rcpt1-alias@example.com",
+			"rcpt2@example.com": "rcpt2-alias@example.com",
+		},
+	}, testutils.Modifier{
+		InstName: "second_modifier",
+		RcptTo: map[string]string{
+			"rcpt1-alias@example.com": "rcpt1-alias2@example.com",
+			"rcpt2@example.com":       "wtf@example.com",
+		},
+	}
+	d := Dispatcher{
+		dispatcherCfg: dispatcherCfg{
+			globalModifiers: modify.Group{
+				Modifiers: []module.Modifier{mod1},
+			},
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				modifiers: modify.Group{
+					Modifiers: []module.Modifier{mod2},
+				},
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{&target},
+				},
+			},
+		},
+		Log: testutils.Logger(t, "dispatcher"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
+
+	if len(target.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received, want %d, got %d", 1, len(target.Messages))
+	}
+
+	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt1-alias2@example.com", "rcpt2-alias@example.com"})
+	original1 := target.Messages[0].MsgMeta.OriginalRcpts["rcpt1-alias2@example.com"]
+	if original1 != "rcpt1@example.com" {
+		t.Errorf("wrong OriginalRcpts value for first rcpt, want %s, got %s", "rcpt1@example.com", original1)
+	}
+	original2 := target.Messages[0].MsgMeta.OriginalRcpts["rcpt2-alias@example.com"]
+	if original2 != "rcpt2@example.com" {
+		t.Errorf("wrong OriginalRcpts value for first rcpt, want %s, got %s", "rcpt2@example.com", original2)
+	}
+
+	if mod1.UnclosedStates != 0 || mod2.UnclosedStates != 0 {
+		t.Fatalf("modifier state objects leak or double-closed, counter: %d, %d", mod1.UnclosedStates, mod2.UnclosedStates)
+	}
+}
+
 func TestDispatcher_RcptModifier_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{

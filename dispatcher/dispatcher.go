@@ -65,6 +65,10 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 		checkScore:         0,
 	}
 
+	if msgMeta.OriginalRcpts == nil {
+		msgMeta.OriginalRcpts = map[string]string{}
+	}
+
 	if err := dd.start(msgMeta, mailFrom); err != nil {
 		dd.close()
 		return nil, err
@@ -224,6 +228,8 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 		return err
 	}
 
+	originalTo := to
+
 	newTo, err := dd.globalModifiersState.RewriteRcpt(to)
 	if err != nil {
 		return err
@@ -267,6 +273,10 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	}
 	dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
 	to = newTo
+
+	if originalTo != to {
+		dd.msgMeta.OriginalRcpts[to] = originalTo
+	}
 
 	for _, tgt := range rcptBlock.targets {
 		delivery, err := dd.getDelivery(tgt)
