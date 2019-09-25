@@ -368,7 +368,7 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 	// Committed because delivery to tester3@example.org is succeeded.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	// Side note: This slice contains all recipients submitted by the queue, even if
-	// they were rejected later using PartialError.
+	// they were rejected later using partialError.
 	testutils.CheckMsg(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org", "tester3@example.org"})
 
 	// tester1 is failed permanently, should not be retried.
@@ -431,7 +431,7 @@ func TestQueueDelivery_TemporaryRcptReject(t *testing.T) {
 	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	// Unlike previous tests where unreliableTarget rejected recipients by PartialError, here they are rejected
+	// Unlike previous tests where unreliableTarget rejected recipients by partialError, here they are rejected
 	// by AddRcpt directly, so they are NOT saved by the target.
 	testutils.CheckMsg(t, msg, "tester@example.com", []string{"tester2@example.org"})
 

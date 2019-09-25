@@ -35,8 +35,8 @@ import (
 	"github.com/foxcpp/maddy/target"
 )
 
-// PartialError describes state of partially successful message delivery.
-type PartialError struct {
+// partialError describes state of partially successful message delivery.
+type partialError struct {
 	// Recipients for which delivery permanently failed.
 	Failed []string
 	// Recipients for which delivery temporary failed.
@@ -46,9 +46,9 @@ type PartialError struct {
 	Errs map[string]error
 }
 
-// SetStatus implements module.StatusCollector so PartialError can be
+// SetStatus implements module.StatusCollector so partialError can be
 // passed directly to PartialDelivery.BodyNonAtomic.
-func (pe *PartialError) SetStatus(rcptTo string, err error) {
+func (pe *partialError) SetStatus(rcptTo string, err error) {
 	if err == nil {
 		return
 	}
@@ -60,7 +60,7 @@ func (pe *PartialError) SetStatus(rcptTo string, err error) {
 	pe.Errs[rcptTo] = err
 }
 
-func (pe PartialError) Error() string {
+func (pe partialError) Error() string {
 	return fmt.Sprintf("delivery failed for some recipients (permanently: %v, temporary: %v): %v", pe.Failed, pe.TemporaryFailed, pe.Errs)
 }
 
@@ -106,7 +106,7 @@ type QueueMetadata struct {
 	From    string
 
 	// Recipients that should be tried next.
-	// May or may not be equal to PartialError.TemporaryFailed.
+	// May or may not be equal to partialError.TemporaryFailed.
 	To []string
 
 	// Information about previous failures.
@@ -289,9 +289,9 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	q.wheel.Add(nextTryTime, meta.MsgMeta.ID)
 }
 
-func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) PartialError {
+func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
-	perr := PartialError{
+	perr := partialError{
 		Errs: map[string]error{},
 	}
 
