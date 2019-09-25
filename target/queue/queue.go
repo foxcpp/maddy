@@ -46,6 +46,20 @@ type PartialError struct {
 	Errs map[string]error
 }
 
+// SetStatus implements module.StatusCollector so PartialError can be
+// passed directly to PartialDelivery.BodyNonAtomic.
+func (pe *PartialError) SetStatus(rcptTo string, err error) {
+	if err == nil {
+		return
+	}
+	if exterrors.IsTemporaryOrUnspec(err) {
+		pe.TemporaryFailed = append(pe.TemporaryFailed, rcptTo)
+	} else {
+		pe.Failed = append(pe.Failed, rcptTo)
+	}
+	pe.Errs[rcptTo] = err
+}
+
 func (pe PartialError) Error() string {
 	return fmt.Sprintf("delivery failed for some recipients (permanently: %v, temporary: %v): %v", pe.Failed, pe.TemporaryFailed, pe.Errs)
 }
@@ -317,34 +331,39 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	}
 
 	expandToPartialErr := func(err error) {
-		if expandedPerr, ok := err.(PartialError); ok {
-			perr.TemporaryFailed = append(perr.TemporaryFailed, expandedPerr.TemporaryFailed...)
-			perr.Failed = append(perr.Failed, expandedPerr.Failed...)
-			for rcpt, rcptErr := range expandedPerr.Errs {
-				perr.Errs[rcpt] = rcptErr
-			}
+		if exterrors.IsTemporaryOrUnspec(err) {
+			perr.TemporaryFailed = append(perr.TemporaryFailed, acceptedRcpts...)
 		} else {
-			if exterrors.IsTemporaryOrUnspec(err) {
-				perr.TemporaryFailed = append(perr.TemporaryFailed, acceptedRcpts...)
-			} else {
-				perr.Failed = append(perr.Failed, acceptedRcpts...)
-			}
-			for _, rcpt := range acceptedRcpts {
-				perr.Errs[rcpt] = err
-			}
+			perr.Failed = append(perr.Failed, acceptedRcpts...)
+		}
+		for _, rcpt := range acceptedRcpts {
+			perr.Errs[rcpt] = err
 		}
 	}
 
-	if err := delivery.Body(header, body); err != nil {
-		expandToPartialErr(err)
-		// No recipients succeeded.
-		if len(perr.TemporaryFailed)+len(perr.Failed) == len(acceptedRcpts) {
-			if err := delivery.Abort(); err != nil {
-				dl.Printf("delivery.Abort failed: %v", err)
-			}
-			return perr
+	partDelivery, ok := delivery.(module.PartialDelivery)
+	if ok {
+		partDelivery.BodyNonAtomic(&perr, header, body)
+	} else {
+		if err := delivery.Body(header, body); err != nil {
+			expandToPartialErr(err)
 		}
 	}
+
+	allFailed := true
+	for _, rcpt := range acceptedRcpts {
+		if perr.Errs[rcpt] == nil {
+			allFailed = false
+		}
+	}
+	if allFailed {
+		// No recipients succeeded.
+		if err := delivery.Abort(); err != nil {
+			dl.Printf("delivery.Abort failed: %v", err)
+		}
+		return perr
+	}
+
 	if err := delivery.Commit(); err != nil {
 		expandToPartialErr(err)
 	}

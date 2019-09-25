@@ -3,6 +3,7 @@ package testutils
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"io/ioutil"
 	"reflect"
 	"sort"
@@ -25,11 +26,12 @@ type Msg struct {
 type Target struct {
 	Messages []Msg
 
-	StartErr  error
-	RcptErr   map[string]error
-	BodyErr   error
-	AbortErr  error
-	CommitErr error
+	StartErr       error
+	RcptErr        map[string]error
+	BodyErr        error
+	PartialBodyErr map[string]error
+	AbortErr       error
+	CommitErr      error
 
 	InstName string
 }
@@ -60,7 +62,19 @@ type testTargetDelivery struct {
 	committed bool
 }
 
+type testTargetDeliveryPartial struct {
+	testTargetDelivery
+}
+
 func (dt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	if dt.PartialBodyErr != nil {
+		return &testTargetDeliveryPartial{
+			testTargetDelivery: testTargetDelivery{
+				tgt: dt,
+				msg: Msg{MsgMeta: msgMeta, MailFrom: mailFrom},
+			},
+		}, dt.StartErr
+	}
 	return &testTargetDelivery{
 		tgt: dt,
 		msg: Msg{MsgMeta: msgMeta, MailFrom: mailFrom},
@@ -78,7 +92,31 @@ func (dtd *testTargetDelivery) AddRcpt(to string) error {
 	return nil
 }
 
+func (dtd *testTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, header textproto.Header, buf buffer.Buffer) {
+	if dtd.tgt.PartialBodyErr != nil {
+		for rcpt, err := range dtd.tgt.PartialBodyErr {
+			c.SetStatus(rcpt, err)
+		}
+		return
+	}
+
+	dtd.msg.Header = header
+
+	body, err := buf.Open()
+	if err != nil {
+		for rcpt, err := range dtd.tgt.PartialBodyErr {
+			c.SetStatus(rcpt, err)
+		}
+	}
+	defer body.Close()
+
+	dtd.msg.Body, err = ioutil.ReadAll(body)
+}
+
 func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) error {
+	if dtd.tgt.PartialBodyErr != nil {
+		return errors.New("partial failure occurred, no additional information available")
+	}
 	if dtd.tgt.BodyErr != nil {
 		return dtd.tgt.BodyErr
 	}

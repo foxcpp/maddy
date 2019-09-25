@@ -14,6 +14,9 @@ type StatusCollector interface {
 	// rcptTo should match exactly the value that was passed to the
 	// AddRcpt, i.e. if any translations was made by the target,
 	// they should not affect the rcptTo argument here.
+	//
+	// It should not be called multiple times for the same
+	// value of rcptTo.
 	SetStatus(rcptTo string, err error)
 }
 

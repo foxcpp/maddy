@@ -70,13 +70,18 @@ type unreliableTarget struct {
 	// To make unreliableTarget fail Commit for N-th delivery, set N-1-th
 	// element of this slice to wanted error object. If slice is
 	// nil/empty or N is bigger than its size - delivery will succeed.
-	bodyFailures []error
-	rcptFailures []map[string]error
+	bodyFailures        []error
+	bodyFailuresPartial []map[string]error
+	rcptFailures        []map[string]error
 }
 
 type unreliableTargetDelivery struct {
 	ut  *unreliableTarget
 	msg testutils.Msg
+}
+
+type unreliableTargetDeliveryPartial struct {
+	*unreliableTargetDelivery
 }
 
 func (utd *unreliableTargetDelivery) AddRcpt(rcptTo string) error {
@@ -92,6 +97,10 @@ func (utd *unreliableTargetDelivery) AddRcpt(rcptTo string) error {
 }
 
 func (utd *unreliableTargetDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+	if utd.ut.bodyFailuresPartial != nil {
+		return errors.New("partial failure occurred, no additional information available")
+	}
+
 	r, _ := body.Open()
 	utd.msg.Body, _ = ioutil.ReadAll(r)
 
@@ -100,6 +109,17 @@ func (utd *unreliableTargetDelivery) Body(header textproto.Header, body buffer.B
 	}
 
 	return nil
+}
+
+func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+	r, _ := body.Open()
+	utd.msg.Body, _ = ioutil.ReadAll(r)
+
+	if len(utd.ut.bodyFailuresPartial) > utd.ut.passedMessages {
+		for rcpt, err := range utd.ut.bodyFailuresPartial[utd.ut.passedMessages] {
+			c.SetStatus(rcpt, err)
+		}
+	}
 }
 
 func (utd *unreliableTargetDelivery) Abort() error {
@@ -119,6 +139,17 @@ func (utd *unreliableTargetDelivery) Commit() error {
 }
 
 func (ut *unreliableTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	if ut.bodyFailuresPartial != nil {
+		return &unreliableTargetDeliveryPartial{
+			&unreliableTargetDelivery{
+				ut: ut,
+				msg: testutils.Msg{
+					MsgMeta:  msgMeta,
+					MailFrom: mailFrom,
+				},
+			},
+		}, nil
+	}
 	return &unreliableTargetDelivery{
 		ut: ut,
 		msg: testutils.Msg{
@@ -233,13 +264,10 @@ func TestQueueDelivery_PermanentFail_Partial(t *testing.T) {
 	t.Parallel()
 
 	dt := unreliableTarget{
-		bodyFailures: []error{
-			PartialError{
-				Failed: []string{"tester1@example.org", "tester2@example.org"},
-				Errs: map[string]error{
-					"tester1@example.org": errors.New("you shall not pass"),
-					"tester2@example.org": errors.New("you shall not pass"),
-				},
+		bodyFailuresPartial: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("you shall not pass"), false),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("you shall not pass"), false),
 			},
 		},
 		aborted: make(chan testutils.Msg, 10),
@@ -249,8 +277,8 @@ func TestQueueDelivery_PermanentFail_Partial(t *testing.T) {
 
 	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
-	// This this is similar to the previous test, but checks PartialErr processing logic.
-	// Here delivery fails for recipients too, but this is reported using PartialErr.
+	// This this is similar to the previous test, but checks PartialDelivery processing logic.
+	// Here delivery fails for recipients too, but this is reported using PartialDelivery.
 
 	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
 	q.Close()
@@ -262,13 +290,7 @@ func TestQueueDelivery_TemporaryFail(t *testing.T) {
 
 	dt := unreliableTarget{
 		bodyFailures: []error{
-			PartialError{
-				TemporaryFailed: []string{"tester1@example.org", "tester2@example.org"},
-				Errs: map[string]error{
-					"tester1@example.org": errors.New("you shall not pass"),
-					"tester2@example.org": errors.New("you shall not pass"),
-				},
-			},
+			exterrors.WithTemporary(errors.New("you shall not pass"), true),
 		},
 		aborted:   make(chan testutils.Msg, 10),
 		committed: make(chan testutils.Msg, 10),
@@ -294,15 +316,9 @@ func TestQueueDelivery_TemporaryFail_Partial(t *testing.T) {
 	t.Parallel()
 
 	dt := unreliableTarget{
-		bodyFailures: []error{
-			PartialError{
-				TemporaryFailed: []string{"tester2@example.org"},
-				Errs: map[string]error{
-					"tester2@example.org": &smtp.SMTPError{
-						Code:    400,
-						Message: "go away",
-					},
-				},
+		bodyFailuresPartial: []map[string]error{
+			{
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), true),
 			},
 		},
 		aborted:   make(chan testutils.Msg, 10),
@@ -333,20 +349,13 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 	t.Parallel()
 
 	dt := unreliableTarget{
-		bodyFailures: []error{
-			PartialError{
-				Failed:          []string{"tester1@example.org"},
-				TemporaryFailed: []string{"tester2@example.org"},
-				Errs: map[string]error{
-					"tester1@example.org": errors.New("you shall not pass"),
-					"tester2@example.org": errors.New("you shall not pass"),
-				},
+		bodyFailuresPartial: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("you shall not pass"), false),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("you shall not pass"), true),
 			},
-			PartialError{
-				TemporaryFailed: []string{"tester2@example.org"},
-				Errs: map[string]error{
-					"tester2@example.org": errors.New("you shall not pass"),
-				},
+			{
+				"tester2@example.org": exterrors.WithTemporary(errors.New("you shall not pass"), true),
 			},
 		},
 		committed: make(chan testutils.Msg, 10),
