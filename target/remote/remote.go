@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -29,7 +30,6 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/mtasts"
 	"github.com/foxcpp/maddy/target"
-	"github.com/foxcpp/maddy/target/queue"
 )
 
 var ErrTLSRequired = errors.New("TLS is required for outgoing connections but target server doesn't support STARTTLS")
@@ -160,76 +160,77 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (rd *remoteDelivery) Body(header textproto.Header, b buffer.Buffer) error {
+type multipleErrs map[string]error
+
+func (m multipleErrs) Error() string {
+	return fmt.Sprintf("remote: partial delivery failure, per-rcpt info: %+v", m)
+}
+
+func (m multipleErrs) SetStatus(rcptTo string, err error) {
+	m[rcptTo] = err
+}
+
+func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) error {
+	merr := multipleErrs{}
+	rd.BodyNonAtomic(merr, header, buffer)
+	if len(merr) != 0 {
+		return merr
+	}
+	return nil
+}
+
+func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, b buffer.Buffer) {
 	if rd.msgMeta.Quarantine {
-		return exterrors.WithTemporary(errors.New("remote: refusing to deliver quarantined message"), false)
+		for _, rcpt := range rd.recipients {
+			c.SetStatus(rcpt, exterrors.WithTemporary(errors.New("remote: refusing to deliver quarantined message"), false))
+		}
 	}
 
-	errChans := make(map[string]chan error, len(rd.connections))
-	for domain := range rd.connections {
-		errChans[domain] = make(chan error)
-	}
+	// Ensure we don't cause problems by calling SetStatus from multiple goroutines.
+	// TODO: Document goroutine-safety of StatusCollector interface.
+	var collectorLck sync.Mutex
 
-	for i, conn := range rd.connections {
-		errCh := errChans[i]
+	for _, conn := range rd.connections {
 		conn := conn
 		go func() {
+			setErr := func(err error) {
+				collectorLck.Lock()
+				defer collectorLck.Unlock()
+				for _, rcpt := range conn.recipients {
+					c.SetStatus(rcpt, err)
+				}
+			}
+
 			bodyW, err := conn.Data()
 			if err != nil {
 				rd.Log.Printf("DATA failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				setErr(err)
 				return
 			}
 			bodyR, err := b.Open()
 			if err != nil {
 				rd.Log.Printf("failed to open body buffer: %v", err)
-				errCh <- err
+				setErr(err)
 				return
 			}
 			if err = textproto.WriteHeader(bodyW, header); err != nil {
 				rd.Log.Printf("header write failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				setErr(err)
 				return
 			}
 			if _, err = io.Copy(bodyW, bodyR); err != nil {
 				rd.Log.Printf("body write failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				setErr(err)
 				return
 			}
 
 			if err := bodyW.Close(); err != nil {
 				rd.Log.Printf("body write final failed: %v (server = %s)", err, conn.serverName)
-				errCh <- err
+				setErr(err)
 				return
 			}
-
-			errCh <- nil
 		}()
 	}
-
-	// TODO: Report partial errors early for LMTP. See github.com/emersion/go-smtp/pull/56
-
-	partialErr := queue.PartialError{
-		Errs: map[string]error{},
-	}
-	for domain, conn := range rd.connections {
-		err := <-errChans[domain]
-		if err != nil {
-			if exterrors.IsTemporary(err) {
-				partialErr.TemporaryFailed = append(partialErr.TemporaryFailed, conn.recipients...)
-			} else {
-				partialErr.Failed = append(partialErr.Failed, conn.recipients...)
-			}
-			for _, rcpt := range conn.recipients {
-				partialErr.Errs[rcpt] = err
-			}
-		}
-	}
-
-	if len(partialErr.Errs) == 0 {
-		return nil
-	}
-	return partialErr
 }
 
 func (rd *remoteDelivery) Abort() error {
@@ -372,7 +373,7 @@ func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client
 			return nil, err
 		}
 	} else if requireTLS {
-		return nil, ErrTLSRequired
+		return nil, exterrors.WithTemporary(ErrTLSRequired, false)
 	}
 
 	return cl, nil
