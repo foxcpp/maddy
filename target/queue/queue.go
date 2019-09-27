@@ -44,6 +44,10 @@ type partialError struct {
 
 	// Underlying error objects.
 	Errs map[string]error
+
+	// Fields can be accessed without holding this lock, but only after
+	// target.BodyNonAtomic/Body returns.
+	statusLock sync.Mutex
 }
 
 // SetStatus implements module.StatusCollector so partialError can be
@@ -52,6 +56,8 @@ func (pe *partialError) SetStatus(rcptTo string, err error) {
 	if err == nil {
 		return
 	}
+	pe.statusLock.Lock()
+	defer pe.statusLock.Unlock()
 	if exterrors.IsTemporaryOrUnspec(err) {
 		pe.TemporaryFailed = append(pe.TemporaryFailed, rcptTo)
 	} else {

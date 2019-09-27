@@ -160,21 +160,28 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-type multipleErrs map[string]error
-
-func (m multipleErrs) Error() string {
-	return fmt.Sprintf("remote: partial delivery failure, per-rcpt info: %+v", m)
+type multipleErrs struct {
+	errs      map[string]error
+	statusLck sync.Mutex
 }
 
-func (m multipleErrs) SetStatus(rcptTo string, err error) {
-	m[rcptTo] = err
+func (m *multipleErrs) Error() string {
+	m.statusLck.Lock()
+	defer m.statusLck.Unlock()
+	return fmt.Sprintf("remote: partial delivery failure, per-rcpt info: %+v", m.errs)
+}
+
+func (m *multipleErrs) SetStatus(rcptTo string, err error) {
+	m.statusLck.Lock()
+	defer m.statusLck.Unlock()
+	m.errs[rcptTo] = err
 }
 
 func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) error {
 	merr := multipleErrs{}
-	rd.BodyNonAtomic(merr, header, buffer)
-	if len(merr) != 0 {
-		return merr
+	rd.BodyNonAtomic(&merr, header, buffer)
+	if len(merr.errs) != 0 {
+		return &merr
 	}
 	return nil
 }
@@ -186,16 +193,10 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 		}
 	}
 
-	// Ensure we don't cause problems by calling SetStatus from multiple goroutines.
-	// TODO: Document goroutine-safety of StatusCollector interface.
-	var collectorLck sync.Mutex
-
 	for _, conn := range rd.connections {
 		conn := conn
 		go func() {
 			setErr := func(err error) {
-				collectorLck.Lock()
-				defer collectorLck.Unlock()
 				for _, rcpt := range conn.recipients {
 					c.SetStatus(rcpt, err)
 				}

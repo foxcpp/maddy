@@ -16,7 +16,11 @@ type StatusCollector interface {
 	// they should not affect the rcptTo argument here.
 	//
 	// It should not be called multiple times for the same
-	// value of rcptTo.
+	// value of rcptTo. It also should not be called
+	// after BodyNonAtomic returns.
+	//
+	// SetStatus is goroutine-safe. Implementations
+	// provide necessary serialization.
 	SetStatus(rcptTo string, err error)
 }
 
