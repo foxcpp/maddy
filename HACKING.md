@@ -81,3 +81,20 @@ block. All arguments after the module name in an inline definition represent
 "inline arguments". They are passed to the module instance directly and not
 used anyhow by other code (i.e. they are not guaranteed to be unique).
 
+### A word on error logging
+
+Shortly put, it is module responsibility to log errors it generated since it is
+assumed it can provide all useful details about possible causes.
+
+Modules should not log errors received from other modules. However, it is 
+fine to log decisions made based on these errors.
+
+This does not apply to "debug log", anything can be logged using it if it is
+considered useful for troubleshooting.
+
+Here is the example: remote module logs all errors received from remote server
+and passes them to the caller. queue module only logs whether delivery to
+certain recipient is permanently failed or it will be retried. When used
+together, remote module will provide logs about concrete errors happened and
+queue module will provide information about tries made and scheduled to be made
+in future.
