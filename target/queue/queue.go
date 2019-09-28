@@ -245,7 +245,15 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	dl.Debugf("failures: permanently: %v, temporary: %v, errors: %v",
 		partialErr.Failed, partialErr.TemporaryFailed, partialErr.Errs)
 
-	// Save permanent errors information for reporting in bounce message.
+	for _, rcpt := range meta.To {
+		if _, ok := partialErr.Errs[rcpt]; ok {
+			continue
+		}
+
+		dl.Printf("delivered to %s after %d attempt(s)", rcpt, meta.TriesCount+1)
+	}
+
+	// Save errors information for reporting in bounce message.
 	meta.FailedRcpts = append(meta.FailedRcpts, partialErr.Failed...)
 	for rcpt, rcptErr := range partialErr.Errs {
 		var smtpErr *smtp.SMTPError
@@ -270,10 +278,12 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	if meta.TriesCount == q.maxTries || len(partialErr.TemporaryFailed) == 0 {
 		// Attempt either fully succeeded or completely failed.
 		if meta.TriesCount == q.maxTries {
-			dl.Printf("gave up trying to deliver to %v, errors: %v", meta.TemporaryFailedRcpts, meta.RcptErrs)
+			for _, rcpt := range meta.TemporaryFailedRcpts {
+				dl.Printf("gave up trying to deliver to %s", rcpt)
+			}
 		}
-		if len(meta.FailedRcpts) != 0 {
-			dl.Printf("permanently failed to deliver to %v, errors: %v", meta.FailedRcpts, meta.RcptErrs)
+		for _, rcpt := range meta.FailedRcpts {
+			dl.Printf("failed to deliver to %s", rcpt)
 		}
 		if (len(meta.FailedRcpts) != 0 || meta.TriesCount == q.maxTries) && !meta.DSN {
 			q.emitDSN(meta, header)
@@ -290,7 +300,8 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 
 	nextTryTime := time.Now()
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
-	dl.Printf("%d attempt failed, will retry in %v (at %v)", meta.TriesCount, time.Until(nextTryTime), nextTryTime)
+	dl.Printf("%d attempt failed, will retry in %v (at %v) for %v",
+		meta.TriesCount, time.Until(nextTryTime), nextTryTime.Truncate(time.Second), meta.To)
 
 	q.wheel.Add(nextTryTime, meta.MsgMeta.ID)
 }
