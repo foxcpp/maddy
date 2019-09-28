@@ -56,7 +56,7 @@ func (info ReportingMTAInfo) WriteTo(w io.Writer) error {
 		h.Add("Arrival-Date", info.ArrivalDate.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 	if !info.ArrivalDate.IsZero() {
-		h.Add("Last-Attempt-Date", info.ArrivalDate.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
+		h.Add("Last-Attempt-Date", info.LastAttemptDate.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 
 	return textproto.WriteHeader(w, h)
