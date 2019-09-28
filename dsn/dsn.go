@@ -187,10 +187,10 @@ func writeMachineReadablePart(w *textproto.MultipartWriter, mtaInfo ReportingMTA
 
 // failedText is the text of the human-readable part of DSN.
 var failedText = template.Must(template.New("dsn-text").Parse(`
-This is the mail delivery system at {{.ReportingMTA}}. 
+This is the mail delivery system at {{.ReportingMTA}}.
 
 Unfortunately, your message could not be delivered to one or more
-recipients. The usual cause of this problem is invalid 
+recipients. The usual cause of this problem is invalid
 recipient address or maintenance at the recipient side.
 
 Contact the postmaster for further assistance, provide the Message ID (below):
@@ -210,6 +210,10 @@ func writeHumanReadablePart(w *textproto.MultipartWriter, envelope Envelope, mta
 	if err != nil {
 		return err
 	}
+
+	mtaInfo.ArrivalDate = mtaInfo.ArrivalDate.Truncate(time.Second)
+	mtaInfo.LastAttemptDate = mtaInfo.LastAttemptDate.Truncate(time.Second)
+
 	if err := failedText.Execute(humanWriter, mtaInfo); err != nil {
 		return err
 	}
