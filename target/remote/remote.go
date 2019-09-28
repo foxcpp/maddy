@@ -150,7 +150,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	}
 
 	if err := conn.Rcpt(to); err != nil {
-		rd.Log.Printf("RCPT TO failed: %v (server = %s)", err, conn.serverName)
+		rd.Log.Printf("RCPT TO %s failed: %v (server = %s)", to, err, conn.serverName)
 		return toSMTPErr(err)
 	}
 
@@ -261,9 +261,21 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		return nil, err
 	}
 
+	if rd.rt.requireTLS {
+		rd.Log.Debugf("TLS is required for %s due to a local configuration", domain)
+	}
+
 	stsPolicy, err := rd.rt.getSTSPolicy(domain)
 	if err != nil {
 		return nil, err
+	}
+	if stsPolicy != nil {
+		rd.Log.Debugf("TLS is required for %s due to a MTA-STS policy", domain)
+	}
+
+	requireTLS := rd.rt.requireTLS || stsPolicy != nil
+	if !requireTLS {
+		rd.Log.Printf("TLS is not enforced when delivering to %s", domain)
 	}
 
 	var lastErr error
@@ -277,21 +289,20 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		}
 		conn.serverName = addr
 
-		conn.Client, err = connectToServer(rd.rt.hostname, addr, rd.rt.requireTLS || stsPolicy != nil)
+		conn.Client, err = connectToServer(rd.rt.hostname, addr, requireTLS)
 		if err != nil {
-			rd.Log.Debugf("failed to connect to %s: %v", addr, err)
+			rd.Log.Printf("failed to connect to %s: %v", addr, err)
 			lastErr = err
 			continue
 		}
 	}
 	if conn.Client == nil {
-		rd.Log.Printf("no usable MX servers found for %s, last error (%s): %v",
-			domain, conn.serverName, lastErr)
+		rd.Log.Printf("no usable MX servers found for %s", domain)
 		return nil, lastErr
 	}
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
-		rd.Log.Printf("MAIL FROM failed: %v (server = %s)", err, conn.serverName)
+		rd.Log.Printf("MAIL FROM %s failed: %v (server = %s)", rd.mailFrom, err, conn.serverName)
 		return nil, toSMTPErr(err)
 	}
 
