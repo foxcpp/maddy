@@ -191,11 +191,16 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 		for _, rcpt := range rd.recipients {
 			c.SetStatus(rcpt, exterrors.WithTemporary(errors.New("remote: refusing to deliver quarantined message"), false))
 		}
+		return
 	}
+
+	var wg sync.WaitGroup
 
 	for _, conn := range rd.connections {
 		conn := conn
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			setErr := func(err error) {
 				for _, rcpt := range conn.recipients {
 					c.SetStatus(rcpt, err)
@@ -214,6 +219,7 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 				setErr(err)
 				return
 			}
+			defer bodyR.Close()
 			if err = textproto.WriteHeader(bodyW, header); err != nil {
 				rd.Log.Printf("header write failed: %v (server = %s)", err, conn.serverName)
 				setErr(err)
@@ -232,6 +238,8 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (rd *remoteDelivery) Abort() error {
