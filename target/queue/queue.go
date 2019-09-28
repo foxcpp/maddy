@@ -53,6 +53,7 @@ type partialError struct {
 // SetStatus implements module.StatusCollector so partialError can be
 // passed directly to PartialDelivery.BodyNonAtomic.
 func (pe *partialError) SetStatus(rcptTo string, err error) {
+	log.Debugf("PartialError.SetStatus(%s, %v)", rcptTo, err)
 	if err == nil {
 		return
 	}
@@ -319,12 +320,14 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	delivery, err := deliveryTarget.Start(meta.MsgMeta, meta.From)
 	if err != nil {
+		dl.Debugf("target.Start failed: %v", err)
 		perr.Failed = append(perr.Failed, meta.To...)
 		for _, rcpt := range meta.To {
 			perr.Errs[rcpt] = err
 		}
 		return perr
 	}
+	dl.Debugf("target.Start OK")
 
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
@@ -334,13 +337,16 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 			} else {
 				perr.Failed = append(perr.Failed, rcpt)
 			}
+			dl.Debugf("delivery.AddRcpt %s failed: %v", rcpt, err)
 			perr.Errs[rcpt] = err
 		} else {
+			dl.Debugf("delivery.AddRcpt %s OK", rcpt)
 			acceptedRcpts = append(acceptedRcpts, rcpt)
 		}
 	}
 
 	if len(acceptedRcpts) == 0 {
+		dl.Debugf("delivery.Abort (no accepted receipients)")
 		if err := delivery.Abort(); err != nil {
 			dl.Printf("delivery.Abort failed: %v", err)
 		}
@@ -360,11 +366,14 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	partDelivery, ok := delivery.(module.PartialDelivery)
 	if ok {
+		dl.Debugf("using delivery.BodyNonAtomic")
 		partDelivery.BodyNonAtomic(&perr, header, body)
 	} else {
 		if err := delivery.Body(header, body); err != nil {
+			dl.Debugf("delivery.Body failed: %v", err)
 			expandToPartialErr(err)
 		}
+		dl.Debugf("delivery.Body OK")
 	}
 
 	allFailed := true
@@ -375,6 +384,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	}
 	if allFailed {
 		// No recipients succeeded.
+		dl.Debugf("delivery.Abort (all recipients failed)")
 		if err := delivery.Abort(); err != nil {
 			dl.Printf("delivery.Abort failed: %v", err)
 		}
@@ -382,8 +392,10 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	}
 
 	if err := delivery.Commit(); err != nil {
+		dl.Debugf("delivery.Commit failed: %v", err)
 		expandToPartialErr(err)
 	}
+	dl.Debugf("delivery.Commit OK")
 
 	return perr
 }
