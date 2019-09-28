@@ -25,9 +25,7 @@ See SECURITY.md for information on how to report vulnerabilities.
 2. Tell us that you are willing to work on an issue.
 3. Fork the repo. Create a new branch, write your code. Open a PR.
 
-Some hints regarding code design we would like to see:
-- Generate a **small amount** of **useful** log messages.
-- Generate **verbose** log messages with **'debug'** directive set.
-- Create "modules" for **big** chunks of **reusable** functionality that may have
-  **swappable implementations**.
-- Ask for advise regarding design if you are not sure. We don't bite.
+Ask for advise if you are not sure. We don't bite.
+
+maddy design summary and some recommendations are provided in
+[HACKING.md](../HACKING.md) file.
