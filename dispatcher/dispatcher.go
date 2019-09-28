@@ -597,14 +597,5 @@ func (dd *dispatcherDelivery) runBodyChecks(header *textproto.Header, body buffe
 		}
 	}
 
-	// After results for all checks are checked, authRes will be populated with values
-	// we should put into Authentication-Results header.
-	if len(dd.authRes) != 0 {
-		header.Add("Authentication-Results", authres.Format(dd.d.Hostname, dd.authRes))
-	}
-	for field := dd.header.Fields(); field.Next(); {
-		header.Add(field.Key(), field.Value())
-	}
-
 	return nil
 }
