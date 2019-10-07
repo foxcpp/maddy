@@ -8,9 +8,6 @@ Interfaces implemented:
 
 Implementation summary follows.
 
-Message ID for all delivery attempts is the same. That might be an important
-implication for target modules that rely on uniqueness of Message ID.
-
 All scheduled deliveries are attempted to the configured DeliveryTarget.
 All metadata is preserved on disk so
 
@@ -52,6 +49,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -351,6 +349,10 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	if meta.DSN {
 		deliveryTarget = q.dsnDispatcher
 	}
+
+	msgMeta := meta.MsgMeta.DeepCopy()
+	msgMeta.ID = msgMeta.ID + "-" + strconv.Itoa(meta.TriesCount+1)
+	dl.Debugf("using message ID = %s", msgMeta.ID)
 
 	delivery, err := deliveryTarget.Start(meta.MsgMeta, meta.From)
 	if err != nil {
