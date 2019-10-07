@@ -7,14 +7,14 @@ import (
 
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
-	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
 	"github.com/foxcpp/maddy/modify"
+	"github.com/foxcpp/maddy/module"
 )
 
 type dispatcherCfg struct {
-	globalChecks    check.Group
+	globalChecks    []module.Check
 	globalModifiers modify.Group
 	perSource       map[string]sourceBlock
 	defaultSource   sourceBlock
@@ -311,15 +311,15 @@ func parseEnhancedCode(s string) (smtp.EnhancedCode, error) {
 	return code, nil
 }
 
-func parseChecksGroup(globals map[string]interface{}, nodes []config.Node) (check.Group, error) {
-	checks := check.Group{}
+func parseChecksGroup(globals map[string]interface{}, nodes []config.Node) ([]module.Check, error) {
+	var checks []module.Check
 	for _, child := range nodes {
 		msgCheck, err := modconfig.MessageCheck(globals, append([]string{child.Name}, child.Args...), &child)
 		if err != nil {
-			return check.Group{}, err
+			return nil, err
 		}
 
-		checks.Checks = append(checks.Checks, msgCheck)
+		checks = append(checks, msgCheck)
 	}
 	return checks, nil
 }

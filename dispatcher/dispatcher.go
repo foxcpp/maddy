@@ -2,15 +2,12 @@ package dispatcher
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
-	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/modify"
@@ -33,7 +30,7 @@ type Dispatcher struct {
 }
 
 type sourceBlock struct {
-	checks      check.Group
+	checks      []module.Check
 	modifiers   modify.Group
 	rejectErr   error
 	perRcpt     map[string]*rcptBlock
@@ -41,7 +38,7 @@ type sourceBlock struct {
 }
 
 type rcptBlock struct {
-	checks    check.Group
+	checks    []module.Check
 	modifiers modify.Group
 	rejectErr error
 	targets   []module.DeliveryTarget
@@ -63,13 +60,12 @@ func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatch
 func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := dispatcherDelivery{
 		d:                  d,
-		rcptChecksState:    make(map[*rcptBlock]module.CheckState),
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
 		deliveries:         make(map[module.DeliveryTarget]*delivery),
 		msgMeta:            msgMeta,
 		log:                target.DeliveryLogger(d.Log, msgMeta),
-		checkScore:         0,
 	}
+	dd.checkRunner = newCheckRunner(msgMeta, dd.log, d.quarantineScore, d.rejectScore)
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}
@@ -86,9 +82,10 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
 	var err error
 
-	if err := dd.initRunGlobalChecks(msgMeta, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(context.TODO(), dd.d.globalChecks, mailFrom); err != nil {
 		return err
 	}
+
 	if mailFrom, err = dd.initRunGlobalModifiers(msgMeta, mailFrom); err != nil {
 		return err
 	}
@@ -103,7 +100,7 @@ func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string
 	}
 	dd.sourceBlock = sourceBlock
 
-	if err := dd.initRunSourceChecks(sourceBlock, msgMeta, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(context.TODO(), sourceBlock.checks, mailFrom); err != nil {
 		return err
 	}
 
@@ -121,23 +118,6 @@ func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string
 	return nil
 }
 
-func (dd *dispatcherDelivery) initRunGlobalChecks(msgMeta *module.MsgMetadata, mailFrom string) error {
-	globalChecksState, err := dd.d.globalChecks.CheckStateForMsg(msgMeta)
-	if err != nil {
-		return err
-	}
-	if err := dd.checkResult(globalChecksState.CheckConnection(context.TODO())); err != nil {
-		globalChecksState.Close()
-		return err
-	}
-	if err := dd.checkResult(globalChecksState.CheckSender(context.TODO(), mailFrom)); err != nil {
-		globalChecksState.Close()
-		return err
-	}
-	dd.globalChecksState = globalChecksState
-	return nil
-}
-
 func (dd *dispatcherDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
 	globalModifiersState, err := dd.d.globalModifiers.ModStateForMsg(msgMeta)
 	if err != nil {
@@ -150,23 +130,6 @@ func (dd *dispatcherDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata
 	}
 	dd.globalModifiersState = globalModifiersState
 	return mailFrom, nil
-}
-
-func (dd *dispatcherDelivery) initRunSourceChecks(srcBlock sourceBlock, msgMeta *module.MsgMetadata, mailFrom string) error {
-	sourceChecksState, err := srcBlock.checks.CheckStateForMsg(msgMeta)
-	if err != nil {
-		return err
-	}
-	if err := dd.checkResult(sourceChecksState.CheckConnection(context.TODO())); err != nil {
-		sourceChecksState.Close()
-		return err
-	}
-	if err := dd.checkResult(sourceChecksState.CheckSender(context.TODO(), mailFrom)); err != nil {
-		sourceChecksState.Close()
-		return err
-	}
-	dd.sourceChecksState = sourceChecksState
-	return nil
 }
 
 func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
@@ -210,10 +173,6 @@ type delivery struct {
 type dispatcherDelivery struct {
 	d *Dispatcher
 
-	globalChecksState module.CheckState
-	sourceChecksState module.CheckState
-	rcptChecksState   map[*rcptBlock]module.CheckState
-
 	globalModifiersState module.ModifierState
 	sourceModifiersState module.ModifierState
 	rcptModifiersState   map[*rcptBlock]module.ModifierState
@@ -223,18 +182,16 @@ type dispatcherDelivery struct {
 	sourceAddr  string
 	sourceBlock sourceBlock
 
-	deliveries map[module.DeliveryTarget]*delivery
-	msgMeta    *module.MsgMetadata
-	checkScore int32
-	authRes    []authres.Result
-	header     textproto.Header
+	deliveries  map[module.DeliveryTarget]*delivery
+	msgMeta     *module.MsgMetadata
+	checkRunner *checkRunner
 }
 
 func (dd *dispatcherDelivery) AddRcpt(to string) error {
-	if err := dd.checkResult(dd.globalChecksState.CheckRcpt(context.TODO(), to)); err != nil {
+	if err := dd.checkRunner.checkRcpt(context.TODO(), dd.d.globalChecks, to); err != nil {
 		return err
 	}
-	if err := dd.checkResult(dd.sourceChecksState.CheckRcpt(context.TODO(), to)); err != nil {
+	if err := dd.checkRunner.checkRcpt(context.TODO(), dd.sourceBlock.checks, to); err != nil {
 		return err
 	}
 
@@ -263,11 +220,7 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 		return rcptBlock.rejectErr
 	}
 
-	rcptChecksState, err := dd.getRcptChecks(rcptBlock)
-	if err != nil {
-		return err
-	}
-	if err := dd.checkResult(rcptChecksState.CheckRcpt(context.TODO(), to)); err != nil {
+	if err := dd.checkRunner.checkRcpt(context.TODO(), rcptBlock.checks, to); err != nil {
 		return err
 	}
 
@@ -306,17 +259,16 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 }
 
 func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if err := dd.runBodyChecks(&header, body); err != nil {
+	if err := dd.checkRunner.checkBody(context.TODO(), dd.d.globalChecks, header, body); err != nil {
 		return err
 	}
-
-	// After results for all checks are checked, authRes will be populated with values
-	// we should put into Authentication-Results header.
-	if len(dd.authRes) != 0 {
-		header.Add("Authentication-Results", authres.Format(dd.d.Hostname, dd.authRes))
+	if err := dd.checkRunner.checkBody(context.TODO(), dd.sourceBlock.checks, header, body); err != nil {
+		return err
 	}
-	for field := dd.header.Fields(); field.Next(); {
-		header.Add(field.Key(), field.Value())
+	// TODO: Decide whether per-recipient body checks should be executed.
+
+	if err := dd.checkRunner.applyResults(dd.d.Hostname, &header); err != nil {
+		return err
 	}
 
 	// Run modifiers after Authentication-Results addition to make
@@ -368,7 +320,11 @@ func (dd *dispatcherDelivery) BodyNonAtomic(c module.StatusCollector, header tex
 		}
 	}
 
-	if err := dd.runBodyChecks(&header, body); err != nil {
+	if err := dd.checkRunner.checkBody(context.TODO(), dd.d.globalChecks, header, body); err != nil {
+		setStatusAll(err)
+		return
+	}
+	if err := dd.checkRunner.checkBody(context.TODO(), dd.sourceBlock.checks, header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
@@ -419,16 +375,7 @@ func (dd dispatcherDelivery) Commit() error {
 }
 
 func (dd *dispatcherDelivery) close() {
-	// these fields can be nil if delivery is partially initialized (in Dispatcher.Start method)
-	if dd.globalChecksState != nil {
-		dd.globalChecksState.Close()
-	}
-	if dd.sourceChecksState != nil {
-		dd.sourceChecksState.Close()
-	}
-	for _, check_ := range dd.rcptChecksState {
-		check_.Close()
-	}
+	dd.checkRunner.close()
 
 	if dd.globalModifiersState != nil {
 		dd.globalModifiersState.Close()
@@ -457,38 +404,6 @@ func (dd dispatcherDelivery) Abort() error {
 	return lastErr
 }
 
-func (dd *dispatcherDelivery) checkResult(checkResult module.CheckResult) error {
-	if checkResult.RejectErr != nil {
-		return checkResult.RejectErr
-	}
-	if checkResult.Quarantine {
-		dd.log.Printf("quarantined message due to check result")
-		dd.msgMeta.Quarantine = true
-	}
-	dd.checkScore += checkResult.ScoreAdjust
-	if dd.d.rejectScore != nil && dd.checkScore >= int32(*dd.d.rejectScore) {
-		dd.log.Debugf("score %d >= %d, rejecting", dd.checkScore, *dd.d.rejectScore)
-		return &smtp.SMTPError{
-			Code:         550,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
-			Message:      fmt.Sprintf("Message is rejected due to multiple local policy violations (score %d)", dd.checkScore),
-		}
-	}
-	if dd.d.quarantineScore != nil && dd.checkScore >= int32(*dd.d.quarantineScore) {
-		if !dd.msgMeta.Quarantine {
-			dd.log.Printf("quarantined message due to score %d >= %d", dd.checkScore, *dd.d.quarantineScore)
-		}
-		dd.msgMeta.Quarantine = true
-	}
-	if len(checkResult.AuthResult) != 0 {
-		dd.authRes = append(dd.authRes, checkResult.AuthResult...)
-	}
-	for field := checkResult.Header.Fields(); field.Next(); {
-		dd.header.Add(field.Key(), field.Value())
-	}
-	return nil
-}
-
 func (dd *dispatcherDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
 	// First try to match against complete address.
 	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(rcptTo)]
@@ -515,29 +430,6 @@ func (dd *dispatcherDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error
 		dd.log.Debugf("recipient %s matched by address rule '%s'", rcptTo, strings.ToLower(rcptTo))
 	}
 	return rcptBlock, nil
-}
-
-func (dd *dispatcherDelivery) getRcptChecks(rcptBlock *rcptBlock) (module.CheckState, error) {
-	rcptChecksState, ok := dd.rcptChecksState[rcptBlock]
-	if ok {
-		return rcptChecksState, nil
-	}
-
-	rcptChecksState, err := rcptBlock.checks.CheckStateForMsg(dd.msgMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := dd.checkResult(rcptChecksState.CheckConnection(context.TODO())); err != nil {
-		rcptChecksState.Close()
-		return nil, err
-	}
-	if err := dd.checkResult(rcptChecksState.CheckSender(context.TODO(), dd.sourceAddr)); err != nil {
-		rcptChecksState.Close()
-		return nil, err
-	}
-	dd.rcptChecksState[rcptBlock] = rcptChecksState
-	return rcptChecksState, nil
 }
 
 func (dd *dispatcherDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
@@ -581,20 +473,4 @@ func (dd *dispatcherDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery,
 
 	dd.deliveries[tgt] = delivery_
 	return delivery_, nil
-}
-
-func (dd *dispatcherDelivery) runBodyChecks(header *textproto.Header, body buffer.Buffer) error {
-	if err := dd.checkResult(dd.globalChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
-		return err
-	}
-	if err := dd.checkResult(dd.sourceChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
-		return err
-	}
-	for _, rcptChecksState := range dd.rcptChecksState {
-		if err := dd.checkResult(rcptChecksState.CheckBody(context.TODO(), *header, body)); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

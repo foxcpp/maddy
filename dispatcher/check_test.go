@@ -6,7 +6,6 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/testutils"
 )
@@ -20,7 +19,7 @@ func TestDispatcher_NoScoresChecked(t *testing.T) {
 	}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -57,7 +56,7 @@ func TestDispatcher_RejectScore(t *testing.T) {
 	rejectScore := 10
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -94,7 +93,7 @@ func TestDispatcher_RejectScore_notEnough(t *testing.T) {
 	rejectScore := 15
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -130,7 +129,7 @@ func TestDispatcher_Quarantine(t *testing.T) {
 	}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -167,7 +166,7 @@ func TestDispatcher_QuarantineScore(t *testing.T) {
 	quarantineScore := 10
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -205,7 +204,7 @@ func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
 	quarantineScore := 15
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -244,7 +243,7 @@ func TestDispatcher_BothScores_Quarantined(t *testing.T) {
 	rejectScore := 15
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -284,7 +283,7 @@ func TestDispatcher_BothScores_Rejected(t *testing.T) {
 	rejectScore := 10
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -337,7 +336,7 @@ func TestDispatcher_AuthResults(t *testing.T) {
 	}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -413,7 +412,7 @@ func TestDispatcher_Headers(t *testing.T) {
 	}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check1, &check2}},
+			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -455,7 +454,7 @@ func TestDispatcher_Globalcheck_Errors(t *testing.T) {
 	}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&check_}},
+			globalChecks: []module.Check{&check_},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -534,11 +533,11 @@ func TestDispatcher_SourceCheck_Errors(t *testing.T) {
 	globalCheck := testutils.Check{}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&globalCheck}},
+			globalChecks: []module.Check{&globalCheck},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
-				checks:  check.Group{Checks: []module.Check{&check_}},
+				checks:  []module.Check{&check_},
 				defaultRcpt: &rcptBlock{
 					targets: []module.DeliveryTarget{&target},
 				},
@@ -611,17 +610,19 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
 		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
 		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+
+		InstName: "err_check",
 	}
 	// Added to check whether it leaks.
-	globalCheck := testutils.Check{}
-	sourceCheck := testutils.Check{}
+	globalCheck := testutils.Check{InstName: "global_check"}
+	sourceCheck := testutils.Check{InstName: "source_check"}
 	d := Dispatcher{
 		dispatcherCfg: dispatcherCfg{
-			globalChecks: check.Group{Checks: []module.Check{&globalCheck}},
+			globalChecks: []module.Check{&globalCheck},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
-				checks:  check.Group{Checks: []module.Check{&check_}},
+				checks:  []module.Check{&check_},
 				defaultRcpt: &rcptBlock{
 					targets: []module.DeliveryTarget{&target},
 				},
@@ -632,33 +633,43 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	}
 
 	t.Run("init err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
 		}
+
+		t.Log("!!!", check_.UnclosedStates)
 	})
 
 	check_.InitErr = nil
 
 	t.Run("conn err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
 		}
+
+		t.Log("!!!", check_.UnclosedStates)
 	})
 
 	check_.ConnRes.RejectErr = nil
 
 	t.Run("mail from err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
 		}
+
+		t.Log("!!!", check_.UnclosedStates)
 	})
 
 	check_.SenderRes.RejectErr = nil
 
 	t.Run("rcpt to err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -668,6 +679,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.RcptRes.RejectErr = nil
 
 	t.Run("body err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -677,6 +689,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.BodyRes.RejectErr = nil
 
 	t.Run("no err", func(t *testing.T) {
+		d.Log = testutils.Logger(t, "dispatcher")
 		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 	})
 

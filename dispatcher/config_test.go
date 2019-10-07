@@ -244,7 +244,7 @@ func TestDispatcherCfg_GlobalChecks(t *testing.T) {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
 
-	if len(parsed.globalChecks.Checks) == 0 {
+	if len(parsed.globalChecks) == 0 {
 		t.Fatalf("missing test_check in globalChecks")
 	}
 }
@@ -269,7 +269,7 @@ func TestDispatcherCfg_SourceChecks(t *testing.T) {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
 
-	if len(parsed.perSource["example.org"].checks.Checks) == 0 {
+	if len(parsed.perSource["example.org"].checks) == 0 {
 		t.Fatalf("missing test_check in source checks")
 	}
 }
@@ -294,7 +294,7 @@ func TestDispatcherCfg_RcptChecks(t *testing.T) {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
 
-	if len(parsed.defaultSource.perRcpt["example.org"].checks.Checks) == 0 {
+	if len(parsed.defaultSource.perRcpt["example.org"].checks) == 0 {
 		t.Fatalf("missing test_check in rcpt checks")
 	}
 }
