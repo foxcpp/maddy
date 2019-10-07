@@ -46,7 +46,7 @@ to run secure email server implemented in one executable.
 
 # AUTHORS
 
-Maintained by Max Mazurov <fox.cpp@disroot.org>, who are assisted by other
+Maintained by Max Mazurov <fox.cpp@disroot.org>, who is assisted by other
 open-source contributors. For more information about maddy development, see
 https://github.com/foxcpp/maddy.
 
