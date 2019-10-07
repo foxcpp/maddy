@@ -17,6 +17,8 @@ type Check struct {
 	BodyRes   module.CheckResult
 
 	UnclosedStates int
+
+	InstName string
 }
 
 func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -37,6 +39,9 @@ func (c *Check) Name() string {
 }
 
 func (c *Check) InstanceName() string {
+	if c.InstName != "" {
+		return c.InstName
+	}
 	return "test_check"
 }
 
