@@ -1,9 +1,43 @@
-// Package queue implements module which keeps messages on disk
-// and tries delivery to the configured target (usually remote)
-// multiple times until all recipients are succeeded.
-//
-// Interfaces implemented:
-// - module.DeliveryTarget
+/*
+Package queue implements module which keeps messages on disk and tries delivery
+to the configured target (usually remote) multiple times until all recipients
+are succeeded.
+
+Interfaces implemented:
+- module.DeliveryTarget
+
+Implementation summary follows.
+
+Message ID for all delivery attempts is the same. That might be an important
+implication for target modules that rely on uniqueness of Message ID.
+
+All scheduled deliveries are attempted to the configured DeliveryTarget.
+All metadata is preserved on disk so
+
+Failure status is determined on per-recipient basis:
+- Delivery.Start fail handled as a failure for all recipients.
+- Delivery.AddRcpt fail handled as a failure for corresponding recipient.
+- Delivery.Body fail handled as a failure for all recipients.
+- If Delivery implements PartialDelivery, then
+  PartialDelivery.BodyNonAtomic is used instead. Failures are determined based
+  on StatusCollector.SetStatus calls done by target in this case.
+
+For each failure check is done to see if it is a permanent failure
+or a temporary one. This is done using exterrors.IsTemporaryOrUnspec.
+That is, errors are assumed to be temporary by default.
+All errors are converted to SMTPError then due to a storage limitations.
+
+If there are any *temporary* failed recipients, delivery will be retried
+after delay *only for these* recipients.
+
+Last error for each recipient is saved for reporting in NDN. A NDN is generated
+if there are any failed recipients left after
+last attempt to deliver the message.
+
+Amount of attempts for each message is limited to a certain configured number.
+After last attempt, all recipients that are still temporary failing are assumed
+to be permanently failed.
+*/
 package queue
 
 import (
