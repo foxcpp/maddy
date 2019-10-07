@@ -156,18 +156,22 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 		DontTraceSender: true,
 		ID:              encodedID,
 	}
+	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range to {
+		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
+	t.Log("-- delivery.Body")
 	if err := delivery.Body(textproto.Header{}, body); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
+	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
 		t.Fatalf("unexpected Commit err: %v", err)
 	}
@@ -186,16 +190,20 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 		DontTraceSender: true,
 		ID:              encodedID,
 	}
+	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range to {
+		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
+	t.Log("-- delivery.BodyNonAtomic")
 	delivery.(module.PartialDelivery).BodyNonAtomic(c, textproto.Header{}, body)
+	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
 		t.Fatalf("unexpected Commit err: %v", err)
 	}
@@ -214,20 +222,26 @@ func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to 
 		DontTraceSender: true,
 		ID:              encodedID,
 	}
+	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
 		return encodedID, err
 	}
 	for _, rcpt := range to {
+		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
+			t.Log("-- delivery.Abort")
 			delivery.Abort()
 			return encodedID, err
 		}
 	}
+	t.Log("-- delivery.Body")
 	if err := delivery.Body(textproto.Header{}, body); err != nil {
+		t.Log("-- delivery.Abort")
 		delivery.Abort()
 		return encodedID, err
 	}
+	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
 		return encodedID, err
 	}
