@@ -482,10 +482,10 @@ usually message will be quarantined.
 
 See CHECKS MODULES for what you can use here.
 
-Note that if check that inspects the body is placed placed inside the
-destination block, its will affect the message for all 
-recipients. It's implementation deficiency and this behavior may 
-change in future versions, don't rely on it. 
+Note that message body checks placed in destination block are currently
+ignored. Due to the way SMTP protocol is defined, they would cause message to
+be rejected for all recipients which is not what you usually want when using
+such configurations.
 
 Example:
 ```
