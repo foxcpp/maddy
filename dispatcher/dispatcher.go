@@ -225,7 +225,6 @@ type dispatcherDelivery struct {
 
 	deliveries map[module.DeliveryTarget]*delivery
 	msgMeta    *module.MsgMetadata
-	cancelCtx  context.Context
 	checkScore int32
 	authRes    []authres.Result
 	header     textproto.Header
