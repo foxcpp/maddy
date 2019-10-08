@@ -1,7 +1,6 @@
 package check
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -20,10 +19,6 @@ type (
 		Resolver dns.Resolver
 
 		MsgMeta *module.MsgMetadata
-
-		// CancelCtx is cancelled if check should be
-		// aborted (e.g. its result is no longer meaningful).
-		CancelCtx context.Context
 
 		// Logger that should be used by the check for logging, note that it is
 		// already wrapped to append Msg ID to all messages so check code
@@ -59,58 +54,54 @@ type statelessCheckState struct {
 	msgMeta *module.MsgMetadata
 }
 
-func (s statelessCheckState) CheckConnection(ctx context.Context) module.CheckResult {
+func (s statelessCheckState) CheckConnection() module.CheckResult {
 	if s.c.connCheck == nil {
 		return module.CheckResult{}
 	}
 
 	originalRes := s.c.connCheck(StatelessCheckContext{
-		Resolver:  s.c.resolver,
-		MsgMeta:   s.msgMeta,
-		CancelCtx: ctx,
-		Logger:    target.DeliveryLogger(s.c.logger, s.msgMeta),
+		Resolver: s.c.resolver,
+		MsgMeta:  s.msgMeta,
+		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
 	})
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckSender(ctx context.Context, mailFrom string) module.CheckResult {
+func (s statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
 	if s.c.senderCheck == nil {
 		return module.CheckResult{}
 	}
 
 	originalRes := s.c.senderCheck(StatelessCheckContext{
-		Resolver:  s.c.resolver,
-		MsgMeta:   s.msgMeta,
-		CancelCtx: ctx,
-		Logger:    target.DeliveryLogger(s.c.logger, s.msgMeta),
+		Resolver: s.c.resolver,
+		MsgMeta:  s.msgMeta,
+		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
 	}, mailFrom)
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult {
+func (s statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
 	if s.c.rcptCheck == nil {
 		return module.CheckResult{}
 	}
 
 	originalRes := s.c.rcptCheck(StatelessCheckContext{
-		Resolver:  s.c.resolver,
-		MsgMeta:   s.msgMeta,
-		CancelCtx: ctx,
-		Logger:    target.DeliveryLogger(s.c.logger, s.msgMeta),
+		Resolver: s.c.resolver,
+		MsgMeta:  s.msgMeta,
+		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
 	}, rcptTo)
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s statelessCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.bodyCheck == nil {
 		return module.CheckResult{}
 	}
 
 	originalRes := s.c.bodyCheck(StatelessCheckContext{
-		Resolver:  s.c.resolver,
-		MsgMeta:   s.msgMeta,
-		CancelCtx: ctx,
-		Logger:    target.DeliveryLogger(s.c.logger, s.msgMeta),
+		Resolver: s.c.resolver,
+		MsgMeta:  s.msgMeta,
+		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
 	}, header, body)
 	return s.c.failAction.Apply(originalRes)
 }

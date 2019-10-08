@@ -1,8 +1,6 @@
 package module
 
 import (
-	"context"
-
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/foxcpp/maddy/buffer"
@@ -21,22 +19,22 @@ type CheckState interface {
 	//
 	// Result may be cached for the whole client connection so this function
 	// may not be called sometimes.
-	CheckConnection(ctx context.Context) CheckResult
+	CheckConnection() CheckResult
 
 	// CheckSender is executed once when client sends the message sender
 	// information (e.g. on the MAIL FROM command).
-	CheckSender(ctx context.Context, mailFrom string) CheckResult
+	CheckSender(mailFrom string) CheckResult
 
 	// CheckRcpt is executed for each recipient when its address is received
 	// from the client (e.g. on the RCPT TO command).
-	CheckRcpt(ctx context.Context, rcptTo string) CheckResult
+	CheckRcpt(rcptTo string) CheckResult
 
 	// CheckBody is executed once after the message body is received and
 	// buffered in memory or on disk.
 	//
 	// Check code should use passed mutex when working with the message header.
 	// Body can be read without locking it since it is read-only.
-	CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) CheckResult
+	CheckBody(header textproto.Header, body buffer.Buffer) CheckResult
 
 	// Close is called after the message processing ends, even if any of the
 	// Check* functions return an error.

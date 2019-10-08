@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -82,7 +81,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 	// checks in parallel.
 	if cr.mailFrom != "" {
 		err := cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
-			res := s.CheckConnection(context.TODO())
+			res := s.CheckConnection()
 			return res
 		})
 		if err != nil {
@@ -90,7 +89,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 			return nil, err
 		}
 		err = cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
-			res := s.CheckSender(context.TODO(), cr.mailFrom)
+			res := s.CheckSender(cr.mailFrom)
 			return res
 		})
 		if err != nil {
@@ -102,7 +101,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 	if len(cr.checkedRcpts) != 0 {
 		for _, rcpt := range cr.checkedRcpts {
 			err := cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-				res := s.CheckRcpt(context.TODO(), rcpt)
+				res := s.CheckRcpt(rcpt)
 				return res
 			})
 			if err != nil {
@@ -188,14 +187,14 @@ func (cr *checkRunner) checkConnSender(checks []module.Check, mailFrom string) e
 	}
 
 	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckConnection(context.TODO())
+		res := s.CheckConnection()
 		return res
 	})
 	if err != nil {
 		return err
 	}
 	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckSender(context.TODO(), mailFrom)
+		res := s.CheckSender(mailFrom)
 		return res
 	})
 
@@ -211,7 +210,7 @@ func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
 	}
 
 	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckRcpt(context.TODO(), rcptTo)
+		res := s.CheckRcpt(rcptTo)
 		return res
 	})
 
@@ -226,7 +225,7 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 	}
 
 	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckBody(context.TODO(), header, body)
+		res := s.CheckBody(header, body)
 		return res
 	})
 }
