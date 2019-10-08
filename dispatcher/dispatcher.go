@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"context"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -82,7 +81,7 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
 	var err error
 
-	if err := dd.checkRunner.checkConnSender(context.TODO(), dd.d.globalChecks, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(dd.d.globalChecks, mailFrom); err != nil {
 		return err
 	}
 
@@ -100,7 +99,7 @@ func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string
 	}
 	dd.sourceBlock = sourceBlock
 
-	if err := dd.checkRunner.checkConnSender(context.TODO(), sourceBlock.checks, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(sourceBlock.checks, mailFrom); err != nil {
 		return err
 	}
 
@@ -188,10 +187,10 @@ type dispatcherDelivery struct {
 }
 
 func (dd *dispatcherDelivery) AddRcpt(to string) error {
-	if err := dd.checkRunner.checkRcpt(context.TODO(), dd.d.globalChecks, to); err != nil {
+	if err := dd.checkRunner.checkRcpt(dd.d.globalChecks, to); err != nil {
 		return err
 	}
-	if err := dd.checkRunner.checkRcpt(context.TODO(), dd.sourceBlock.checks, to); err != nil {
+	if err := dd.checkRunner.checkRcpt(dd.sourceBlock.checks, to); err != nil {
 		return err
 	}
 
@@ -220,7 +219,7 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 		return rcptBlock.rejectErr
 	}
 
-	if err := dd.checkRunner.checkRcpt(context.TODO(), rcptBlock.checks, to); err != nil {
+	if err := dd.checkRunner.checkRcpt(rcptBlock.checks, to); err != nil {
 		return err
 	}
 
@@ -259,10 +258,10 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 }
 
 func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if err := dd.checkRunner.checkBody(context.TODO(), dd.d.globalChecks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(dd.d.globalChecks, header, body); err != nil {
 		return err
 	}
-	if err := dd.checkRunner.checkBody(context.TODO(), dd.sourceBlock.checks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(dd.sourceBlock.checks, header, body); err != nil {
 		return err
 	}
 	// TODO: Decide whether per-recipient body checks should be executed.
@@ -320,11 +319,11 @@ func (dd *dispatcherDelivery) BodyNonAtomic(c module.StatusCollector, header tex
 		}
 	}
 
-	if err := dd.checkRunner.checkBody(context.TODO(), dd.d.globalChecks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(dd.d.globalChecks, header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
-	if err := dd.checkRunner.checkBody(context.TODO(), dd.sourceBlock.checks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(dd.sourceBlock.checks, header, body); err != nil {
 		setStatusAll(err)
 		return
 	}

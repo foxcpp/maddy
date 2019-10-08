@@ -13,7 +13,6 @@ import (
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
-	"golang.org/x/sync/errgroup"
 )
 
 // checkRunner runs groups of checks, collects and merges results.
@@ -44,7 +43,7 @@ func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger, quarantineScore
 	}
 }
 
-func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) ([]module.CheckState, error) {
+func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, error) {
 	states := make([]module.CheckState, 0, len(checks))
 	newStates := make([]module.CheckState, 0, len(checks))
 	newStatesMap := make(map[module.Check]module.CheckState, len(checks))
@@ -82,16 +81,16 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 	// Done outside of check loop above to make sure we can run these for multiple
 	// checks in parallel.
 	if cr.mailFrom != "" {
-		err := cr.runAndMergeResults(ctx, newStates, func(ctx context.Context, s module.CheckState) module.CheckResult {
-			res := s.CheckConnection(ctx)
+		err := cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
+			res := s.CheckConnection(context.TODO())
 			return res
 		})
 		if err != nil {
 			closeStates()
 			return nil, err
 		}
-		err = cr.runAndMergeResults(ctx, newStates, func(ctx context.Context, s module.CheckState) module.CheckResult {
-			res := s.CheckSender(ctx, cr.mailFrom)
+		err = cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
+			res := s.CheckSender(context.TODO(), cr.mailFrom)
 			return res
 		})
 		if err != nil {
@@ -102,8 +101,8 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 
 	if len(cr.checkedRcpts) != 0 {
 		for _, rcpt := range cr.checkedRcpts {
-			err := cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
-				res := s.CheckRcpt(ctx, rcpt)
+			err := cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+				res := s.CheckRcpt(context.TODO(), rcpt)
 				return res
 			})
 			if err != nil {
@@ -115,7 +114,6 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 
 	// This is done after all actions that can fail so we will not have to remove
 	// state objects from main map.
-	// TODO: Check whether all this bookkeeping leads to high GC pressure.
 	for check, state := range newStatesMap {
 		cr.states[check] = state
 	}
@@ -123,76 +121,81 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 	return states, nil
 }
 
-func (cr *checkRunner) runAndMergeResults(ctx context.Context, states []module.CheckState, runner func(context.Context, module.CheckState) module.CheckResult) error {
-	var (
+func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner func(module.CheckState) module.CheckResult) error {
+	data := struct {
 		checkScore     int32
 		quarantineFlag atomicbool.AtomicBool
 		authResLock    sync.Mutex
 		headerLock     sync.Mutex
-	)
+		firstErr       error
 
-	syncGroup, childCtx := errgroup.WithContext(ctx)
+		setErr sync.Once
+		wg     sync.WaitGroup
+	}{}
+
 	for _, state := range states {
 		state := state
-		syncGroup.Go(func() error {
-			subCheckRes := runner(childCtx, state)
+		data.wg.Add(1)
+		go func() {
+			subCheckRes := runner(state)
 
 			// We check the length because we don't want to take locks
 			// when it is not necessary.
 			if len(subCheckRes.AuthResult) != 0 {
-				authResLock.Lock()
+				data.authResLock.Lock()
 				cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, subCheckRes.AuthResult...)
-				authResLock.Unlock()
+				data.authResLock.Unlock()
 			}
 			if subCheckRes.Header.Len() != 0 {
-				headerLock.Lock()
+				data.headerLock.Lock()
 				for field := subCheckRes.Header.Fields(); field.Next(); {
 					cr.mergedRes.Header.Add(field.Key(), field.Value())
 				}
-				headerLock.Unlock()
+				data.headerLock.Unlock()
 			}
 
 			if subCheckRes.ScoreAdjust != 0 {
-				atomic.AddInt32(&checkScore, subCheckRes.ScoreAdjust)
+				atomic.AddInt32(&data.checkScore, subCheckRes.ScoreAdjust)
 			}
 			if subCheckRes.Quarantine {
-				quarantineFlag.Set(true)
+				data.quarantineFlag.Set(true)
 			}
 			if subCheckRes.RejectErr != nil {
-				return subCheckRes.RejectErr
+				data.setErr.Do(func() { data.firstErr = subCheckRes.RejectErr })
 			}
-			return nil
-		})
+
+			data.wg.Done()
+		}()
 	}
 
-	err := syncGroup.Wait()
-	if err != nil {
-		return err
+	data.wg.Wait()
+	if data.firstErr != nil {
+		return data.firstErr
 	}
 
-	if quarantineFlag.IsSet() {
+	if data.quarantineFlag.IsSet() {
 		cr.mergedRes.Quarantine = true
 	}
-	cr.mergedRes.ScoreAdjust += checkScore
+	cr.mergedRes.ScoreAdjust += data.checkScore
 
 	return nil
 }
 
-func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Check, mailFrom string) error {
-	states, err := cr.checkStates(ctx, checks)
+func (cr *checkRunner) checkConnSender(checks []module.Check, mailFrom string) error {
+	states, err := cr.checkStates(checks)
 	if err != nil {
 		return err
 	}
 
-	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
-		res := s.CheckConnection(ctx)
+	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+		res := s.CheckConnection(context.TODO())
 		return res
 	})
 	if err != nil {
 		return err
 	}
-	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
-		res := s.CheckSender(ctx, mailFrom)
+	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+		res := s.CheckSender(context.TODO(), mailFrom)
 		return res
 	})
 
@@ -201,14 +204,14 @@ func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Chec
 	return err
 }
 
-func (cr *checkRunner) checkRcpt(ctx context.Context, checks []module.Check, rcptTo string) error {
-	states, err := cr.checkStates(ctx, checks)
+func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
+	states, err := cr.checkStates(checks)
 	if err != nil {
 		return err
 	}
 
-	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
-		res := s.CheckRcpt(ctx, rcptTo)
+	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+		res := s.CheckRcpt(context.TODO(), rcptTo)
 		return res
 	})
 
@@ -216,14 +219,14 @@ func (cr *checkRunner) checkRcpt(ctx context.Context, checks []module.Check, rcp
 	return err
 }
 
-func (cr *checkRunner) checkBody(ctx context.Context, checks []module.Check, header textproto.Header, body buffer.Buffer) error {
-	states, err := cr.checkStates(ctx, checks)
+func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header, body buffer.Buffer) error {
+	states, err := cr.checkStates(checks)
 	if err != nil {
 		return err
 	}
 
-	return cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
-		res := s.CheckBody(ctx, header, body)
+	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+		res := s.CheckBody(context.TODO(), header, body)
 		return res
 	})
 }
