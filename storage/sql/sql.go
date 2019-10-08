@@ -236,7 +236,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// int is 64-bit on some platforms, so cut off values we can't actually
 		// use.
 		if appendlimitVal > math.MaxUint32 {
-			return errors.New("sql: appendlimit can't be higher than 2 GiB")
+			return errors.New("sql: appendlimit can't be higher than 4 GiB")
 		}
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
