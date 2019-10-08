@@ -20,7 +20,7 @@ func BenchmarkDispatcherSimple(b *testing.B) {
 		},
 	}}
 
-	testutils.BenchDelivery(b, &d, "sender@example.org", []string{"rcpt-X@example.org"})
+	testutils.BenchDelivery(b, &d, true, "sender@example.org", []string{"rcpt-X@example.org"})
 }
 
 func BenchmarkDispatcherGlobalChecks(b *testing.B) {
@@ -43,7 +43,7 @@ func BenchmarkDispatcherGlobalChecks(b *testing.B) {
 				},
 			}}
 
-			testutils.BenchDelivery(b, &d, "sender@example.org", []string{"rcpt-X@example.org"})
+			testutils.BenchDelivery(b, &d, true, "sender@example.org", []string{"rcpt-X@example.org"})
 		})
 	}
 
@@ -70,7 +70,7 @@ func BenchmarkDispatcherTargets(b *testing.B) {
 				},
 			}}
 
-			testutils.BenchDelivery(b, &d, "sender@example.org", []string{"rcpt-X@example.org"})
+			testutils.BenchDelivery(b, &d, true, "sender@example.org", []string{"rcpt-X@example.org"})
 		})
 	}
 

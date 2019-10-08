@@ -15,10 +15,22 @@ import (
 
 // Empirically observed "around average" values.
 const (
-	MessageBodySize        = 100 * 1024
-	MessageHeaderFields    = 25
-	MessageHeaderFieldSize = 100
+	MessageBodySize             = 100 * 1024
+	ExtraMessageHeaderFields    = 20
+	ExtraMessageHeaderFieldSize = 100
 )
+
+var headerPreamble = map[string]string{
+	"From":                      `"whatever whatever" <whatever@example.org>`,
+	"Message-ID":                `<AAAAAAAAAAAAAAAAAA@example.org>`,
+	"To":                        `"whatever whatever" <whatever@example.org>, "fool" <fool@example.org>`,
+	"Date":                      "Tue, 08 Oct 2019 06:25:41 +0000",
+	"Subject":                   "Heya Heya Heya Heya",
+	"Content-Type":              "text/plain; charset=us-ascii",
+	"MIME-Version":              "1.0",
+	"Content-Transfer-Encoding": "8bit",
+	"Received":                  `from whatever ([127.0.0.1]) by whatever ([127.0.0.1]) with whatever id whatever for whatever@example.org`,
+}
 
 type multipleErrs map[string]error
 
@@ -31,8 +43,13 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 	encodedID := hex.EncodeToString(IDRaw[:])
 
 	hdr := textproto.Header{}
-	for i := 0; i < MessageHeaderFields; i++ {
-		hdr.Add("AAAAAAAAAAAA-"+strconv.Itoa(i), strings.Repeat("A", MessageHeaderFieldSize))
+
+	for k, v := range headerPreamble {
+		hdr.Add(k, v)
+	}
+
+	for i := 0; i < ExtraMessageHeaderFields; i++ {
+		hdr.Add("AAAAAAAAAAAA-"+strconv.Itoa(i), strings.Repeat("A", ExtraMessageHeaderFieldSize))
 	}
 
 	return module.MsgMetadata{
@@ -41,7 +58,7 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 	}, hdr, buffer.MemoryBuffer{Slice: bytes.Repeat([]byte("a"), MessageBodySize)}
 }
 
-func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, recipientTemplates []string) {
+func BenchDelivery(b *testing.B, target module.DeliveryTarget, idempotentBody bool, sender string, recipientTemplates []string) {
 	b.Run("Start", func(b *testing.B) {
 		meta, _, _ := RandomMsg(b)
 
@@ -79,6 +96,10 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 	})
 
 	b.Run("Body", func(b *testing.B) {
+		if !idempotentBody {
+			b.Skip("Non-idempotent Body implementation")
+		}
+
 		meta, header, body := RandomMsg(b)
 		delivery, err := target.Start(&meta, sender)
 		if err != nil {
@@ -94,7 +115,6 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 			}
 		}
 
-		// XXX: This relies on DeliveryTarget having an idempotent Body implementation.
 		for i := 0; i < b.N; i++ {
 			if err := delivery.Body(header, body); err != nil {
 				b.Fatal(err)
@@ -103,6 +123,10 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 	})
 
 	b.Run("BodyNonAtomic", func(b *testing.B) {
+		if !idempotentBody {
+			b.Skip("Non-idempotent Body implementation")
+		}
+
 		meta, header, body := RandomMsg(b)
 		delivery, err := target.Start(&meta, sender)
 		if err != nil {
@@ -125,7 +149,6 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 
 		sc := multipleErrs{}
 
-		// XXX: This relies on DeliveryTarget having an idempotent BodyNonAtomic implementation.
 		for i := 0; i < b.N; i++ {
 			partialDelivery.BodyNonAtomic(sc, header, body)
 		}
