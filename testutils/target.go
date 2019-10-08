@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"io"
 	"io/ioutil"
 	"reflect"
 	"sort"
@@ -24,7 +25,8 @@ type Msg struct {
 }
 
 type Target struct {
-	Messages []Msg
+	Messages        []Msg
+	DiscardMessages bool
 
 	StartErr       error
 	RcptErr        map[string]error
@@ -107,6 +109,7 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, he
 		for rcpt, err := range dtd.tgt.PartialBodyErr {
 			c.SetStatus(rcpt, err)
 		}
+		return
 	}
 	defer body.Close()
 
@@ -129,6 +132,12 @@ func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) 
 	}
 	defer body.Close()
 
+	if dtd.tgt.DiscardMessages {
+		// Don't bother.
+		_, err = io.Copy(ioutil.Discard, body)
+		return err
+	}
+
 	dtd.msg.Body, err = ioutil.ReadAll(body)
 	return err
 }
@@ -140,6 +149,9 @@ func (dtd *testTargetDelivery) Abort() error {
 func (dtd *testTargetDelivery) Commit() error {
 	if dtd.tgt.CommitErr != nil {
 		return dtd.tgt.CommitErr
+	}
+	if dtd.tgt.DiscardMessages {
+		return nil
 	}
 	dtd.tgt.Messages = append(dtd.tgt.Messages, dtd.msg)
 	return nil
