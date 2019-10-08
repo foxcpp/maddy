@@ -61,7 +61,7 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 			continue
 		}
 
-		cr.log.Debugf("initializing state for %T/%v (%p)", check, check.(module.Module).InstanceName(), check)
+		cr.log.Debugf("initializing state for %v (%p)", check.(module.Module).InstanceName(), check)
 		state, err := check.CheckStateForMsg(cr.msgMeta)
 		if err != nil {
 			closeStates()
@@ -84,7 +84,6 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 	if cr.mailFrom != "" {
 		err := cr.runAndMergeResults(ctx, newStates, func(ctx context.Context, s module.CheckState) module.CheckResult {
 			res := s.CheckConnection(ctx)
-			cr.log.Debugf("(replay for new state) %T.CheckConnection: %+v", s, res)
 			return res
 		})
 		if err != nil {
@@ -93,7 +92,6 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 		}
 		err = cr.runAndMergeResults(ctx, newStates, func(ctx context.Context, s module.CheckState) module.CheckResult {
 			res := s.CheckSender(ctx, cr.mailFrom)
-			cr.log.Debugf("(replay for new state) %T.CheckSender %s: %+v", s, cr.mailFrom, res)
 			return res
 		})
 		if err != nil {
@@ -106,7 +104,6 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 		for _, rcpt := range cr.checkedRcpts {
 			err := cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
 				res := s.CheckRcpt(ctx, rcpt)
-				cr.log.Debugf("(replay for new state) %T.CheckRcpt %s: %+v", s, rcpt, res)
 				return res
 			})
 			if err != nil {
@@ -189,7 +186,6 @@ func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Chec
 
 	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
 		res := s.CheckConnection(ctx)
-		cr.log.Debugf("%T.CheckConnection: %+v", s, res)
 		return res
 	})
 	if err != nil {
@@ -197,7 +193,6 @@ func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Chec
 	}
 	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
 		res := s.CheckSender(ctx, mailFrom)
-		cr.log.Debugf("%T.CheckSender %s: %+v", s, mailFrom, res)
 		return res
 	})
 
@@ -214,7 +209,6 @@ func (cr *checkRunner) checkRcpt(ctx context.Context, checks []module.Check, rcp
 
 	err = cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
 		res := s.CheckRcpt(ctx, rcptTo)
-		cr.log.Debugf("%T.CheckRcpt %s: %+v", s, rcptTo, res)
 		return res
 	})
 
@@ -230,7 +224,6 @@ func (cr *checkRunner) checkBody(ctx context.Context, checks []module.Check, hea
 
 	return cr.runAndMergeResults(ctx, states, func(ctx context.Context, s module.CheckState) module.CheckResult {
 		res := s.CheckBody(ctx, header, body)
-		cr.log.Debugf("%T.CheckBody: %+v", s, res)
 		return res
 	})
 }
