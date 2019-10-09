@@ -67,7 +67,7 @@ func BenchmarkStorage_Delivery(b *testing.B) {
 		u.Logout()
 	}
 
-	testutils.BenchDelivery(b, be, false, "sender@example.org", []string{randomKey + "@example.org"})
+	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
 }
 
 func BenchmarkStorageFsstore_Delivery(b *testing.B) {
@@ -80,5 +80,5 @@ func BenchmarkStorageFsstore_Delivery(b *testing.B) {
 		u.Logout()
 	}
 
-	testutils.BenchDelivery(b, be, false, "sender@example.org", []string{randomKey + "@example.org"})
+	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
 }
