@@ -1,9 +1,10 @@
 package testutils
 
 import (
-	"bytes"
+	"bufio"
 	"crypto/sha1"
 	"encoding/hex"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,21 +17,82 @@ import (
 // Empirically observed "around average" values.
 const (
 	MessageBodySize             = 100 * 1024
-	ExtraMessageHeaderFields    = 20
-	ExtraMessageHeaderFieldSize = 100
+	ExtraMessageHeaderFields    = 10
+	ExtraMessageHeaderFieldSize = 50
 )
 
-var headerPreamble = map[string]string{
-	"From":                      `"whatever whatever" <whatever@example.org>`,
-	"Message-ID":                `<AAAAAAAAAAAAAAAAAA@example.org>`,
-	"To":                        `"whatever whatever" <whatever@example.org>, "fool" <fool@example.org>`,
-	"Date":                      "Tue, 08 Oct 2019 06:25:41 +0000",
-	"Subject":                   "Heya Heya Heya Heya",
-	"Content-Type":              "text/plain; charset=us-ascii",
-	"MIME-Version":              "1.0",
-	"Content-Transfer-Encoding": "8bit",
-	"Received":                  `from whatever ([127.0.0.1]) by whatever ([127.0.0.1]) with whatever id whatever for whatever@example.org`,
-}
+const testHeaderString = "Content-Type: multipart/mixed; boundary=message-boundary\r\n" +
+	"Date: Sat, 19 Jun 2016 12:00:00 +0900\r\n" +
+	"From: Mitsuha Miyamizu <mitsuha.miyamizu@example.org>\r\n" +
+	"Reply-To: Mitsuha Miyamizu <mitsuha.miyamizu+replyto@example.org>\r\n" +
+	"Message-Id: 42@example.org\r\n" +
+	"MIME-Version: 1.0\r\n" +
+	"Content-Transfer-Encoding: 8but\r\n" +
+	"Subject: Your Name.\r\n" +
+	"To: Taki Tachibana <taki.tachibana@example.org>\r\n" +
+	"\r\n"
+
+const testHeaderFromToString = "From: Mitsuha Miyamizu <mitsuha.miyamizu@example.org>\r\n" +
+	"To: Taki Tachibana <taki.tachibana@example.org>\r\n" +
+	"\r\n"
+
+const testHeaderDateString = "Date: Sat, 18 Jun 2016 12:00:00 +0900\r\n" +
+	"Date: Sat, 19 Jun 2016 12:00:00 +0900\r\n" +
+	"\r\n"
+
+const testHeaderNoFromToString = "Content-Type: multipart/mixed; boundary=message-boundary\r\n" +
+	"Date: Sat, 18 Jun 2016 12:00:00 +0900\r\n" +
+	"Date: Sat, 19 Jun 2016 12:00:00 +0900\r\n" +
+	"Reply-To: Mitsuha Miyamizu <mitsuha.miyamizu+replyto@example.org>\r\n" +
+	"Message-Id: 42@example.org\r\n" +
+	"Subject: Your Name.\r\n" +
+	"\r\n"
+
+const testAltHeaderString = "Content-Type: multipart/alternative; boundary=b2\r\n" +
+	"\r\n"
+
+const testTextHeaderString = "Content-Disposition: inline\r\n" +
+	"Content-Type: text/plain\r\n" +
+	"\r\n"
+
+const testTextContentTypeString = "Content-Type: text/plain\r\n" +
+	"\r\n"
+
+const testTextNoContentTypeString = "Content-Disposition: inline\r\n" +
+	"\r\n"
+
+const testTextBodyString = "What's your name?"
+
+const testTextString = testTextHeaderString + testTextBodyString
+
+const testHTMLHeaderString = "Content-Disposition: inline\r\n" +
+	"Content-Type: text/html\r\n" +
+	"\r\n"
+
+const testHTMLBodyString = "<div>What's <i>your</i> name?</div>"
+
+const testHTMLString = testHTMLHeaderString + testHTMLBodyString
+
+const testAttachmentHeaderString = "Content-Disposition: attachment; filename=note.txt\r\n" +
+	"Content-Type: text/plain\r\n" +
+	"\r\n"
+
+const testAttachmentBodyString = "My name is Mitsuha."
+
+const testAttachmentString = testAttachmentHeaderString + testAttachmentBodyString
+
+const testBodyString = "--message-boundary\r\n" +
+	testAltHeaderString +
+	"\r\n--b2\r\n" +
+	testTextString +
+	"\r\n--b2\r\n" +
+	testHTMLString +
+	"\r\n--b2--\r\n" +
+	"\r\n--message-boundary\r\n" +
+	testAttachmentString +
+	"\r\n--message-boundary--\r\n"
+
+var testMailString = testHeaderString + testBodyString + strings.Repeat("A", MessageBodySize)
 
 type multipleErrs map[string]error
 
@@ -42,25 +104,24 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 	IDRaw := sha1.Sum([]byte(b.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	hdr := textproto.Header{}
-
-	for k, v := range headerPreamble {
-		hdr.Add(k, v)
-	}
-
+	body := bufio.NewReader(strings.NewReader(testMailString))
+	hdr, _ := textproto.ReadHeader(body)
 	for i := 0; i < ExtraMessageHeaderFields; i++ {
 		hdr.Add("AAAAAAAAAAAA-"+strconv.Itoa(i), strings.Repeat("A", ExtraMessageHeaderFieldSize))
 	}
+	bodyBlob, _ := ioutil.ReadAll(body)
 
 	return module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
-	}, hdr, buffer.MemoryBuffer{Slice: bytes.Repeat([]byte("a"), MessageBodySize)}
+	}, hdr, buffer.MemoryBuffer{Slice: bodyBlob}
 }
 
 func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, recipientTemplates []string) {
 	meta, header, body := RandomMsg(b)
 
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		delivery, err := target.Start(&meta, sender)
 		if err != nil {
