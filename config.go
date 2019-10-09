@@ -51,7 +51,7 @@ func LogOutputOption(args []string) (log.Output, error) {
 			if len(args) != 1 {
 				return nil, errors.New("'off' can't be combined with other log targets")
 			}
-			return nil, nil
+			return log.NopOutput{}, nil
 		default:
 			// Log file paths are converted to absolute to make sure
 			// we will be able to recreate them in right location

@@ -48,3 +48,9 @@ func (f funcOut) Close() error {
 func FuncOutput(f func(time.Time, bool, string), close func() error) Output {
 	return funcOut{f, close}
 }
+
+type NopOutput struct{}
+
+func (NopOutput) Write(time.Time, bool, string) {}
+
+func (NopOutput) Close() error { return nil }
