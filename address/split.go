@@ -6,15 +6,19 @@ import (
 )
 
 func Split(addr string) (mailbox, domain string, err error) {
-	for i, ch := range addr {
-		if ch == '@' {
-			return addr[:i], addr[i+1:], nil
+	parts := strings.Split(addr, "@")
+	switch len(parts) {
+	case 1:
+		if strings.EqualFold(parts[0], "postmaster") {
+			return parts[0], "", nil
 		}
+		return "", "", fmt.Errorf("malformed address")
+	case 2:
+		if len(parts[0]) == 0 || len(parts[1]) == 0 {
+			return "", "", fmt.Errorf("malformed address")
+		}
+		return parts[0], parts[1], nil
+	default:
+		return "", "", fmt.Errorf("malformed address")
 	}
-
-	if strings.EqualFold(addr, "postmaster") {
-		return addr, "", nil
-	}
-
-	return "", "", fmt.Errorf("malformed address")
 }
