@@ -192,11 +192,11 @@ and messages in them.
 
 Here is the command to use to create a new virtual user `NAME`:
 ```
-imapsql-ctl --driver DRIVER --dsn DSN users create NAME
+imapsql-ctl --driver DRIVER --dsn DSN --fsstore FSSTORE_PATH users create NAME
 ```
 
 Replace DRIVER and DSN with your values from maddy config.
-For default configuration it is `--driver sqlite3 --dsn /var/lib/maddy/all.db`.
+For default configuration it is `--driver sqlite3 --dsn /var/lib/maddy/all.db --fsstore /var/lib/maddy/sql-local_mailboxes-fsstore`.
 
 ### PostgreSQL instead of SQLite
 
@@ -227,22 +227,6 @@ Add `host=` option is server is running on the different machine
 (configure TLS and remove `sslmode=disable` then!).
 
 See https://godoc.org/github.com/lib/pq for driver options documentation.
-
-4. Consider using fsstore
-
-By default, maddy will store messages in table rows. This requires lesser amount of internal 
-bookkeeping and works fine in most cases.
-
-However, you may want to make maddy store message in a filesystem directory instead.
-To do so add `fsstore` directive to the `sql` config block.
-
-You may optionally specify the directory to use instead of default (/var/lib/maddy/sql-sql-fsstore):
-```
-sql {
-    ...
-    fsstore /var/lib/maddy/s3-messages
-}
-```
 
 ## Documentation
 

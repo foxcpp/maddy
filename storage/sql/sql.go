@@ -21,7 +21,6 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	imapsql "github.com/foxcpp/go-imap-sql"
-	"github.com/foxcpp/go-imap-sql/fsstore"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/auth"
 	"github.com/foxcpp/maddy/buffer"
@@ -45,9 +44,6 @@ type Storage struct {
 	authDomains      []string
 	junkMbox         string
 	hostname         string
-
-	inlineDriverArg string
-	inlineDSNArg    string
 
 	resolver dns.Resolver
 }
@@ -148,24 +144,14 @@ func (store *Storage) InstanceName() string {
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	store := &Storage{
+	if len(inlineArgs) != 0 {
+		return nil, errors.New("sql: no inline args")
+	}
+	return &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},
 		resolver: net.DefaultResolver,
-	}
-	switch len(inlineArgs) {
-	case 0:
-		// Not an inline definition or configuration is provided as a block.
-	case 1:
-		return nil, errors.New("sql: specify at least driver and DSN")
-	case 2:
-		store.inlineDriverArg = inlineArgs[0]
-		store.inlineDSNArg = inlineArgs[1]
-	default:
-		store.inlineDriverArg = inlineArgs[0]
-		store.inlineDSNArg = strings.Join(inlineArgs[1:], " ")
-	}
-	return store, nil
+	}, nil
 }
 
 func (store *Storage) Init(cfg *config.Map) error {
@@ -179,20 +165,8 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// configured).
 		LazyUpdatesInit: true,
 	}
-	cfg.String("driver", false, false, store.inlineDriverArg, &driver)
-	cfg.StringList("dsn", false, false, []string{store.inlineDSNArg}, &dsn)
-
-	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
-	cfg.Bool("debug", true, false, &store.Log.Debug)
-	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
-	cfg.Bool("auth_perdomain", true, false, &store.authPerDomain)
-	cfg.StringList("auth_domains", true, false, nil, &store.authDomains)
-	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
-	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
-	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
-	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
-	cfg.String("hostname", true, true, "", &store.hostname)
-
+	cfg.String("driver", false, true, "", &driver)
+	cfg.StringList("dsn", false, true, nil, &dsn)
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "", nil
 	}, func(m *config.Map, node *config.Node) (interface{}, error) {
@@ -209,6 +183,17 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}, &fsstoreLocation)
 
+	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
+	cfg.Bool("debug", true, false, &store.Log.Debug)
+	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
+	cfg.Bool("auth_perdomain", true, false, &store.authPerDomain)
+	cfg.StringList("auth_domains", true, false, nil, &store.authDomains)
+	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
+	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
+	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
+	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
+	cfg.String("hostname", true, true, "", &store.hostname)
+
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -217,17 +202,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	if store.authPerDomain && store.authDomains == nil {
 		return errors.New("sql: auth_domains must be set if auth_perdomain is used")
-	}
-
-	if fsstoreLocation != "" {
-		if !filepath.IsAbs(fsstoreLocation) {
-			fsstoreLocation = filepath.Join(config.StateDirectory, fsstoreLocation)
-		}
-
-		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
-			return err
-		}
-		opts.ExternalStore = &fsstore.Store{Root: fsstoreLocation}
 	}
 
 	if appendlimitVal == -1 {
@@ -243,16 +217,20 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	var err error
 
-	if driver == "" {
-		return errors.New("sql: driver is not specified")
-	}
-	// Later case is for DSN inline arg being non-existent.
-	if len(dsn) == 0 || (len(dsn) == 1 && dsn[0] == "") {
-		return errors.New("sql: dsn is not specified")
-	}
 	dsnStr := strings.Join(dsn, " ")
+	var extStore imapsql.ExternalStore
+	if fsstoreLocation != "" {
+		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
+			return err
+		}
+		extStore = &imapsql.FSStore{Root: fsstoreLocation}
+	}
+	// Add blocks for other External Store implementations here ^.
+	if extStore == nil {
+		return errors.New("sql: no body storage is configured")
+	}
 
-	store.back, err = imapsql.New(driver, dsnStr, opts)
+	store.back, err = imapsql.New(driver, dsnStr, extStore, opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}

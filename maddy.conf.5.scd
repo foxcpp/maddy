@@ -767,41 +767,33 @@ authentication provider (IMAP & SMTP) or delivery target (SMTP).
 
 See https://github.com/foxcpp/go-imap-sql for more information.
 
-## Inline arguments
-
-When sql module is used inline, first and second arguments can optionally
-contain driver and DSN. Thus, you write this:
-```
-imap ... {
-    storage sql sqlite3 all.db 
-}
-```
-instead of
-```
-imap ... {
-    storage sql {
-        driver sqlite3
-        dsn all.db
-    }
-}
-```
-
-
-
 Valid configuration directives:
 
 ## driver <string>
 
+REQUIRED.
+
 Use a specified driver to communicate with the database.  Supported values:
-sqlite3, mysql, postgres.
+sqlite3, postgres.
 
 ## dsn <string>
+
+REQUIRED.
 
 Data Source Name, the driver-specific value that specifies the database to use.
 
 For SQLite3 this is just a file path.
-For MySQL: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
+
+## fsstore
+## fsstore <directory>
+
+REQUIRED.
+
+Store message contents in filesystem directory.
+
+If directory path is not specified - it will be derived from configuration
+block name ('StateDirectory/sql-NAME-fsstore').
 
 ## appendlimit <size>
 
@@ -812,15 +804,6 @@ See SYNTAX for size value format (unit suffixes, etc).
 ## debug [yes/no]
 
 Enable verbose logging only for this configuration block.
-
-## fsstore
-## fsstore <directory>
-
-Store messages in file system directory instead of database rows. You generally
-want to use this for server-based RDBMS.
-
-If directory path is not specified - it will be derived from configuration
-block name ('StateDirectory/sql-NAME-fsstore').
 
 ## junk_mailbox <name>
 
