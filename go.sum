@@ -50,6 +50,8 @@ github.com/foxcpp/go-imap-backend-tests v0.0.0-20190615132041-281c43ad777b h1:tC
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20190615132041-281c43ad777b/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20190906180625-9706cdcc0a24 h1:TUHRZQN7OpRdKe7L7Pu1Dcu6TdSY7wS5lSZZ5pfaOqU=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20190906180625-9706cdcc0a24/go.mod h1:LKP2PFmJLuuPdi9SdsQZI979xhGFV+dCqCQHn8u4VS0=
+github.com/foxcpp/go-imap-sql v0.3.2-0.20191011130505-1679626f5d77 h1:BGZs/8xgDBaU50h+/ffDmvBVqU1O77jxe0JLr4LbJmI=
+github.com/foxcpp/go-imap-sql v0.3.2-0.20191011130505-1679626f5d77/go.mod h1:LKP2PFmJLuuPdi9SdsQZI979xhGFV+dCqCQHn8u4VS0=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
