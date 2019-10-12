@@ -795,6 +795,15 @@ Store message contents in filesystem directory.
 If directory path is not specified - it will be derived from configuration
 block name ('StateDirectory/sql-NAME-fsstore').
 
+## compression <algorithm> [params]
+
+Apply compression to message contents.
+
+Supported algorithms are: lz4, zstd.
+'params' specify compression level.
+
+Default is 'compress off' which disables compression.
+
 ## appendlimit <size>
 
 Don't allow users to add new messages larger than 'size'. The default is 32 MiB.

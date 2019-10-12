@@ -14,6 +14,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	specialuse "github.com/emersion/go-imap-specialuse"
@@ -155,10 +156,13 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 }
 
 func (store *Storage) Init(cfg *config.Map) error {
-	var driver string
-	var dsn []string
-	var fsstoreLocation string
-	appendlimitVal := -1
+	var (
+		driver          string
+		dsn             []string
+		fsstoreLocation string
+		appendlimitVal  = -1
+		compression     []string
+	)
 
 	opts := imapsql.Opts{
 		// Prevent deadlock if nobody is listening for updates (e.g. no IMAP
@@ -182,7 +186,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 			return nil, m.MatchErr("expected 0 or 1 arguments")
 		}
 	}, &fsstoreLocation)
-
+	cfg.StringList("compression", false, false, []string{"off"}, &compression)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
 	cfg.Bool("storage_perdomain", true, false, &store.storagePerDomain)
@@ -218,6 +222,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	var err error
 
 	dsnStr := strings.Join(dsn, " ")
+
 	var extStore imapsql.ExternalStore
 	if fsstoreLocation != "" {
 		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
@@ -227,7 +232,29 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	// Add blocks for other External Store implementations here ^.
 	if extStore == nil {
-		return errors.New("sql: no body storage is configured")
+		return errors.New("sql: no body storage is configured (use fsstore)")
+	}
+
+	if len(compression) != 0 {
+		switch compression[0] {
+		case "zstd", "lz4":
+			opts.CompressAlgo = compression[0]
+			if len(compression) == 2 {
+				opts.CompressAlgoParams = compression[1]
+				if _, err := strconv.Atoi(compression[1]); err != nil {
+					return errors.New("sql: first argument for lz4 and zstd is compression level")
+				}
+			}
+			if len(compression) > 2 {
+				return errors.New("sql: expected at most 2 arguments")
+			}
+		case "off":
+			if len(compression) > 1 {
+				return errors.New("sql: expected at most 1 arguments")
+			}
+		default:
+			return errors.New("sql: unknown compression algorithm")
+		}
 	}
 
 	store.back, err = imapsql.New(driver, dsnStr, extStore, opts)
