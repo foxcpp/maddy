@@ -56,6 +56,8 @@ github.com/foxcpp/go-imap-sql v0.3.2-0.20191011214730-aa76135968a9 h1:BBs+tbQkjY
 github.com/foxcpp/go-imap-sql v0.3.2-0.20191011214730-aa76135968a9/go.mod h1:ucrsN3AvHUcDrDpPqgV1oCBuLZ5AZezerKj0YjV6OGs=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20191011234752-1872afa7b5aa h1:ZjYgrobO8834ZM6q7NLIFPvG3XFLmw8QKaAlkNF9Epw=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20191011234752-1872afa7b5aa/go.mod h1:2rKPb6fIxSRRdNI/iHBavE3DTonu35CS8ozruay4/yg=
+github.com/foxcpp/go-imap-sql v0.3.2-0.20191013134954-f93c4bcb769f h1:qLm9R41PErxf02H/Z5QbBnu2UtAQ1Qfp0LmssMd96yM=
+github.com/foxcpp/go-imap-sql v0.3.2-0.20191013134954-f93c4bcb769f/go.mod h1:ooCDdmcUlEhvNl57ROzeZTpqJuoMP3HNd03kemcF4AE=
 github.com/frankban/quicktest v1.5.0/go.mod h1:jaStnuzAqU1AJdCO0l53JDCJrVDKcS03DbaAcR7Ks/o=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
@@ -80,6 +82,8 @@ github.com/lib/pq v1.1.1 h1:sJZmqHoEaY7f+NPP8pgLB/WxulyR3fewgCM2qaSlBb4=
 github.com/lib/pq v1.1.1/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0 h1:LXpIM/LZ5xGFhOpXAQUIMM1HdyqzVYM13zNdjCEEcA0=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
+github.com/mailru/easyjson v0.7.0 h1:aizVhC/NAAcKWb+5QsU1iNOZb4Yws5UO2I+aIprQITM=
+github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
 github.com/martinlindhe/base36 v0.0.0-20190418230009-7c6542dfbb41 h1:CVsnY46BCLkX9XOhALJ/S7yb9ayc4eqjXSXO3tyB66A=
 github.com/martinlindhe/base36 v0.0.0-20190418230009-7c6542dfbb41/go.mod h1:+AtEs8xrBpCeYgSLoY/aJ6Wf37jtBuR0s35750M27+8=
 github.com/martinlindhe/base36 v1.0.0 h1:eYsumTah144C0A8P1T/AVSUk5ZoLnhfYFM3OGQxB52A=

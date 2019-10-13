@@ -52,7 +52,7 @@ type Storage struct {
 type delivery struct {
 	store    *Storage
 	msgMeta  *module.MsgMetadata
-	d        *imapsql.Delivery
+	d        imapsql.Delivery
 	mailFrom string
 
 	addedRcpts map[string]struct{}
@@ -123,15 +123,11 @@ func (d *delivery) Commit() error {
 }
 
 func (store *Storage) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	d, err := store.back.StartDelivery()
-	if err != nil {
-		return nil, err
-	}
 	return &delivery{
 		store:      store,
 		msgMeta:    msgMeta,
-		d:          d,
 		mailFrom:   mailFrom,
+		d:          store.back.NewDelivery(),
 		addedRcpts: map[string]struct{}{},
 	}, nil
 }
