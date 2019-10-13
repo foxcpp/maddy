@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"github.com/foxcpp/maddy/testutils"
 )
 
-func TestDispatcher_SenderModifier(t *testing.T) {
+func TestMsgPipeline_SenderModifier(t *testing.T) {
 	target := testutils.Target{}
 	modifier := testutils.Modifier{
 		InstName: "test_modifier",
@@ -17,8 +17,8 @@ func TestDispatcher_SenderModifier(t *testing.T) {
 			"sender@example.com": "sender2@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{modifier},
 			},
@@ -30,7 +30,7 @@ func TestDispatcher_SenderModifier(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -46,7 +46,7 @@ func TestDispatcher_SenderModifier(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SenderModifier_Multiple(t *testing.T) {
+func TestMsgPipeline_SenderModifier_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
@@ -59,8 +59,8 @@ func TestDispatcher_SenderModifier_Multiple(t *testing.T) {
 			"sender2@example.com": "sender3@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod1, mod2},
 			},
@@ -72,7 +72,7 @@ func TestDispatcher_SenderModifier_Multiple(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -88,7 +88,7 @@ func TestDispatcher_SenderModifier_Multiple(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SenderModifier_PreDispatch(t *testing.T) {
+func TestMsgPipeline_SenderModifier_PreDispatch(t *testing.T) {
 	target := testutils.Target{InstName: "target"}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
@@ -96,8 +96,8 @@ func TestDispatcher_SenderModifier_PreDispatch(t *testing.T) {
 			"sender@example.com": "sender@example.org",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod},
 			},
@@ -111,7 +111,7 @@ func TestDispatcher_SenderModifier_PreDispatch(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -126,7 +126,7 @@ func TestDispatcher_SenderModifier_PreDispatch(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SenderModifier_PostDispatch(t *testing.T) {
+func TestMsgPipeline_SenderModifier_PostDispatch(t *testing.T) {
 	target := testutils.Target{InstName: "target"}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
@@ -134,8 +134,8 @@ func TestDispatcher_SenderModifier_PostDispatch(t *testing.T) {
 			"sender@example.org": "sender@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"example.org": {
 					modifiers: modify.Group{
@@ -149,7 +149,7 @@ func TestDispatcher_SenderModifier_PostDispatch(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -164,7 +164,7 @@ func TestDispatcher_SenderModifier_PostDispatch(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SenderModifier_PerRcpt(t *testing.T) {
+func TestMsgPipeline_SenderModifier_PerRcpt(t *testing.T) {
 	// Modifier below will be no-op due to implementation limitations.
 
 	comTarget, orgTarget := testutils.Target{InstName: "com_target"}, testutils.Target{InstName: "org_target"}
@@ -174,8 +174,8 @@ func TestDispatcher_SenderModifier_PerRcpt(t *testing.T) {
 			"sender@example.com": "sender2@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -192,7 +192,7 @@ func TestDispatcher_SenderModifier_PerRcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt@example.com", "rcpt@example.org"})
@@ -212,7 +212,7 @@ func TestDispatcher_SenderModifier_PerRcpt(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier(t *testing.T) {
+func TestMsgPipeline_RcptModifier(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
@@ -221,8 +221,8 @@ func TestDispatcher_RcptModifier(t *testing.T) {
 			"rcpt2@example.com": "rcpt2-alias@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod},
 			},
@@ -234,7 +234,7 @@ func TestDispatcher_RcptModifier(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -250,7 +250,7 @@ func TestDispatcher_RcptModifier(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_OriginalRcpt(t *testing.T) {
+func TestMsgPipeline_RcptModifier_OriginalRcpt(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
@@ -259,8 +259,8 @@ func TestDispatcher_RcptModifier_OriginalRcpt(t *testing.T) {
 			"rcpt2@example.com": "rcpt2-alias@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod},
 			},
@@ -272,7 +272,7 @@ func TestDispatcher_RcptModifier_OriginalRcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -296,7 +296,7 @@ func TestDispatcher_RcptModifier_OriginalRcpt(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
+func TestMsgPipeline_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
@@ -311,8 +311,8 @@ func TestDispatcher_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
 			"rcpt2@example.com":       "wtf@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod1},
 			},
@@ -327,7 +327,7 @@ func TestDispatcher_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -351,7 +351,7 @@ func TestDispatcher_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_Multiple(t *testing.T) {
+func TestMsgPipeline_RcptModifier_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
@@ -366,8 +366,8 @@ func TestDispatcher_RcptModifier_Multiple(t *testing.T) {
 			"rcpt2@example.com":       "wtf@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod1, mod2},
 			},
@@ -379,7 +379,7 @@ func TestDispatcher_RcptModifier_Multiple(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -395,7 +395,7 @@ func TestDispatcher_RcptModifier_Multiple(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_PreDispatch(t *testing.T) {
+func TestMsgPipeline_RcptModifier_PreDispatch(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
@@ -410,8 +410,8 @@ func TestDispatcher_RcptModifier_PreDispatch(t *testing.T) {
 			"rcpt2@example.com":       "wtf@example.com",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{mod1},
 			},
@@ -431,7 +431,7 @@ func TestDispatcher_RcptModifier_PreDispatch(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -447,7 +447,7 @@ func TestDispatcher_RcptModifier_PreDispatch(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_PostDispatch(t *testing.T) {
+func TestMsgPipeline_RcptModifier_PostDispatch(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
@@ -456,8 +456,8 @@ func TestDispatcher_RcptModifier_PostDispatch(t *testing.T) {
 			"rcpt2@example.com": "rcpt2@example.org",
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -476,7 +476,7 @@ func TestDispatcher_RcptModifier_PostDispatch(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -492,7 +492,7 @@ func TestDispatcher_RcptModifier_PostDispatch(t *testing.T) {
 	}
 }
 
-func TestDispatcher_GlobalModifier_Errors(t *testing.T) {
+func TestMsgPipeline_GlobalModifier_Errors(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName:    "test_modifier",
@@ -501,8 +501,8 @@ func TestDispatcher_GlobalModifier_Errors(t *testing.T) {
 		RcptToErr:   errors.New("3"),
 		BodyErr:     errors.New("4"),
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{Modifiers: []module.Modifier{&mod}},
 			perSource:       map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -511,7 +511,7 @@ func TestDispatcher_GlobalModifier_Errors(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {
@@ -559,7 +559,7 @@ func TestDispatcher_GlobalModifier_Errors(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SourceModifier_Errors(t *testing.T) {
+func TestMsgPipeline_SourceModifier_Errors(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName:    "test_modifier",
@@ -570,8 +570,8 @@ func TestDispatcher_SourceModifier_Errors(t *testing.T) {
 	}
 	// Added to make sure it is freed properly too.
 	globalMod := testutils.Modifier{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource:       map[string]sourceBlock{},
 			globalModifiers: modify.Group{Modifiers: []module.Modifier{&globalMod}},
 			defaultSource: sourceBlock{
@@ -581,7 +581,7 @@ func TestDispatcher_SourceModifier_Errors(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {
@@ -630,7 +630,7 @@ func TestDispatcher_SourceModifier_Errors(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptModifier_Errors(t *testing.T) {
+func TestMsgPipeline_RcptModifier_Errors(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName:  "test_modifier",
@@ -641,8 +641,8 @@ func TestDispatcher_RcptModifier_Errors(t *testing.T) {
 	globalMod := testutils.Modifier{}
 	sourceMod := testutils.Modifier{}
 
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource:       map[string]sourceBlock{},
 			globalModifiers: modify.Group{Modifiers: []module.Modifier{&globalMod}},
 			defaultSource: sourceBlock{
@@ -653,7 +653,7 @@ func TestDispatcher_RcptModifier_Errors(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {

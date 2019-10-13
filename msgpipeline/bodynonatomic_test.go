@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ func (m multipleErrs) SetStatus(rcptTo string, err error) {
 	m[rcptTo] = err
 }
 
-func TestDispatcher_BodyNonAtomic(t *testing.T) {
+func TestMsgPipeline_BodyNonAtomic(t *testing.T) {
 	err := errors.New("go away")
 
 	target := testutils.Target{
@@ -23,8 +23,8 @@ func TestDispatcher_BodyNonAtomic(t *testing.T) {
 			"tester@example.org": err,
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -33,7 +33,7 @@ func TestDispatcher_BodyNonAtomic(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	c := multipleErrs{}
@@ -47,7 +47,7 @@ func TestDispatcher_BodyNonAtomic(t *testing.T) {
 	}
 }
 
-func TestDispatcher_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
+func TestMsgPipeline_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
 	err := errors.New("go away")
 
 	target := testutils.Target{
@@ -55,8 +55,8 @@ func TestDispatcher_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
 			"tester-alias@example.org": err,
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalModifiers: modify.Group{
 				Modifiers: []module.Modifier{
 					testutils.Modifier{
@@ -75,7 +75,7 @@ func TestDispatcher_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	c := multipleErrs{}
@@ -89,7 +89,7 @@ func TestDispatcher_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
 	}
 }
 
-func TestDispatcher_BodyNonAtomic_ExpandAtomic(t *testing.T) {
+func TestMsgPipeline_BodyNonAtomic_ExpandAtomic(t *testing.T) {
 	err := errors.New("go away")
 
 	target, target2 := testutils.Target{
@@ -99,8 +99,8 @@ func TestDispatcher_BodyNonAtomic_ExpandAtomic(t *testing.T) {
 	}, testutils.Target{
 		BodyErr: err,
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -109,7 +109,7 @@ func TestDispatcher_BodyNonAtomic_ExpandAtomic(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	c := multipleErrs{}

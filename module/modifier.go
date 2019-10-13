@@ -33,7 +33,7 @@ type ModifierState interface {
 	// argument, otherwise it returns a new value.
 	//
 	// Note that per-source/per-destination modifiers are executed
-	// after dispatching decision is made so changed value will have no
+	// after routing decision is made so changed value will have no
 	// effect on it.
 	//
 	// Also note that MsgMeta.OriginalFrom will still contain the original value
@@ -44,7 +44,7 @@ type ModifierState interface {
 	// If no changed are required, this method returns its argument, otherwise
 	// it returns a new value.
 	//
-	// Dispatcher will take of populating MsgMeta.OriginalRcpts. RewriteRcpt
+	// MsgPipeline will take of populating MsgMeta.OriginalRcpts. RewriteRcpt
 	// doesn't do it.
 	RewriteRcpt(rcptTo string) (string, error)
 

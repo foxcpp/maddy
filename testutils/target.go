@@ -39,7 +39,7 @@ type Target struct {
 }
 
 /*
-module.Module is implemented with dummy functions for logging done by Dispatcher code.
+module.Module is implemented with dummy functions for logging done by MsgPipeline code.
 */
 
 func (dt Target) Init(*config.Map) error {

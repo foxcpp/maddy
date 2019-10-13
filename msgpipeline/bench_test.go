@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"strconv"
@@ -8,9 +8,9 @@ import (
 	"github.com/foxcpp/maddy/testutils"
 )
 
-func BenchmarkDispatcherSimple(b *testing.B) {
+func BenchmarkMsgPipelineSimple(b *testing.B) {
 	target := testutils.Target{InstName: "test_target", DiscardMessages: true}
-	d := Dispatcher{dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{msgpipelineCfg: msgpipelineCfg{
 		perSource: map[string]sourceBlock{},
 		defaultSource: sourceBlock{
 			perRcpt: map[string]*rcptBlock{},
@@ -23,7 +23,7 @@ func BenchmarkDispatcherSimple(b *testing.B) {
 	testutils.BenchDelivery(b, &d, "sender@example.org", []string{"rcpt-X@example.org"})
 }
 
-func BenchmarkDispatcherGlobalChecks(b *testing.B) {
+func BenchmarkMsgPipelineGlobalChecks(b *testing.B) {
 	testWithCount := func(checksCount int) {
 		b.Run(strconv.Itoa(checksCount), func(b *testing.B) {
 			checks := make([]module.Check, 0, checksCount)
@@ -32,7 +32,7 @@ func BenchmarkDispatcherGlobalChecks(b *testing.B) {
 			}
 
 			target := testutils.Target{InstName: "test_target", DiscardMessages: true}
-			d := Dispatcher{dispatcherCfg: dispatcherCfg{
+			d := MsgPipeline{msgpipelineCfg: msgpipelineCfg{
 				globalChecks: checks,
 				perSource:    map[string]sourceBlock{},
 				defaultSource: sourceBlock{
@@ -52,7 +52,7 @@ func BenchmarkDispatcherGlobalChecks(b *testing.B) {
 	testWithCount(15)
 }
 
-func BenchmarkDispatcherTargets(b *testing.B) {
+func BenchmarkMsgPipelineTargets(b *testing.B) {
 	testWithCount := func(targetCount int) {
 		b.Run(strconv.Itoa(targetCount), func(b *testing.B) {
 			targets := make([]module.DeliveryTarget, 0, targetCount)
@@ -60,7 +60,7 @@ func BenchmarkDispatcherTargets(b *testing.B) {
 				targets = append(targets, &testutils.Target{InstName: "target_" + strconv.Itoa(i), DiscardMessages: true})
 			}
 
-			d := Dispatcher{dispatcherCfg: dispatcherCfg{
+			d := MsgPipeline{msgpipelineCfg: msgpipelineCfg{
 				perSource: map[string]sourceBlock{},
 				defaultSource: sourceBlock{
 					perRcpt: map[string]*rcptBlock{},

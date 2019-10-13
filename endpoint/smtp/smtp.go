@@ -19,12 +19,12 @@ import (
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
-	"github.com/foxcpp/maddy/dispatcher"
 	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/endpoint"
 	"github.com/foxcpp/maddy/future"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
+	"github.com/foxcpp/maddy/msgpipeline"
 	"github.com/foxcpp/maddy/target"
 )
 
@@ -70,7 +70,7 @@ func (s *Session) Reset() {
 
 func (s *Session) Mail(from string) error {
 	var err error
-	s.msgMeta.ID, err = dispatcher.GenerateMsgID()
+	s.msgMeta.ID, err = msgpipeline.GenerateMsgID()
 	if err != nil {
 		s.endp.Log.Printf("rand.Rand error: %v", err)
 		return s.wrapErr(errInternal)
@@ -90,7 +90,7 @@ func (s *Session) Mail(from string) error {
 	}
 
 	if !s.endp.deferServerReject {
-		s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
 			s.log.Printf("sender rejected: %v", err)
 			return s.wrapErr(err)
@@ -125,7 +125,7 @@ func (s *Session) Rcpt(to string) error {
 		}
 
 		var err error
-		s.delivery, err = s.endp.dispatcher.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
 			s.log.Printf("sender rejected (deferred): %v, RCPT TO = %s", err, to)
 			s.deliveryErr = err
@@ -214,13 +214,13 @@ func (s *Session) wrapErr(err error) error {
 }
 
 type Endpoint struct {
-	Auth       module.AuthProvider
-	serv       *smtp.Server
-	name       string
-	aliases    []string
-	listeners  []net.Listener
-	dispatcher *dispatcher.Dispatcher
-	resolver   dns.Resolver
+	Auth      module.AuthProvider
+	serv      *smtp.Server
+	name      string
+	aliases   []string
+	listeners []net.Listener
+	pipeline  *msgpipeline.MsgPipeline
+	resolver  dns.Resolver
 
 	authAlwaysRequired bool
 	submission         bool
@@ -320,12 +320,12 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	if err != nil {
 		return err
 	}
-	endp.dispatcher, err = dispatcher.NewDispatcher(cfg.Globals, unmatched)
+	endp.pipeline, err = msgpipeline.New(cfg.Globals, unmatched)
 	if err != nil {
 		return err
 	}
-	endp.dispatcher.Hostname = endp.serv.Domain
-	endp.dispatcher.Log = log.Logger{Name: "smtp/dispatcher", Debug: endp.Log.Debug}
+	endp.pipeline.Hostname = endp.serv.Domain
+	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
 
 	// endp.submission can be set to true by New, leave it on
 	// even if directive is missing.

@@ -89,13 +89,13 @@ type MsgMetadata struct {
 	// in the storage.
 	//
 	// This field should not be modified by the checks that verify
-	// the message. It is set only by the message dispatcher.
+	// the message. It is set only by the message msgpipeline.
 	Quarantine bool
 
 	// OriginalRcpts contains the mapping from the final recipient to the
 	// recipient that was presented by the client.
 	//
-	// Dispatcher will update that field when recipient modifiers
+	// MsgPipeline will update that field when recipient modifiers
 	// are executed.
 	//
 	// It should be used when reporting information back to client (via DSN,

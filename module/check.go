@@ -50,11 +50,11 @@ type CheckResult struct {
 	// is considered "possibly malicious" and should be
 	// put into Junk mailbox.
 	//
-	// This value is copied into MsgMetadata by the dispatcher.
+	// This value is copied into MsgMetadata by the msgpipeline.
 	Quarantine bool
 
 	// ScoreAdjust is the value that is added to the MsgMetadata.CheckScore
-	// by the dispatcher after check execution.
+	// by the msgpipeline after check execution.
 	ScoreAdjust int32
 
 	// AuthResult is the information that is supposed to

@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"strings"
@@ -14,15 +14,15 @@ import (
 	"github.com/foxcpp/maddy/target"
 )
 
-// Dispatcher is a object that is responsible for selecting delivery targets
+// MsgPipeline is a object that is responsible for selecting delivery targets
 // for the message and running necessary checks and modifier.
 //
 // It implements module.DeliveryTarget.
 //
 // It is not a "module object" and is intended to be used as part of message
 // source (Submission, SMTP, JMAP modules) implementation.
-type Dispatcher struct {
-	dispatcherCfg
+type MsgPipeline struct {
+	msgpipelineCfg
 	Hostname string
 
 	Log log.Logger
@@ -43,10 +43,10 @@ type rcptBlock struct {
 	targets   []module.DeliveryTarget
 }
 
-func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatcher, error) {
-	parsedCfg, err := parseDispatcherRootCfg(globals, cfg)
-	return &Dispatcher{
-		dispatcherCfg: parsedCfg,
+func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error) {
+	parsedCfg, err := parseMsgPipelineRootCfg(globals, cfg)
+	return &MsgPipeline{
+		msgpipelineCfg: parsedCfg,
 	}, err
 }
 
@@ -54,10 +54,10 @@ func NewDispatcher(globals map[string]interface{}, cfg []config.Node) (*Dispatch
 // and selects source block from config to use for handling.
 //
 // Returned module.Delivery implements PartialDelivery. If underlying target doesn't
-// support it, dispatcher will copy the returned error for all recipients handled
+// support it, msgpipeline will copy the returned error for all recipients handled
 // by target.
-func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	dd := dispatcherDelivery{
+func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	dd := msgpipelineDelivery{
 		d:                  d,
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
 		deliveries:         make(map[module.DeliveryTarget]*delivery),
@@ -78,7 +78,7 @@ func (d *Dispatcher) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	return &dd, nil
 }
 
-func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
+func (dd *msgpipelineDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
 	var err error
 
 	if err := dd.checkRunner.checkConnSender(dd.d.globalChecks, mailFrom); err != nil {
@@ -117,7 +117,7 @@ func (dd *dispatcherDelivery) start(msgMeta *module.MsgMetadata, mailFrom string
 	return nil
 }
 
-func (dd *dispatcherDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
+func (dd *msgpipelineDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
 	globalModifiersState, err := dd.d.globalModifiers.ModStateForMsg(msgMeta)
 	if err != nil {
 		return "", err
@@ -131,7 +131,7 @@ func (dd *dispatcherDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata
 	return mailFrom, nil
 }
 
-func (dd *dispatcherDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
+func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
 	// First try to match against complete address.
 	srcBlock, ok := dd.d.perSource[strings.ToLower(mailFrom)]
 	if !ok {
@@ -169,8 +169,8 @@ type delivery struct {
 	recipients []string
 }
 
-type dispatcherDelivery struct {
-	d *Dispatcher
+type msgpipelineDelivery struct {
+	d *MsgPipeline
 
 	globalModifiersState module.ModifierState
 	sourceModifiersState module.ModifierState
@@ -186,7 +186,7 @@ type dispatcherDelivery struct {
 	checkRunner *checkRunner
 }
 
-func (dd *dispatcherDelivery) AddRcpt(to string) error {
+func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	if err := dd.checkRunner.checkRcpt(dd.d.globalChecks, to); err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (dd *dispatcherDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd *dispatcherDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (dd *msgpipelineDelivery) Body(header textproto.Header, body buffer.Buffer) error {
 	if err := dd.checkRunner.checkBody(dd.d.globalChecks, header, body); err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func (sc statusCollector) SetStatus(rcptTo string, err error) {
 	sc.wrapped.SetStatus(rcptTo, err)
 }
 
-func (dd *dispatcherDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	setStatusAll := func(err error) {
 		for _, delivery := range dd.deliveries {
 			for _, rcpt := range delivery.recipients {
@@ -359,7 +359,7 @@ func (dd *dispatcherDelivery) BodyNonAtomic(c module.StatusCollector, header tex
 	}
 }
 
-func (dd dispatcherDelivery) Commit() error {
+func (dd msgpipelineDelivery) Commit() error {
 	dd.close()
 
 	for _, delivery := range dd.deliveries {
@@ -373,7 +373,7 @@ func (dd dispatcherDelivery) Commit() error {
 	return nil
 }
 
-func (dd *dispatcherDelivery) close() {
+func (dd *msgpipelineDelivery) close() {
 	dd.checkRunner.close()
 
 	if dd.globalModifiersState != nil {
@@ -387,7 +387,7 @@ func (dd *dispatcherDelivery) close() {
 	}
 }
 
-func (dd dispatcherDelivery) Abort() error {
+func (dd msgpipelineDelivery) Abort() error {
 	dd.close()
 
 	var lastErr error
@@ -403,7 +403,7 @@ func (dd dispatcherDelivery) Abort() error {
 	return lastErr
 }
 
-func (dd *dispatcherDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
+func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
 	// First try to match against complete address.
 	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(rcptTo)]
 	if !ok {
@@ -431,7 +431,7 @@ func (dd *dispatcherDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error
 	return rcptBlock, nil
 }
 
-func (dd *dispatcherDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
+func (dd *msgpipelineDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
 	rcptModifiersState, ok := dd.rcptModifiersState[rcptBlock]
 	if ok {
 		return rcptModifiersState, nil
@@ -453,7 +453,7 @@ func (dd *dispatcherDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo stri
 	return rcptModifiersState, nil
 }
 
-func (dd *dispatcherDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery, error) {
+func (dd *msgpipelineDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery, error) {
 	delivery_, ok := dd.deliveries[tgt]
 	if ok {
 		return delivery_, nil

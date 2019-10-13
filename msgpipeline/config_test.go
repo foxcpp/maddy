@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"reflect"
@@ -17,11 +17,11 @@ func policyError(code int) error {
 	}
 }
 
-func TestDispatcherCfg(t *testing.T) {
+func TestMsgPipelineCfg(t *testing.T) {
 	cases := []struct {
 		name  string
 		str   string
-		value dispatcherCfg
+		value msgpipelineCfg
 		fail  bool
 	}{
 		{
@@ -43,7 +43,7 @@ func TestDispatcherCfg(t *testing.T) {
 						reject 440
 				  	}
 				}`,
-			value: dispatcherCfg{
+			value: msgpipelineCfg{
 				perSource: map[string]sourceBlock{
 					"example.com": {
 						perRcpt: map[string]*rcptBlock{
@@ -77,7 +77,7 @@ func TestDispatcherCfg(t *testing.T) {
 				default_source {
 					reject 420
 				}`,
-			value: dispatcherCfg{
+			value: msgpipelineCfg{
 				perSource: map[string]sourceBlock{
 					"example.com": {
 						perRcpt: map[string]*rcptBlock{},
@@ -103,7 +103,7 @@ func TestDispatcherCfg(t *testing.T) {
 				default_destination {
 					reject 420
 				}`,
-			value: dispatcherCfg{
+			value: msgpipelineCfg{
 				perSource: map[string]sourceBlock{},
 				defaultSource: sourceBlock{
 					perRcpt: map[string]*rcptBlock{
@@ -208,7 +208,7 @@ func TestDispatcherCfg(t *testing.T) {
 		case_ := case_
 		t.Run(case_.name, func(t *testing.T) {
 			cfg, _ := config.Read(strings.NewReader(case_.str), "literal")
-			parsed, err := parseDispatcherRootCfg(nil, cfg)
+			parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 			if err != nil && !case_.fail {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -228,7 +228,7 @@ func TestDispatcherCfg(t *testing.T) {
 	}
 }
 
-func TestDispatcherCfg_GlobalChecks(t *testing.T) {
+func TestMsgPipelineCfg_GlobalChecks(t *testing.T) {
 	str := `
 		check {
 			test_check
@@ -239,7 +239,7 @@ func TestDispatcherCfg_GlobalChecks(t *testing.T) {
 	`
 
 	cfg, _ := config.Read(strings.NewReader(str), "literal")
-	parsed, err := parseDispatcherRootCfg(nil, cfg)
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestDispatcherCfg_GlobalChecks(t *testing.T) {
 	}
 }
 
-func TestDispatcherCfg_SourceChecks(t *testing.T) {
+func TestMsgPipelineCfg_SourceChecks(t *testing.T) {
 	str := `
 		source example.org {
 			check {
@@ -264,7 +264,7 @@ func TestDispatcherCfg_SourceChecks(t *testing.T) {
 	`
 
 	cfg, _ := config.Read(strings.NewReader(str), "literal")
-	parsed, err := parseDispatcherRootCfg(nil, cfg)
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestDispatcherCfg_SourceChecks(t *testing.T) {
 	}
 }
 
-func TestDispatcherCfg_RcptChecks(t *testing.T) {
+func TestMsgPipelineCfg_RcptChecks(t *testing.T) {
 	str := `
 		destination example.org {
 			check {
@@ -289,7 +289,7 @@ func TestDispatcherCfg_RcptChecks(t *testing.T) {
 	`
 
 	cfg, _ := config.Read(strings.NewReader(str), "literal")
-	parsed, err := parseDispatcherRootCfg(nil, cfg)
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}

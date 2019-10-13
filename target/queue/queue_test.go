@@ -461,7 +461,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 	defer cleanQueue(t, q)
 
 	// This is the most tricky test because it is racy and I have no idea what can be done to avoid it.
-	// It relies on us calling Close before queue dispatcher decides to retry delivery.
+	// It relies on us calling Close before queue msgpipeline decides to retry delivery.
 	// Hence retry delay is increased from 0ms used in other tests to make it reliable.
 	q.initialRetryTime = 1 * time.Second
 
@@ -512,7 +512,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 		defer cleanQueue(t, q)
 
 		// This is the most tricky test because it is racy and I have no idea what can be done to avoid it.
-		// It relies on us calling Close before queue dispatcher decides to retry delivery.
+		// It relies on us calling Close before queue msgpipeline decides to retry delivery.
 		// Hence retry delay is increased from 0ms used in other tests to make it reliable.
 		q.initialRetryTime = 1 * time.Second
 

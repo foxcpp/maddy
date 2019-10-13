@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/foxcpp/maddy/module"
 )
 
-type dispatcherCfg struct {
+type msgpipelineCfg struct {
 	globalChecks    []module.Check
 	globalModifiers modify.Group
 	perSource       map[string]sourceBlock
@@ -28,8 +28,8 @@ type dispatcherCfg struct {
 	quarantineScore *int
 }
 
-func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node) (dispatcherCfg, error) {
-	cfg := dispatcherCfg{
+func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node) (msgpipelineCfg, error) {
+	cfg := msgpipelineCfg{
 		perSource: map[string]sourceBlock{},
 	}
 	var defaultSrcRaw []config.Node
@@ -38,64 +38,64 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 		switch node.Name {
 		case "check":
 			if len(node.Children) == 0 {
-				return dispatcherCfg{}, config.NodeErr(&node, "empty checks block")
+				return msgpipelineCfg{}, config.NodeErr(&node, "empty checks block")
 			}
 
 			var err error
 			cfg.globalChecks, err = parseChecksGroup(globals, node.Children)
 			if err != nil {
-				return dispatcherCfg{}, err
+				return msgpipelineCfg{}, err
 			}
 		case "modify":
 			if len(node.Children) == 0 {
-				return dispatcherCfg{}, config.NodeErr(&node, "empty modifiers block")
+				return msgpipelineCfg{}, config.NodeErr(&node, "empty modifiers block")
 			}
 
 			var err error
 			cfg.globalModifiers, err = parseModifiersGroup(globals, node.Children)
 			if err != nil {
-				return dispatcherCfg{}, err
+				return msgpipelineCfg{}, err
 			}
 		case "source":
-			srcBlock, err := parseDispatcherSrcCfg(globals, node.Children)
+			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
 			if err != nil {
-				return dispatcherCfg{}, err
+				return msgpipelineCfg{}, err
 			}
 
 			if len(node.Args) == 0 {
-				return dispatcherCfg{}, config.NodeErr(&node, "expected at least one source dispatch rule")
+				return msgpipelineCfg{}, config.NodeErr(&node, "expected at least one source matching rule")
 			}
 
 			for _, rule := range node.Args {
-				if !validDispatchRule(rule) {
-					return dispatcherCfg{}, config.NodeErr(&node, "invalid source dispatch rule: %v", rule)
+				if !validMatchRule(rule) {
+					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source routing rule: %v", rule)
 				}
 
 				cfg.perSource[rule] = srcBlock
 			}
 		case "default_source":
 			if defaultSrcRaw != nil {
-				return dispatcherCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
+				return msgpipelineCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
 			}
 			defaultSrcRaw = node.Children
 		case "quarantine_score":
 			if len(node.Args) != 1 {
-				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
+				return msgpipelineCfg{}, config.NodeErr(&node, "exactly one argument required")
 			}
 
 			quarantineScore, err := strconv.Atoi(node.Args[0])
 			if err != nil {
-				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
+				return msgpipelineCfg{}, config.NodeErr(&node, "%v", err)
 			}
 			cfg.quarantineScore = &quarantineScore
 		case "reject_score":
 			if len(node.Args) != 1 {
-				return dispatcherCfg{}, config.NodeErr(&node, "exactly one argument required")
+				return msgpipelineCfg{}, config.NodeErr(&node, "exactly one argument required")
 			}
 
 			rejectScore, err := strconv.Atoi(node.Args[0])
 			if err != nil {
-				return dispatcherCfg{}, config.NodeErr(&node, "%v", err)
+				return msgpipelineCfg{}, config.NodeErr(&node, "%v", err)
 			}
 			cfg.rejectScore = &rejectScore
 		default:
@@ -105,26 +105,26 @@ func parseDispatcherRootCfg(globals map[string]interface{}, nodes []config.Node)
 
 	if len(cfg.perSource) == 0 && len(defaultSrcRaw) == 0 {
 		if len(othersRaw) == 0 {
-			return dispatcherCfg{}, fmt.Errorf("empty dispatching configuration, use 'reject' to reject messages")
+			return msgpipelineCfg{}, fmt.Errorf("empty pipeline configuration, use 'reject' to reject messages")
 		}
 
 		var err error
-		cfg.defaultSource, err = parseDispatcherSrcCfg(globals, othersRaw)
+		cfg.defaultSource, err = parseMsgPipelineSrcCfg(globals, othersRaw)
 		return cfg, err
 	} else if len(othersRaw) != 0 {
-		return dispatcherCfg{}, config.NodeErr(&othersRaw[0], "can't put handling directives together with source rules, did you mean to put it into 'default_source' block or into all source blocks?")
+		return msgpipelineCfg{}, config.NodeErr(&othersRaw[0], "can't put handling directives together with source rules, did you mean to put it into 'default_source' block or into all source blocks?")
 	}
 
 	if len(defaultSrcRaw) == 0 {
-		return dispatcherCfg{}, config.NodeErr(&nodes[0], "missing or empty default source block, use 'reject' to reject messages")
+		return msgpipelineCfg{}, config.NodeErr(&nodes[0], "missing or empty default source block, use 'reject' to reject messages")
 	}
 
 	var err error
-	cfg.defaultSource, err = parseDispatcherSrcCfg(globals, defaultSrcRaw)
+	cfg.defaultSource, err = parseMsgPipelineSrcCfg(globals, defaultSrcRaw)
 	return cfg, err
 }
 
-func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) (sourceBlock, error) {
+func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node) (sourceBlock, error) {
 	src := sourceBlock{
 		perRcpt: map[string]*rcptBlock{},
 	}
@@ -153,18 +153,18 @@ func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) 
 				return sourceBlock{}, err
 			}
 		case "destination":
-			rcptBlock, err := parseDispatcherRcptCfg(globals, node.Children)
+			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)
 			if err != nil {
 				return sourceBlock{}, err
 			}
 
 			if len(node.Args) == 0 {
-				return sourceBlock{}, config.NodeErr(&node, "expected at least one destination dispatch rule")
+				return sourceBlock{}, config.NodeErr(&node, "expected at least one destination match rule")
 			}
 
 			for _, rule := range node.Args {
-				if !validDispatchRule(rule) {
-					return sourceBlock{}, config.NodeErr(&node, "invalid destination dispatch rule: %v", rule)
+				if !validMatchRule(rule) {
+					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v", rule)
 				}
 
 				src.perRcpt[rule] = rcptBlock
@@ -185,7 +185,7 @@ func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) 
 		}
 
 		var err error
-		src.defaultRcpt, err = parseDispatcherRcptCfg(globals, othersRaw)
+		src.defaultRcpt, err = parseMsgPipelineRcptCfg(globals, othersRaw)
 		return src, err
 	} else if len(othersRaw) != 0 {
 		return sourceBlock{}, config.NodeErr(&othersRaw[0], "can't put handling directives together with destination rules, did you mean to put it into 'default' block or into all recipient blocks?")
@@ -196,11 +196,11 @@ func parseDispatcherSrcCfg(globals map[string]interface{}, nodes []config.Node) 
 	}
 
 	var err error
-	src.defaultRcpt, err = parseDispatcherRcptCfg(globals, defaultRcptRaw)
+	src.defaultRcpt, err = parseMsgPipelineRcptCfg(globals, defaultRcptRaw)
 	return src, err
 }
 
-func parseDispatcherRcptCfg(globals map[string]interface{}, nodes []config.Node) (*rcptBlock, error) {
+func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node) (*rcptBlock, error) {
 	rcpt := rcptBlock{}
 	for _, node := range nodes {
 		switch node.Name {
@@ -337,6 +337,6 @@ func parseModifiersGroup(globals map[string]interface{}, nodes []config.Node) (m
 	return modifiers, nil
 }
 
-func validDispatchRule(rule string) bool {
+func validMatchRule(rule string) bool {
 	return address.ValidDomain(rule) || address.Valid(rule)
 }

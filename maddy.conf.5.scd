@@ -462,10 +462,10 @@ imaps://127.0.0.1:143
 imap://0.0.0.0
 ```
 
-# DISPATCHING DIRECTIVES
+# PIPELINE DIRECTIVES
 
 maddy have a generic framework for message filtering and simple
-per-sender/per-recipient routing dispatcher.
+per-sender/per-recipient routing.
 
 Below are directives you can use in the configuration of the modules that
 act as a message sources (e.g. a SMTP endpoint).
@@ -680,8 +680,8 @@ Enable verbose logging only for this configuration block.
 ESMTP server endpoint. Endpoints are special-case modules that use config
 directive arguments to specify listening addresses.
 
-See DISPATCHING DIRECTIVES for the description of the
-conditional message dispatching and filtering configuration.
+See PIPELINE DIRECTIVES for the description of the
+conditional message routing and filtering configuration.
 
 ```
 smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
@@ -744,7 +744,7 @@ for all operations. You should use it for Submission protocol endpoints.
 
 ## defer_sender_reject [yes/no]
 
-Run sender-based checks and dispatching logic when first RCPT TO command
+Apply sender-based checks and routing logic when first RCPT TO command
 is received. This allows maddy to log recipient address of the rejected
 message and also improves interoperability with (improperly implemented) 
 clients that don't expect an error early in session.
@@ -890,7 +890,7 @@ Default is 4.
 
 The block specified with the bounce directive specifies how DSN (Delivery Status Notification)
 messages should be routed. The syntax of directives inside this block is described in
-DISPATCHING DIRECTIVES section.
+PIPELINE DIRECTIVES section.
 
 If this is block is not present in configuration, DSNs will not be generated. Note, however,
 this is not what you want most of the time.

@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"fmt"

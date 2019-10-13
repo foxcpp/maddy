@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"errors"
@@ -10,15 +10,15 @@ import (
 	"github.com/foxcpp/maddy/testutils"
 )
 
-func TestDispatcher_NoScoresChecked(t *testing.T) {
+func TestMsgPipeline_NoScoresChecked(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}, testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -28,7 +28,7 @@ func TestDispatcher_NoScoresChecked(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// No rejectScore or quarantineScore.
@@ -46,7 +46,7 @@ func TestDispatcher_NoScoresChecked(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RejectScore(t *testing.T) {
+func TestMsgPipeline_RejectScore(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -54,8 +54,8 @@ func TestDispatcher_RejectScore(t *testing.T) {
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}
 	rejectScore := 10
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -66,7 +66,7 @@ func TestDispatcher_RejectScore(t *testing.T) {
 			},
 			rejectScore: &rejectScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be rejected.
@@ -83,7 +83,7 @@ func TestDispatcher_RejectScore(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RejectScore_notEnough(t *testing.T) {
+func TestMsgPipeline_RejectScore_notEnough(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -91,8 +91,8 @@ func TestDispatcher_RejectScore_notEnough(t *testing.T) {
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}
 	rejectScore := 15
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -103,7 +103,7 @@ func TestDispatcher_RejectScore_notEnough(t *testing.T) {
 			},
 			rejectScore: &rejectScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "whatever@whatever", []string{"whatever@whatever"})
@@ -120,15 +120,15 @@ func TestDispatcher_RejectScore_notEnough(t *testing.T) {
 	}
 }
 
-func TestDispatcher_Quarantine(t *testing.T) {
+func TestMsgPipeline_Quarantine(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{},
 	}, testutils.Check{
 		BodyRes: module.CheckResult{Quarantine: true},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -138,7 +138,7 @@ func TestDispatcher_Quarantine(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be quarantined.
@@ -156,7 +156,7 @@ func TestDispatcher_Quarantine(t *testing.T) {
 	}
 }
 
-func TestDispatcher_QuarantineScore(t *testing.T) {
+func TestMsgPipeline_QuarantineScore(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -164,8 +164,8 @@ func TestDispatcher_QuarantineScore(t *testing.T) {
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}
 	quarantineScore := 10
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -176,7 +176,7 @@ func TestDispatcher_QuarantineScore(t *testing.T) {
 			},
 			quarantineScore: &quarantineScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be quarantined.
@@ -194,7 +194,7 @@ func TestDispatcher_QuarantineScore(t *testing.T) {
 	}
 }
 
-func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
+func TestMsgPipeline_QuarantineScore_notEnough(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -202,8 +202,8 @@ func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
 	}
 	quarantineScore := 15
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -214,7 +214,7 @@ func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
 			},
 			quarantineScore: &quarantineScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be quarantined.
@@ -232,7 +232,7 @@ func TestDispatcher_QuarantineScore_notEnough(t *testing.T) {
 	}
 }
 
-func TestDispatcher_BothScores_Quarantined(t *testing.T) {
+func TestMsgPipeline_BothScores_Quarantined(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -241,8 +241,8 @@ func TestDispatcher_BothScores_Quarantined(t *testing.T) {
 	}
 	quarantineScore := 10
 	rejectScore := 15
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -254,7 +254,7 @@ func TestDispatcher_BothScores_Quarantined(t *testing.T) {
 			quarantineScore: &quarantineScore,
 			rejectScore:     &rejectScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be quarantined.
@@ -272,7 +272,7 @@ func TestDispatcher_BothScores_Quarantined(t *testing.T) {
 	}
 }
 
-func TestDispatcher_BothScores_Rejected(t *testing.T) {
+func TestMsgPipeline_BothScores_Rejected(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{ScoreAdjust: 5},
@@ -281,8 +281,8 @@ func TestDispatcher_BothScores_Rejected(t *testing.T) {
 	}
 	quarantineScore := 5
 	rejectScore := 10
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -294,7 +294,7 @@ func TestDispatcher_BothScores_Rejected(t *testing.T) {
 			quarantineScore: &quarantineScore,
 			rejectScore:     &rejectScore,
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	// Should be quarantined.
@@ -311,7 +311,7 @@ func TestDispatcher_BothScores_Rejected(t *testing.T) {
 	}
 }
 
-func TestDispatcher_AuthResults(t *testing.T) {
+func TestMsgPipeline_AuthResults(t *testing.T) {
 	target := testutils.Target{}
 	check1, check2 := testutils.Check{
 		BodyRes: module.CheckResult{
@@ -334,8 +334,8 @@ func TestDispatcher_AuthResults(t *testing.T) {
 			},
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -346,7 +346,7 @@ func TestDispatcher_AuthResults(t *testing.T) {
 			},
 		},
 		Hostname: "TEST-HOST",
-		Log:      testutils.Logger(t, "dispatcher"),
+		Log:      testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "whatever@whatever", []string{"whatever@whatever"})
@@ -394,7 +394,7 @@ func TestDispatcher_AuthResults(t *testing.T) {
 	}
 }
 
-func TestDispatcher_Headers(t *testing.T) {
+func TestMsgPipeline_Headers(t *testing.T) {
 	hdr1 := textproto.Header{}
 	hdr1.Add("HDR1", "1")
 	hdr2 := textproto.Header{}
@@ -410,8 +410,8 @@ func TestDispatcher_Headers(t *testing.T) {
 			Header: hdr2,
 		},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check1, &check2},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -422,7 +422,7 @@ func TestDispatcher_Headers(t *testing.T) {
 			},
 		},
 		Hostname: "TEST-HOST",
-		Log:      testutils.Logger(t, "dispatcher"),
+		Log:      testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "whatever@whatever", []string{"whatever@whatever"})
@@ -443,7 +443,7 @@ func TestDispatcher_Headers(t *testing.T) {
 	}
 }
 
-func TestDispatcher_Globalcheck_Errors(t *testing.T) {
+func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
@@ -452,8 +452,8 @@ func TestDispatcher_Globalcheck_Errors(t *testing.T) {
 		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
 		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
 	}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&check_},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -464,7 +464,7 @@ func TestDispatcher_Globalcheck_Errors(t *testing.T) {
 			},
 		},
 		Hostname: "TEST-HOST",
-		Log:      testutils.Logger(t, "dispatcher"),
+		Log:      testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {
@@ -521,7 +521,7 @@ func TestDispatcher_Globalcheck_Errors(t *testing.T) {
 	}
 }
 
-func TestDispatcher_SourceCheck_Errors(t *testing.T) {
+func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
@@ -531,8 +531,8 @@ func TestDispatcher_SourceCheck_Errors(t *testing.T) {
 		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
 	}
 	globalCheck := testutils.Check{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&globalCheck},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -544,7 +544,7 @@ func TestDispatcher_SourceCheck_Errors(t *testing.T) {
 			},
 		},
 		Hostname: "TEST-HOST",
-		Log:      testutils.Logger(t, "dispatcher"),
+		Log:      testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {
@@ -602,7 +602,7 @@ func TestDispatcher_SourceCheck_Errors(t *testing.T) {
 	}
 }
 
-func TestDispatcher_RcptCheck_Errors(t *testing.T) {
+func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
@@ -616,8 +616,8 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	// Added to check whether it leaks.
 	globalCheck := testutils.Check{InstName: "global_check"}
 	sourceCheck := testutils.Check{InstName: "source_check"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			globalChecks: []module.Check{&globalCheck},
 			perSource:    map[string]sourceBlock{},
 			defaultSource: sourceBlock{
@@ -629,11 +629,11 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 			},
 		},
 		Hostname: "TEST-HOST",
-		Log:      testutils.Logger(t, "dispatcher"),
+		Log:      testutils.Logger(t, "msgpipeline"),
 	}
 
 	t.Run("init err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -645,7 +645,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.InitErr = nil
 
 	t.Run("conn err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -657,7 +657,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.ConnRes.RejectErr = nil
 
 	t.Run("mail from err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -669,7 +669,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.SenderRes.RejectErr = nil
 
 	t.Run("rcpt to err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -679,7 +679,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.RcptRes.RejectErr = nil
 
 	t.Run("body err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 		if err == nil {
 			t.Fatal("expected error")
@@ -689,7 +689,7 @@ func TestDispatcher_RcptCheck_Errors(t *testing.T) {
 	check_.BodyRes.RejectErr = nil
 
 	t.Run("no err", func(t *testing.T) {
-		d.Log = testutils.Logger(t, "dispatcher")
+		d.Log = testutils.Logger(t, "msgpipeline")
 		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 	})
 

@@ -1,4 +1,4 @@
-package dispatcher
+package msgpipeline
 
 import (
 	"errors"
@@ -10,10 +10,10 @@ import (
 	"github.com/foxcpp/maddy/testutils"
 )
 
-func TestDispatcher_AllToTarget(t *testing.T) {
+func TestMsgPipeline_AllToTarget(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -22,7 +22,7 @@ func TestDispatcher_AllToTarget(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -34,10 +34,10 @@ func TestDispatcher_AllToTarget(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
-func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
+func TestMsgPipeline_PerSourceDomainSplit(t *testing.T) {
 	orgTarget, comTarget := testutils.Target{InstName: "orgTarget"}, testutils.Target{InstName: "comTarget"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"example.com": {
 					perRcpt: map[string]*rcptBlock{},
@@ -54,7 +54,7 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -71,10 +71,10 @@ func TestDispatcher_PerSourceDomainSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &orgTarget, 0, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
-func TestDispatcher_EmptyMAILFROM(t *testing.T) {
+func TestMsgPipeline_EmptyMAILFROM(t *testing.T) {
 	target := testutils.Target{InstName: "target"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{},
@@ -83,7 +83,7 @@ func TestDispatcher_EmptyMAILFROM(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -94,10 +94,10 @@ func TestDispatcher_EmptyMAILFROM(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
-func TestDispatcher_EmptyMAILFROM_ExplicitDest(t *testing.T) {
+func TestMsgPipeline_EmptyMAILFROM_ExplicitDest(t *testing.T) {
 	target := testutils.Target{InstName: "target"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"": {
 					perRcpt: map[string]*rcptBlock{},
@@ -108,7 +108,7 @@ func TestDispatcher_EmptyMAILFROM_ExplicitDest(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -119,10 +119,10 @@ func TestDispatcher_EmptyMAILFROM_ExplicitDest(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
-func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
+func TestMsgPipeline_PerRcptAddrSplit(t *testing.T) {
 	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"sender1@example.com": {
 					perRcpt: map[string]*rcptBlock{},
@@ -139,7 +139,7 @@ func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -156,10 +156,10 @@ func TestDispatcher_PerRcptAddrSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &target2, 0, "sender2@example.com", []string{"rcpt@example.com"})
 }
 
-func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
+func TestMsgPipeline_PerRcptDomainSplit(t *testing.T) {
 	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -175,7 +175,7 @@ func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.org"})
@@ -194,10 +194,10 @@ func TestDispatcher_PerRcptDomainSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &target2, 1, "sender@example.com", []string{"rcpt1@example.org"})
 }
 
-func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
+func TestMsgPipeline_PerSourceAddrAndDomainSplit(t *testing.T) {
 	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"sender1@example.com": {
 					perRcpt: map[string]*rcptBlock{},
@@ -213,7 +213,7 @@ func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -230,10 +230,10 @@ func TestDispatcher_PerSourceAddrAndDomainSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &target2, 0, "sender2@example.com", []string{"rcpt@example.com"})
 }
 
-func TestDispatcher_PerSourceReject(t *testing.T) {
+func TestMsgPipeline_PerSourceReject(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"sender1@example.com": {
 					perRcpt: map[string]*rcptBlock{},
@@ -247,7 +247,7 @@ func TestDispatcher_PerSourceReject(t *testing.T) {
 			},
 			defaultSource: sourceBlock{rejectErr: errors.New("go away")},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
@@ -263,10 +263,10 @@ func TestDispatcher_PerSourceReject(t *testing.T) {
 	}
 }
 
-func TestDispatcher_PerRcptReject(t *testing.T) {
+func TestMsgPipeline_PerRcptReject(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -282,7 +282,7 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	delivery, err := d.Start(&module.MsgMetadata{ID: "testing"}, "sender@example.com")
@@ -305,10 +305,10 @@ func TestDispatcher_PerRcptReject(t *testing.T) {
 	}
 }
 
-func TestDispatcher_PostmasterRcpt(t *testing.T) {
+func TestMsgPipeline_PostmasterRcpt(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -324,7 +324,7 @@ func TestDispatcher_PostmasterRcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "disappointed-user@example.com", []string{"postmaster"})
@@ -334,10 +334,10 @@ func TestDispatcher_PostmasterRcpt(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "disappointed-user@example.com", []string{"postmaster"})
 }
 
-func TestDispatcher_PostmasterSrc(t *testing.T) {
+func TestMsgPipeline_PostmasterSrc(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"postmaster": {
 					perRcpt: map[string]*rcptBlock{},
@@ -353,7 +353,7 @@ func TestDispatcher_PostmasterSrc(t *testing.T) {
 				rejectErr: errors.New("go away"),
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "postmaster", []string{"disappointed-user@example.com"})
@@ -363,10 +363,10 @@ func TestDispatcher_PostmasterSrc(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "postmaster", []string{"disappointed-user@example.com"})
 }
 
-func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
+func TestMsgPipeline_CaseInsensetiveMatch_Src(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{
 				"postmaster": {
 					perRcpt: map[string]*rcptBlock{},
@@ -391,7 +391,7 @@ func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
 				rejectErr: errors.New("go away"),
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "POSTMastER", []string{"disappointed-user@example.com"})
@@ -405,10 +405,10 @@ func TestDispatcher_CaseInsensetiveMatch_Src(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 2, "sender@exAMPle.com", []string{"disappointed-user@example.com"})
 }
 
-func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
+func TestMsgPipeline_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -424,7 +424,7 @@ func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"POSTMastER"})
@@ -438,10 +438,10 @@ func TestDispatcher_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 2, "sender@example.com", []string{"sender@exAMPle.com"})
 }
 
-func TestDispatcher_MalformedSource(t *testing.T) {
+func TestMsgPipeline_MalformedSource(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -457,10 +457,10 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
-	// Simple checks for violations that can make dispatcher misbehave.
+	// Simple checks for violations that can make msgpipeline misbehave.
 	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@", "that@is@definiely@broken"} {
 		_, err := d.Start(&module.MsgMetadata{ID: "testing"}, addr)
 		if err == nil {
@@ -469,10 +469,10 @@ func TestDispatcher_MalformedSource(t *testing.T) {
 	}
 }
 
-func TestDispatcher_TwoRcptToOneTarget(t *testing.T) {
+func TestMsgPipeline_TwoRcptToOneTarget(t *testing.T) {
 	target := testutils.Target{}
-	d := Dispatcher{
-		dispatcherCfg: dispatcherCfg{
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
 			perSource: map[string]sourceBlock{},
 			defaultSource: sourceBlock{
 				perRcpt: map[string]*rcptBlock{
@@ -485,7 +485,7 @@ func TestDispatcher_TwoRcptToOneTarget(t *testing.T) {
 				},
 			},
 		},
-		Log: testutils.Logger(t, "dispatcher"),
+		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"recipient@example.com", "recipient@example.org"})
