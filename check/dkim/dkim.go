@@ -105,6 +105,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 
 	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
 	if err != nil {
+		d.log.Println("unexpected verification fail:", err)
 		return module.CheckResult{RejectErr: err}
 	}
 
@@ -114,8 +115,10 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	for _, verif := range verifications {
 		var val authres.ResultValue
 		if verif.Err == nil {
+			d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
 			val = authres.ResultPass
 		} else {
+			d.log.Printf("bad signature from %s (%s): %v", verif.Domain, verif.Identifier, err)
 			if dkim.IsPermFail(err) {
 				brokenSigs = true
 			}
@@ -130,7 +133,6 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	}
 
 	if brokenSigs {
-		d.log.Println("broken signatures present")
 		return d.c.brokenSigAction.Apply(res)
 	}
 	return res
