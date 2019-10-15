@@ -973,6 +973,84 @@ Enable verbose logging only for this configuration block.
 Set location of the MTA-STS policies cache directory.
 Default is StateDirectory/mtasts-cache
 
+# SMTP_UPSTREAM MODULE
+
+Module that implements transparent forwarding of messages over SMTP.
+
+Use in pipeline configuration:
+```
+deliver_to smtp_upstream smtp://127.0.0.1:5353 {
+  # Other settings, see below.
+}
+```
+
+Use as a standalone definition:
+```
+smtp_upstream amavisd {
+    targets smtp://127.0.0.1:5353
+}
+
+somewhere_else {
+    deliver_to amavisd
+}
+```
+
+Endpoint formats use format described in ADDRESS DEFINITIONS.
+
+Valid configuration directives:
+
+## debug [yes/no]
+
+Override global debug directive.
+
+## tls_client { ... }
+
+Override global tls_client directive.
+
+## attempt_starttls [yes/no]
+
+Attempt to use STARTTLS if it is supported by the remote server.
+If TLS handshake fails, connection will be retried without STARTTLS use
+unless require_tls is specified. Default is 'yes'.
+
+## require_tls [yes/no]
+
+Refuse to pass messages over plain-text connections. Default is 'no'.  
+
+## auth off|plain|forward|external [...]
+
+Specify the way to authenticate to the remote server.
+Valid values:
+
+- off 
+No authentication.
+  
+- plain 
+Authenticate using specified username-password pair.
+Username and password should be specified after 'plain':
+```
+auth plain username_here password_here 
+``` 
+**Don't use** this without enforced TLS ('require_tls yes').
+
+- forward
+Forward credentials specified by the client.
+**Don't use** this without enforced TLS ('require_tls yes').
+
+- external
+Request "external" SASL authentication. This is usually used for 
+authentication using TLS client certificates. See TLS CLIENT CONFIGURATION
+for how to specify client certificate.
+
+## target <endpoint0> [endpoint1...]
+
+Specify remote server addresses to use. See ADDRESS DEFINITIONS for syntax to use.
+Basically, it is 'smtp://ADDRESS:PORT' for plain SMTP and 'smtps://ADDRESS:PORT' for 
+SMTPS (aka SMTP with Implicit TLS)..
+
+Multiple addresses can be specified, they will be tried in order until connection to 
+one succeeds (including TLS handshake if TLS is required).
+
 # EXTAUTH MODULE
 
 Module for authentication using external helper binary. It looks for binary
