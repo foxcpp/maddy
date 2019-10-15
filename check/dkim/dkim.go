@@ -23,6 +23,7 @@ type Check struct {
 
 	brokenSigAction check.FailAction
 	noSigAction     check.FailAction
+	okScore         int32
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
@@ -45,6 +46,7 @@ func (c *Check) Init(cfg *config.Map) error {
 		func() (interface{}, error) {
 			return check.FailAction{}, nil
 		}, check.FailActionDirective, &c.noSigAction)
+	cfg.Int32("ok_score", false, false, 0, &c.okScore)
 	_, err := cfg.Process()
 	if err != nil {
 		return err
@@ -135,6 +137,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	if brokenSigs {
 		return d.c.brokenSigAction.Apply(res)
 	}
+	res.ScoreAdjust = d.c.okScore
 	return res
 }
 
