@@ -159,8 +159,9 @@ and 465 (TLS) ports.
 - DKIM signatures verification
 - Subaddressing (aka plus-addressing) support
 
-Configuration syntax, high-level structure, and all implemented options are
-documented in maddy.conf(5) man page.
+Configuration syntax, high-level structure and base components are documented 
+in [maddy.conf(5)](man/maddy.conf.5.scd) man page. Other modules are described
+in corresponding man pages.
 
 ### Mailboxes namespacing
 

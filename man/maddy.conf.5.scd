@@ -1,11 +1,11 @@
-maddy.conf(5) "maddy mail server"
+maddy.conf(5) "maddy mail server - configuration syntax and base components"
 
 # DESCRIPTION
 
 maddy does have a configuration file format close in style and conventions to
 Caddyfile format used in caddy but with different high-level semantics. This
-man page documents both syntax and high-level structure of documentation and
-includes a description of all usable directives.
+man page documents configuration syntax, base components and configuration directives
+usable for them.
 
 Default location of main configuration file is /etc/maddy/maddy.conf.
 
@@ -14,7 +14,14 @@ of -state command line argument, which defaults to /var/lib/maddy.
 LibexecDirectory everywhere in this file refers to the value
 of -libexec command line argument, which defaults to /usr/lib/maddy.
 
-# SYNTAX
+# SEE ALSO
+
+*maddy*(1) for command line arguments description.
+*maddy-checks*(5) for supported message "checks".
+*maddy-storage*(5) for supported storage backends.
+*maddy-targets*(5) for supported message delivery "targets".
+
+# CONFIGURATION FILES SYNTAX
 
 Configuration consists of newline-delimited "directives". Each directive can
 have zero or more arguments.
@@ -247,9 +254,6 @@ is same as just
     modname
 ```
 
-Remaining man page sections describe various modules you can use in your
-configuration.
-
 ## "Inline" configuration blocks
 
 In most cases where you are supposed to specify configuration block name, you
@@ -279,7 +283,7 @@ something {
 In that syntax, arguments specified after module name are not considered to be
 configuration block names and instead passed directly to the module.
 Some modules use them to allow writing more compact configuration, e.g. sql module
-allows you to specify driver and DSN in the inline arguments this way:
+allows you to specify driver and DSN in "inline arguments" this way:
 ```
 something {
     auth sql sqlite3 auth.db
@@ -289,7 +293,7 @@ something {
 
 # GLOBAL DIRECTIVES
 
-These directives can be used outside of any block.
+These directives can be used outside of any block and is applied for all modules.
 
 ## hostname <domain>
 
@@ -459,7 +463,7 @@ tls_client {
     cert /etc/ssl/maddy-client.crt
     key /etc/ssl/maddy-client.key
 }
-```   
+```
 
 # ADDRESS DEFINITIONS
 
@@ -555,8 +559,6 @@ delivered to the different mailbox or it can cryptographically sign
 outgoing message (e.g. using DKIM protocol). Some modifier can perform
 multiple modifications on the message.
 
-See MODIFY MODULES for what you can use here.
-
 NOTE: Modifiers that affect the message header or source address can
 be used only globally or on per-source basis, they will be no-op
 inside destination blocks.
@@ -576,6 +578,12 @@ Example:
 ```
 reject 541 5.4.0 "We don't like example.org, go away"
 ```
+
+## deliver_to <target config block>
+
+Deliver the message to the referenced delivery target. What happens next is 
+defined solely by used target. If deliver_to is used inside 'destination'
+block, only matching recipients will be passed to the target. 
 
 ## source <rules...> { ... }
 
@@ -798,430 +806,6 @@ block name.
 
 Alias to smtp module with submission directive used by default.
 
-# SQL MODULE
-
-SQL-based storage backend. Can be used as a storage backend (for IMAP),
-authentication provider (IMAP & SMTP) or delivery target (SMTP).
-
-See https://github.com/foxcpp/go-imap-sql for more information.
-
-Valid configuration directives:
-
-## driver <string>
-
-REQUIRED.
-
-Use a specified driver to communicate with the database.  Supported values:
-sqlite3, postgres.
-
-## dsn <string>
-
-REQUIRED.
-
-Data Source Name, the driver-specific value that specifies the database to use.
-
-For SQLite3 this is just a file path.
-For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
-
-## fsstore
-## fsstore <directory>
-
-REQUIRED.
-
-Store message contents in filesystem directory.
-
-If directory path is not specified - it will be derived from configuration
-block name ('StateDirectory/sql-NAME-fsstore').
-
-## compression <algorithm> [params]
-
-Apply compression to message contents.
-
-Supported algorithms are: lz4, zstd.
-'params' specify compression level.
-
-Default is 'compress off' which disables compression.
-
-## appendlimit <size>
-
-Don't allow users to add new messages larger than 'size'. The default is 32 MiB.
-
-See SYNTAX for size value format (unit suffixes, etc).
-
-## debug [yes/no]
-
-Enable verbose logging only for this configuration block.
-
-## junk_mailbox <name>
-
-Default directory to put quarantined messages in. Note that this setting is not used if user 
-does have a mailbox with "Junk" special-use attribute. 
-
-## sqlite_exclusive_lock
-## sqlite_cache_size <value>
-## sqlite_busy_timeout <value>
-
-SQLite3-specific performance tuning options.
-cache_size and busy_timeout change corresponding PRAGMA options. exclusive_lock
-sets locking_mode PRAGMA to EXCLUSIVE.
-
-If cache_size is not used, SQLite3 default is used. If busy_timeout is not set,
-500000 is used.
-
-See https://sqlite.org/pragma.html for more details.
-
-## storage_perdomain [yes/no]
-
-Override global storage_perdomain directive.
-
-## auth_perdomain [yes/no]
-## auth_domains ...
-
-Override corresponding global directives.
-
-# QUEUE MODULE
-
-Queue module buffers messages on disk and retries delivery multiple times to
-ensure reliable delivery.
-
-```
-queue {
-    max_parallelism 16
-    max_tries 8
-    target dummy
-}
-```
-
-## Inline arguments
-
-When used inline, first argument specifies directory to use for storage.
-Relative paths are relative to the StateDirectory. 
-
-
-Valid configuration directives:
-
-## target <config block>
-
-Delivery target to use for delivery. You probably want to use 'remote' here.
-
-## location <directory>
-
-File system directory to use to store queued messages.
-
-Default is StateDirectory/<configuration_block_name>.
-
-## max_parallelism <count>
-
-Start up to 'count' goroutines for message processing. Basically, this option
-limits amount of messages tried to be delivered concurrently.
-
-Default is 16.
-
-## max_tries <count>
-
-Attempt delivery up to 'count' times. Note that no more attempts will be done
-is permanent error occured during previous attempt.
-
-Default is 4.
-
-## bounce { ... }
-
-The block specified with the bounce directive specifies how DSN (Delivery Status Notification)
-messages should be routed. The syntax of directives inside this block is described in
-PIPELINE DIRECTIVES section.
-
-If this is block is not present in configuration, DSNs will not be generated. Note, however,
-this is not what you want most of the time.
-
-## autogenerated_msg_domain <domain>
-
-Overrides the global autogenerated_msg_domain. Note that it must be non-empty (or specified
-globally), if bounce directive is used too.
-
-## debug [yes/no]
-
-Enable verbose logging only for this configuration block.
-
-# REMOTE MODULE
-
-Module that implements message delivery to remote MTAs.
-You probably want to use it with queue module for reliability.
-
-```
-remote
-```
-
-If a message check marks message as 'quarantined', remote module
-will refuse to deliver message.
-
-Valid configuration directives:
-
-## hostname <hostname>
-
-Override global hostname directive.
-
-## require_tls
-
-Always refuse to send messages over unencrypted connections.
-
-## debug [yes/no]
-
-Enable verbose logging only for this configuration block.
-
-## mtasts_cache <directory>
-
-Set location of the MTA-STS policies cache directory.
-Default is StateDirectory/mtasts-cache
-
-# SMTP_UPSTREAM MODULE
-
-Module that implements transparent forwarding of messages over SMTP.
-
-Use in pipeline configuration:
-```
-deliver_to smtp_upstream smtp://127.0.0.1:5353 {
-  # Other settings, see below.
-}
-```
-
-Use as a standalone definition:
-```
-smtp_upstream amavisd {
-    targets smtp://127.0.0.1:5353
-}
-
-somewhere_else {
-    deliver_to amavisd
-}
-```
-
-Endpoint formats use format described in ADDRESS DEFINITIONS.
-
-Valid configuration directives:
-
-## debug [yes/no]
-
-Override global debug directive.
-
-## tls_client { ... }
-
-Override global tls_client directive.
-
-## attempt_starttls [yes/no]
-
-Attempt to use STARTTLS if it is supported by the remote server.
-If TLS handshake fails, connection will be retried without STARTTLS use
-unless require_tls is specified. Default is 'yes'.
-
-## require_tls [yes/no]
-
-Refuse to pass messages over plain-text connections. Default is 'no'.  
-
-## auth off|plain|forward|external [...]
-
-Specify the way to authenticate to the remote server.
-Valid values:
-
-- off 
-No authentication.
-  
-- plain 
-Authenticate using specified username-password pair.
-Username and password should be specified after 'plain':
-```
-auth plain username_here password_here 
-``` 
-**Don't use** this without enforced TLS ('require_tls yes').
-
-- forward
-Forward credentials specified by the client.
-**Don't use** this without enforced TLS ('require_tls yes').
-
-- external
-Request "external" SASL authentication. This is usually used for 
-authentication using TLS client certificates. See TLS CLIENT CONFIGURATION
-for how to specify client certificate.
-
-## target <endpoint0> [endpoint1...]
-
-Specify remote server addresses to use. See ADDRESS DEFINITIONS for syntax to use.
-Basically, it is 'smtp://ADDRESS:PORT' for plain SMTP and 'smtps://ADDRESS:PORT' for 
-SMTPS (aka SMTP with Implicit TLS)..
-
-Multiple addresses can be specified, they will be tried in order until connection to 
-one succeeds (including TLS handshake if TLS is required).
-
-# EXTAUTH MODULE
-
-Module for authentication using external helper binary. It looks for binary
-named maddy-auth-helper in $PATH and libexecdir and uses it for authentication.
-
-The protocol is very simple:
-Program is launched for each authentication. Username and password are written
-to stdin, adding \\n to the end. If binary exits with 0 status code -
-authentication is considered successful. If the status code is 1 - authentication
-is failed. If the status code is 2 - another unrelated error has happened. Additional
-information should be written to stderr.
-
-```
-extauth {
-    helper /usr/bin/ldap-helper
-}
-```
-
-Valid configuration directives:
-
-## helper <file_path>
-
-Location of the helper binary. Default is LibexecDirectory/maddy-auth-helper
-
-## debug [yes/no]
-
-Verbose log only for this configuration block.
-
-## auth_perdomain [yes/no]
-## auth_domains ...
-
-Override corresponding global directives.
-
-
-# PAM MODULE
-
-Implements authentication using libpam. Alternatively it can be configured to use
-helper binary like extauth does. 
-
-maddy should be built with CGo support enabled (default if C compiler is available) 
-to use this module without 'use_helper' directive. 
-
-```
-smtp smtp://0.0.0.0 {
-    auth pam { }
-}
-```
-
-## debug [yes/no]
-
-Verbose log only for this configuration block.
-
-## use_helper
-
-Use LibexecDirectory/maddy-pam-helper instead of directly calling libpam.
-You need to use that if:
-1. maddy is not compiled with CGo support, but maddy-pam-helper is built separately.
-2. maddy is running as an unprivileged user and used PAM configuration requires additional 
-privileges (e.g. when using system accounts).
-
-For 2, you need to make maddy-pam-helper binary setuid, see 
-cmd/maddy-pam-helper/README.md in source tree for details. 
-
-TL;DR (assuming you have maddy group):
-```
-chown root:maddy /usr/lib/maddy/maddy-pam-helper
-chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
-```
-
-# SHADOW MODULE
-
-Implements authentication by reading /etc/shadow. Alternatively it can be 
-configured to use helper binary like extauth does. 
-
-```
-smtp smtp://0.0.0.0 {
-	auth shadow { }
-}
-```
-
-## debug [yes/no]
-
-Verbose log only for this configuration block.
-
-## use_helper
-
-Use LibexecDirectory/maddy-shadow-helper instead of directly reading /etc/shadow.
-You need to use that if maddy is running as an unprivileged user 
-privileges (e.g. when using system accounts).
-
-You need to make maddy-shadow-helper binary setuid, see 
-cmd/maddy-shadow-helper/README.md in source tree for details. 
-
-TL;DR (assuming you have maddy group):
-```
-chown root:maddy /usr/lib/maddy/maddy-shadow-helper
-chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
-```
-
-# CHECK MODULES
-
-All modules in this section run one check on message and quarantine 
-(or reject, for some checks) the message if it fails.
-
-They all implement check interface and have configuration blocks defined
-implicitly so you use then without an explicit block definition.
-
-All modules in this list support the following directives:
-- debug
-  Enable verbose logging for this module.
-- fail_action ignore
-  Ignore the check failure, useful for testing deployments to see
-  how useful it is.
-- fail_action reject
-  Reject the message instead of quarantining it.
-- fail_action quarantine
-  Quarantine the message, this is the default for most checks.
-- fail_action score <number>
-  Increase checks score by <number> (can be negative to decrease it).
-- ok_score <number>
-  Increase checks score by <number> if check passed (can be negative to decrease it).
-
-## require_matching_ehlo
-
-Check that source server hostname (from EHLO/HELO command) resolves to source
-server IP.
-
-## require_mx_record
-
-Check that domain in MAIL FROM command does have a MX record.
-
-## require_matching_rdns
-
-Check that source server IP does have a PTR record point to the domain
-specified in EHLO/HELO command.
-
-# VERIFY_DKIM MODULE
-
-This is the check module that performs verification of the DKIM signatures
-present on the incoming messages.
-
-It got an implicit configuration block defined like CHECK MODULES above.
-
-
-```
-check {
-    ...
-    verify_dkim
-}
-```
-
-Valid directives:
-
-## debug [yes/no]
-
-Toggle debug logging only for this module.
-
-## no_sig_action ...
-
-Action to take when message without any signature is received.
-Default is 'ignore', as recommended by RFC 6376.
-
-Valid arguments are same as for CHECK MODULES above.
-
-## broken_sig_action ...
-
-Action to take when message with invalid signature is received.
-Default is 'ignore', as recommended by RFC 6376.
-
-Valid arguments are same as for CHECK MODULES above.
-
 # REPLACE_SENDER, REPLACE_RCPT
 
 These are modules that simply replace matching address value(s) with another 
@@ -1252,7 +836,6 @@ modify {
 }
 ```
 
-
 # DUMMY MODULE
 
 No-op module. It doesn't need to be configured explicitly and can be referenced
@@ -1260,6 +843,3 @@ using "dummy" name. It can act as a delivery target or auth.
 provider. In the latter case, it will accept any credentials, allowing any
 client to authenticate using any username and password (use with care!).
 
-# SEE ALSO
-
-*maddy*(1)
