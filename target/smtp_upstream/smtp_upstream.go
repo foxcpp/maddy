@@ -31,6 +31,7 @@ type Upstream struct {
 	attemptStartTLS bool
 	hostname        string
 	endpoints       []config.Endpoint
+	saslFactory     saslClientFactory
 
 	log log.Logger
 }
@@ -55,6 +56,9 @@ func (u *Upstream) Init(cfg *config.Map) error {
 	//   Current behavior
 	// - roundrobin
 	//   Pick next server from list each time.
+	cfg.Custom("auth", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, u.saslAuthDirective, &u.saslFactory)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -95,6 +99,7 @@ type delivery struct {
 	u   *Upstream
 	log log.Logger
 
+	msgMeta    *module.MsgMetadata
 	mailFrom   string
 	recipients []string
 	hdr        textproto.Header
@@ -106,6 +111,7 @@ func (u *Upstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.D
 	d := &delivery{
 		u:        u,
 		log:      target.DeliveryLogger(u.log, msgMeta),
+		msgMeta:  msgMeta,
 		mailFrom: mailFrom,
 	}
 	if err := d.connect(); err != nil {
@@ -119,19 +125,32 @@ func (d *delivery) connect() error {
 	var lastErr error
 	for _, endp := range d.u.endpoints {
 		cl, err := d.attemptConnect(endp, d.u.attemptStartTLS)
-		if err != nil {
-			d.log.Debugf("connect to %s:%s failed: %v", endp.Host, endp.Port, err)
-			lastErr = err
-			continue
+		if err == nil {
+			d.log.Debugf("connected to %s:%s", endp.Host, endp.Port)
+			lastErr = nil
+			d.client = cl
+			break
 		}
 
-		d.log.Debugf("connected to %s:%s", endp.Host, endp.Port)
-		d.client = cl
-		return nil
+		d.log.Debugf("connect to %s:%s failed: %v", endp.Host, endp.Port, err)
+		lastErr = err
+	}
+	if lastErr != nil {
+		return lastErr
 	}
 
-	// Reached only if all attempts failed.
-	return lastErr
+	if d.u.saslFactory != nil {
+		saslClient, err := d.u.saslFactory(d.msgMeta.AuthUser, d.msgMeta.AuthPassword)
+		if err != nil {
+			return err
+		}
+
+		if err := d.client.Auth(saslClient); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*smtp.Client, error) {
