@@ -70,6 +70,33 @@ func (m *Map) AllowUnknown() {
 	m.allowUnknown = true
 }
 
+// Enum maps a configuration directive to a string variable.
+//
+// Directive must be in form 'name string' where string should be from *allowed*
+// slice. That string argument will be stored in store variable.
+//
+// See Map.Custom for description of inheritGlobal and required.
+func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, defaultVal string, store *string) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, m.MatchErr("can't declare a block here")
+		}
+		if len(node.Args) != 1 {
+			return nil, m.MatchErr("expected exactly one argument")
+		}
+
+		for _, str := range allowed {
+			if str == node.Args[0] {
+				return node.Args[0], nil
+			}
+		}
+
+		return nil, m.MatchErr("invalid argument, valid values are: %v", allowed)
+	}, store)
+}
+
 // Duration maps configuration directive to a time.Duration variable.
 //
 // Directive must be in form 'name duration' where duration is any string accepted by
