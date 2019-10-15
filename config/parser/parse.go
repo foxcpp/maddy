@@ -1,5 +1,5 @@
 // Package config provides set of utilities for configuration parsing.
-package config
+package parser
 
 import (
 	"fmt"

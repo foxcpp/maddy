@@ -13,6 +13,7 @@ import (
 	"reflect"
 
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/config/parser"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
@@ -63,7 +64,7 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	//  - module name and instance name, inline definition, empty config block
 
 	if len(args) == 0 {
-		return config.NodeErr(inlineCfg, "at least one argument is required")
+		return parser.NodeErr(inlineCfg, "at least one argument is required")
 	}
 
 	var modObj module.Module
@@ -72,19 +73,19 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 		modObj, err = createInlineModule(args[0], args[1:])
 	} else {
 		if len(args) != 1 {
-			return config.NodeErr(inlineCfg, "exactly one argument is to use existing config block")
+			return parser.NodeErr(inlineCfg, "exactly one argument is to use existing config block")
 		}
 		modObj, err = module.GetInstance(args[0])
 	}
 	if err != nil {
-		return config.NodeErr(inlineCfg, "%v", err)
+		return parser.NodeErr(inlineCfg, "%v", err)
 	}
 
 	// NOTE: This will panic if moduleIface is not a pointer.
 	modIfaceType := reflect.TypeOf(moduleIface).Elem()
 	modObjType := reflect.TypeOf(modObj)
 	if !modObjType.Implements(modIfaceType) && !modObjType.AssignableTo(modIfaceType) {
-		return config.NodeErr(inlineCfg, "module %s (%s) doesn't implement %v interface", modObj.Name(), modObj.InstanceName(), modIfaceType)
+		return parser.NodeErr(inlineCfg, "module %s (%s) doesn't implement %v interface", modObj.Name(), modObj.InstanceName(), modIfaceType)
 	}
 
 	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))

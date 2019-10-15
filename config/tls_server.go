@@ -33,7 +33,7 @@ func TLSDirective(m *Map, node *Node) (interface{}, error) {
 			return cfg, nil
 		}
 	case 2:
-		cfg, err := readTLSBlock(node)
+		cfg, err := readTLSBlock(m, node)
 		if err != nil {
 			return nil, err
 		}
@@ -45,33 +45,33 @@ func TLSDirective(m *Map, node *Node) (interface{}, error) {
 	return nil, nil
 }
 
-func readTLSBlock(blockNode *Node) (*tls.Config, error) {
+func readTLSBlock(m *Map, blockNode *Node) (*tls.Config, error) {
 	cfg := tls.Config{
 		PreferServerCipherSuites: true,
 	}
 
-	m := NewMap(nil, blockNode)
+	childM := NewMap(nil, blockNode)
 	var tlsVersions [2]uint16
 
 	if len(blockNode.Args) != 2 {
-		return nil, NodeErr(blockNode, "two arguments required")
+		return nil, m.MatchErr("two arguments required")
 	}
 	certPath := blockNode.Args[0]
 	keyPath := blockNode.Args[1]
 
-	m.Custom("protocols", false, false, func() (interface{}, error) {
+	childM.Custom("protocols", false, false, func() (interface{}, error) {
 		return [2]uint16{0, 0}, nil
 	}, TLSVersionsDirective, &tlsVersions)
 
-	m.Custom("ciphers", false, false, func() (interface{}, error) {
+	childM.Custom("ciphers", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, TLSCiphersDirective, &cfg.CipherSuites)
 
-	m.Custom("curves", false, false, func() (interface{}, error) {
+	childM.Custom("curves", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, TLSCurvesDirective, &cfg.CurvePreferences)
 
-	if _, err := m.Process(); err != nil {
+	if _, err := childM.Process(); err != nil {
 		return nil, err
 	}
 

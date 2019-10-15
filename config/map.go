@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/foxcpp/maddy/config/parser"
 )
 
 type matcher struct {
@@ -58,7 +60,7 @@ func NewMap(globals map[string]interface{}, block *Node) *Map {
 // processed config node.
 func (m *Map) MatchErr(format string, args ...interface{}) error {
 	if m.curNode != nil {
-		return NodeErr(m.curNode, format, args...)
+		return parser.NodeErr(m.curNode, format, args...)
 	} else {
 		return fmt.Errorf(format, args...)
 	}

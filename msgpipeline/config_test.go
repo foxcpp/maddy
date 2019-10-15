@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/config/parser"
 )
 
 func policyError(code int) error {
@@ -207,7 +207,7 @@ func TestMsgPipelineCfg(t *testing.T) {
 	for _, case_ := range cases {
 		case_ := case_
 		t.Run(case_.name, func(t *testing.T) {
-			cfg, _ := config.Read(strings.NewReader(case_.str), "literal")
+			cfg, _ := parser.Read(strings.NewReader(case_.str), "literal")
 			parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 			if err != nil && !case_.fail {
 				t.Fatalf("unexpected parse error: %v", err)
@@ -238,7 +238,7 @@ func TestMsgPipelineCfg_GlobalChecks(t *testing.T) {
 		}
 	`
 
-	cfg, _ := config.Read(strings.NewReader(str), "literal")
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
 	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
@@ -263,7 +263,7 @@ func TestMsgPipelineCfg_SourceChecks(t *testing.T) {
 		}
 	`
 
-	cfg, _ := config.Read(strings.NewReader(str), "literal")
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
 	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
@@ -288,7 +288,7 @@ func TestMsgPipelineCfg_RcptChecks(t *testing.T) {
 		}
 	`
 
-	cfg, _ := config.Read(strings.NewReader(str), "literal")
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
 	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)

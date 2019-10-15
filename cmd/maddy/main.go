@@ -11,6 +11,7 @@ import (
 
 	"github.com/foxcpp/maddy"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/config/parser"
 	"github.com/foxcpp/maddy/log"
 )
 
@@ -76,7 +77,7 @@ func main() {
 	}
 	defer f.Close()
 
-	cfg, err := config.Read(f, *configPath)
+	cfg, err := parser.Read(f, *configPath)
 	if err != nil {
 		log.Printf("cannot parse %q: %v\n", *configPath, err)
 		os.Exit(1)
