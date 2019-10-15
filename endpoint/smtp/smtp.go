@@ -268,9 +268,9 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	}
 
 	args := append([]string{endp.name}, endp.aliases...)
-	addresses := make([]config.Address, 0, len(args))
+	addresses := make([]config.Endpoint, 0, len(args))
 	for _, addr := range args {
-		saddr, err := config.StandardizeAddress(addr)
+		saddr, err := config.StandardizeEndpoint(addr)
 		if err != nil {
 			return fmt.Errorf("smtp: invalid address: %s", addr)
 		}
@@ -349,7 +349,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	return nil
 }
 
-func (endp *Endpoint) setupListeners(addresses []config.Address) error {
+func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	var smtpUsed, lmtpUsed bool
 	for _, addr := range addresses {
 		if addr.Scheme == "smtp" || addr.Scheme == "smtps" {
