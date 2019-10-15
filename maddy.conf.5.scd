@@ -310,7 +310,13 @@ Must be present in either all endpoint modules configuration blocks or as
 global directive.
 
 You can also specify other configuration options such as cipher suites and TLS
-version. See TLS CONFIGURATION for details.
+version. See TLS SERVER CONFIGURATION for details.
+
+## tls_client { ... }
+
+This is optional block that specifies various TLS-related options to use when making
+outbound connections. See TLS CLIENT CONFIGURATION for details on directives that
+can be used in it.
 
 ## log <targets...>
 
@@ -363,7 +369,7 @@ If used without auth_perdomain, domain part will be removed from login before
 check with underlying auth. mechanism. If auth_perdomain is set, then
 auth_domains must be also set and domain part WILL NOT be removed before check.
 
-# TLS CONFIGURATION
+# TLS SERVER CONFIGURATION
 
 You can specify other TLS-related options in a configuration block:
 
@@ -422,6 +428,38 @@ The elliptic curves that will be used in an ECDHE handshake, in preference
 order.
 
 Valid values: p256, p384, p521, X25519.
+
+# TLS CLIENT CONFIGURATION
+
+tls_config directive allows to customize behavior of TLS client implementation, notably
+adjusting minimal and maximal TLS versions and allowed cipher suites, enabling TLS client
+authentication.
+
+## protocols <min> <max>
+## protcools <value>
+## ciphers <cipher0> [cipher1] [cipher2] ...
+## curve <curve0> [curve1] ... 
+
+Thsese directives have the same meaning as in tls directive block (see TLS SERVER CONFIGURATION).
+
+## root_ca <path0> [path1...]
+
+List of files with PEM-encoded CA certificates to use when verifying 
+server certificates.
+If not specified - system CA pool is used.
+
+## cert <cert path> 
+## key <key path>
+
+Present the specified certificate when server requests a client certificate.
+Files should use PEM format. Both directives should be specified.
+
+```
+tls_client {
+    cert /etc/ssl/maddy-client.crt
+    key /etc/ssl/maddy-client.key
+}
+```   
 
 # ADDRESS DEFINITIONS
 

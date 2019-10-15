@@ -20,7 +20,6 @@ import (
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
 	"github.com/foxcpp/maddy/dns"
-	"github.com/foxcpp/maddy/endpoint"
 	"github.com/foxcpp/maddy/future"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
@@ -309,7 +308,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
-	cfg.Custom("tls", true, true, nil, endpoint.TLSDirective, &endp.serv.TLSConfig)
+	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", false, false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)

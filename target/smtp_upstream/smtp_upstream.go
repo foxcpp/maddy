@@ -32,6 +32,7 @@ type Upstream struct {
 	hostname        string
 	endpoints       []config.Endpoint
 	saslFactory     saslClientFactory
+	tlsConfig       tls.Config
 
 	log log.Logger
 }
@@ -59,6 +60,9 @@ func (u *Upstream) Init(cfg *config.Map) error {
 	cfg.Custom("auth", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, u.saslAuthDirective, &u.saslFactory)
+	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
+		return tls.Config{}, nil
+	}, config.TLSClientBlock, &u.tlsConfig)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -161,8 +165,9 @@ func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*
 	}
 
 	if endp.IsTLS() {
-		// TODO: Support additional settings for tls.Config.
-		conn = tls.Client(conn, &tls.Config{ServerName: endp.Host})
+		cfg := d.u.tlsConfig.Clone()
+		cfg.ServerName = endp.Host
+		conn = tls.Client(conn, cfg)
 	}
 
 	cl, err := smtp.NewClient(conn, endp.Host)
@@ -177,8 +182,9 @@ func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*
 	}
 
 	if attemptStartTLS && !endp.IsTLS() {
-		// TODO: Support additional settings for tls.Config.
-		if err := cl.StartTLS(&tls.Config{ServerName: endp.Host}); err != nil {
+		cfg := d.u.tlsConfig.Clone()
+		cfg.ServerName = endp.Host
+		if err := cl.StartTLS(cfg); err != nil {
 			cl.Close()
 
 			if d.u.requireTLS {
