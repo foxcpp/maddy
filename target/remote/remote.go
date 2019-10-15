@@ -38,6 +38,7 @@ type Target struct {
 	name       string
 	hostname   string
 	requireTLS bool
+	tlsConfig  *tls.Config
 
 	resolver dns.Resolver
 
@@ -69,6 +70,9 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Bool("require_tls", false, false, &rt.requireTLS)
+	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
+		return tls.Config{}, nil
+	}, config.TLSClientBlock, &rt.tlsConfig)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -300,7 +304,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		}
 		conn.serverName = addr
 
-		conn.Client, err = connectToServer(rd.rt.hostname, addr, requireTLS)
+		conn.Client, err = rd.rt.connectToServer(addr)
 		if err != nil {
 			rd.Log.Printf("failed to connect to %s: %v", addr, err)
 			lastErr = err
@@ -365,23 +369,23 @@ func (rt *Target) stsCacheUpdater() {
 	}
 }
 
-func connectToServer(ourHostname, address string, requireTLS bool) (*smtp.Client, error) {
+func (rt *Target) connectToServer(address string) (*smtp.Client, error) {
 	cl, err := smtp.Dial(address + ":25")
 	if err != nil {
 		return nil, err
 	}
 
-	if err := cl.Hello(ourHostname); err != nil {
+	if err := cl.Hello(rt.hostname); err != nil {
 		return nil, err
 	}
 
 	if tlsOk, _ := cl.Extension("STARTTLS"); tlsOk {
-		if err := cl.StartTLS(&tls.Config{
-			ServerName: address,
-		}); err != nil {
+		cfg := rt.tlsConfig.Clone()
+		cfg.ServerName = address
+		if err := cl.StartTLS(cfg); err != nil {
 			return nil, err
 		}
-	} else if requireTLS {
+	} else if rt.requireTLS {
 		return nil, exterrors.WithTemporary(ErrTLSRequired, false)
 	}
 
