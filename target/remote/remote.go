@@ -71,7 +71,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Bool("require_tls", false, false, &rt.requireTLS)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
-		return tls.Config{}, nil
+		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
 	if _, err := cfg.Process(); err != nil {
 		return err

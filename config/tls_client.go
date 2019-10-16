@@ -65,5 +65,5 @@ func TLSClientBlock(m *Map, node *Node) (interface{}, error) {
 	cfg.MaxVersion = tlsVersions[1]
 	log.Debugf("tls: min version: %x, max version: %x", tlsVersions[0], tlsVersions[1])
 
-	return cfg, nil
+	return &cfg, nil
 }
