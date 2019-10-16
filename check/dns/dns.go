@@ -21,7 +21,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 
 	names, err := ctx.Resolver.LookupAddr(context.Background(), tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
-		ctx.Logger.Printf("rDNS query for %v failed: %v", tcpAddr.IP, err)
+		ctx.Logger.Println(err)
 		return module.CheckResult{
 			RejectErr: &smtp.SMTPError{
 				Code:         550,
@@ -73,7 +73,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
-		ctx.Logger.Printf("%s does not resolve", domain)
+		ctx.Logger.Println(err)
 		return module.CheckResult{
 			RejectErr: &smtp.SMTPError{
 				Code:         501,
@@ -106,7 +106,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
 	if err != nil {
-		ctx.Logger.Printf("%s does not resolve: %v", ctx.MsgMeta.SrcHostname, err)
+		ctx.Logger.Println(err)
 		// TODO: Check whether lookup is failed due to temporary error and reject with 4xx code.
 		return module.CheckResult{
 			RejectErr: &smtp.SMTPError{
