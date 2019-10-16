@@ -231,9 +231,9 @@ See https://godoc.org/github.com/lib/pq for driver options documentation.
 
 ## Documentation
 
-Configuration reference is maintained as a single man page 
+Configuration reference is maintained as a set of man pages
 in the [scdoc](https://git.sr.ht/~sircmpwn/scdoc) format.
-You can view page source [here](maddy.conf.5.scd) (it is readable).
+You can view page sources [here](man/) (it is readable).
 
 Tutorials and misc articles will be added to
 the [project wiki](https://github.com/foxcpp/maddy/wiki).
