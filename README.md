@@ -149,7 +149,7 @@ You need to change the following directives to your values:
 
 With that configuration you will get the following:
 - SQLite-based storage for messages
-- Authentication using SQLite-based virtual users DB (use [imapsql-ctl]( https://github.com/foxcpp/go-imap-sql/tree/master/cmd/imapsql-ctl) to create user accounts)
+- Authentication using SQLite-based virtual users DB (see [imapsql-ctl utility](#imapsql-ctl-utility))
 - SMTP endpoint for incoming messages on 25 port.
 - SMTP Submission endpoint for messages from your users, on both 587 (STARTTLS) 
 and 465 (TLS) ports.
@@ -177,27 +177,35 @@ below.
 
 Note that it will require users to specify full address as username when logging in.
 
-## SQL-based database
+## imapsql-ctl utility
 
 Currently, the only supported storage and authentication DB implementation
 is SQL-based go-imap-sql library.
 
-Use the following commands to install the `imapsql-ctl` utility:
+To manage virtual users, mailboxes and messages in them imapsql-ctl utility
+should be used. It can be installed using the following command:
 ```
-export GO111MODULE=on
-go get github.com/foxcpp/go-imap-sql/cmd/imapsql-ctl@dev
+go get github.com/foxcpp/maddy/cmd/imapsql-ctl@master
 ```
-
-It can be used to create/delete virtual users as well as mailboxes
-and messages in them.
-
-Here is the command to use to create a new virtual user `NAME`:
+**Note:** Use the same version as maddy, e.g. if you installed maddy X.Y.Z, 
+then use the following command:
 ```
-imapsql-ctl --driver DRIVER --dsn DSN --fsstore FSSTORE_PATH users create NAME
+go get github.com/foxcpp/maddy/cmd/imapsql-ctl@vX.Y.Z
 ```
 
-Replace DRIVER and DSN with your values from maddy config.
-For default configuration it is `--driver sqlite3 --dsn /var/lib/maddy/all.db --fsstore /var/lib/maddy/sql-local_mailboxes-fsstore`.
+As with any other `go get` command, binary will be placed in `$GOPATH/bin`
+($HOME/go/bin by default).
+
+
+Here is the command to create virtual user account:
+```
+imapsql-ctl users create foxcpp
+```
+
+It assumes you use default locations for state directory and config file.
+If that's not the case, provide `-config` and/or `-state` arguments that
+specify used values.
+
 
 ### PostgreSQL instead of SQLite
 

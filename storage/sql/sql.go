@@ -36,7 +36,7 @@ import (
 )
 
 type Storage struct {
-	back     *imapsql.Backend
+	Back     *imapsql.Backend
 	instName string
 	Log      log.Logger
 
@@ -44,7 +44,6 @@ type Storage struct {
 	authPerDomain    bool
 	authDomains      []string
 	junkMbox         string
-	hostname         string
 
 	resolver dns.Resolver
 }
@@ -127,7 +126,7 @@ func (store *Storage) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 		store:      store,
 		msgMeta:    msgMeta,
 		mailFrom:   mailFrom,
-		d:          store.back.NewDelivery(),
+		d:          store.Back.NewDelivery(),
 		addedRcpts: map[string]struct{}{},
 	}, nil
 }
@@ -192,7 +191,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
-	cfg.String("hostname", true, true, "", &store.hostname)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -253,7 +251,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
-	store.back, err = imapsql.New(driver, dsnStr, extStore, opts)
+	store.Back, err = imapsql.New(driver, dsnStr, extStore, opts)
 	if err != nil {
 		return fmt.Errorf("sql: %s", err)
 	}
@@ -268,11 +266,11 @@ func (store *Storage) IMAPExtensions() []string {
 }
 
 func (store *Storage) Updates() <-chan backend.Update {
-	return store.back.Updates()
+	return store.Back.Updates()
 }
 
 func (store *Storage) EnableChildrenExt() bool {
-	return store.back.EnableChildrenExt()
+	return store.Back.EnableChildrenExt()
 }
 
 func (store *Storage) CheckPlain(username, password string) bool {
@@ -281,7 +279,7 @@ func (store *Storage) CheckPlain(username, password string) bool {
 		return false
 	}
 
-	return store.back.CheckPlain(accountName, password)
+	return store.Back.CheckPlain(accountName, password)
 }
 
 func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
@@ -296,7 +294,7 @@ func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
 		accountName = parts[0]
 	}
 
-	return store.back.GetOrCreateUser(accountName)
+	return store.Back.GetOrCreateUser(accountName)
 }
 
 func init() {

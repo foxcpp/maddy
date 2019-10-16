@@ -36,8 +36,7 @@ func createTestDB(tb testing.TB, compAlgo string) *Storage {
 		tb.Fatal(err)
 	}
 	return &Storage{
-		back:     db,
-		hostname: "test.example.org",
+		Back: db,
 	}
 }
 
