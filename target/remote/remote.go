@@ -224,7 +224,9 @@ func (m *multipleErrs) SetStatus(rcptTo string, err error) {
 }
 
 func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) error {
-	merr := multipleErrs{}
+	merr := multipleErrs{
+		errs: make(map[string]error),
+	}
 	rd.BodyNonAtomic(&merr, header, buffer)
 	if len(merr.errs) != 0 {
 		return &merr
