@@ -20,7 +20,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-sqlite3 v1.11.0
-	github.com/miekg/dns v1.1.22 // indirect
+	github.com/miekg/dns v1.1.22
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/cli v1.20.0
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392

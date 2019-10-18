@@ -169,16 +169,16 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	return ad, addrs, err
 }
 
-func NewExtResolver() (ExtResolver, error) {
+func NewExtResolver() (*ExtResolver, error) {
 	cfg, err := dns.ClientConfigFromFile("/etc/resolv.conf")
 	if err != nil {
-		return ExtResolver{}, err
+		return nil, err
 	}
 	cl := new(dns.Client)
 	cl.Dialer = &net.Dialer{
 		Timeout: time.Duration(cfg.Timeout) * time.Second,
 	}
-	return ExtResolver{
+	return &ExtResolver{
 		cl:  cl,
 		cfg: cfg,
 	}, nil

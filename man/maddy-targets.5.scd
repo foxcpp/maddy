@@ -97,9 +97,33 @@ Valid configuration directives:
 
 Override global hostname directive.
 
+## authenticate_mx <methods...>
+
+Specify list of methods to use when verifying authenticity of MX records.
+
+Valid values are:
+- off
+  Disable authentication. THIS MAKES TLS FOR OUTBOUND DELIVERY INSECURE, DON'T USE 
+  THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
+- mtasts
+  Use MTA-STS policies for authentication.
+- dnssec
+  Use Authenticated Data (AD) DNS flag for authentication. This relies on system 
+  resolver being able to verify DNSSEC signatures. maddy does not do it itself.
+  Due to implementation details, dnssec is not supported on non-Unix platforms. 
+  
+Default setting is 'mtasts dnssec'.
+
+Unless require_tls is also specified, inability to authenticate MX records will 
+not cause delivery failure.
+
 ## require_tls
 
 Always refuse to send messages over unencrypted connections.
+
+This option changes behavior of MX record authentication. With require_tls,
+delivery will fail if there MX records for recipient domain can't be 
+authenticated.
 
 ## debug [yes/no]
 
