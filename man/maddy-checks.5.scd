@@ -160,7 +160,15 @@ Authentication-Results will contain
 Default is 'From Subject'.
 
 Note that From is always required to be signed, even if it is not
-included in this directive.  
+included in this directive. 
+
+## allow_body_subset
+
+By default signatures that cover only body subset (using l= "body limit" tag) 
+are considered invalid ("broken"). This directive allows such signatures.
+
+It should be noted that allowing use of "body limit" allows arbitrary
+data to be appended to the message body.
 
 ## no_sig_action ...
 

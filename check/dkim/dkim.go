@@ -23,6 +23,7 @@ type Check struct {
 	log      log.Logger
 
 	requiredFields  map[string]struct{}
+	allowBodySubset bool
 	brokenSigAction check.FailAction
 	noSigAction     check.FailAction
 	okScore         int32
@@ -43,6 +44,7 @@ func (c *Check) Init(cfg *config.Map) error {
 
 	cfg.Bool("debug", true, false, &c.log.Debug)
 	cfg.StringList("required_fields", false, false, []string{"From", "Subject"}, &requiredFields)
+	cfg.Bool("allow_body_subset", false, false, &c.allowBodySubset)
 	cfg.Custom("broken_sig_action", false, false,
 		func() (interface{}, error) {
 			return check.FailAction{}, nil
@@ -150,8 +152,17 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		for field := range d.c.requiredFields {
 			if _, ok := signedFields[field]; !ok {
 				brokenSigs = true
+				// Brace-enclosed strings are comments that are allowed in Authentication-Results
+				// field. Since go-msgauth does not allow us to insert them explicitly, we
+				// "smuggle" them in Value field that then gets copied into resulting field
+				// giving us "dkim=policy (some header fields are not signed)" which is what we want.
 				val = authres.ResultPolicy + " (some header fields are not signed)"
 			}
+		}
+
+		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
+			brokenSigs = true
+			val = authres.ResultPolicy + " (body limit it used)"
 		}
 
 		res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
