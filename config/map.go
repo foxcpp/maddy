@@ -72,6 +72,39 @@ func (m *Map) AllowUnknown() {
 	m.allowUnknown = true
 }
 
+// EnumList maps a configuration directive to a []string variable.
+//
+// Directive must be in form 'name string1 string2' where each string should be from *allowed*
+// slice. At least one argument should be present.
+//
+// See Map.Custom for description of inheritGlobal and required.
+func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []string, defaultVal []string, store *[]string) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(m *Map, node *Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, m.MatchErr("can't declare a block here")
+		}
+		if len(node.Args) == 1 {
+			return nil, m.MatchErr("expected at least one argument")
+		}
+
+		for _, arg := range node.Args {
+			isAllowed := false
+			for _, str := range allowed {
+				if str == arg {
+					isAllowed = true
+				}
+			}
+			if !isAllowed {
+				return nil, m.MatchErr("invalid argument, valid values are: %v", allowed)
+			}
+		}
+
+		return node.Args, nil
+	}, store)
+}
+
 // Enum maps a configuration directive to a string variable.
 //
 // Directive must be in form 'name string' where string should be from *allowed*
