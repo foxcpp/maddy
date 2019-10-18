@@ -120,9 +120,12 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 			d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
 			val = authres.ResultPass
 		} else {
-			d.log.Printf("bad signature from %s (%s): %v", verif.Domain, verif.Identifier, err)
 			if dkim.IsPermFail(err) {
+				d.log.Printf("bad signature from %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
 				brokenSigs = true
+			}
+			if dkim.IsTempFail(err) {
+				d.log.Printf("temporary verify error for %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
 			}
 			val = authres.ResultFail
 		}
