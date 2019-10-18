@@ -151,6 +151,17 @@ Valid directives:
 
 Toggle debug logging only for this module.
 
+## required_fields <fields...>
+
+Header fields that should be included in each signature. If signature
+lacks any field listed in that directive, it will be considered invalid ("broken").
+Authentication-Results will contain 
+
+Default is 'From Subject'.
+
+Note that From is always required to be signed, even if it is not
+included in this directive.  
+
 ## no_sig_action ...
 
 Action to take when message without any signature is received.

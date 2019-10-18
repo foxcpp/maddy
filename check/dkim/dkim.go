@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	nettextproto "net/textproto"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
@@ -21,6 +22,7 @@ type Check struct {
 	instName string
 	log      log.Logger
 
+	requiredFields  map[string]struct{}
 	brokenSigAction check.FailAction
 	noSigAction     check.FailAction
 	okScore         int32
@@ -37,7 +39,10 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 }
 
 func (c *Check) Init(cfg *config.Map) error {
+	var requiredFields []string
+
 	cfg.Bool("debug", true, false, &c.log.Debug)
+	cfg.StringList("required_fields", false, false, []string{"From", "Subject"}, &requiredFields)
 	cfg.Custom("broken_sig_action", false, false,
 		func() (interface{}, error) {
 			return check.FailAction{}, nil
@@ -51,6 +56,12 @@ func (c *Check) Init(cfg *config.Map) error {
 	if err != nil {
 		return err
 	}
+
+	c.requiredFields = make(map[string]struct{})
+	for _, field := range requiredFields {
+		c.requiredFields[nettextproto.CanonicalMIMEHeaderKey(field)] = struct{}{}
+	}
+
 	return nil
 }
 
@@ -121,14 +132,25 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 			val = authres.ResultPass
 		} else {
 			val = authres.ResultFail
+			brokenSigs = true
 			if dkim.IsPermFail(err) {
 				d.log.Printf("bad signature from %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
-				brokenSigs = true
 				val = authres.ResultPermError
 			}
 			if dkim.IsTempFail(err) {
 				d.log.Printf("temporary verify error for %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
 				val = authres.ResultTempError
+			}
+		}
+
+		signedFields := make(map[string]struct{}, len(verif.HeaderKeys))
+		for _, field := range verif.HeaderKeys {
+			signedFields[nettextproto.CanonicalMIMEHeaderKey(field)] = struct{}{}
+		}
+		for field := range d.c.requiredFields {
+			if _, ok := signedFields[field]; !ok {
+				brokenSigs = true
+				val = authres.ResultPolicy + " (some header fields are not signed)"
 			}
 		}
 
