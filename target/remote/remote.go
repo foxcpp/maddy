@@ -30,12 +30,14 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/mtasts"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/publicsuffix"
 )
 
 const (
-	AuthDisabled = "off"
-	AuthMTASTS   = "mtasts"
-	AuthDNSSEC   = "dnssec"
+	AuthDisabled     = "off"
+	AuthMTASTS       = "mtasts"
+	AuthDNSSEC       = "dnssec"
+	AuthCommonDomain = "common_domain"
 )
 
 type Target struct {
@@ -79,7 +81,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Bool("require_tls", false, false, &rt.requireTLS)
-	cfg.EnumList("authenticate_mx", false, false, []string{AuthDisabled, AuthDNSSEC, AuthMTASTS}, []string{AuthMTASTS}, &mxAuth)
+	cfg.EnumList("authenticate_mx", false, false, []string{AuthDisabled, AuthDNSSEC, AuthMTASTS}, []string{AuthMTASTS, AuthDNSSEC}, &mxAuth)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
@@ -465,6 +467,10 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 			rd.Log.Debugf("authenticated MX (%s) using DNSSEC", mx.Host)
 			authenticated = true
 		}
+		if _, use := rd.rt.mxAuth[AuthCommonDomain]; use && commonDomainCheck(domain, mx.Host) {
+			rd.Log.Printf("authenticated MX (%s) using 'common domain' rule", mx.Host)
+			authenticated = true
+		}
 
 		if !authenticated {
 			if rd.rt.requireMXAuth {
@@ -488,6 +494,19 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 	}
 
 	return candidates, requireTLS, nil
+}
+
+func commonDomainCheck(domain string, mx string) bool {
+	domainPart, err := publicsuffix.EffectiveTLDPlusOne(domain)
+	if err != nil {
+		return false
+	}
+	mxPart, err := publicsuffix.EffectiveTLDPlusOne(strings.TrimSuffix(mx, "."))
+	if err != nil {
+		return false
+	}
+
+	return domainPart == mxPart
 }
 
 func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net.MX, err error) {

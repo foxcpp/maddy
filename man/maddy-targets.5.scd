@@ -106,11 +106,16 @@ Valid values are:
   Disable authentication. THIS MAKES TLS FOR OUTBOUND DELIVERY INSECURE, DON'T USE 
   THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
 - mtasts
-  Use MTA-STS policies for authentication.
+  Use MTA-STS policies for authentication. Note that MX records that are not allowed
+  by an enforced MTA-STS policy will be always skipped.
 - dnssec
   Use Authenticated Data (AD) DNS flag for authentication. This relies on system 
   resolver being able to verify DNSSEC signatures. maddy does not do it itself.
-  Due to implementation details, dnssec is not supported on non-Unix platforms. 
+  Due to implementation details, dnssec is not supported on non-Unix platforms.
+- common_domain
+  Compare eTLD+1 of recipient domain and MX record. This is weak method and
+  should be only used if interoperability with recipients without DNSSEC
+  and MTA-STS is required with require_tls in effect.
   
 Default setting is 'mtasts dnssec'.
 
