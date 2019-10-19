@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	nettextproto "net/textproto"
+	"strings"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
@@ -95,6 +96,11 @@ func (d dkimCheckState) CheckRcpt(rcptTo string) module.CheckResult {
 
 func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if !header.Has("DKIM-Signature") {
+		if d.c.noSigAction.Reject || d.c.noSigAction.Quarantine {
+			d.log.Printf("no signatures present")
+		} else {
+			d.log.Debugf("no signatures present")
+		}
 		return d.c.noSigAction.Apply(module.CheckResult{
 			RejectErr: &smtp.SMTPError{
 				Code:         550,
@@ -115,6 +121,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	textproto.WriteHeader(&b, header)
 	bodyRdr, err := body.Open()
 	if err != nil {
+		d.log.Println("can't open body:", err)
 		return module.CheckResult{RejectErr: err}
 	}
 
@@ -133,14 +140,13 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 			d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
 			val = authres.ResultPass
 		} else {
-			val = authres.ResultFail
 			brokenSigs = true
+			val = authres.ResultFail
+			d.log.Printf("%v (domain = %s, identifier = %s)", strings.TrimPrefix(verif.Err.Error(), "dkim: "), verif.Domain, verif.Identifier)
 			if dkim.IsPermFail(err) {
-				d.log.Printf("bad signature from %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
 				val = authres.ResultPermError
 			}
 			if dkim.IsTempFail(err) {
-				d.log.Printf("temporary verify error for %s (%s): %v", verif.Domain, verif.Identifier, verif.Err)
 				val = authres.ResultTempError
 			}
 		}
