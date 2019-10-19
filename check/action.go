@@ -1,16 +1,13 @@
 package check
 
 import (
-	"strconv"
-
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/module"
 )
 
 type FailAction struct {
-	Quarantine  bool
-	Reject      bool
-	ScoreAdjust int
+	Quarantine bool
+	Reject     bool
 }
 
 func FailActionDirective(m *config.Map, node *config.Node) (interface{}, error) {
@@ -30,17 +27,6 @@ func FailActionDirective(m *config.Map, node *config.Node) (interface{}, error) 
 			Reject:     node.Args[0] == "reject",
 			Quarantine: node.Args[0] == "quarantine",
 		}, nil
-	case "score":
-		if len(node.Args) != 2 {
-			return nil, m.MatchErr("expected 2 arguments")
-		}
-		scoreAdj, err := strconv.Atoi(node.Args[1])
-		if err != nil {
-			return nil, m.MatchErr("%v", err)
-		}
-		return FailAction{
-			ScoreAdjust: scoreAdj,
-		}, nil
 	default:
 		return nil, m.MatchErr("invalid action")
 	}
@@ -53,8 +39,7 @@ func (cfa FailAction) Apply(originalRes module.CheckResult) module.CheckResult {
 		return originalRes
 	}
 
-	originalRes.Quarantine = cfa.Quarantine
-	originalRes.ScoreAdjust = int32(cfa.ScoreAdjust)
+	originalRes.Quarantine = cfa.Quarantine || originalRes.Quarantine
 	if !cfa.Reject {
 		originalRes.RejectErr = nil
 	}

@@ -53,10 +53,6 @@ type CheckResult struct {
 	// This value is copied into MsgMetadata by the msgpipeline.
 	Quarantine bool
 
-	// ScoreAdjust is the value that is added to the MsgMetadata.CheckScore
-	// by the msgpipeline after check execution.
-	ScoreAdjust int32
-
 	// AuthResult is the information that is supposed to
 	// be included in Authentication-Results header.
 	AuthResult []authres.Result

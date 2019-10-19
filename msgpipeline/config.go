@@ -18,14 +18,6 @@ type msgpipelineCfg struct {
 	globalModifiers modify.Group
 	perSource       map[string]sourceBlock
 	defaultSource   sourceBlock
-
-	// If MsgMeta.CheckScore is higher than that value,
-	// message will be rejected.
-	rejectScore *int
-
-	// If MsgMeta.CheckScore is higher than that value,
-	// MsgMeta.Quarantine will be set.
-	quarantineScore *int
 }
 
 func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node) (msgpipelineCfg, error) {
@@ -78,26 +70,6 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				return msgpipelineCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
 			}
 			defaultSrcRaw = node.Children
-		case "quarantine_score":
-			if len(node.Args) != 1 {
-				return msgpipelineCfg{}, config.NodeErr(&node, "exactly one argument required")
-			}
-
-			quarantineScore, err := strconv.Atoi(node.Args[0])
-			if err != nil {
-				return msgpipelineCfg{}, config.NodeErr(&node, "%v", err)
-			}
-			cfg.quarantineScore = &quarantineScore
-		case "reject_score":
-			if len(node.Args) != 1 {
-				return msgpipelineCfg{}, config.NodeErr(&node, "exactly one argument required")
-			}
-
-			rejectScore, err := strconv.Atoi(node.Args[0])
-			if err != nil {
-				return msgpipelineCfg{}, config.NodeErr(&node, "%v", err)
-			}
-			cfg.rejectScore = &rejectScore
 		default:
 			othersRaw = append(othersRaw, node)
 		}

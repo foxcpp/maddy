@@ -64,7 +64,7 @@ func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 		msgMeta:            msgMeta,
 		log:                target.DeliveryLogger(d.Log, msgMeta),
 	}
-	dd.checkRunner = newCheckRunner(msgMeta, dd.log, d.quarantineScore, d.rejectScore)
+	dd.checkRunner = newCheckRunner(msgMeta, dd.log)
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}

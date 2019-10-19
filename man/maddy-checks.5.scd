@@ -38,7 +38,7 @@ check {
 
 *maddy.conf*(5) for main man page.
 
-# ACTIONS & SCORING
+# ACTIONS
 
 When a certain check module thinks the message is "bad", it takes some actions depending
 on its configuration. Most checks follow the same configuration structure and allow
@@ -58,20 +58,6 @@ Mark message as 'quarantined'. If message is then delivered to the local storage
 backend can place the message in the 'Junk' mailbox. Another thing to keep in mind that
 'remote' module (see maddy-targets(5)) will refuse to send quarantined messages.
 
-- Adjust message score
-
-Message score is a integer that defines how likely the message is unwanted. Using message
-scores instead of direct actions (as above) allows to combine decisions of various checks
-and allow checks to override results of other checks.
-
-After all checks are executed, the message score is compared against two values.
-First one is 'quarantine score', if message score is higher than that value, it will 
-be quarantined (see above). Second one is 'reject score', if message score is higher than 
-that value, message will be rejected at connection time.  These values are configured
-using 'quarantine_score' and 'reject_score' directives in 'smtp' module 
-configuration (see maddy.conf(5)). Both values are undefined by default and so are
-not used.
-
 # COMMON DIRECTIVES
 
 All check modules have 'debug' directive to enable debug logging, just like most of maddy modules.
@@ -90,16 +76,6 @@ Reject the message instead of quarantining it.
 - action quarantine
 
 Quarantine the message, this is the default for most checks.
-
-- action score <number>
-
-Increase checks score by <number> (can be negative to decrease it).
-
-Additionally, most checks define the following configuration directive:
-
-- ok_score <number>
-
-Increase checks score by <number> if check passed (can be negative to decrease it).
 
 # DNS CHECKS
 

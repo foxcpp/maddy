@@ -1,13 +1,10 @@
 package msgpipeline
 
 import (
-	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/atomicbool"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/log"
@@ -15,15 +12,11 @@ import (
 )
 
 // checkRunner runs groups of checks, collects and merges results.
-// It takes care of quarantine/reject scores.
 // It also makes sure that each check gets only one state object created.
 type checkRunner struct {
 	msgMeta      *module.MsgMetadata
 	mailFrom     string
 	checkedRcpts []string
-
-	quarantineScore *int
-	rejectScore     *int
 
 	log log.Logger
 
@@ -32,13 +25,11 @@ type checkRunner struct {
 	mergedRes module.CheckResult
 }
 
-func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger, quarantineScore, rejectScore *int) *checkRunner {
+func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger) *checkRunner {
 	return &checkRunner{
-		msgMeta:         msgMeta,
-		quarantineScore: quarantineScore,
-		rejectScore:     rejectScore,
-		log:             log,
-		states:          make(map[module.Check]module.CheckState),
+		msgMeta: msgMeta,
+		log:     log,
+		states:  make(map[module.Check]module.CheckState),
 	}
 }
 
@@ -122,7 +113,6 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 
 func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner func(module.CheckState) module.CheckResult) error {
 	data := struct {
-		checkScore     int32
 		quarantineFlag atomicbool.AtomicBool
 		authResLock    sync.Mutex
 		headerLock     sync.Mutex
@@ -153,9 +143,6 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 				data.headerLock.Unlock()
 			}
 
-			if subCheckRes.ScoreAdjust != 0 {
-				atomic.AddInt32(&data.checkScore, subCheckRes.ScoreAdjust)
-			}
 			if subCheckRes.Quarantine {
 				data.quarantineFlag.Set(true)
 			}
@@ -175,7 +162,6 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 	if data.quarantineFlag.IsSet() {
 		cr.mergedRes.Quarantine = true
 	}
-	cr.mergedRes.ScoreAdjust += data.checkScore
 
 	return nil
 }
@@ -233,23 +219,6 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) error {
 	if cr.mergedRes.Quarantine {
 		cr.log.Printf("quarantined message due to check result")
-		cr.msgMeta.Quarantine = true
-	}
-
-	checkScore := cr.mergedRes.ScoreAdjust
-
-	if cr.rejectScore != nil && checkScore >= int32(*cr.rejectScore) {
-		cr.log.Debugf("score %d >= %d, rejecting", checkScore, *cr.rejectScore)
-		return &smtp.SMTPError{
-			Code:         550,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
-			Message:      fmt.Sprintf("Message is rejected due to multiple local policy violations (score %d)", checkScore),
-		}
-	}
-	if cr.quarantineScore != nil && checkScore >= int32(*cr.quarantineScore) {
-		if !cr.msgMeta.Quarantine {
-			cr.log.Printf("quarantined message due to score %d >= %d", checkScore, *cr.quarantineScore)
-		}
 		cr.msgMeta.Quarantine = true
 	}
 
