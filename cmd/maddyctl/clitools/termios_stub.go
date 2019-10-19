@@ -1,6 +1,6 @@
 //+build !linux
 
-package main
+package clitools
 
 import (
 	"errors"

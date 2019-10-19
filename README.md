@@ -149,7 +149,7 @@ You need to change the following directives to your values:
 
 With that configuration you will get the following:
 - SQLite-based storage for messages
-- Authentication using SQLite-based virtual users DB (see [imapsql-ctl utility](#imapsql-ctl-utility))
+- Authentication using SQLite-based virtual users DB (see [maddyctl utility](#maddyctl-utility))
 - SMTP endpoint for incoming messages on 25 port.
 - SMTP Submission endpoint for messages from your users, on both 587 (STARTTLS) 
 and 465 (TLS) ports.
@@ -177,20 +177,17 @@ below.
 
 Note that it will require users to specify full address as username when logging in.
 
-## imapsql-ctl utility
+## maddyctl utility
 
-Currently, the only supported storage and authentication DB implementation
-is SQL-based go-imap-sql library.
-
-To manage virtual users, mailboxes and messages in them imapsql-ctl utility
+To manage virtual users, mailboxes and messages maddyctl utility
 should be used. It can be installed using the following command:
 ```
-go get github.com/foxcpp/maddy/cmd/imapsql-ctl@master
+go get github.com/foxcpp/maddy/cmd/maddyctl@master
 ```
 **Note:** Use the same version as maddy, e.g. if you installed maddy X.Y.Z, 
 then use the following command:
 ```
-go get github.com/foxcpp/maddy/cmd/imapsql-ctl@vX.Y.Z
+go get github.com/foxcpp/maddy/cmd/maddyctl@vX.Y.Z
 ```
 
 As with any other `go get` command, binary will be placed in `$GOPATH/bin`
@@ -199,12 +196,12 @@ As with any other `go get` command, binary will be placed in `$GOPATH/bin`
 
 Here is the command to create virtual user account:
 ```
-imapsql-ctl users create foxcpp
+maddyctl users create foxcpp
 ```
 
 It assumes you use default locations for state directory and config file.
-If that's not the case, provide `-config` and/or `-state` arguments that
-specify used values.
+If that's not the case, provide `-config` and/or `-state` arguments 
+*before "users" subcommand* that specify used values.
 
 
 ### PostgreSQL instead of SQLite

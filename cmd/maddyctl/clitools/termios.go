@@ -1,6 +1,6 @@
 //+build linux
 
-package main
+package clitools
 
 // Copied from github.com/foxcpp/ttyprompt
 // Commit 087a574, terminal/termios.go

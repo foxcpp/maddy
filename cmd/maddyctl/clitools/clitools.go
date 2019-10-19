@@ -1,26 +1,13 @@
-package main
+package clitools
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
-	"strings"
-
-	"github.com/emersion/go-imap"
-	eimap "github.com/emersion/go-imap"
 )
 
-func FormatAddress(addr *eimap.Address) string {
-	return fmt.Sprintf("%s <%s@%s>", addr.PersonalName, addr.MailboxName, addr.HostName)
-}
-
-func FormatAddressList(addrs []*imap.Address) string {
-	res := make([]string, 0, len(addrs))
-	for _, addr := range addrs {
-		res = append(res, FormatAddress(addr))
-	}
-	return strings.Join(res, ", ")
-}
+var stdinScanner = bufio.NewScanner(os.Stdin)
 
 func Confirmation(prompt string, def bool) bool {
 	selection := "y/N"
@@ -29,12 +16,12 @@ func Confirmation(prompt string, def bool) bool {
 	}
 
 	fmt.Fprintf(os.Stderr, "%s [%s]: ", prompt, selection)
-	if !stdinScnr.Scan() {
-		fmt.Fprintln(os.Stderr, stdinScnr.Err())
+	if !stdinScanner.Scan() {
+		fmt.Fprintln(os.Stderr, stdinScanner.Err())
 		return false
 	}
 
-	switch stdinScnr.Text() {
+	switch stdinScanner.Text() {
 	case "Y", "y":
 		return true
 	case "N", "n":
@@ -102,10 +89,10 @@ func ReadPassword(prompt string) (string, error) {
 
 		return string(buf), nil
 	} else {
-		if !stdinScnr.Scan() {
-			return "", stdinScnr.Err()
+		if !stdinScanner.Scan() {
+			return "", stdinScanner.Err()
 		}
 
-		return stdinScnr.Text(), nil
+		return stdinScanner.Text(), nil
 	}
 }

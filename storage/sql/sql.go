@@ -297,6 +297,10 @@ func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
 	return store.Back.GetOrCreateUser(accountName)
 }
 
+func (store *Storage) Close() error {
+	return store.Back.Close()
+}
+
 func init() {
 	module.Register("sql", New)
 }

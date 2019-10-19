@@ -22,7 +22,7 @@ _testmain.go
 
 # Compiled binaries
 cmd/maddy/maddy
-cmd/imapsql-ctl/imapsql-ctl
+cmd/maddyctl/maddyctl
 cmd/maddy-*-helper/maddy-*-helper
 
 # Config files
