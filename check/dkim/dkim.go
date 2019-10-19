@@ -158,13 +158,13 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 				// Brace-enclosed strings are comments that are allowed in Authentication-Results
 				// field. Since go-msgauth does not allow us to insert them explicitly, we
 				// "smuggle" them in Value field that then gets copied into resulting field
-				// giving us "dkim=policy (some header fields are not signed)" which is what we want.
-				val = authres.ResultPolicy + " (some header fields are not signed)"
+				// giving us "dkim=permerror (some header fields are not signed)" which is what we want.
+				val = authres.ResultPermError + " (some header fields are not signed)"
 			}
 		}
 
 		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
-			val = authres.ResultPolicy + " (body limit it used)"
+			val = authres.ResultPermError + " (body limit it used)"
 		}
 
 		res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
