@@ -131,16 +131,16 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		return module.CheckResult{RejectErr: err}
 	}
 
-	brokenSigs := false
+	goodSigs := false
 
 	res := module.CheckResult{AuthResult: make([]authres.Result, 0, len(verifications))}
 	for _, verif := range verifications {
 		var val authres.ResultValue
 		if verif.Err == nil {
+			goodSigs = true
 			d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
 			val = authres.ResultPass
 		} else {
-			brokenSigs = true
 			val = authres.ResultFail
 			d.log.Printf("%v (domain = %s, identifier = %s)", strings.TrimPrefix(verif.Err.Error(), "dkim: "), verif.Domain, verif.Identifier)
 			if dkim.IsPermFail(err) {
@@ -157,7 +157,6 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		}
 		for field := range d.c.requiredFields {
 			if _, ok := signedFields[field]; !ok {
-				brokenSigs = true
 				// Brace-enclosed strings are comments that are allowed in Authentication-Results
 				// field. Since go-msgauth does not allow us to insert them explicitly, we
 				// "smuggle" them in Value field that then gets copied into resulting field
@@ -167,7 +166,6 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		}
 
 		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
-			brokenSigs = true
 			val = authres.ResultPolicy + " (body limit it used)"
 		}
 
@@ -178,7 +176,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		})
 	}
 
-	if brokenSigs {
+	if !goodSigs {
 		return d.c.brokenSigAction.Apply(res)
 	}
 	res.ScoreAdjust = d.c.okScore

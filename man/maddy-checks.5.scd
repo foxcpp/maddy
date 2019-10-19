@@ -155,7 +155,6 @@ Toggle debug logging only for this module.
 
 Header fields that should be included in each signature. If signature
 lacks any field listed in that directive, it will be considered invalid ("broken").
-Authentication-Results will contain 
 
 Default is 'From Subject'.
 
