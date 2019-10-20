@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-const Version = "unknown (built from source tree)"
+var Version = "unknown (built from source tree)"
 
 func printBuildInfo() {
 	if info, ok := debug.ReadBuildInfo(); ok {
