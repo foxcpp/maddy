@@ -18,6 +18,7 @@ type msgpipelineCfg struct {
 	globalModifiers modify.Group
 	perSource       map[string]sourceBlock
 	defaultSource   sourceBlock
+	doDMARC         bool
 }
 
 func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node) (msgpipelineCfg, error) {
@@ -70,6 +71,19 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				return msgpipelineCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
 			}
 			defaultSrcRaw = node.Children
+		case "dmarc":
+			switch len(node.Args) {
+			case 1:
+				switch node.Args[0] {
+				case "yes":
+					cfg.doDMARC = true
+				case "no":
+				default:
+					return msgpipelineCfg{}, config.NodeErr(&node, "invalid argument for dmarc")
+				}
+			case 0:
+				cfg.doDMARC = true
+			}
 		default:
 			othersRaw = append(othersRaw, node)
 		}

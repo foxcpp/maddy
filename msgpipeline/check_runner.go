@@ -1,12 +1,18 @@
 package msgpipeline
 
 import (
+	"context"
+	"math/rand"
+	"strings"
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
+	"github.com/emersion/go-msgauth/dmarc"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/atomicbool"
 	"github.com/foxcpp/maddy/buffer"
+	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
@@ -17,6 +23,15 @@ type checkRunner struct {
 	msgMeta      *module.MsgMetadata
 	mailFrom     string
 	checkedRcpts []string
+
+	doDMARC     bool
+	dmarcPolicy chan struct {
+		orgDomain  string
+		fromDomain string
+		record     *dmarc.Record
+		err        error
+	}
+	dmarcPolicyCancel context.CancelFunc
 
 	log log.Logger
 
@@ -29,7 +44,13 @@ func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger) *checkRunner {
 	return &checkRunner{
 		msgMeta: msgMeta,
 		log:     log,
-		states:  make(map[module.Check]module.CheckState),
+		dmarcPolicy: make(chan struct {
+			orgDomain  string
+			fromDomain string
+			record     *dmarc.Record
+			err        error
+		}, 1),
+		states: make(map[module.Check]module.CheckState),
 	}
 }
 
@@ -210,16 +231,101 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 		return err
 	}
 
+	if cr.doDMARC {
+		cr.fetchDMARC(header)
+	}
+
 	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
 		res := s.CheckBody(header, body)
 		return res
 	})
 }
 
+func (cr *checkRunner) fetchDMARC(header textproto.Header) {
+	var ctx context.Context
+	ctx, cr.dmarcPolicyCancel = context.WithCancel(context.Background())
+	go func() {
+		orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(ctx, header)
+		cr.dmarcPolicy <- struct {
+			orgDomain  string
+			fromDomain string
+			record     *dmarc.Record
+			err        error
+		}{
+			orgDomain:  orgDomain,
+			fromDomain: fromDomain,
+			record:     record,
+			err:        err,
+		}
+	}()
+}
+
+func (cr *checkRunner) applyDMARC() error {
+	dmarcData := <-cr.dmarcPolicy
+	dmarcFail := false
+	var result authres.DMARCResult
+
+	if dmarcData.err != nil {
+		result = authres.DMARCResult{
+			Value:  authres.ResultPermError,
+			Reason: dmarcData.err.Error(),
+			From:   dmarcData.orgDomain,
+		}
+		if dmarc.IsTempFail(dmarcData.err) {
+			result.Value = authres.ResultTempError
+		}
+		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
+		dmarcFail = true
+	} else {
+		result = maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult,
+			cr.msgMeta.SrcHostname, cr.msgMeta.OriginalFrom)
+		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
+		dmarcFail = result.Value != authres.ResultPass
+	}
+
+	if !dmarcFail {
+		cr.log.Debugf("DMARC check passed (p = %s, orgDomain = %s)", dmarcData.record.Policy, dmarcData.orgDomain)
+		return nil
+	}
+	// TODO: Report generation.
+
+	if dmarcData.record.Percent == nil || rand.Int31n(100) < int32(*dmarcData.record.Percent) {
+		cr.log.Printf("DMARC check failed: %s (p = %s, orgDomain = %s)",
+			result.Reason, dmarcData.record.Policy, dmarcData.orgDomain)
+	} else {
+		cr.log.Printf("DMARC check ignored: %s (pct = %s, p = %s, orgDomain = %s)",
+			result.Reason, dmarcData.record.Percent, dmarcData.record.Policy, dmarcData.orgDomain)
+		return nil
+	}
+
+	policy := dmarcData.record.Policy
+	if !strings.EqualFold(dmarcData.orgDomain, dmarcData.fromDomain) && dmarcData.record.SubdomainPolicy != "" {
+		policy = dmarcData.record.SubdomainPolicy
+	}
+
+	switch policy {
+	case dmarc.PolicyReject:
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 1},
+			Message:      "DMARC check failed",
+		}
+	case dmarc.PolicyQuarantine:
+		cr.msgMeta.Quarantine = true
+	}
+	return nil
+}
+
 func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) error {
 	if cr.mergedRes.Quarantine {
 		cr.log.Printf("quarantined message due to check result")
 		cr.msgMeta.Quarantine = true
+	}
+
+	if cr.doDMARC {
+		if err := cr.applyDMARC(); err != nil {
+			return err
+		}
 	}
 
 	// After results for all checks are checked, authRes will be populated with values
@@ -235,6 +341,9 @@ func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) e
 }
 
 func (cr *checkRunner) close() {
+	if cr.dmarcPolicyCancel != nil {
+		cr.dmarcPolicyCancel()
+	}
 	for _, state := range cr.states {
 		state.Close()
 	}
