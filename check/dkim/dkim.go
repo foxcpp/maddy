@@ -149,12 +149,8 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 
 	res := module.CheckResult{AuthResult: make([]authres.Result, 0, len(verifications))}
 	for _, verif := range verifications {
-		var val authres.ResultValue
-		if verif.Err == nil {
-			goodSigs = true
-			d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
-			val = authres.ResultPass
-		} else {
+		val := authres.ResultValue(authres.ResultPass)
+		if verif.Err != nil {
 			val = authres.ResultFail
 			d.log.Printf("%v (domain = %s, identifier = %s)", strings.TrimPrefix(verif.Err.Error(), "dkim: "), verif.Domain, verif.Identifier)
 			if dkim.IsPermFail(err) {
@@ -163,7 +159,17 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 			if dkim.IsTempFail(err) {
 				val = authres.ResultTempError
 			}
+
+			res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
+				Value:      val,
+				Domain:     verif.Domain,
+				Identifier: verif.Identifier,
+			})
+			continue
 		}
+
+		goodSigs = true
+		d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
 
 		signedFields := make(map[string]struct{}, len(verif.HeaderKeys))
 		for _, field := range verif.HeaderKeys {
