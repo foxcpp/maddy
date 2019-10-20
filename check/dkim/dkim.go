@@ -120,13 +120,29 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	bodyRdr, err := body.Open()
 	if err != nil {
 		d.log.Println("can't open body:", err)
-		return module.CheckResult{RejectErr: err}
+		return module.CheckResult{
+			RejectErr: err,
+			AuthResult: []authres.Result{
+				&authres.DKIMResult{
+					Value:  authres.ResultPermError,
+					Reason: err.Error(),
+				},
+			},
+		}
 	}
 
 	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
 	if err != nil {
 		d.log.Println("unexpected verification fail:", err)
-		return module.CheckResult{RejectErr: err}
+		return module.CheckResult{
+			RejectErr: err,
+			AuthResult: []authres.Result{
+				&authres.DKIMResult{
+					Value:  authres.ResultPermError,
+					Reason: err.Error(),
+				},
+			},
+		}
 	}
 
 	goodSigs := false
