@@ -15,7 +15,7 @@ func printBuildInfo() {
 			fmt.Println("maddy", info.Main.Version, info.Main.Sum)
 		}
 	} else {
-		fmt.Println("maddy", Version, "(GOPATH build)")
+		fmt.Println("maddy", Version)
 		fmt.Println()
 		fmt.Println("Building maddy in GOPATH mode can lead to wrong dependency")
 		fmt.Println("versions being used. Problems created by this will not be")
