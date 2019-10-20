@@ -150,9 +150,11 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	res := module.CheckResult{AuthResult: make([]authres.Result, 0, len(verifications))}
 	for _, verif := range verifications {
 		val := authres.ResultValue(authres.ResultPass)
+		reason := ""
 		if verif.Err != nil {
 			val = authres.ResultFail
-			d.log.Printf("%v (domain = %s, identifier = %s)", strings.TrimPrefix(verif.Err.Error(), "dkim: "), verif.Domain, verif.Identifier)
+			reason = strings.TrimPrefix(verif.Err.Error(), "dkim: ")
+			d.log.Printf("%v (domain = %s, identifier = %s)", reason, verif.Domain, verif.Identifier)
 			if dkim.IsPermFail(err) {
 				val = authres.ResultPermError
 			}
@@ -162,6 +164,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 
 			res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
 				Value:      val,
+				Reason:     reason,
 				Domain:     verif.Domain,
 				Identifier: verif.Identifier,
 			})
@@ -177,20 +180,19 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		}
 		for field := range d.c.requiredFields {
 			if _, ok := signedFields[field]; !ok {
-				// Brace-enclosed strings are comments that are allowed in Authentication-Results
-				// field. Since go-msgauth does not allow us to insert them explicitly, we
-				// "smuggle" them in Value field that then gets copied into resulting field
-				// giving us "dkim=permerror (some header fields are not signed)" which is what we want.
-				val = authres.ResultPermError + " (some header fields are not signed)"
+				val = authres.ResultPermError
+				reason = "some header fields are not signed"
 			}
 		}
 
 		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
-			val = authres.ResultPermError + " (body limit it used)"
+			val = authres.ResultPermError
+			reason = "body limit it used"
 		}
 
 		res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
 			Value:      val,
+			Reason:     reason,
 			Domain:     verif.Domain,
 			Identifier: verif.Identifier,
 		})
