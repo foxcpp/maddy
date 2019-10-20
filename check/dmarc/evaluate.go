@@ -82,7 +82,9 @@ func isAligned(orgDomain, authDomain string, mode dmarc.AlignmentMode) bool {
 		return strings.EqualFold(orgDomain, authDomain) ||
 			strings.HasPrefix(authDomain, "."+orgDomain)
 	}
-	return false
+	// Relaxed alignment by default.
+	return strings.EqualFold(orgDomain, authDomain) ||
+		strings.HasPrefix(authDomain, "."+orgDomain)
 }
 
 func extractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
