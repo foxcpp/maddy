@@ -35,6 +35,8 @@ github.com/emersion/go-message v0.10.8-0.20190830183645-45550ec58166/go.mod h1:C
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-msgauth v0.2.0 h1:/Ynvbm+9AWssfv31PXZb1S519Wp/2uyImbjwRWCaN00=
 github.com/emersion/go-msgauth v0.2.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
+github.com/emersion/go-msgauth v0.2.1-0.20191021093543-56e7fdd4b849 h1:cSIMtG9jNCrfBgU3l5/D2JJQogXuGUhXttUusE5ABBI=
+github.com/emersion/go-msgauth v0.2.1-0.20191021093543-56e7fdd4b849/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL/Wt71kdolp6yaD4fLIQz638E6JEt0=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-sasl v0.0.0-20190520160400-47d427600317 h1:tYZxAY8nu3JJQKios9f27Sbvbkfm4XHXT476gVtszu0=
