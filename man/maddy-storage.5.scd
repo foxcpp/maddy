@@ -1,33 +1,47 @@
-maddy-targets(5) "maddy mail server - storage backends"
+maddy-targets(5) "maddy mail server" "maddy reference documentation"
 
-# INTRODUCTION
+# Storage backends
 
-This man page describes modules that can be used to store messages for local recipients.
+maddy storage interface is built with IMAP in mind and directly represents
+IMAP data model. That is, maddy storage does have the concept of folders,
+flags, message UIDs, etc defined as in RFC 3501.
 
-Most likely, you are going to use these modules with 'storage' directive of 
-IMAP endpoint (see maddy.conf(5)).
+This man page lists supported storage backends along with supported
+configuration directives for each.
 
-# SEE ALSO
+Most likely, you are going to modules listed here in 'storage' directive for
+IMAP endpoint module (see *maddy-imap*(5)).
 
-*maddy.conf*(5) for main man page.
+# SQL-based database module (sql)
 
-# SQL MODULE
+Module that stores message metadata and indexes in a SQL-based relational
+database.
 
-SQL-based storage backend. Can be used as a storage backend (for IMAP),
-authentication provider (IMAP & SMTP) or delivery target (SMTP).
+Message contents are stored in an "external store", currently the only
+supported "external store" is a filesystem directory, enabled by 'fsstore'
+directive.
+
+Supported RDBMS:
+- SQLite 3.25.0
+- PostgreSQL 9.6 or newer
+
+Can be used as a storage backend (for IMAP), authentication backend (IMAP &
+SMTP) or delivery target (SMTP).
 
 See https://github.com/foxcpp/go-imap-sql for more information.
 
-Valid configuration directives:
+## Configuration directives
 
-## driver <string>
+*Syntax*: driver _string_ ++
+*Default*: not specified
 
 REQUIRED.
 
-Use a specified driver to communicate with the database.  Supported values:
+Use a specified driver to communicate with the database. Supported values:
 sqlite3, postgres.
 
-## dsn <string>
+*Syntax*: dsn _string_ ++
+*Default*: not specified
 
 REQUIRED.
 
@@ -36,8 +50,10 @@ Data Source Name, the driver-specific value that specifies the database to use.
 For SQLite3 this is just a file path.
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
 
-## fsstore
-## fsstore <directory>
+*Syntax*: ++
+    fsstore ++
+    fsstore _directory_ ++
+*Default*: not specified
 
 REQUIRED.
 
@@ -46,48 +62,79 @@ Store message contents in filesystem directory.
 If directory path is not specified - it will be derived from configuration
 block name ('StateDirectory/sql-NAME-fsstore').
 
-## compression <algorithm> [params]
+*Syntax*: ++
+    compression off ++
+    compression _algorithm_ ++
+    compression _algorithm_ _level_ ++
+*Default*: off
 
 Apply compression to message contents.
+Supported algorithms: lz4, zstd.
 
-Supported algorithms are: lz4, zstd.
-'params' specify compression level.
+*Syntax*: appendlimit _size_ ++
+*Default*: 32M
 
-Default is 'compress off' which disables compression.
+Don't allow users to add new messages larger than 'size'.
 
-## appendlimit <size>
+This does not affect messages added when using module as a delivery target.
+Use 'max_message_size' directive in SMTP endpoint module to restrict it too.
 
-Don't allow users to add new messages larger than 'size'. The default is 32 MiB.
+*Syntax*: debug _boolean_ ++
+*Default*: global directive value
 
-See SYNTAX for size value format (unit suffixes, etc).
+Enable verbose logging.
 
-## debug [yes/no]
+*Syntax*: junk_mailbox _name_ ++
+*Default*: Junk
 
-Enable verbose logging only for this configuration block.
+The folder to put quarantined messages in. Thishis setting is not used if user
+does have a folder with "Junk" special-use attribute.
 
-## junk_mailbox <name>
+*Syntax*: sqlite_exclusive_lock _boolean_ ++
+*Default*: no
 
-Default directory to put quarantined messages in. Note that this setting is not used if user 
-does have a mailbox with "Junk" special-use attribute. 
+SQLite-specific performance tuning option. Slightly decereases ovehead of
+DB locking at cost of making DB inaccessible for other processes (including
+maddyctl utility).
 
-## sqlite_exclusive_lock
-## sqlite_cache_size <value>
-## sqlite_busy_timeout <value>
+*Syntax*: sqlite_cache_size _integer_ ++
+*Default*: defined by SQLite
 
-SQLite3-specific performance tuning options.
-cache_size and busy_timeout change corresponding PRAGMA options. exclusive_lock
-sets locking_mode PRAGMA to EXCLUSIVE.
+SQLite page cache size. If positive - specifies amount of pages (1 page - 4
+KiB) to keep in cache. If negative - specifies approximate upper bound
+of cache size in KiB.
 
-If cache_size is not used, SQLite3 default is used. If busy_timeout is not set,
-500000 is used.
+*Syntax*: sqlite_busy_timeout _integer_ ++
+*Default*: 5000000
 
-See https://sqlite.org/pragma.html for more details.
+SQLite-specific performance tuning option. Amount of milliseconds to wait
+before giving up on DB lock.
 
-## storage_perdomain [yes/no]
+*Syntax*: storage_perdomain _boolean_ ++
+*Default*: no
 
-Override global storage_perdomain directive.
+Don't remove domain part of username when accessing the underlying storage and
+require it to be present. Can be used if you want user@domain1 and user@domain2
+to be different accounts at the storage level.
 
-## auth_perdomain [yes/no]
-## auth_domains ...
+Typically used with 'auth_domain'.
 
-Override corresponding global directives.
+*Syntax*: auth_perdomain _boolean_ ++
+*Default*: global directive value
+
+Don't remove domain part of username when authenticating and require it to be
+present. Can be used if you want user@domain1 and user@domain2 to be different
+accounts.
+
+*Syntax*: auth_domains _domains..._ ++
+*Default*: not specified
+
+Domains that should be allowed in username during authentication.
+
+For example, if 'auth_domains' is set to "domain1 domain2", then
+username, username@domain1 and username@domain2 will be accepted as valid login
+name in addition to just username.
+
+If used without 'auth_perdomain', domain part will be removed from login before
+check with underlying auth. mechanism. If 'auth_perdomain' is set, then
+auth_domains must be also set and domain part WILL NOT be removed before check.
