@@ -6,7 +6,8 @@ better.
 ## Reporting bugs
 
 **Issue tracker is meant to be used only if you have a problem or a feature
-request. If you just have some questions about maddy - prefer to use the [IRC channel](https://webchat.freenode.net/?channels=%23%23maddy).**
+request. If you just have some questions about maddy - prefer to use the
+[IRC channel](https://webchat.freenode.net/?channels=%23%23maddy).**
 
 - Provide log files, preferably with 'debug' directive set.
 - Provide the exact steps to reproduce the issue.
