@@ -1,31 +1,31 @@
 ## Design goals
 
-- **Make it easy to deploy**
-  Minimal configuration changes should be required to get typical mail server
-  running. Though, it is important to avoid making guesses for "zero
-  configuration". Wrong guess is worse than no guess.
+- **Make it easy to deploy.**
+  Minimal configuration changes should be required to get a typical mail server
+  running. Though, it is important to avoid making guesses for a
+  "zero-configuration". A wrong guess is worse than no guess.
 
-- **Provide 80% of needed components**
+- **Provide 80% of needed components.**
   E-mail has evolved into a huge mess. With a single package to do one thing, it
-  quickly turns into maintenance nightmare. Put all stuff mail server typically
-  needs into a single package. Though, leave controversial or highly opinionated
-  stuff out, don't force people to do things our way (see next point).
+  quickly turns into a maintenance nightmare. Put all stuff mail server
+  typically needs into a single package. Though, leave controversial or highly
+  opinionated stuff out, don't force people to do things our way
+  (see next point).
 
-- **Interoperate with existing software**
+- **Interoperate with existing software.**
   Implement (de-facto) standard protocols not only for clients but also for
   various server-side helper software (content filters, etc).
 
-- **Be secure but interoperable**
+- **Be secure but interoperable.**
   Verify DKIM signatures by default, use DMRAC policies by default, etc. This
   makes default setup as secure as possible while maintaining reasonable
-  interoperability. Users can configure maddy to be more strict at cost of
-  interoperability.
+  interoperability. Though, users can configure maddy to be stricter.
 
-- **Acheive flexibility through composability**
-  Allow to connect components in arbitrary ways instead of restricting users to
+- **Achieve flexibility through composability.**
+  Allow connecting components in arbitrary ways instead of restricting users to
   predefined templates.
 
-- **Use Go concurrency features to full extent**
+- **Use Go concurrency features to a full extent.**
   Do as much I/O as possible in parallel to minimize latencies. It is silly to
   not do so when it is possible.
 
@@ -38,7 +38,7 @@ user documentation to understand how things work from the user perspective as
 well.
 
 - User documentation: [maddy.conf(5)](maddy.conf.5.scd)
-- Design rationale: [Comments on design (Wiki)](https://github.com/foxcpp/maddy/wiki/Dev:-Comments-on-design)
+- Design rationale: [Comments on design (Wiki)][1]
 
 There are components called "modules". They are represented by objects
 implementing the module.Module interface. Each module gets its unique name.
@@ -76,15 +76,15 @@ that upstream. Unique names requirement helps a lot here.
 "Semantical names" idea explained above is not applied when modules instances
 are defined "inline" (in place they are used in). These instances have no
 instance names and are not added to the global map so they can not be accessed
-by modules other than one that used ConfigFromNode on corresponding config
+by modules other than one that used ConfigFromNode on the corresponding config
 block. All arguments after the module name in an inline definition represent
 "inline arguments". They are passed to the module instance directly and not
 used anyhow by other code (i.e. they are not guaranteed to be unique).
 
 ### A word on error logging
 
-Shortly put, it is module responsibility to log errors it generated since it is
-assumed it can provide all useful details about possible causes.
+Shortly put, it is a module's responsibility to log errors it generated since it
+is assumed it can provide all useful details about possible causes.
 
 Modules should not log errors received from other modules. However, it is 
 fine to log decisions made based on these errors.
@@ -92,9 +92,11 @@ fine to log decisions made based on these errors.
 This does not apply to "debug log", anything can be logged using it if it is
 considered useful for troubleshooting.
 
-Here is the example: remote module logs all errors received from remote server
-and passes them to the caller. queue module only logs whether delivery to
-certain recipient is permanently failed or it will be retried. When used
+Here is the example: remote module logs all errors received from the remote
+server and passes them to the caller. Queue module only logs whether delivery to
+the certain recipient is permanently failed or it will be retried. When used
 together, remote module will provide logs about concrete errors happened and
 queue module will provide information about tries made and scheduled to be made
-in future.
+in the future.
+
+[1]: https://github.com/foxcpp/maddy/wiki/Dev:-Comments-on-design

@@ -4,10 +4,11 @@
 
 Simple, fast, secure all-in-one mail server.
 
-**⚠️ Disclaimer: maddy is in early development, many planned features are missing and bugs are waiting to eat your messages**
+**⚠️ Disclaimer: maddy is in early development, many planned features are
+missing and bugs are waiting to eat your messages**
 
-Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you have
-any questions or just want to talk about maddy.
+Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you
+have any questions or just want to talk about maddy.
 
 ## Table of contents
 
@@ -32,7 +33,8 @@ any questions or just want to talk about maddy.
 - [MTA-STS](https://www.hardenize.com/blog/mta-sts) support
 - DNS sanity checks for incoming deliveries
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) verification support
-- [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing) (aka plus-addressing) support
+- [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing)
+  (aka plus-addressing) support
 
 Planned features:
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) signing
@@ -46,7 +48,8 @@ Planned features:
 
 ## Installation
 
-Pre-built binaries for releases are available [here](https://github.com/foxcpp/maddy/releases).
+Pre-built binaries for releases are available
+[here](https://github.com/foxcpp/maddy/releases).
 
 ## Building from source
 
@@ -66,20 +69,22 @@ Pre-built binaries for releases are available [here](https://github.com/foxcpp/m
   
 - C compiler (**optional**, set CGO_ENABLED env. variable to 0 to disable)
 
-  Required for SQLite3-based storage (default configuration) and PAM authentication.
-  SQLite3 support can be disabled using nosqlite3 build tag:
+  Required for SQLite3-based storage (default configuration) and PAM
+  authentication. SQLite3 support can be disabled using nosqlite3 build tag:
   ```
   GO111MODULE=on go get github.com/foxcpp/maddy/cmd/maddy@master -tags 'nosqlite3' 
   ```
  
 - libpam (**optional**, not needed by default)
 
-  Used for PAM auth helper binary or direct PAM use, later is disabled by default 
-  and can be enabled using 'libpam' build tag (e.g. `go get ... -tags 'libpam nosqlite3'`)
+  Used for PAM auth helper binary or direct PAM use, later is disabled by
+  default and can be enabled using 'libpam' build tag
+  (e.g. `go get ... -tags 'libpam nosqlite3'`)
   
-**Note:** Main executable built with CGO_ENABLED=0 does not depend on any system library
-and can be moved freely between systems. Executable built without libpam but with CGO_ENABLED=1 (default)
-depends only on libc. Executable built with libpam depends on system libpam, obviously.
+**Note:** Main executable built with CGO_ENABLED=0 does not depend on any system
+library and can be moved freely between systems. Executable built without libpam
+but with CGO_ENABLED=1 (default) depends only on libc. Executable built with
+libpam depends on system libpam, obviously.
 
 ### Building
 
@@ -88,7 +93,7 @@ First, make sure Go Modules support is enabled:
 export GO111MODULE=on
 ```
 
-Command to build latest commit from master branch:
+Command to build latest commit from the master branch:
 ```
 go get github.com/foxcpp/maddy/cmd/maddy@master
 ```
@@ -105,17 +110,17 @@ $HOME/go/bin).
 
 ## Quick start
 
-You need to make sure configuration is placed in /etc/maddy/maddy.conf
-(copy maddy.conf from this repo) and also /var/lib/maddy and /run/maddy exist
-and writable.
+You need to make sure configuration is placed in /etc/maddy/maddy.conf (copy
+maddy.conf from this repo) and also /var/lib/maddy and /run/maddy exist and
+writable.
 
 Then, simply run the executable:
 ```
 maddy 
 ```
 
-You can specify custom locations for all directories and config file, so
-here is no need to mess with directories in your system:
+You can specify custom locations for all directories and config file, so here is
+no need to mess with directories in your system:
 ```
 maddy -config /maddy.conf -state /state -runtime /tmp 
 ```
@@ -123,14 +128,14 @@ maddy will create specified directories for you.
 
 ### systemd unit
 
-Alternatively, you can use the systemd unit file from [dist/](dist) directory in this repo.
-It will automatically set-up user account and directories. Additionally, it 
-will apply strict sandbox to maddy to ensure additional security.
+Alternatively, you can use the systemd unit file from [dist/](dist) directory in
+this repo. It will automatically set-up user account and directories.
+Additionally, it will apply strict sandbox to maddy to ensure additional
+security.
 
 You need a relatively new systemd version (235+) both of these things to work
-properly. Otherwise, you still have to manually create a user account and 
-the state + runtime directories with read-write permissions for 
-the maddy user. 
+properly. Otherwise, you still have to manually create a user account and the
+state + runtime directories with read-write permissions for the maddy user. 
 
 ## Configuration
 
@@ -149,7 +154,8 @@ You need to change the following directives to your values:
 
 With that configuration you will get the following:
 - SQLite-based storage for messages
-- Authentication using SQLite-based virtual users DB (see [maddyctl utility](#maddyctl-utility))
+- Authentication using SQLite-based virtual users DB
+  (see [maddyctl utility](#maddyctl-utility))
 - SMTP endpoint for incoming messages on 25 port.
 - SMTP Submission endpoint for messages from your users, on both 587 (STARTTLS) 
 and 465 (TLS) ports.
@@ -172,10 +178,11 @@ $(local_domains) = example.com example.org
 ```
 admin@example.com and admin@example.org will refer to the same mailbox.
 
-If you want to make them separate - add `auth_perdomain` and `storage_perdomain` directives
-below.
+If you want to make them separate - add `auth_perdomain` and `storage_perdomain`
+directives below.
 
-Note that it will require users to specify full address as username when logging in.
+Note that it will require users to specify the full address as a username when
+logging in.
 
 ## maddyctl utility
 
@@ -206,8 +213,8 @@ If that's not the case, provide `-config` and/or `-state` arguments
 
 ### PostgreSQL instead of SQLite
 
-If you want to use PostgreSQL instead of SQLite 3 (e.g. you want better access concurrency), here is 
-what you need to do:
+If you want to use PostgreSQL instead of SQLite 3 (e.g. you want better access
+concurrency), here is what you need to do:
 
 1. Install, configure and start PostgreSQL server
 
@@ -245,24 +252,22 @@ the [project wiki](https://github.com/foxcpp/maddy/wiki).
 
 ## System authentication helper binaries
 
-By default maddy is running as a unprivileged user, meaning it can't read
+By default maddy is running as an unprivileged user, meaning it can't read
 system account passwords. There are two options:
-- Run maddy as a privileged user instead (not recommended)
 
-This way you can use maddy without messing with helper binaries, but that
-will also give maddy a little bit too many permissions.
+##### Run maddy as a privileged user instead (not recommended):
+
+This way you can use maddy without messing with helper binaries, but that also
+gives maddy too many permissions.
   
-- Let maddy start privileged (setuid) helper binary to perform authentication
+##### Let maddy start a privileged helper binary to perform authentication:
 
-Compile [cmd/maddy-pam-helper](cmd/maddy-pam-helper) and/or
-[cmd/maddy-shadow-helper](cmd/maddy-shadow-helper).
-
-Put them into `/usr/lib/maddy` and make them setuid root (there are also other
-more restrictive options, check README in the executable directories).
-
-Add `use_helper` to `pam` or `shadow` configuration block in your config.
-
-Modify systemd unit to use less strict sandbox and disable DynamicUser.
+1. Compile [cmd/maddy-pam-helper](cmd/maddy-pam-helper) and/or
+   [cmd/maddy-shadow-helper](cmd/maddy-shadow-helper).
+2. Put them into `/usr/lib/maddy` and make them setuid root (there are also
+   other more restrictive options, check README in the executable directories).
+3. Add `use_helper` to `pam` or `shadow` configuration block in your config.
+4. Modify systemd unit to use less strict sandbox and disable DynamicUser.
 
 ## Contributing
 
@@ -270,4 +275,4 @@ See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ## License
 
-MIT. Just do whatever you want.
+The code is under MIT license. See [LICENSE](LICENSE) for more information.
