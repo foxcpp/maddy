@@ -293,7 +293,7 @@ func (cr *checkRunner) applyDMARC() error {
 		cr.log.Printf("DMARC check failed: %s (p = %s, orgDomain = %s)",
 			result.Reason, dmarcData.record.Policy, dmarcData.orgDomain)
 	} else {
-		cr.log.Printf("DMARC check ignored: %s (pct = %s, p = %s, orgDomain = %s)",
+		cr.log.Printf("DMARC check ignored: %s (pct = %v, p = %s, orgDomain = %s)",
 			result.Reason, dmarcData.record.Percent, dmarcData.record.Policy, dmarcData.orgDomain)
 		return nil
 	}
