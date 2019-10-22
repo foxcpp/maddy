@@ -58,10 +58,8 @@ func (dt Target) Name() string {
 }
 
 type testTargetDelivery struct {
-	msg       Msg
-	tgt       *Target
-	aborted   bool
-	committed bool
+	msg Msg
+	tgt *Target
 }
 
 type testTargetDeliveryPartial struct {
@@ -114,6 +112,11 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, he
 	defer body.Close()
 
 	dtd.msg.Body, err = ioutil.ReadAll(body)
+	if err != nil {
+		for rcpt, err := range dtd.tgt.PartialBodyErr {
+			c.SetStatus(rcpt, err)
+		}
+	}
 }
 
 func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) error {
@@ -243,14 +246,18 @@ func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to 
 		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
 			t.Log("-- delivery.Abort")
-			delivery.Abort()
+			if err := delivery.Abort(); err != nil {
+				t.Log("-- delivery.Abort:", err)
+			}
 			return encodedID, err
 		}
 	}
 	t.Log("-- delivery.Body")
 	if err := delivery.Body(textproto.Header{}, body); err != nil {
 		t.Log("-- delivery.Abort")
-		delivery.Abort()
+		if err := delivery.Abort(); err != nil {
+			t.Log("-- delivery.Abort:", err)
+		}
 		return encodedID, err
 	}
 	t.Log("-- delivery.Commit")

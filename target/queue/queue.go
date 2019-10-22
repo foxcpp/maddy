@@ -79,7 +79,7 @@ type partialError struct {
 
 	// Fields can be accessed without holding this lock, but only after
 	// target.BodyNonAtomic/Body returns.
-	statusLock sync.Mutex
+	statusLock *sync.Mutex
 }
 
 // SetStatus implements module.StatusCollector so partialError can be
@@ -251,14 +251,14 @@ func (q *Queue) dispatch() {
 
 		q.deliveryWg.Add(1)
 		go func() {
-			q.Log.Debugln("waiting on delivery semaphore for", slot.Value)
+			q.Log.Debugln("waiting on delivery semaphore for", id)
 			q.deliverySemaphore <- struct{}{}
 			defer func() {
 				<-q.deliverySemaphore
 				q.deliveryWg.Done()
 			}()
 
-			q.Log.Debugln("delivery semaphore acquired for", slot.Value)
+			q.Log.Debugln("delivery semaphore acquired for", id)
 			meta, header, body, err := q.openMessage(id)
 			if err != nil {
 				q.Log.Printf("failed to read message: %v", err)
@@ -342,7 +342,8 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
 	perr := partialError{
-		Errs: map[string]error{},
+		Errs:       map[string]error{},
+		statusLock: new(sync.Mutex),
 	}
 
 	deliveryTarget := q.Target
@@ -807,7 +808,9 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	defer func() {
 		if err != nil {
 			dl.Printf("failed to enqueue DSN: %v", err)
-			dsnDelivery.Abort()
+			if err := dsnDelivery.Abort(); err != nil {
+				dl.Printf("failed to abort DSN delivery: %v", err)
+			}
 		}
 	}()
 

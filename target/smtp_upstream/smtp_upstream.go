@@ -103,10 +103,10 @@ type delivery struct {
 	u   *Upstream
 	log log.Logger
 
-	msgMeta    *module.MsgMetadata
-	mailFrom   string
-	recipients []string
-	hdr        textproto.Header
+	msgMeta  *module.MsgMetadata
+	mailFrom string
+	body     io.ReadCloser
+	hdr      textproto.Header
 
 	client *smtp.Client
 }
@@ -210,28 +210,34 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 		return err
 	}
 
+	d.body = r
+	d.hdr = header
+	return nil
+}
+
+func (d *delivery) Abort() error {
+	d.body.Close()
+	return d.client.Close()
+}
+
+func (d *delivery) Commit() error {
+	defer d.client.Close()
+	defer d.body.Close()
+
 	wc, err := d.client.Data()
 	if err != nil {
 		return err
 	}
 
-	if err := textproto.WriteHeader(wc, header); err != nil {
+	if err := textproto.WriteHeader(wc, d.hdr); err != nil {
 		return err
 	}
 
-	if _, err := io.Copy(wc, r); err != nil {
+	if _, err := io.Copy(wc, d.body); err != nil {
 		return err
 	}
 
 	return wc.Close()
-}
-
-func (d *delivery) Abort() error {
-	return d.client.Close()
-}
-
-func (d *delivery) Commit() error {
-	return d.client.Close()
 }
 
 func init() {

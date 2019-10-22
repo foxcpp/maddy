@@ -47,7 +47,9 @@ func BenchmarkStorage_Delivery(b *testing.B) {
 	if u, err := be.GetOrCreateUser(randomKey); err != nil {
 		b.Fatal(err)
 	} else {
-		u.Logout()
+		if err := u.Logout(); err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
@@ -60,7 +62,9 @@ func BenchmarkStorage_DeliveryLZ4(b *testing.B) {
 	if u, err := be.GetOrCreateUser(randomKey); err != nil {
 		b.Fatal(err)
 	} else {
-		u.Logout()
+		if err := u.Logout(); err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
@@ -73,7 +77,9 @@ func BenchmarkStorage_DeliveryZstd(b *testing.B) {
 	if u, err := be.GetOrCreateUser(randomKey); err != nil {
 		b.Fatal(err)
 	} else {
-		u.Logout()
+		if err := u.Logout(); err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})

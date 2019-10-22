@@ -32,33 +32,11 @@ const testHeaderString = "Content-Type: multipart/mixed; boundary=message-bounda
 	"To: Taki Tachibana <taki.tachibana@example.org>\r\n" +
 	"\r\n"
 
-const testHeaderFromToString = "From: Mitsuha Miyamizu <mitsuha.miyamizu@example.org>\r\n" +
-	"To: Taki Tachibana <taki.tachibana@example.org>\r\n" +
-	"\r\n"
-
-const testHeaderDateString = "Date: Sat, 18 Jun 2016 12:00:00 +0900\r\n" +
-	"Date: Sat, 19 Jun 2016 12:00:00 +0900\r\n" +
-	"\r\n"
-
-const testHeaderNoFromToString = "Content-Type: multipart/mixed; boundary=message-boundary\r\n" +
-	"Date: Sat, 18 Jun 2016 12:00:00 +0900\r\n" +
-	"Date: Sat, 19 Jun 2016 12:00:00 +0900\r\n" +
-	"Reply-To: Mitsuha Miyamizu <mitsuha.miyamizu+replyto@example.org>\r\n" +
-	"Message-Id: 42@example.org\r\n" +
-	"Subject: Your Name.\r\n" +
-	"\r\n"
-
 const testAltHeaderString = "Content-Type: multipart/alternative; boundary=b2\r\n" +
 	"\r\n"
 
 const testTextHeaderString = "Content-Disposition: inline\r\n" +
 	"Content-Type: text/plain\r\n" +
-	"\r\n"
-
-const testTextContentTypeString = "Content-Type: text/plain\r\n" +
-	"\r\n"
-
-const testTextNoContentTypeString = "Content-Disposition: inline\r\n" +
 	"\r\n"
 
 const testTextBodyString = "What's your name?"
@@ -93,12 +71,6 @@ const testBodyString = "--message-boundary\r\n" +
 	"\r\n--message-boundary--\r\n"
 
 var testMailString = testHeaderString + testBodyString + strings.Repeat("A", MessageBodySize)
-
-type multipleErrs map[string]error
-
-func (m multipleErrs) SetStatus(rcptTo string, err error) {
-	m[rcptTo] = err
-}
 
 func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffer) {
 	IDRaw := sha1.Sum([]byte(b.Name()))

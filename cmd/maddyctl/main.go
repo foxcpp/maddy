@@ -556,7 +556,7 @@ func main() {
 							return err
 						}
 						defer be.Close()
-						return msgsList(be, ctx)
+						return msgsDump(be, ctx)
 					},
 				},
 			},

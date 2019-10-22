@@ -1,8 +1,8 @@
 package msgpipeline
 
 import (
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 )
 
 // GenerateMsgID generates a string usable as MsgID field in module.MsgMeta.

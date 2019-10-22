@@ -112,6 +112,6 @@ func TLSCurvesDirective(m *Map, node *Node) (interface{}, error) {
 		}
 		res = append(res, curveId)
 	}
-	log.Debugln("tls: using non-default curve perferences:", node.Args)
+	log.Debugln("tls: using non-default curve preferences:", node.Args)
 	return res, nil
 }

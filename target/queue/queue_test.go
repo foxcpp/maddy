@@ -53,7 +53,9 @@ func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Qu
 		q.Log = testutils.Logger(t, "queue")
 	}
 
-	q.start(1)
+	if err := q.start(1); err != nil {
+		panic(err)
+	}
 
 	return q
 }

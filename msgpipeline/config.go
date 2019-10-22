@@ -270,6 +270,7 @@ func parseRejectDirective(node config.Node) (*smtp.SMTPError, error) {
 		if (code/100) != 4 && (code/100) != 5 {
 			return nil, config.NodeErr(&node, "error code should start with either 4 or 5")
 		}
+	case 0:
 	default:
 		return nil, config.NodeErr(&node, "invalid count of arguments")
 	}
@@ -298,7 +299,7 @@ func parseEnhancedCode(s string) (smtp.EnhancedCode, error) {
 }
 
 func parseChecksGroup(globals map[string]interface{}, nodes []config.Node) ([]module.Check, error) {
-	var checks []module.Check
+	checks := make([]module.Check, 0, len(nodes))
 	for _, child := range nodes {
 		msgCheck, err := modconfig.MessageCheck(globals, append([]string{child.Name}, child.Args...), &child)
 		if err != nil {

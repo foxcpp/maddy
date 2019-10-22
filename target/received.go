@@ -30,7 +30,7 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 				if err != nil {
 					return "", err
 				}
-				if rdnsName != nil || rdnsName.(string) != "" {
+				if rdnsName != nil && rdnsName.(string) != "" {
 					builder.WriteString(rdnsName.(string))
 					builder.WriteRune(' ')
 				}
