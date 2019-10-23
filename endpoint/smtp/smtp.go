@@ -332,6 +332,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	endp.pipeline.Hostname = endp.serv.Domain
 	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
 
+	endp.serv.AuthDisabled = endp.Auth == nil
 	if endp.submission {
 		endp.authAlwaysRequired = true
 
