@@ -77,12 +77,6 @@ func main() {
 	}
 	defer f.Close()
 
-	cfg, err := parser.Read(f, *configPath)
-	if err != nil {
-		log.Printf("cannot parse %q: %v\n", *configPath, err)
-		os.Exit(1)
-	}
-
 	// Make sure all paths we are going to use are absolute
 	// before we change the working directory.
 	config.StateDirectory, err = filepath.Abs(config.StateDirectory)
@@ -98,6 +92,24 @@ func main() {
 	config.RuntimeDirectory, err = filepath.Abs(config.RuntimeDirectory)
 	if err != nil {
 		log.Println(err)
+		os.Exit(1)
+	}
+
+	// Make directory constants accessible in configuration by using
+	// environment variables expansion.
+	if err := os.Setenv("MADDYSTATE", config.StateDirectory); err != nil {
+		log.Println(err)
+	}
+	if err := os.Setenv("MADDYLIBEXEC", config.LibexecDirectory); err != nil {
+		log.Println(err)
+	}
+	if err := os.Setenv("MADDYRUNTIME", config.RuntimeDirectory); err != nil {
+		log.Println(err)
+	}
+
+	cfg, err := parser.Read(f, *configPath)
+	if err != nil {
+		log.Printf("cannot parse %q: %v\n", *configPath, err)
 		os.Exit(1)
 	}
 
