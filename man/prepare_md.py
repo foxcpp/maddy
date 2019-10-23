@@ -14,6 +14,7 @@ value.
 Usage:
     prepare_md.py < in > out
     prepare_md.py file1 file2 file3
+        Converts into _generated_file1.md, etc.
 """
 
 import sys
@@ -57,8 +58,8 @@ def prepare(r, w):
                 title = line[8:].strip()
             if line[0] == ';':
                 continue
-            # turn *page*(1) into [**page(1)**](page.1.md)
-            line = re.sub(r'\*(.+?)\*\(([0-9])\)', r'[*\1(\2)*](\1.\2.md)', line)
+            # turn *page*(1) into [**page(1)**](_generated_page.1.md)
+            line = re.sub(r'\*(.+?)\*\(([0-9])\)', r'[*\1(\2)*](_generated_\1.\2.md)', line)
             # *aaa* => **aaa**
             line = re.sub(r'\*(.+?)\*', r'**\1**', line)
             # remove ++ from line endings
@@ -88,5 +89,5 @@ if len(sys.argv) == 1:
     prepare(sys.stdin, sys.stdout)
 else:
     for f in sys.argv[1:]:
-        new_name = f[:-4] + '.md'
+        new_name = '_generated_' + f[:-4] + '.md'
         prepare(open(f, 'r'), open(new_name, 'w'))
