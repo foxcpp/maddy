@@ -2,12 +2,14 @@ maddy-smtp(5) "maddy mail server" "maddy reference documentation"
 
 ; TITLE SMTP endpoint module
 
+# SMTP endpoint module (smtp)
+
 Module 'smtp' is a listener that implements ESMTP protocol with optional
-authentication and Submission support. Incoming messages are processed in
+authentication, LMTP and Submission support. Incoming messages are processed in
 accordance with pipeline rules (explained in Message pipeline section below).
 
 ```
-smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
+smtp tcp://0.0.0.0:25 {
     hostname example.org
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     io_debug no
@@ -17,7 +19,6 @@ smtp smtp://0.0.0.0:25 smtps://0.0.0.0:587 {
     write_timeout 1m
     max_message_size 32M
     auth pam
-    submission no
     defer_sender_reject yes
 
     # Example pipeline ocnfiguration.
@@ -88,12 +89,6 @@ Limit the size of incoming messages to 'size'.
 
 Use an authentication module with a specified configuration block name.
 
-*Syntax*: submission _boolean_ ++
-*Default*: no
-
-Preprocess messages before pushing them to target and require authentication
-for all operations. You should use it for Submission protocol endpoints.
-
 *Syntax*: defer_sender_reject _boolean_ ++
 *Default*: yes
 
@@ -102,9 +97,40 @@ is received. This allows maddy to log recipient address of the rejected
 message and also improves interoperability with (improperly implemented)
 clients that don't expect an error early in session.
 
-# Submission module
+# Submission module (submission)
 
-Alias to smtp module with submission directive used by default.
+Module 'submission' implements all functionality of the 'smtp' module and adds
+certain message preprocessing on top of it, additionaly authentication is
+always required.
+
+'submission' module checks whether addresses in header fields From, Sender, To,
+Cc, Bcc, Reply-To are correct and adds Message-ID and Date if it is missing.
+
+```
+submission tcp://0.0.0.0:587 tls://0.0.0.0:465 {
+    # ... same as smtp ... 
+}
+```
+
+# LMTP module (lmtp)
+
+Module 'lmtp' implements all functionality of the 'smtp' module but uses
+LMTP (RFC 2033) protocol.
+
+```
+lmtp unix://lmtp.sock {
+    # ... same as smtp ... 
+}
+```
+
+## Limitations of LMTP implementation
+
+- Can't be used with TCP.
+
+- Per-recipient status is not supported.
+
+- Delivery to 'sql' module storage is always atomic, either all recipients will
+  succeed or none of them will.
 
 # Mesage pipeline
 

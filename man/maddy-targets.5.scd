@@ -177,7 +177,9 @@ Module that implements transparent forwarding of messages over SMTP.
 
 Use in pipeline configuration:
 ```
-deliver_to smtp_upstream smtp://127.0.0.1:5353 {
+deliver_to smtp_upstream tcp://127.0.0.1:5353
+# or
+deliver_to smtp_upstream tcp://127.0.0.1:5353 {
   # Other settings, see below.
 }
 ```
@@ -185,7 +187,7 @@ deliver_to smtp_upstream smtp://127.0.0.1:5353 {
 Use as a top-level definition:
 ```
 smtp_upstream amavisd {
-    targets smtp://127.0.0.1:5353
+    targets tcp://127.0.0.1:5353
 }
 
 somewhere_else {
@@ -202,7 +204,7 @@ smtp_upstream {
     attempt_starttls yes
     require_yes no
     auth off
-    target smtp://127.0.0.1:2525
+    target tcp://127.0.0.1:2525
 }
 ```
 
@@ -268,8 +270,8 @@ Valid values:
 REQUIRED.
 
 List of remote server addresses to use. See Address definitions in
-*maddy-config*(5) for syntax to use.  Basically, it is 'smtp://ADDRESS:PORT'
-for plain SMTP and 'smtps://ADDRESS:PORT' for SMTPS (aka SMTP with Implicit
+*maddy-config*(5) for syntax to use.  Basically, it is 'tcp://ADDRESS:PORT'
+for plain SMTP and 'tls://ADDRESS:PORT' for SMTPS (aka SMTP with Implicit
 TLS).
 
 Multiple addresses can be specified, they will be tried in order until connection to

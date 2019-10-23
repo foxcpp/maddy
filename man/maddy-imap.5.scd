@@ -8,7 +8,7 @@ access to local messages storage specified by 'storage' directive. See
 configuration options.
 
 ```
-imap imap://0.0.0.0 imaps://0.0.0.0:993 {
+imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
     tls /etc/ssl/private/cert.pem /etc/ssl/private/pkey.key
     io_debug no
     debug no

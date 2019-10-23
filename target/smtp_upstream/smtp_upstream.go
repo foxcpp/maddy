@@ -10,7 +10,6 @@ package smtp_upstream
 
 import (
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 
@@ -70,19 +69,9 @@ func (u *Upstream) Init(cfg *config.Map) error {
 
 	u.targetsArg = append(u.targetsArg, targetsArg...)
 	for _, tgt := range u.targetsArg {
-		endp, err := config.StandardizeEndpoint(tgt)
+		endp, err := config.ParseEndpoint(tgt)
 		if err != nil {
 			return err
-		}
-		switch endp.Scheme {
-		case "lmtp", "lmtp+unix":
-			// TODO: We need to support partial responses for LMTP in go-smtp
-			// before LMTP support makes sense.
-			return errors.New("smtp_upstream: LMTP is not supported yet")
-		case "smtp", "smtps":
-			// All green.
-		default:
-			return errors.New("unknown or unsupported scheme: " + endp.Scheme)
 		}
 
 		u.endpoints = append(u.endpoints, endp)
@@ -159,7 +148,7 @@ func (d *delivery) connect() error {
 
 func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*smtp.Client, error) {
 	var conn net.Conn
-	conn, err := net.Dial("tcp", net.JoinHostPort(endp.Host, endp.Port))
+	conn, err := net.Dial(endp.Network(), endp.Address())
 	if err != nil {
 		return nil, err
 	}

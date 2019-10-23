@@ -123,14 +123,14 @@ same name - snippet will be used.
 tls long_path_to_certificate long_path_to_private_key
 
 # /etc/maddy/maddy.conf
-smtp smtp://0.0.0.0 {
+smtp tcp://0.0.0.0:25 {
     import tls.conf
 }
 ```
 
 ```
 # Expanded into:
-smtp smtp://0.0.0.0 {
+smtp tcp://0.0.0.0:25 {
     tls long_path_to_certificate long_path_to_private_key
 }
 ```
@@ -214,42 +214,17 @@ something {
 
 # ADDRESS DEFINITIONS
 
-Maddy configuration uses URL-like syntax to specify all network addresses and
-their protocols.
+Maddy configuration uses URL-like syntax to specify network addresses.
 
-## lmtp+unix://file_path
+- unix://file_path 
+  Unix domain socket. Relative paths are relative to runtime directory
+  (/run/maddy).
 
-Describes local Unix socket using the LMTP protocol for communication.
+- tcp://ADDRESS:PORT
+  TCP/IP socket.
 
-```
-lmtp+unix:///var/maddy/local_submission.sock
-```
-
-## smtp://ADDRESS[:PORT] smtps://ADDRESS[:PORT]
-
-Describes TCP/IP socket using SMTP protocol for communication.
-smtp:// uses Implicit TLS.
-
-If a port is not specified - it is 25 for smtp:// and 465 for smtps://.
-
-```
-smtp://0.0.0.0:587
-smtps://127.0.0.1:465
-smtp://0.0.0.0
-```
-
-## imap://ADDRESS[:PORT] imaps://ADDRESS[:PORT]
-
-Describes TCP/IP socket using the IMAP protocol for communication.
-imaps:// uses Implicit TLS.
-
-If a port is not specified - it is 143 for imap:// and 993 for imaps://.
-
-```
-imap://0.0.0.0:993
-imaps://127.0.0.1:143
-imap://0.0.0.0
-```
+- tls://ADDRESS:PORT
+  TCP/IP socket using TLS.
 
 # DUMMY MODULE
 

@@ -223,6 +223,7 @@ type Endpoint struct {
 
 	authAlwaysRequired bool
 	submission         bool
+	lmtp               bool
 	deferServerReject  bool
 
 	listenersWg sync.WaitGroup
@@ -246,12 +247,9 @@ func New(modName, instName string, aliases, inlineArgs []string) (module.Module,
 		name:       instName,
 		aliases:    aliases,
 		submission: modName == "submission",
+		lmtp:       modName == "lmtp",
 		resolver:   net.DefaultResolver,
-	}
-	if modName == "submission" {
-		endp.Log = log.Logger{Name: "submission"}
-	} else {
-		endp.Log = log.Logger{Name: "smtp"}
+		Log:        log.Logger{Name: modName},
 	}
 	return endp, nil
 }
@@ -269,7 +267,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	args := append([]string{endp.name}, endp.aliases...)
 	addresses := make([]config.Endpoint, 0, len(args))
 	for _, addr := range args {
-		saddr, err := config.StandardizeEndpoint(addr)
+		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
 			return fmt.Errorf("smtp: invalid address: %s", addr)
 		}
@@ -284,11 +282,21 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if endp.serv.AllowInsecureAuth {
+	allLocal := true
+	for _, addr := range addresses {
+		if addr.Scheme != "unix" && !strings.HasPrefix(addr.Host, "127.0.0.") {
+			allLocal = false
+		}
+	}
+
+	if endp.serv.AllowInsecureAuth && !allLocal {
 		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
 	}
-	if endp.serv.TLSConfig == nil && !endp.serv.LMTP {
-		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
+	if endp.serv.TLSConfig == nil {
+		if !allLocal {
+			endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
+		}
+
 		endp.serv.AllowInsecureAuth = true
 	}
 
@@ -297,9 +305,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	var (
-		err        error
-		ioDebug    bool
-		submission bool
+		err     error
+		ioDebug bool
 	)
 
 	cfg.Custom("auth", false, false, nil, modconfig.AuthDirective, &endp.Auth)
@@ -312,7 +319,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("insecure_auth", false, false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
-	cfg.Bool("submission", false, false, &submission)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.AllowUnknown()
 	unmatched, err := cfg.Process()
@@ -325,12 +331,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	}
 	endp.pipeline.Hostname = endp.serv.Domain
 	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
-
-	// endp.submission can be set to true by New, leave it on
-	// even if directive is missing.
-	if submission {
-		endp.submission = true
-	}
 
 	if endp.submission {
 		endp.authAlwaysRequired = true
@@ -349,21 +349,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 }
 
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
-	var smtpUsed, lmtpUsed bool
 	for _, addr := range addresses {
-		if addr.Scheme == "smtp" || addr.Scheme == "smtps" {
-			if lmtpUsed {
-				return errors.New("smtp: can't mix LMTP with SMTP in one endpoint block")
-			}
-			smtpUsed = true
-		}
-		if addr.Scheme == "lmtp+unix" || addr.Scheme == "lmtp" {
-			if smtpUsed {
-				return errors.New("smtp: can't mix LMTP with SMTP in one endpoint block")
-			}
-			lmtpUsed = true
-		}
-
 		var l net.Listener
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
@@ -389,10 +375,6 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 			}
 			endp.listenersWg.Done()
 		}()
-	}
-
-	if lmtpUsed {
-		endp.serv.LMTP = true
 	}
 
 	return nil
@@ -460,6 +442,7 @@ func (endp *Endpoint) Close() error {
 func init() {
 	module.Register("smtp", New)
 	module.Register("submission", New)
+	module.Register("lmtp", New)
 
 	rand.Seed(time.Now().UnixNano())
 }

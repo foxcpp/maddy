@@ -86,7 +86,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	args := append([]string{endp.name}, endp.aliases...)
 	addresses := make([]config.Endpoint, 0, len(args))
 	for _, addr := range args {
-		saddr, err := config.StandardizeEndpoint(addr)
+		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
 			return fmt.Errorf("imap: invalid address: %s", endp.name)
 		}
