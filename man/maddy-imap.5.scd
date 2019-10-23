@@ -1,6 +1,6 @@
 maddy-imap(5) "maddy mail server" "maddy reference documentation"
 
-# IMAP endpoint module
+; TITLE IMAP endpoint module
 
 Module 'imap' is a listener that implements IMAP4rev1 protocol and provides
 access to local messages storage specified by 'storage' directive. See

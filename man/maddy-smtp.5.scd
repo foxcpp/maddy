@@ -1,6 +1,6 @@
 maddy-smtp(5) "maddy mail server" "maddy reference documentation"
 
-# SMTP endpoint module
+; TITLE SMTP endpoint module
 
 Module 'smtp' is a listener that implements ESMTP protocol with optional
 authentication and Submission support. Incoming messages are processed in

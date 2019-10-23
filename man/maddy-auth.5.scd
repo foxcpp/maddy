@@ -1,5 +1,7 @@
 maddy-auth(5) "maddy mail server" "maddy authentication backends"
 
+; TITLE Authentication backends
+
 # Introduction
 
 Modules described in this man page can be used to provide functionality to

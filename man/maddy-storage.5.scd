@@ -1,6 +1,6 @@
 maddy-targets(5) "maddy mail server" "maddy reference documentation"
 
-# Storage backends
+; TITLE Storage backends
 
 maddy storage interface is built with IMAP in mind and directly represents
 IMAP data model. That is, maddy storage does have the concept of folders,

@@ -1,6 +1,6 @@
 maddy-targets(5) "maddy mail server" "maddy reference documentation"
 
-# INTRODUCTION
+; TITLE Delivery targets
 
 This man page describes modules that can used with 'deliver_to' directive
 of SMTP endpoint module.

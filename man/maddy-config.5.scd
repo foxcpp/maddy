@@ -1,6 +1,6 @@
 maddy-config(5) "maddy mail server" "maddy reference documentation"
 
-# Configuration files syntax
+; TITLE Configuration files syntax
 
 Configuration consists of newline-delimited "directives". Each directive can
 have zero or more arguments.

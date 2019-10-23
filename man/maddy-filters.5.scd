@@ -1,6 +1,6 @@
 maddy-filters(5) "maddy mail server" "maddy reference documentation"
 
-# Message filtering
+; TITLE Message filtering
 
 maddy does have two distinct types of modules that do message filtering.
 "Checks" and "modifiers".
