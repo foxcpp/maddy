@@ -90,9 +90,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		if err != nil {
 			return fmt.Errorf("imap: invalid address: %s", endp.name)
 		}
-		if saddr.Scheme != "imap" && saddr.Scheme != "imaps" {
-			return fmt.Errorf("imap: imap or imaps scheme must be used, got %s", saddr.Scheme)
-		}
 		addresses = append(addresses, saddr)
 	}
 
