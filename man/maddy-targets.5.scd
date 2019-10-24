@@ -171,22 +171,22 @@ Enable verbose logging.
 
 Set location of the MTA-STS policies cache directory.
 
-# SMTP transparent forwarding module (smtp_upstream)
+# SMTP transparent forwarding module (smtp_downstream)
 
 Module that implements transparent forwarding of messages over SMTP.
 
 Use in pipeline configuration:
 ```
-deliver_to smtp_upstream tcp://127.0.0.1:5353
+deliver_to smtp_downstream tcp://127.0.0.1:5353
 # or
-deliver_to smtp_upstream tcp://127.0.0.1:5353 {
+deliver_to smtp_downstream tcp://127.0.0.1:5353 {
   # Other settings, see below.
 }
 ```
 
 Use as a top-level definition:
 ```
-smtp_upstream amavisd {
+smtp_downstream amavisd {
     targets tcp://127.0.0.1:5353
 }
 
@@ -196,7 +196,7 @@ somewhere_else {
 ```
 
 ```
-smtp_upstream {
+smtp_downstream {
     debug no
     tls_client {
         ...

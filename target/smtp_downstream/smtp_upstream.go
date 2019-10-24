@@ -1,4 +1,4 @@
-// Package smtp_upstream provides smtp_upstream module that implements
+// Package smtp_downstream provides smtp_downstream module that implements
 // transparent forwarding or messages to configured list of SMTP servers.
 //
 // Like remote module, this implementation doesn't handle atomic
@@ -6,7 +6,7 @@
 //
 // Interfaces implemented:
 // - module.DeliveryTarget
-package smtp_upstream
+package smtp_downstream
 
 import (
 	"crypto/tls"
@@ -40,7 +40,7 @@ func NewUpstream(_, instName string, _, inlineArgs []string) (module.Module, err
 	return &Upstream{
 		instName:   instName,
 		targetsArg: inlineArgs,
-		log:        log.Logger{Name: "smtp_upstream"},
+		log:        log.Logger{Name: "smtp_downstream"},
 	}, nil
 }
 
@@ -81,7 +81,7 @@ func (u *Upstream) Init(cfg *config.Map) error {
 }
 
 func (u *Upstream) Name() string {
-	return "smtp_upstream"
+	return "smtp_downstream"
 }
 
 func (u *Upstream) InstanceName() string {
@@ -230,5 +230,5 @@ func (d *delivery) Commit() error {
 }
 
 func init() {
-	module.Register("smtp_upstream", NewUpstream)
+	module.Register("smtp_downstream", NewUpstream)
 }

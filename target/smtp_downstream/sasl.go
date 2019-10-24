@@ -1,4 +1,4 @@
-package smtp_upstream
+package smtp_downstream
 
 import (
 	"github.com/emersion/go-sasl"

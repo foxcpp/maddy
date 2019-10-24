@@ -69,9 +69,9 @@ be fetched by any name).
 
 Some modules attach additional meaning to names. This is generally accepted
 since it is better to have only a single instance managing one resource. For
-example, module instance implementing forwarding to the upstream server can not
+example, module instance implementing forwarding to the downstream server can not
 reasonably enforce any limitations unless it is only one instance "controlling"
-that upstream. Unique names requirement helps a lot here.
+that downstream. Unique names requirement helps a lot here.
 
 "Semantical names" idea explained above is not applied when modules instances
 are defined "inline" (in place they are used in). These instances have no

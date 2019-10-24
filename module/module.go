@@ -6,7 +6,7 @@
 // Each interface required by maddy for operation is provided by some object
 // called "module".  This includes authentication, storage backends, DKIM,
 // email filters, etc.  Each module may serve multiple functions. I.e. it can
-// be IMAP storage backend, SMTP upstream and authentication provider at the
+// be IMAP storage backend, SMTP downstream and authentication provider at the
 // same moment.
 //
 // Each module gets its own unique name (sql for go-imap-sql, proxy for

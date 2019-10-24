@@ -22,7 +22,7 @@ import (
 	_ "github.com/foxcpp/maddy/storage/sql"
 	_ "github.com/foxcpp/maddy/target/queue"
 	_ "github.com/foxcpp/maddy/target/remote"
-	_ "github.com/foxcpp/maddy/target/smtp_upstream"
+	_ "github.com/foxcpp/maddy/target/smtp_downstream"
 )
 
 type modInfo struct {
