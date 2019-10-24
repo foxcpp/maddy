@@ -248,10 +248,6 @@ func msgsRemove(be Storage, ctx *cli.Context) error {
 }
 
 func msgsCopy(be Storage, ctx *cli.Context) error {
-	if !ctx.GlobalBool("unsafe") {
-		return errors.New("Error: Refusing to edit mailboxes without --unsafe")
-	}
-
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
