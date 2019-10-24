@@ -262,6 +262,14 @@ func (cr *checkRunner) fetchDMARC(header textproto.Header) {
 
 func (cr *checkRunner) applyDMARC() error {
 	dmarcData := <-cr.dmarcPolicy
+	if dmarcData.err != nil {
+		return dmarcData.err
+	}
+	if dmarcData.record == nil {
+		cr.log.Debugf("no DMARC record (orgDomain = %s)", dmarcData.orgDomain)
+		return nil
+	}
+
 	dmarcFail := false
 	var result authres.DMARCResult
 
