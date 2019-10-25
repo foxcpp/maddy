@@ -649,6 +649,7 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 
 	metaCopy := *meta
 	metaCopy.MsgMeta = meta.MsgMeta.DeepCopy()
+	metaCopy.MsgMeta.AuthPassword = ""
 
 	if _, ok := metaCopy.MsgMeta.SrcAddr.(*net.TCPAddr); !ok {
 		meta.MsgMeta.SrcAddr = nil
