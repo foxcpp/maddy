@@ -15,10 +15,17 @@ import (
 	"github.com/foxcpp/maddy/log"
 )
 
+var httpClient = &http.Client{
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return errors.New("mtasts: HTTP redirects are forbidden")
+	},
+	Timeout: time.Minute,
+}
+
 func downloadPolicy(domain string) (*Policy, error) {
 	// TODO: Consult OCSP/CRL to detect revoked certificates?
 
-	resp, err := http.Get("https://mta-sts." + domain + "/.well-known/mta-sts.txt")
+	resp, err := httpClient.Get("https://mta-sts." + domain + "/.well-known/mta-sts.txt")
 	if err != nil {
 		return nil, err
 	}
