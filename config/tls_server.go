@@ -29,7 +29,7 @@ func TLSDirective(m *Map, node *Node) (interface{}, error) {
 			if err := makeSelfSignedCert(cfg); err != nil {
 				return nil, err
 			}
-			log.Debugln("tls: using self-signed certificate, this is not secure!")
+			log.Println("tls: using self-signed certificate, this is not secure!")
 			return cfg, nil
 		}
 	case 2:
