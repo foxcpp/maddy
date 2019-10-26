@@ -285,8 +285,7 @@ func (cr *checkRunner) applyDMARC() error {
 		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
 		dmarcFail = true
 	} else {
-		result = maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult,
-			cr.msgMeta.SrcHostname, cr.msgMeta.OriginalFrom)
+		result = maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult)
 		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
 		dmarcFail = result.Value != authres.ResultPass
 	}

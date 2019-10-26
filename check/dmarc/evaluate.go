@@ -28,9 +28,12 @@ func FetchRecord(ctx context.Context, hdr textproto.Header) (orgDomain, fromDoma
 	return orgDomain, fromDomain, record, err
 }
 
-func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result, helo, mailFrom string) authres.DMARCResult {
-	dkimAligned := false
-	dkimTempFail := false
+func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) authres.DMARCResult {
+	var (
+		spfAligned   = false
+		dkimAligned  = false
+		dkimTempFail = false
+	)
 	for _, res := range results {
 		if dkimRes, ok := res.(*authres.DKIMResult); ok {
 			if isAligned(orgDomain, dkimRes.Domain, record.DKIMAlignment) {
@@ -42,14 +45,17 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 				}
 			}
 		}
-	}
-
-	spfAligned := false
-	if mailFrom == "" {
-		spfAligned = isAligned(orgDomain, helo, record.SPFAlignment)
-	} else {
-		_, domain, _ := address.Split(mailFrom)
-		spfAligned = isAligned(orgDomain, domain, record.SPFAlignment)
+		if spfRes, ok := res.(*authres.SPFResult); ok {
+			if spfRes.Value != authres.ResultPass {
+				continue
+			}
+			if !strings.Contains(spfRes.From, "@") {
+				spfAligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
+			} else {
+				_, domain, _ := address.Split(spfRes.From)
+				spfAligned = isAligned(orgDomain, domain, record.SPFAlignment)
+			}
+		}
 	}
 
 	if dkimTempFail {
