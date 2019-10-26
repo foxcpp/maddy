@@ -216,7 +216,7 @@ type Endpoint struct {
 	Auth      module.AuthProvider
 	serv      *smtp.Server
 	name      string
-	aliases   []string
+	addrs     []string
 	listeners []net.Listener
 	pipeline  *msgpipeline.MsgPipeline
 	resolver  dns.Resolver
@@ -232,20 +232,17 @@ type Endpoint struct {
 }
 
 func (endp *Endpoint) Name() string {
-	return "smtp"
+	return endp.name
 }
 
 func (endp *Endpoint) InstanceName() string {
 	return endp.name
 }
 
-func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, fmt.Errorf("%s: inline arguments are not used", modName)
-	}
+func New(modName string, addrs []string) (module.Module, error) {
 	endp := &Endpoint{
-		name:       instName,
-		aliases:    aliases,
+		name:       modName,
+		addrs:      addrs,
 		submission: modName == "submission",
 		lmtp:       modName == "lmtp",
 		resolver:   net.DefaultResolver,
@@ -264,9 +261,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		endp.Log.Debugf("authentication provider: %s %s", endp.Auth.(module.Module).Name(), endp.Auth.(module.Module).InstanceName())
 	}
 
-	args := append([]string{endp.name}, endp.aliases...)
-	addresses := make([]config.Endpoint, 0, len(args))
-	for _, addr := range args {
+	addresses := make([]config.Endpoint, 0, len(endp.addrs))
+	for _, addr := range endp.addrs {
 		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
 			return fmt.Errorf("smtp: invalid address: %s", addr)
@@ -441,9 +437,9 @@ func (endp *Endpoint) Close() error {
 }
 
 func init() {
-	module.Register("smtp", New)
-	module.Register("submission", New)
-	module.Register("lmtp", New)
+	module.RegisterEndpoint("smtp", New)
+	module.RegisterEndpoint("submission", New)
+	module.RegisterEndpoint("lmtp", New)
 
 	rand.Seed(time.Now().UnixNano())
 }

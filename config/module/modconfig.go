@@ -14,7 +14,6 @@ import (
 
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/config/parser"
-	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
 
@@ -25,8 +24,6 @@ func createInlineModule(modName string, args []string) (module.Module, error) {
 		return nil, fmt.Errorf("unknown module: %s", modName)
 	}
 
-	log.Debugln("module create", modName, args, "(inline)")
-
 	return newMod(modName, "", nil, args)
 }
 
@@ -35,7 +32,6 @@ func createInlineModule(modName string, args []string) (module.Module, error) {
 //
 // args must contain at least one argument, otherwise initInlineModule panics.
 func initInlineModule(modObj module.Module, globals map[string]interface{}, block *config.Node) error {
-	log.Debugln("module init", modObj.Name(), modObj.InstanceName(), "(inline)")
 	return modObj.Init(config.NewMap(globals, block))
 }
 

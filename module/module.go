@@ -55,3 +55,17 @@ type Module interface {
 // If module is defined inline, instName will be empty and all values
 // specified after module name in configuration will be in inlineArgs.
 type FuncNewModule func(modName, instName string, aliases, inlineArgs []string) (Module, error)
+
+// FuncNewEndpoint is a function that creates new instance of endpoint
+// module.
+//
+// Compared to regular modules, endpoint module instances are:
+// - Not registered in the global registry.
+// - Can't be defined inline.
+// - Don't have an unique name
+// - All config arguments are always passed as an 'addrs' slice and not used as
+// names.
+//
+// As a consequence of having no per-instance name, InstanceName of the module
+// object always returns the same value as Name.
+type FuncNewEndpoint func(modName string, addrs []string) (Module, error)

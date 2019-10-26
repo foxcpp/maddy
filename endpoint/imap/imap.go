@@ -27,8 +27,7 @@ import (
 )
 
 type Endpoint struct {
-	name      string
-	aliases   []string
+	addrs     []string
 	serv      *imapserver.Server
 	listeners []net.Listener
 	Auth      module.AuthProvider
@@ -41,16 +40,11 @@ type Endpoint struct {
 	Log log.Logger
 }
 
-func New(_, instName string, aliases, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("imap: inline arguments are not used")
-	}
+func New(modName string, addrs []string) (module.Module, error) {
 	endp := &Endpoint{
-		name:    instName,
-		aliases: aliases,
-		Log:     log.Logger{Name: "imap"},
+		addrs: addrs,
+		Log:   log.Logger{Name: "imap"},
 	}
-	endp.name = instName
 
 	return endp, nil
 }
@@ -83,12 +77,11 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return fmt.Errorf("imap: failed to init backend: nil update channel")
 	}
 
-	args := append([]string{endp.name}, endp.aliases...)
-	addresses := make([]config.Endpoint, 0, len(args))
-	for _, addr := range args {
+	addresses := make([]config.Endpoint, 0, len(endp.addrs))
+	for _, addr := range endp.addrs {
 		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
-			return fmt.Errorf("imap: invalid address: %s", endp.name)
+			return fmt.Errorf("imap: invalid address: %s", addr)
 		}
 		addresses = append(addresses, saddr)
 	}
@@ -154,7 +147,7 @@ func (endp *Endpoint) Name() string {
 }
 
 func (endp *Endpoint) InstanceName() string {
-	return endp.name
+	return "imap"
 }
 
 func (endp *Endpoint) Close() error {
@@ -204,7 +197,7 @@ func (endp *Endpoint) enableExtensions() error {
 }
 
 func init() {
-	module.Register("imap", New)
+	module.RegisterEndpoint("imap", New)
 
 	imap.CharsetReader = message.CharsetReader
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/foxcpp/maddy/log"
 )
 
-func waitForSignal() os.Signal {
+func handleSignals() os.Signal {
 	sig := make(chan os.Signal, 5)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 

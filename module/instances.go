@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/config"
-	"github.com/foxcpp/maddy/log"
 )
 
 var (
@@ -64,11 +63,9 @@ func GetInstance(name string) (Module, error) {
 
 	// Break circular dependencies.
 	if Initialized[name] {
-		log.Debugln("module init", mod.mod.Name(), name, "(lazy init skipped)")
 		return mod.mod, nil
 	}
 
-	log.Debugln("module init", mod.mod.Name(), name, "(lazy)")
 	Initialized[name] = true
 	if err := mod.mod.Init(mod.cfg); err != nil {
 		return mod.mod, err

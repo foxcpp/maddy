@@ -10,7 +10,13 @@ import (
 	"github.com/foxcpp/maddy/log"
 )
 
-func waitForSignal() os.Signal {
+// handleSignals function creates and listens on OS signals channel.
+//
+// OS-specific signals that correspond to the program termination
+// (SIGTERM, SIGHUP, SIGINT) will cause this function to return.
+//
+// SIGUSR1 will call reinitLogging without returning.
+func handleSignals() os.Signal {
 	sig := make(chan os.Signal, 5)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1)
 
@@ -21,7 +27,7 @@ func waitForSignal() os.Signal {
 			reinitLogging()
 		default:
 			go func() {
-				s := waitForSignal()
+				s := handleSignals()
 				log.Printf("forced shutdown due to signal (%v)!", s)
 				os.Exit(1)
 			}()
