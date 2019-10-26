@@ -10,7 +10,6 @@ package sql
 import (
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -205,10 +204,10 @@ func (store *Storage) Init(cfg *config.Map) error {
 	if appendlimitVal == -1 {
 		opts.MaxMsgBytes = nil
 	} else {
-		// int is 64-bit on some platforms, so cut off values we can't actually
+		// int is 32-bit on some platforms, so cut off values we can't actually
 		// use.
-		if appendlimitVal > math.MaxUint32 {
-			return errors.New("sql: appendlimit can't be higher than 4 GiB")
+		if int(uint32(appendlimitVal)) != appendlimitVal {
+			return errors.New("sql: appendlimit value is too big")
 		}
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
