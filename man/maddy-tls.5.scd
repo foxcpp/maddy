@@ -91,7 +91,7 @@ be the only one usable version.
 
 Valid values are: tls1.0, tls1.1, tls1.2, tls1.3
 
-*Syntax*: ciphers _ciphers..._
+*Syntax*: ciphers _ciphers..._ ++
 *Default*: Go version-defined set of 'secure ciphers', ordered by hardware
 performance
 
