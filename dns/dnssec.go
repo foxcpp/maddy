@@ -137,11 +137,11 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	ad = resp.AuthenticatedData
 	addrs = make([]net.IPAddr, 0, len(resp.Answer))
 	for _, rr := range resp.Answer {
-		aRR, ok := rr.(*dns.A)
+		aaaaRR, ok := rr.(*dns.AAAA)
 		if !ok {
 			continue
 		}
-		addrs = append(addrs, net.IPAddr{IP: aRR.A})
+		addrs = append(addrs, net.IPAddr{IP: aaaaRR.AAAA})
 	}
 
 	// Then repeat query with IPv4.
@@ -159,11 +159,11 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	ad = ad && resp.AuthenticatedData
 
 	for _, rr := range resp.Answer {
-		aaaaRR, ok := rr.(*dns.AAAA)
+		aRR, ok := rr.(*dns.A)
 		if !ok {
 			continue
 		}
-		addrs = append(addrs, net.IPAddr{IP: aaaaRR.AAAA})
+		addrs = append(addrs, net.IPAddr{IP: aRR.A})
 	}
 
 	return ad, addrs, err
