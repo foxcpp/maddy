@@ -88,11 +88,15 @@ module_name config_block_name optional_aliases... {
     module
 }
 ```
-If you specify more than one config_block_name, they all will be usable.
+If more than one config_block_name is specified, they all will be usable.
 Basically, they will be aliased to the first name.
 
 If config_block_name is omitted, it will be the same as module_name.
 Configuration block name must be unique.
+
+Modules implementing service endpoints don't use arguments syntax explained
+above. Instead they use arguments to specify list of addresses to listen on.
+There is no 'configuration block name' in this case.
 
 # Reference documentation conventions
 
