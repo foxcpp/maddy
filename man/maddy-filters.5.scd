@@ -299,7 +299,35 @@ sha256 is the only supported algorithm now.
 *Syntax*: newkey_algo rsa4096|rsa2048|ed25519 +
 *Default*: rsa2048
 
-Algorithm to use when generating new key.
+Algorithm to use when generating a new key.
+
+*Syntax*: require_sender_match _ids..._ +
+*Default*: envelope auth
+
+Require specified identifiers to match From header field and key domain,
+otherwise - don't sign the message.
+
+If From field contains multiple addresses, message will not be
+signed unless allow_multiple_from is also specified. In that
+case only first address will be compared.
+
+Matching is done in a case-insensitive way.
+
+Valid values:
+- off +
+  Disable check, always sign.
+- envelope +
+  Require MAIL FROM address to match From header.
+- auth +
+  If authorization identity contains @ - then require it to 
+  fully match From header. Otherwise, check only local-part
+  (username).
+  
+*Syntax*: allow_multiple_from _boolean_
+*Default*: no
+
+Allow multiple addresses in From header field for purposes of 
+require_sender_match checks. Only first address will be checked, however.
 
 # Sender/recipient replacement modules (replace_sender, replace_rcpt)
 

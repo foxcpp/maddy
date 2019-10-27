@@ -4,11 +4,13 @@ import (
 	"crypto"
 	"errors"
 	"io"
+	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/dkim"
+	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/log"
@@ -79,6 +81,8 @@ type Modifier struct {
 	bodyCanon      dkim.Canonicalization
 	sigExpiry      time.Duration
 	hash           crypto.Hash
+	senderMatch    map[string]struct{}
+	multipleFromOk bool
 
 	log log.Logger
 }
@@ -117,6 +121,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		hashName        string
 		keyPathTemplate string
 		newKeyAlgo      string
+		senderMatch     []string
 	)
 
 	cfg.Bool("debug", true, false, &m.log.Debug)
@@ -136,6 +141,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		[]string{"sha256"}, "sha256", &hashName)
 	cfg.Enum("newkey_algo", false, false,
 		[]string{"rsa4096", "rsa2048", "ed25519"}, "rsa2048", &newKeyAlgo)
+	cfg.EnumList("require_sender_match", false, false,
+		[]string{"envelope", "auth_domain", "auth_user", "off"}, []string{"envelope", "auth"}, &senderMatch)
+	cfg.Bool("allow_multiple_from", false, false, &m.multipleFromOk)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -146,6 +154,14 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	}
 	if m.selector == "" {
 		return errors.New("sign_domain: selector is not specified")
+	}
+
+	m.senderMatch = make(map[string]struct{}, len(senderMatch))
+	for _, method := range senderMatch {
+		m.senderMatch[method] = struct{}{}
+	}
+	if _, off := m.senderMatch["off"]; off && len(senderMatch) != 1 {
+		return errors.New("sign_domain: require_sender_match: 'off' should not be combined with other methods")
 	}
 
 	m.hash = hashFuncs[hashName]
@@ -212,6 +228,57 @@ func (m *Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierS
 	}, nil
 }
 
+func (m *Modifier) shouldSign(msgId string, h textproto.Header, mailFrom string, authName string) (string, bool) {
+	if _, off := m.senderMatch["off"]; off {
+		return "@" + m.domain, true
+	}
+
+	fromVal := h.Get("From")
+	if fromVal == "" {
+		m.log.Printf("not signing, empty From (msg ID = %s)", msgId)
+		return "", false
+	}
+	fromAddrs, err := mail.ParseAddressList(fromVal)
+	if err != nil {
+		m.log.Printf("not signing, malformed From: %v (msg ID = %s)", err, msgId)
+		return "", false
+	}
+	if len(fromAddrs) != 1 && !m.multipleFromOk {
+		m.log.Printf("not signing, multiple From (msg ID = %s)", msgId)
+		return "", false
+	}
+
+	fromAddr := fromAddrs[0].Address
+	fromUser, fromDomain, err := address.Split(fromAddr)
+	if err != nil {
+		m.log.Printf("not signing, malformed From address: %s (msg ID = %s)", authName, msgId)
+		return "", false
+	}
+
+	if !strings.EqualFold(fromDomain, m.domain) {
+		m.log.Printf("not signing, %s (From domain) != %s (key domain) (msg ID = %s)", fromDomain, m.domain, msgId)
+		return "", false
+	}
+
+	if _, do := m.senderMatch["envelope"]; do && !strings.EqualFold(fromAddr, mailFrom) {
+		m.log.Printf("not signing, %s (From) != %s (MAIL FROM) (msg ID = %s)", fromAddr, mailFrom, msgId)
+		return "", false
+	}
+
+	if _, do := m.senderMatch["auth"]; do {
+		compareWith := fromUser
+		if strings.Contains(authName, "@") {
+			compareWith = fromAddr
+		}
+		if !strings.EqualFold(compareWith, authName) {
+			m.log.Printf("not signing, %s (From) != %s (auth) (msg ID = %s)", fromAddr, authName, msgId)
+			return "", false
+		}
+	}
+
+	return fromAddr, true
+}
+
 func (s state) RewriteSender(mailFrom string) (string, error) {
 	return mailFrom, nil
 }
@@ -221,9 +288,9 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 }
 
 func (s state) RewriteBody(h textproto.Header, body buffer.Buffer) error {
-	id := s.meta.OriginalFrom
-	if !strings.Contains(id, "@") {
-		id += "@" + s.m.domain
+	id, ok := s.m.shouldSign(s.meta.ID, h, s.meta.OriginalFrom, s.meta.AuthUser)
+	if !ok {
+		return nil
 	}
 
 	opts := dkim.SignOptions{
