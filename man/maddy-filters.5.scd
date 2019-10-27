@@ -106,7 +106,7 @@ specified in EHLO/HELO command.
 By default, quarantines messages coming from servers with mismatched or missing
 PTR record, use 'fail_action' directive to change that.
 
-# DKIM authorization module (verify_dkim)
+# DKIM authentication module (verify_dkim)
 
 This is the check module that performs verification of the DKIM signatures
 present on the incoming messages.
@@ -162,6 +162,144 @@ Action to take when there are not valid signatures in a message.
 
 Note that DMARC policy of the sender domain can request more strict handling of
 broken DKIM signatures.
+
+# DKIM signing module (sign_dkim)
+
+sign_dkim module is a modifier that signs messages using DKIM
+protocol (RFC 6376).
+
+```
+sign_dkim {
+    debug no
+    domain example.org
+    selector default
+    key_path dkim-keys/{domain}-{selector}.key
+    oversign_fields ...
+    sign_fields ...
+    header_canon relaxed
+    body_canon relaxed
+    sig_expiry 120h # 5 days
+    hash sha256
+    newkey_algo rsa2048
+}
+```
+
+## Inline args 
+
+When inline definitions are used, domain and selector can be specified
+in arguments, so actual sign_dkim use can be shortened to the following: 
+```
+modify {
+    sign_dkim example.org selector
+}
+```
+
+## Configuration directives
+
+*Syntax*: debug _boolean_ +
+*Default*: global directive value
+
+Enable verbose logging for sign_dkim.
+
+*Syntax*: domain _string_ +
+*Default*: not specified
+
+*REQUIRED.*
+
+ADministrative Management Domain (ADMD) taking responsibility for signed
+messages. Should be specified either as a directive or as an inline
+argument.
+
+*Syntax*: selector _string_ +
+*Default*: not specified
+
+*REQUIRED.*
+
+Identifier of used key within the ADMD.
+Should be specified either as a directive or as an inline argument.
+
+*Syntax*: key_path _string_ +
+*Default*: dkim_keys/{domain}_{selector}.key
+
+Path to private key. It should be in PKCS#8 format wrapped in PAM encoding.
+If key does not exist, it will be generated using algorithm specified
+in newkey_algo.
+
+*Syntax*: oversign_fields _list..._ +
+*Default*: see below
+
+Header fields that should be signed n+1 times where n is times they are
+present in the message. This makes it impossible to replace field
+value by prepending another field with the same name to the message.
+
+Fields specified here don't have to be also specified in sign_fields.
+
+Default set of oversigned fields:
+- Subject
+- To
+- From
+- Date
+- MIME-Version
+- Content-Type
+- Content-Transfer-Encoding
+- Reply-To
+- Message-Id
+- References
+- Autocrypt
+- Openpgp
+
+*Syntax*: sign_fields _list..._ +
+*Default*: see below
+
+Header fields that should be signed n+1 times where n is times they are
+present in the message. For these fields, additional values can be prepended
+by intermediate relays, but existing values can't be changed.
+
+Default set of signed fields:
+- List-Id
+- List-Help
+- List-Unsubscribe
+- List-Post
+- List-Owner
+- List-Archive
+- Resent-To
+- Resent-Sender
+- Resent-Message-Id
+- Resent-Date
+- Resent-From
+- Resent-Cc
+
+*Syntax*: header_canon relaxed|simple +
+*Default*: relaxed
+
+Canonicalization algorithm to use for header fields. With 'relaxed', whitespace within
+fields can be modified without breaking the signature, with 'simple' no 
+modifications are allowed.
+
+*Syntax*: body_canon relaxed|simple +
+*Default*: relaxed
+
+Canonicalization algorithm to use for message body. With 'relaxed', whitespace within
+can be modified without breaking the signature, with 'simple' no 
+modifications are allowed.
+
+*Syntax*: sig_expiry _duration_ +
+*Default*: 120h
+
+Time for which signature should be considered valid. Mainly used to prevent 
+unauthorized resending of old messages.
+
+*Syntax*: hash _hash_ +
+*Default*: sha256
+
+Hash algorithm to use when computing body hash.
+
+sha256 is the only supported algorithm now.
+
+*Syntax*: newkey_algo rsa4096|rsa2048|ed25519 +
+*Default*: rsa2048
+
+Algorithm to use when generating new key.
 
 # Sender/recipient replacement modules (replace_sender, replace_rcpt)
 

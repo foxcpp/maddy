@@ -25,9 +25,6 @@ cmd/maddy/maddy
 cmd/maddyctl/maddyctl
 cmd/maddy-*-helper/maddy-*-helper
 
-# Config files
-*.conf
-
 # Certificates and private keys.
 *.pem
 *.crt

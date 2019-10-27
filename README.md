@@ -32,13 +32,14 @@ have any questions or just want to talk about maddy.
 - Minimal configuration changes required to get almost complete email stack running
 - [MTA-STS](https://www.hardenize.com/blog/mta-sts) support
 - DNS sanity checks for incoming deliveries
-- Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) verification support
+- Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/)
+  verification and signing support
 - [Subaddressing](https://en.wikipedia.org/wiki/Email_address#Sub-addressing)
   (aka plus-addressing) support
 
 Planned features:
 - Built-in [DKIM](https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/) signing
-- [DMRAC](https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/) policy support
+- [DMARC](https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/) policy support
 - Built-in [backscatter](https://en.wikipedia.org/wiki/Backscatter_(e-mail)) mitigation
 - Address aliases support
 - DANE support
@@ -183,6 +184,15 @@ directives below.
 
 Note that it will require users to specify the full address as a username when
 logging in.
+
+### DKIM & DMARC
+
+DMARC requires domain specified in From header to match domain used to make
+the DKIM signature. This gets tricky with default configuration that signs
+all messages with a single key. However, this is possible to configure
+maddy to use different keys, it is just a bit verbose. 
+See [config.d/multitentant-dkim.conf](config.d/multitentant-dkim.conf) for
+example of such configuration.
 
 ## maddyctl utility
 
