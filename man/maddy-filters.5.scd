@@ -225,6 +225,9 @@ Path to private key. It should be in PKCS#8 format wrapped in PAM encoding.
 If key does not exist, it will be generated using algorithm specified
 in newkey_algo.
 
+Placeholders '{domain}' and '{selector}' will be replaced with corresponding
+values from domain and selector directives.
+
 *Syntax*: oversign_fields _list..._ ++
 *Default*: see below
 
