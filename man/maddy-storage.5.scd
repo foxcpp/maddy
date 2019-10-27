@@ -18,8 +18,8 @@ Module that stores message metadata and indexes in a SQL-based relational
 database.
 
 Message contents are stored in an "external store", currently the only
-supported "external store" is a filesystem directory, enabled by 'fsstore'
-directive.
+supported "external store" is a filesystem directory, used by default.
+All messages are stored in StateDirectory/messages under random IDs.
 
 Supported RDBMS:
 - SQLite 3.25.0
@@ -27,8 +27,6 @@ Supported RDBMS:
 
 Can be used as a storage backend (for IMAP), authentication backend (IMAP &
 SMTP) or delivery target (SMTP).
-
-See https://github.com/foxcpp/go-imap-sql for more information.
 
 ## Configuration directives
 
@@ -50,17 +48,10 @@ Data Source Name, the driver-specific value that specifies the database to use.
 For SQLite3 this is just a file path.
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
 
-*Syntax*: ++
-    fsstore ++
-    fsstore _directory_ ++
-*Default*: not specified
+*Syntax*: fsstore _directory_ ++
+*Default*: messages/
 
-REQUIRED.
-
-Store message contents in filesystem directory.
-
-If directory path is not specified - it will be derived from configuration
-block name ('StateDirectory/sql-NAME-fsstore').
+Directory to store message contents in.
 
 *Syntax*: ++
     compression off ++

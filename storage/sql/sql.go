@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -168,17 +167,10 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "", nil
 	}, func(m *config.Map, node *config.Node) (interface{}, error) {
-		switch len(node.Args) {
-		case 0:
-			if store.instName == "" {
-				return nil, errors.New("sql: need explicit fsstore location for inline definition")
-			}
-			return filepath.Join(config.StateDirectory, "sql-"+store.instName+"-fsstore"), nil
-		case 1:
-			return node.Args[0], nil
-		default:
+		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 0 or 1 arguments")
 		}
+		return node.Args[0], nil
 	}, &fsstoreLocation)
 	cfg.StringList("compression", false, false, []string{"off"}, &compression)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
@@ -216,17 +208,10 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	dsnStr := strings.Join(dsn, " ")
 
-	var extStore imapsql.ExternalStore
-	if fsstoreLocation != "" {
-		if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
-			return err
-		}
-		extStore = &imapsql.FSStore{Root: fsstoreLocation}
+	if err := os.MkdirAll("messages", os.ModeDir|os.ModePerm); err != nil {
+		return err
 	}
-	// Add blocks for other External Store implementations here ^.
-	if extStore == nil {
-		return errors.New("sql: no body storage is configured (use fsstore)")
-	}
+	extStore := &imapsql.FSStore{Root: fsstoreLocation}
 
 	if len(compression) != 0 {
 		switch compression[0] {
