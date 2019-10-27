@@ -107,6 +107,9 @@ _boolean_ is either 'yes' or 'no' string.
 
 Ellipsis (_smth..._) means that multiple values can be specified
 
+Multiple values listed with '|' (pipe) separator mean that any of them
+can be used.
+
 # Global directives
 
 These directives applied for all configuration blocks that don't override it.

@@ -196,12 +196,12 @@ modify {
 
 ## Configuration directives
 
-*Syntax*: debug _boolean_ +
+*Syntax*: debug _boolean_ ++
 *Default*: global directive value
 
 Enable verbose logging for sign_dkim.
 
-*Syntax*: domain _string_ +
+*Syntax*: domain _string_ ++
 *Default*: not specified
 
 *REQUIRED.*
@@ -210,7 +210,7 @@ ADministrative Management Domain (ADMD) taking responsibility for signed
 messages. Should be specified either as a directive or as an inline
 argument.
 
-*Syntax*: selector _string_ +
+*Syntax*: selector _string_ ++
 *Default*: not specified
 
 *REQUIRED.*
@@ -218,14 +218,14 @@ argument.
 Identifier of used key within the ADMD.
 Should be specified either as a directive or as an inline argument.
 
-*Syntax*: key_path _string_ +
-*Default*: dkim_keys/{domain}_{selector}.key
+*Syntax*: key_path _string_ ++
+*Default*: dkim_keys/{domain}\_{selector}.key
 
 Path to private key. It should be in PKCS#8 format wrapped in PAM encoding.
 If key does not exist, it will be generated using algorithm specified
 in newkey_algo.
 
-*Syntax*: oversign_fields _list..._ +
+*Syntax*: oversign_fields _list..._ ++
 *Default*: see below
 
 Header fields that should be signed n+1 times where n is times they are
@@ -248,7 +248,7 @@ Default set of oversigned fields:
 - Autocrypt
 - Openpgp
 
-*Syntax*: sign_fields _list..._ +
+*Syntax*: sign_fields _list..._ ++
 *Default*: see below
 
 Header fields that should be signed n+1 times where n is times they are
@@ -269,39 +269,39 @@ Default set of signed fields:
 - Resent-From
 - Resent-Cc
 
-*Syntax*: header_canon relaxed|simple +
+*Syntax*: header_canon relaxed|simple ++
 *Default*: relaxed
 
 Canonicalization algorithm to use for header fields. With 'relaxed', whitespace within
 fields can be modified without breaking the signature, with 'simple' no 
 modifications are allowed.
 
-*Syntax*: body_canon relaxed|simple +
+*Syntax*: body_canon relaxed|simple ++
 *Default*: relaxed
 
 Canonicalization algorithm to use for message body. With 'relaxed', whitespace within
 can be modified without breaking the signature, with 'simple' no 
 modifications are allowed.
 
-*Syntax*: sig_expiry _duration_ +
+*Syntax*: sig_expiry _duration_ ++
 *Default*: 120h
 
 Time for which signature should be considered valid. Mainly used to prevent 
 unauthorized resending of old messages.
 
-*Syntax*: hash _hash_ +
+*Syntax*: hash _hash_ ++
 *Default*: sha256
 
 Hash algorithm to use when computing body hash.
 
 sha256 is the only supported algorithm now.
 
-*Syntax*: newkey_algo rsa4096|rsa2048|ed25519 +
+*Syntax*: newkey_algo rsa4096|rsa2048|ed25519 ++
 *Default*: rsa2048
 
 Algorithm to use when generating a new key.
 
-*Syntax*: require_sender_match _ids..._ +
+*Syntax*: require_sender_match _ids..._ ++
 *Default*: envelope auth
 
 Require specified identifiers to match From header field and key domain,
@@ -323,7 +323,7 @@ Valid values:
   fully match From header. Otherwise, check only local-part
   (username).
   
-*Syntax*: allow_multiple_from _boolean_
+*Syntax*: allow_multiple_from _boolean_ ++
 *Default*: no
 
 Allow multiple addresses in From header field for purposes of 
