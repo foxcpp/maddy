@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"strings"
 
@@ -20,8 +21,14 @@ func FetchRecord(ctx context.Context, hdr textproto.Header) (orgDomain, fromDoma
 		return "", "", nil, err
 	}
 
-	// TODO: Add Lookup(context) method or split methods into net.Lookup and Parse.
-	record, err = dmarc.Lookup(orgDomain)
+	// TODO: Use DNSSEC-aware resolver.
+	txts, err := net.DefaultResolver.LookupTXT(ctx, orgDomain)
+	if err != nil {
+		return orgDomain, fromDomain, record, err
+	}
+	txt := strings.Join(txts, "")
+
+	record, err = dmarc.Parse(txt)
 	if err == dmarc.ErrNoPolicy {
 		return orgDomain, fromDomain, nil, nil
 	}

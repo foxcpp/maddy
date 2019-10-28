@@ -37,6 +37,8 @@ github.com/emersion/go-msgauth v0.2.0 h1:/Ynvbm+9AWssfv31PXZb1S519Wp/2uyImbjwRWC
 github.com/emersion/go-msgauth v0.2.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-msgauth v0.2.1-0.20191021093543-56e7fdd4b849 h1:cSIMtG9jNCrfBgU3l5/D2JJQogXuGUhXttUusE5ABBI=
 github.com/emersion/go-msgauth v0.2.1-0.20191021093543-56e7fdd4b849/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
+github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c h1:0as6ct8PVWrlCofyWPh8o/fNRr6/DPbjkBicSG+3ZQI=
+github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL/Wt71kdolp6yaD4fLIQz638E6JEt0=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-sasl v0.0.0-20190520160400-47d427600317 h1:tYZxAY8nu3JJQKios9f27Sbvbkfm4XHXT476gVtszu0=
