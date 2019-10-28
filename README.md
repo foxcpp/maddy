@@ -6,7 +6,7 @@ Simple, fast, secure all-in-one mail server.
 
 **⚠️ Disclaimer: maddy is in development, many planned features are
 missing, bugs are waiting to eat your messages and incompatible 
-changes from time to time**
+changes happen from time to time**
 
 Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you
 have any questions or just want to talk about maddy.
@@ -38,13 +38,14 @@ have any questions or just want to talk about maddy.
   - Virtual users > system users
 * Fast
   - Optimized for concurrency
+  - Single process model allows more efficient implementation
 * Useful
   - [Subaddressing][subaddr] support 
   - Messages compression (LZ4, Zstd)
  
 Planned:
-- [Backscatter][backscatter] mitigation (BATV) (#106)
-- Address aliases (#82)
+- [Backscatter][backscatter] filtering (BATV) (#106)
+- Address aliases (#82, #18)
 - Zero-configuration full-text search (foxcpp/go-imap-sql#21)
 - Milter protocol support (#16)
 - DANE (#50)
