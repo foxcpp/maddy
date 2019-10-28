@@ -31,6 +31,7 @@ func FetchRecord(ctx context.Context, hdr textproto.Header) (orgDomain, fromDoma
 func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) authres.DMARCResult {
 	var (
 		spfAligned   = false
+		spfTempFail  = false
 		dkimAligned  = false
 		dkimTempFail = false
 	)
@@ -46,23 +47,36 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 			}
 		}
 		if spfRes, ok := res.(*authres.SPFResult); ok {
-			if spfRes.Value != authres.ResultPass {
-				continue
-			}
-			if !strings.Contains(spfRes.From, "@") {
-				spfAligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
+			var aligned bool
+			if spfRes.From == "" {
+				aligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
 			} else {
-				_, domain, _ := address.Split(spfRes.From)
-				spfAligned = isAligned(orgDomain, domain, record.SPFAlignment)
+				aligned = isAligned(orgDomain, spfRes.From, record.SPFAlignment)
+			}
+			if aligned {
+				switch spfRes.Value {
+				case authres.ResultPass:
+					spfAligned = true
+				case authres.ResultTempError:
+					spfTempFail = true
+				}
 			}
 		}
 	}
 
-	if dkimTempFail {
+	if dkimTempFail && !dkimAligned && !spfAligned {
 		// We can't be sure whether it is aligned or not. Bail out.
 		return authres.DMARCResult{
 			Value:  authres.ResultTempError,
-			Reason: "DKIM authentication failed",
+			Reason: "DKIM authentication temp error",
+			From:   orgDomain,
+		}
+	}
+	if !dkimAligned && spfTempFail {
+		// We can't be sure whether it is aligned or not. Bail out.
+		return authres.DMARCResult{
+			Value:  authres.ResultTempError,
+			Reason: "SPF authentication temp error",
 			From:   orgDomain,
 		}
 	}
@@ -74,9 +88,8 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 		}
 	}
 	return authres.DMARCResult{
-		Value:  authres.ResultFail,
-		Reason: "DKIM and SPF authentication failed",
-		From:   orgDomain,
+		Value: authres.ResultFail,
+		From:  orgDomain,
 	}
 }
 
@@ -86,11 +99,11 @@ func isAligned(orgDomain, authDomain string, mode dmarc.AlignmentMode) bool {
 		return strings.EqualFold(orgDomain, authDomain)
 	case dmarc.AlignmentRelaxed:
 		return strings.EqualFold(orgDomain, authDomain) ||
-			strings.HasPrefix(authDomain, "."+orgDomain)
+			strings.HasSuffix(authDomain, "."+orgDomain)
 	}
 	// Relaxed alignment by default.
 	return strings.EqualFold(orgDomain, authDomain) ||
-		strings.HasPrefix(authDomain, "."+orgDomain)
+		strings.HasSuffix(authDomain, "."+orgDomain)
 }
 
 func extractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
