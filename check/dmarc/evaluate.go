@@ -22,10 +22,14 @@ func FetchRecord(ctx context.Context, hdr textproto.Header) (orgDomain, fromDoma
 	}
 
 	// TODO: Use DNSSEC-aware resolver.
-	txts, err := net.DefaultResolver.LookupTXT(ctx, orgDomain)
+	txts, err := net.DefaultResolver.LookupTXT(ctx, "_dmarc."+orgDomain)
 	if err != nil {
-		return orgDomain, fromDomain, record, err
+		return orgDomain, fromDomain, nil, err
 	}
+	if len(txts) == 0 {
+		return orgDomain, fromDomain, nil, nil
+	}
+
 	txt := strings.Join(txts, "")
 
 	record, err = dmarc.Parse(txt)
