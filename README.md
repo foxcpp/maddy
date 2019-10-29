@@ -29,6 +29,7 @@ have any questions or just want to talk about maddy.
 * Comprehensive & secure
   - IMAP4rev1 & SMTP server in one binary
   - [DKIM][dkim] signing and verification
+  - [SPF][spf] policy enforcement
   - [DMARC][dmarc] policy enforcement (experimental,
     enable with `dmarc on` in smtp config)
   - [MTA-STS][mtasts] policy enforcement
@@ -150,6 +151,7 @@ See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 The code is under MIT license. See [LICENSE](LICENSE) for more information.
 
 [dkim]: https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/
+[spf]: https://blog.returnpath.com/how-to-explain-spf-in-plain-english/
 [dmarc]: https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/
 [mtasts]: https://www.hardenize.com/blog/mta-sts
 [subaddr]: https://en.wikipedia.org/wiki/Email_address#Sub-addressing

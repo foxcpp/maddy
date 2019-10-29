@@ -1,3 +1,5 @@
+blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8 h1:faoLmiOKc/iC8/jn9HN8hVbWBrgeVweZmdPeJgk5fWc=
+blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8/go.mod h1:Mpik83f+Vc8wPdRrnGR5cV50NsENy+caW+42Kz4huCs=
 github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46 h1:rs0kDBt2zF4/CM9rO5/iH+U22jnTygPlqWgX55Ufcxg=
 github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46/go.mod h1:kC29dT1vFpj7py2OvG1khBdQpo3kInWP+6QipLbdngo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

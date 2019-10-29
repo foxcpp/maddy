@@ -163,6 +163,73 @@ Action to take when there are not valid signatures in a message.
 Note that DMARC policy of the sender domain can request more strict handling of
 broken DKIM signatures.
 
+# SPF policy enforcement module (apply_spf)
+
+This is the check module that verifies whether IP address of the client is 
+authorized to send messages for domain in MAIL FROM address.
+
+```
+apply_spf {
+    debug no
+    enforce_early yes
+    fail_action quarantine
+    softfail_action quarantine
+    permerr_action reject
+    temperr_action reject
+}
+```
+
+## DMARC override
+
+It is recommended by the DMARC standard to don't fail delivery based solely on
+SPF policy and always check DMARC policy and take action based on it.
+
+If enforce_early is no, apply_spf module will not take any action on SPF
+policy failure if sender domain does have a DMARC record with 'quarantine' or
+'reject' policy. Instead it will rely on DMARC support to take necesary
+actions using SPF results as an input.
+
+However, enforce_early is yes by default since DMARC support in maddy
+is experimental and disabled by default. Disabling enforce_early without
+enabling DMARC support will make SPF policies no-op and is considered insecure.
+
+## Configuration directives
+
+*Syntax*: debug _boolean_ ++
+*Default*: global directive value
+
+Enable verbose logging for apply_spf.
+
+*Syntax*: enforce_early _boolean_ ++
+*Default*: yes
+
+Make policy decision on MAIL FROM stage (before the message body is received).
+This makes it impossible to apply DMARC override (see below). It recommended
+to leave the default value.
+
+*Syntax*: fail_action reject|qurantine|ignore ++
+*Default*: quarantine
+
+Action to take when SPF policy evaluates to a 'fail' result.
+
+See https://tools.ietf.org/html/rfc7208#section-2.6 for meaning of
+SPF results.
+
+*Syntax*: softfail_action reject|qurantine|ignore ++
+*Default*: quarantine
+
+Action to take when SPF policy evaluates to a 'softfail' result.
+
+*Syntax*: permerr_action reject|qurantine|ignore ++
+*Default*: reject
+
+Action to take when SPF policy evaluates to a 'permerror' result.
+
+*Syntax*: temperr_action reject|qurantine|ignore ++
+*Default*: reject
+
+Action to take when SPF policy evaluates to a 'temperror' result.
+
 # DKIM signing module (sign_dkim)
 
 sign_dkim module is a modifier that signs messages using DKIM

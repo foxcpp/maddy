@@ -3,6 +3,7 @@ module github.com/foxcpp/maddy
 go 1.13
 
 require (
+	blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8
 	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46
 	github.com/emersion/go-imap v1.0.1-0.20191009173615-7aeb46467a12
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
