@@ -11,19 +11,6 @@ changes happen from time to time**
 Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you
 have any questions or just want to talk about maddy.
 
-## Table of contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Building from source](#building-from-source)
-  - [Dependencies](#dependencies)
-  - [Building](#building)
-- [Quick start](#quick-start)
-  - [systemd unit](#systemd-unit)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
-
 ## Features
 
 * Comprehensive & secure
