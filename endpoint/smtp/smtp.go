@@ -182,12 +182,12 @@ func (s *Session) Data(r io.Reader) error {
 	header.Add("Received", received)
 
 	if err := s.delivery.Body(header, buf); err != nil {
-		s.log.Printf("I/O error: %v", err)
+		s.log.Printf("%v", err)
 		return s.wrapErr(err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
-		s.log.Printf("I/O error: %v", err)
+		s.log.Printf("%v", err)
 		return s.wrapErr(err)
 	}
 
