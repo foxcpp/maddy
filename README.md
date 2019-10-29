@@ -98,12 +98,16 @@ $HOME/go/bin).
 
 ## Quick start
 
+*Note*: explaination below is short and assumes that you already have
+base ideas about how email works. If you are not sure, Project Wiki 
+contains a [more detailed tutorial](https://github.com/foxcpp/maddy/wiki/Setting-up-a-mail-server-with-maddy).
+
 1. Install maddy and maddyctl (see above)
 2. Copy maddy.conf from this repo to /etc/maddy/maddy.conf
 3. Create /run/maddy and /var/lib/maddy, make sure they are writable
    for the maddy user. Though, you don't have to use system directories,
    see `maddy -help`.
-4. Open it with ~~vim~~your favorite editor and change 
+4. Open maddy.conf with ~~vim~~your favorite editor and change 
    the following:
 - `tls cert_file key_file` 
   Change to paths to TLS certificate and key.
@@ -121,6 +125,10 @@ $HOME/go/bin).
    ```
    maddyctl users create foxcpp
    ```
+
+Congratulations, now you have your working mail server.
+IMAP endpoint is on port 993 with TLS enforced ("implicit TLS").
+SMTP endpoint is on port 465 with TLS enforced ("implicit TLS").
 
 ### systemd unit
 
