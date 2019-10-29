@@ -99,7 +99,7 @@ $HOME/go/bin).
 ## Quick start
 
 *Note*: explaination below is short and assumes that you already have
-base ideas about how email works. If you are not sure, Project Wiki 
+basic ideas about how email works. If you are not sure, Project Wiki 
 contains a [more detailed tutorial](https://github.com/foxcpp/maddy/wiki/Setting-up-a-mail-server-with-maddy).
 
 1. Install maddy and maddyctl (see above)
@@ -109,14 +109,12 @@ contains a [more detailed tutorial](https://github.com/foxcpp/maddy/wiki/Setting
    see `maddy -help`.
 4. Open maddy.conf with ~~vim~~your favorite editor and change 
    the following:
-- `tls cert_file key_file` 
+- `tls ...` 
   Change to paths to TLS certificate and key.
-- `hostname`
+- `$(hostname)`
   Server identifier. Put your domain here if you have only one server.
 - `$(primary_domain)`
   Put the "main" domain you are handling messages for here.
-- `$(local_domains)`
-  If you have additional domains you want to accept mail for - put them here.
 5. Run the executable.
 6. On first start-up server will generate a RSA-2048 keypair for DKIM and tell
    you where file with DNS record text is placed. You need to add it to your
