@@ -53,15 +53,13 @@ Planned:
 - Server-side messages encryption (#75)
 - [JMAP](https://jmap.io) (#19)
 
-## Installation
+## Installation & configuration
 
-Pre-built binaries for releases are available
-[here](https://github.com/foxcpp/maddy/releases).
+Detailed explaination of what you need to do to get it running can be found
+here:
+https://github.com/foxcpp/maddy/wiki/Tutorial:-Setting-up-a-mail-server-with-maddy
 
-## Building from source
-
-Make sure you have $GOPATH/bin ($HOME/go/bin) in your $PATH before
-doing anything.
+### Manual installation
 
 #### Dependencies 
 
@@ -80,7 +78,7 @@ doing anything.
   Required for SQLite3-based storage (default configuration) and PAM
   authentication.
 
-### Building
+#### Building
 
 First, make sure Go Modules support is enabled:
 ```
@@ -96,11 +94,10 @@ go get github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@master
 Executables will be placed in the $GOPATH/bin directory (defaults to
 $HOME/go/bin).
 
-## Quick start
+#### Quick start
 
 *Note*: explaination below is short and assumes that you already have
-basic ideas about how email works. If you are not sure, Project Wiki 
-contains a [more detailed tutorial](https://github.com/foxcpp/maddy/wiki/Setting-up-a-mail-server-with-maddy).
+basic ideas about how email works.
 
 1. Install maddy and maddyctl (see above)
 2. Copy maddy.conf from this repo to /etc/maddy/maddy.conf

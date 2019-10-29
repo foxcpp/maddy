@@ -34,3 +34,5 @@ cmd/maddy-*-helper/maddy-*-helper
 # in repo directory.
 cmd/maddy/*mtasts-cache
 cmd/maddy/*queue
+
+maddy-setup/
