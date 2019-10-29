@@ -3,6 +3,7 @@ package parser
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -87,6 +88,14 @@ func (ctx *parseContext) expandMacros(node *Node) error {
 	newArgs := make([]string, 0, len(node.Args))
 	for _, arg := range node.Args {
 		if !strings.HasPrefix(arg, "$(") || !strings.HasSuffix(arg, ")") {
+			if strings.Contains(arg, "$(") && strings.Contains(arg, ")") {
+				var err error
+				arg, err = ctx.expandSingleValueMacro(arg)
+				if err != nil {
+					return err
+				}
+			}
+
 			newArgs = append(newArgs, arg)
 			continue
 		}
@@ -111,4 +120,26 @@ func (ctx *parseContext) expandMacros(node *Node) error {
 	}
 
 	return nil
+}
+
+var macroRe = regexp.MustCompile(`\$\(([^\$]+)\)`)
+
+func (ctx *parseContext) expandSingleValueMacro(arg string) (string, error) {
+	matches := macroRe.FindAllStringSubmatch(arg, -1)
+	for _, match := range matches {
+		macroName := match[1]
+		if len(ctx.macros[macroName]) > 1 {
+			return "", ctx.Err("can't expand macro with multiple arguments inside a string")
+		}
+
+		var value string
+		if ctx.macros[macroName] != nil {
+			// Macros have at least one argument.
+			value = ctx.macros[macroName][0]
+		}
+
+		arg = strings.Replace(arg, "$("+macroName+")", value, -1)
+	}
+
+	return arg, nil
 }

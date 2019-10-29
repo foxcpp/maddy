@@ -405,6 +405,28 @@ var cases = []struct {
 		false,
 	},
 	{
+		"macro expansion, inside argument",
+		`$(foo) = bar
+		dir aaa/$(foo)/bbb`,
+		[]Node{
+			{
+				Name:     "dir",
+				Args:     []string{"aaa/bar/bbb"},
+				Children: nil,
+				File:     "test",
+				Line:     2,
+			},
+		},
+		false,
+	},
+	{
+		"macro expansion, inside argument, multi-value",
+		`$(foo) = bar baz
+		dir aaa/$(foo)/bbb`,
+		nil,
+		true,
+	},
+	{
 		"macro expansion, multiple arguments",
 		`$(foo) = bar baz
 		dir $(foo)`,
