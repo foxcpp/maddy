@@ -1,12 +1,21 @@
 #!/bin/sh
+
+if [ "$GOVERSION" == "" ]; then
+    GOVERSION=1.13.0
+fi
+if [ "$MADDYVERSION" == "" ]; then
+    MADDYVERSION=master
+fi
+if [ "$PREFIX" == "" ]; then
+    PREFIX=/usr/local
+fi
+SYSTEMDUNITS=$PREFIX/lib/systemd
+if [ "$CONFPATH" == "" ]; then
+    CONFPATH=/etc/maddy/maddy.conf
+fi
+
 set -euo pipefail
 IFS=$'\n'
-
-GOVERSION=1.13.1
-MADDYVERSION=master
-PREFIX=/usr/local
-SYSTEMDUNITS=/etc/systemd
-CONFPATH=/etc/maddy/maddy.conf
 
 mkdir -p maddy-setup/
 cd maddy-setup/
@@ -14,16 +23,31 @@ cd maddy-setup/
 if ! which go >/dev/null; then
     download=1
 else
-    if [ "`go version | grep -o "go$GOVERSION"`" = "go$GOVERSION" ]; then
-        echo "Using system Go toolchain." >&2
-        download=0
-        GO=`which go`
-    else
-        download=1
+    SYSGOVERSION=`go version | grep -Po "([0-9]+\.){2}[0-9]+"`
+    SYSGOMAJOR=`cut -f1 -d. <<<$SYSGOVERSION`
+    SYSGOMINOR=`cut -f2 -d. <<<$SYSGOVERSION`
+    SYSGOPATCH=`cut -f3 -d. <<<$SYSGOVERSION`
+    WANTEDGOMAJOR=`cut -f1 -d. <<<$GOVERSION`
+    WANTEDGOMINOR=`cut -f2 -d. <<<$GOVERSION`
+    WANTEDGOPATCH=`cut -f3 -d. <<<$GOVERSION`
+
+    downloadgo=0
+    if [ $SYSGOMAJOR -ne $WANTEDGOMAJOR ]; then
+        downloadgo=1
+    fi
+    if [ $SYSGOMINOR -lt $WANTEDGOMINOR ]; then
+        downloadgo=1
+    fi
+    if [ $SYSGOPATCH -lt $WANTEDGOPATCH ]; then
+        downloadgo=1
+    fi
+
+    if [ $downloadgo -eq 0 ]; then
+        echo "Using system Go toolchain ($SYSGOVERSION, `which go`)." >&2
     fi
 fi
 
-if [ $download -eq 1 ]; then
+if [ $downloadgo -eq 1 ]; then
     echo "Downloading Go $GOVERSION toolchain..." >&2
     if ! [ -e go$GOVERSION ]; then
         if ! [ -e go$GOVERSION.linux-amd64.tar.gz ]; then
@@ -32,8 +56,10 @@ if [ $download -eq 1 ]; then
         tar xf go$GOVERSION.linux-amd64.tar.gz
         mv go go$GOVERSION
     fi
-    GO=go$GOVERSION/bin/go
+    export GOROOT=$PWD/go$GOVERSION
+    export PATH=go$GOVERSION/bin:$PATH
 fi
+
 
 export GOPATH="$PWD/gopath"
 export GOBIN="$GOPATH/bin"
@@ -41,7 +67,7 @@ export GOBIN="$GOPATH/bin"
 echo 'Downloading and compiling maddy...' >&2
 
 export GO111MODULE=on
-$GO get github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
+go get github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
 
 echo 'Installing maddy...' >&2
 
@@ -55,6 +81,7 @@ wget -q "https://raw.githubusercontent.com/foxcpp/maddy/$MADDYVERSION/dist/syste
 
 sed -Ei "s!/usr/bin!$PREFIX/bin!g" maddy.service maddy@.service
 
+sudo mkdir -p "$SYSTEMDUNITS/system/"
 sudo cp maddy.service maddy@.service "$SYSTEMDUNITS/system/"
 sudo systemctl daemon-reload
 
@@ -62,6 +89,7 @@ echo 'Creating maddy user and group...' >&2
 
 sudo useradd -UMr -s /sbin/nologin maddy || true
 
+echo 'Using configuration path:' $CONFPATH
 if ! [ -e "$CONFPATH" ]; then
     echo 'Downloading and installing default configuration...' >&2
 
