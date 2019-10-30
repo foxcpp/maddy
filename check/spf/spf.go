@@ -257,5 +257,6 @@ func init() {
 	module.Register("apply_spf", New)
 	module.RegisterInstance(&Check{
 		instName: "apply_spf",
+		log:      log.Logger{Name: "apply_spf"},
 	}, &config.Map{Block: &config.Node{}})
 }
