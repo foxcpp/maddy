@@ -14,6 +14,11 @@ if [ "$CONFPATH" == "" ]; then
     CONFPATH=/etc/maddy/maddy.conf
 fi
 
+export CGO_CFLAGS=-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS
+export CGO_CXXFLAGS=-g -O2 -D_FORTIFY_SOURCE=2 $CXXFLAGS
+export LDFLAGS=-Wl,-z,relro,-z,now $LDFLAGS
+export CGO_LDFLAGS=$LDFLAGS
+
 set -euo pipefail
 IFS=$'\n'
 
@@ -67,7 +72,8 @@ export GOBIN="$GOPATH/bin"
 echo 'Downloading and compiling maddy...' >&2
 
 export GO111MODULE=on
-go get github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
+
+go get -trimpath -buildmode=pie -ldflags "-extldflags $LDFLAGS" github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
 
 echo 'Installing maddy...' >&2
 
