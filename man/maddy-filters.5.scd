@@ -431,3 +431,89 @@ modify {
     replace_sender /(.+)@example.com/ $1@example.org
 }
 ```
+
+# File-based recipient aliases (alias_file)
+
+This module replaces recipient addresses based on the mapping defined
+in the text file. Currently, only 1:1 mappings are supported (that is, it is
+not possible to specify multiple replacements for a single address).
+
+Matching is done case-insensitively. Name without '@' matches local-part with
+any domain. Replacements are not applied recursively.
+
+Recipients are not deduplicated after expansion, so message may be delivered
+multiple times to a single recipient. However, used delivery target apply
+such deduplication (sql does it).
+
+```
+alias_file {
+    files ...
+}
+```
+
+Can be shortened to the following when defined 'inline':
+```
+modify {
+    alias_file files...
+}
+```
+
+## Auto-reloading
+
+The module checks used files for changes every 15 seconds, if changes are 
+detected - all files are reloaded.
+
+No changes are applied if any file contains syntax errors.
+
+## File format
+
+Similar to the format used by popular MTAs.
+
+- Entry in the format:
+  ```
+  name: value
+  ```
+
+- Lines starting with '#', empty and whitespace-only lines are ignored.
+
+Example:
+```
+# Replaces dog@domain to dog@domain for any domain.
+dog: cat
+
+# Replaces dog@domain to dog@example.com for any domain.
+cat: dog@example.com
+
+# Replaces cat@example.org to dog@example.org.
+# Takes preference over any-domain alias above.
+cat@example.org: dog@example.org
+
+# Postmaster alias is a special case, it should
+# always use a full address as a replacement.
+postmaster: foobar@example.org
+
+# Not allowed:
+#postmaster: foobar
+```
+
+Following features usually implemented in other MTAs are currently not
+supported in maddy:
+```
+cat: |command
+cat: /file
+cat: :include:file
+```
+
+## Configuration directives
+
+*Syntax*: debug _boolean_ ++
+*Default*: global directive value
+
+Enable verbose log.
+
+*Syntax*: files _path..._ ++
+*Default*: not specified
+
+List of files to read aliases from. Non-existent files are skipped.
+
+At least one file should be specified either via directive or inline arguments.
