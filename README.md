@@ -8,9 +8,6 @@ Simple, fast, secure all-in-one mail server.
 missing, bugs are waiting to eat your messages and incompatible 
 changes happen from time to time**
 
-Join [##maddy on irc.freenode.net](https://webchat.freenode.net/##maddy), if you
-have any questions or just want to talk about maddy.
-
 ## Features
 
 * Comprehensive & secure
@@ -53,6 +50,15 @@ Rendered pages can be browsed [here](https://foxcpp.dev/maddy-reference).
 
 Tutorials and misc articles will be added to
 the [project wiki](https://github.com/foxcpp/maddy/wiki).
+
+## Community
+
+There is IRC channel on freenode.net named
+[##maddy](https://webchat.freenode.net/##maddy). You can join it if you have
+any questions or just want to talk.
+
+Also there is public mailing list for maddy-related discussions on
+https://lists.sr.ht/~foxcpp/maddy. You can use it too.
 
 ## Contributing
 
