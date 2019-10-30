@@ -102,12 +102,8 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		Value: authres.ResultNone,
 		Helo:  s.msgMeta.SrcHostname,
 		From:  fromDomain,
-	}
-
-	// For whatever, SPF library we use always an error and basically
-	// includes 'reason' text in it, so go ahead and use it as such.
-	if err != nil && err.Error() != "matched 'all'" {
-		spfAuth.Reason = err.Error()
+		// SPF library always returns an error value we can use as a reason.
+		Reason: err.Error(),
 	}
 
 	switch res {
