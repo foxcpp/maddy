@@ -176,9 +176,52 @@ func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.De
 	}, nil
 }
 
+func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
+	if err == nil {
+		return nil
+	}
+	switch err := err.(type) {
+	case *smtp.SMTPError:
+		return &exterrors.SMTPError{
+			Code:         err.Code,
+			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
+			Message:      err.Message,
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"remote_server": serverName,
+			},
+		}
+	case *net.OpError:
+		return exterrors.WithTemporary(
+			exterrors.WithFields(
+				err.Err,
+				map[string]interface{}{
+					"remote_addr": err.Addr,
+					"io_op":       err.Op,
+					"target":      "remote",
+				},
+			),
+			err.Temporary(),
+		)
+	default:
+		return exterrors.WithFields(err, map[string]interface{}{
+			"remote_server": serverName,
+			"target":        "remote",
+		})
+	}
+}
+
 func (rd *remoteDelivery) AddRcpt(to string) error {
 	if rd.msgMeta.Quarantine {
-		return errors.New("remote: refusing to deliver quarantined message")
+		return exterrors.WithFields(
+			exterrors.WithTemporary(
+				errors.New("remote: refusing to deliver quarantined message"),
+				false,
+			),
+			map[string]interface{}{
+				"target": "remote",
+			},
+		)
 	}
 
 	_, domain, err := address.Split(to)
@@ -189,18 +232,25 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	// Special-case for <postmaster> address. If it is not handled by a rewrite rule before
 	// - we should not attempt to do anything with it and reject it as invalid.
 	if domain == "" {
-		return fmt.Errorf("<postmaster> address is not supported")
+		return exterrors.WithFields(
+			exterrors.WithTemporary(
+				errors.New("remote: <postmaster> address is not supported"),
+				false,
+			),
+			map[string]interface{}{
+				"target": "remote",
+			},
+		)
 	}
 
 	// serverName (MX serv. address) is very useful for tracing purposes and should be logged on all related errors.
 	conn, err := rd.connectionForDomain(domain)
 	if err != nil {
-		return err
+		return rd.wrapClientErr(err, domain)
 	}
 
 	if err := conn.Rcpt(to); err != nil {
-		rd.Log.Printf("RCPT TO %s failed: %v (server = %s)", to, err, conn.serverName)
-		return err
+		return rd.wrapClientErr(err, conn.serverName)
 	}
 
 	rd.recipients = append(rd.recipients, to)
@@ -259,30 +309,25 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 
 			bodyW, err := conn.Data()
 			if err != nil {
-				rd.Log.Printf("DATA failed: %v (server = %s)", err, conn.serverName)
 				setErr(err)
 				return
 			}
 			bodyR, err := b.Open()
 			if err != nil {
-				rd.Log.Printf("failed to open body buffer: %v", err)
 				setErr(err)
 				return
 			}
 			defer bodyR.Close()
 			if err = textproto.WriteHeader(bodyW, header); err != nil {
-				rd.Log.Printf("header write failed: %v (server = %s)", err, conn.serverName)
 				setErr(err)
 				return
 			}
 			if _, err = io.Copy(bodyW, bodyR); err != nil {
-				rd.Log.Printf("body write failed: %v (server = %s)", err, conn.serverName)
 				setErr(err)
 				return
 			}
 
 			if err := bodyW.Close(); err != nil {
-				rd.Log.Printf("body write final failed: %v (server = %s)", err, conn.serverName)
 				setErr(err)
 				return
 			}
@@ -323,7 +368,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	}
 	requireTLS = requireTLS || rd.rt.requireTLS
 	if !requireTLS {
-		rd.Log.Printf("TLS is not enforced when delivering to %s", domain)
+		rd.Log.Msg("TLS not enforced", "domain", domain)
 	}
 
 	var lastErr error
@@ -333,22 +378,22 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 
 		conn.Client, err = rd.rt.connectToServer(addr, requireTLS)
 		if err != nil {
-			rd.Log.Printf("failed to connect to %s: %v", addr, err)
+			if len(addrs) != 1 {
+				rd.Log.Error("connect error", err, "remote_server", addr)
+			}
 			lastErr = err
 			continue
 		}
 	}
 	if conn.Client == nil {
-		rd.Log.Printf("no usable MX servers found for %s", domain)
 		return nil, lastErr
 	}
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
-		rd.Log.Printf("MAIL FROM %s failed: %v (server = %s)", rd.mailFrom, err, conn.serverName)
-		return nil, err
+		return nil, rd.wrapClientErr(err, conn.serverName)
 	}
 
-	rd.Log.Debugf("connected to %s", conn.serverName)
+	rd.Log.DebugMsg("connected", "remote_server", conn.serverName)
 	rd.connections[domain] = conn
 
 	return conn, nil
@@ -368,7 +413,7 @@ func (rt *Target) stsCacheUpdater() {
 	// time.
 	rt.Log.Debugln("updating MTA-STS cache...")
 	if err := rt.mtastsCache.RefreshCache(); err != nil {
-		rt.Log.Printf("MTA-STS cache opdate failed: %v", err)
+		rt.Log.Msg("MTA-STS cache update error", err)
 	}
 	rt.Log.Debugln("updating MTA-STS cache... done!")
 
@@ -377,7 +422,7 @@ func (rt *Target) stsCacheUpdater() {
 		case <-rt.stsCacheUpdateTick.C:
 			rt.Log.Debugln("updating MTA-STS cache...")
 			if err := rt.mtastsCache.RefreshCache(); err != nil {
-				rt.Log.Printf("MTA-STS cache opdate failed: %v", err)
+				rt.Log.Msg("MTA-STS cache opdate error", err)
 			}
 			rt.Log.Debugln("updating MTA-STS cache... done!")
 		case <-rt.stsCacheUpdateDone:
@@ -417,11 +462,13 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		if err != nil {
 			return nil, false, err
 		}
-		switch policy.Mode {
-		case mtasts.ModeEnforce:
-			requireTLS = true
-		case mtasts.ModeNone:
-			policy = nil
+		if policy != nil {
+			switch policy.Mode {
+			case mtasts.ModeEnforce:
+				requireTLS = true
+			case mtasts.ModeNone:
+				policy = nil
+			}
 		}
 	}
 
@@ -452,34 +499,34 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		if policy != nil {
 			if policy.Match(mx.Host) {
 				// Policy in 'testing' mode is enough to authenticate MX too.
-				rd.Log.Debugf("authenticated MX (%s) using MTA-STS", mx.Host)
+				rd.Log.Msg("authenticated MX using MTA-STS", "mx", mx.Host, "domain", domain)
 				authenticated = true
 			} else if policy.Mode == mtasts.ModeEnforce {
 				// Honor *enforced* policy and skip non-matching MXs even if we
 				// don't require authentication.
-				rd.Log.Printf("ignoring MX (%s) due to MTA-STS", mx.Host)
+				rd.Log.Msg("ignoring MX due to MTA-STS", "mx", mx.Host, "domain", domain)
 				skippedMXs = true
 				continue
 			}
 		}
 		// If we have DNSSEC - DNSSEC-signed MX record also qualifies as "safe".
 		if dnssecOk {
-			rd.Log.Debugf("authenticated MX (%s) using DNSSEC", mx.Host)
+			rd.Log.Msg("authenticated MX using DNSSEC", "mx", mx.Host, "domain", domain)
 			authenticated = true
 		}
 		if _, use := rd.rt.mxAuth[AuthCommonDomain]; use && commonDomainCheck(domain, mx.Host) {
-			rd.Log.Printf("authenticated MX (%s) using 'common domain' rule", mx.Host)
+			rd.Log.Msg("authenticated MX using common domain rule", "mx", mx.Host, "domain", domain)
 			authenticated = true
 		}
 
 		if !authenticated {
 			if rd.rt.requireMXAuth {
-				rd.Log.Printf("ignoring non-authenticated MX (%s)", mx.Host)
+				rd.Log.Msg("ignoring non-authenticated MX", "mx", mx.Host, "domain", domain)
 				skippedMXs = true
 				continue
 			}
 			if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled {
-				rd.Log.Printf("adding non-authenticated MX (%s) to candidates", mx.Host)
+				rd.Log.Msg("using non-authenticated MX", "mx", mx.Host, "domain", domain)
 			}
 		}
 

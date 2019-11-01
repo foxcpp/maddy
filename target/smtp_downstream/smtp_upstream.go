@@ -17,6 +17,7 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -97,7 +98,8 @@ type delivery struct {
 	body     io.ReadCloser
 	hdr      textproto.Header
 
-	client *smtp.Client
+	downstreamAddr string
+	client         *smtp.Client
 }
 
 func (u *Upstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
@@ -115,21 +117,32 @@ func (u *Upstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.D
 
 func (d *delivery) connect() error {
 	// TODO: Review possibility of connection pooling here.
-	var lastErr error
+	var (
+		lastErr        error
+		lastDownstream string
+	)
 	for _, endp := range d.u.endpoints {
+		addr := net.JoinHostPort(endp.Host, endp.Port)
 		cl, err := d.attemptConnect(endp, d.u.attemptStartTLS)
 		if err == nil {
-			d.log.Debugf("connected to %s:%s", endp.Host, endp.Port)
+			d.log.DebugMsg("connected", "downstream_server", addr)
 			lastErr = nil
+			d.downstreamAddr = addr
 			d.client = cl
 			break
 		}
 
-		d.log.Debugf("connect to %s:%s failed: %v", endp.Host, endp.Port, err)
+		if len(d.u.endpoints) != 1 {
+			d.log.Msg("connect error", err, "downstream_server", addr)
+		}
 		lastErr = err
+		lastDownstream = addr
 	}
 	if lastErr != nil {
-		return lastErr
+		return exterrors.WithFields(lastErr, map[string]interface{}{
+			"target":            "smtp_downstream",
+			"downstream_server": lastDownstream,
+		})
 	}
 
 	if d.u.saslFactory != nil {
@@ -189,14 +202,37 @@ func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*
 	return cl, nil
 }
 
+func (d *delivery) wrapClientErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch err := err.(type) {
+	case *smtp.SMTPError:
+		return &exterrors.SMTPError{
+			Code:         err.Code,
+			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
+			Message:      err.Message,
+			TargetName:   "smtp_downstream",
+			Misc: map[string]interface{}{
+				"downstream_server": d.downstreamAddr,
+			},
+		}
+	default:
+		return exterrors.WithFields(err, map[string]interface{}{
+			"downstream_server": d.downstreamAddr,
+			"target":            "smtp_downstream",
+		})
+	}
+}
+
 func (d *delivery) AddRcpt(rcptTo string) error {
-	return d.client.Rcpt(rcptTo)
+	return d.wrapClientErr(d.client.Rcpt(rcptTo))
 }
 
 func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 	r, err := body.Open()
 	if err != nil {
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"target": "smtp_downstream"})
 	}
 
 	d.body = r
@@ -215,18 +251,18 @@ func (d *delivery) Commit() error {
 
 	wc, err := d.client.Data()
 	if err != nil {
-		return err
+		return d.wrapClientErr(err)
 	}
 
 	if err := textproto.WriteHeader(wc, d.hdr); err != nil {
-		return err
+		return d.wrapClientErr(err)
 	}
 
 	if _, err := io.Copy(wc, d.body); err != nil {
-		return err
+		return d.wrapClientErr(err)
 	}
 
-	return wc.Close()
+	return d.wrapClientErr(wc.Close())
 }
 
 func init() {

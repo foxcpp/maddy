@@ -13,6 +13,7 @@ import (
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -235,33 +236,36 @@ func (m *Modifier) shouldSign(msgId string, h textproto.Header, mailFrom string,
 
 	fromVal := h.Get("From")
 	if fromVal == "" {
-		m.log.Printf("not signing, empty From (msg ID = %s)", msgId)
+		m.log.Msg("not signing, empty From", "msg_id", msgId)
 		return "", false
 	}
 	fromAddrs, err := mail.ParseAddressList(fromVal)
 	if err != nil {
-		m.log.Printf("not signing, malformed From: %v (msg ID = %s)", err, msgId)
+		m.log.Msg("not signing, malformed From field", "err", err, "msg_id", msgId)
 		return "", false
 	}
 	if len(fromAddrs) != 1 && !m.multipleFromOk {
-		m.log.Printf("not signing, multiple From (msg ID = %s)", msgId)
+		m.log.Msg("not signing, multiple addresses in From", "msg_id", msgId)
 		return "", false
 	}
 
 	fromAddr := fromAddrs[0].Address
 	fromUser, fromDomain, err := address.Split(fromAddr)
 	if err != nil {
-		m.log.Printf("not signing, malformed From address: %s (msg ID = %s)", authName, msgId)
+		m.log.Msg("not signing, malformed address in From",
+			"err", err, "from_addr", fromAddr, "msg_id", msgId)
 		return "", false
 	}
 
 	if !strings.EqualFold(fromDomain, m.domain) {
-		m.log.Printf("not signing, %s (From domain) != %s (key domain) (msg ID = %s)", fromDomain, m.domain, msgId)
+		m.log.Msg("not signing, From domain is not key domain",
+			"from_domain", fromDomain, "key_domain", m.domain, "msg_id", msgId)
 		return "", false
 	}
 
 	if _, do := m.senderMatch["envelope"]; do && !strings.EqualFold(fromAddr, mailFrom) {
-		m.log.Printf("not signing, %s (From) != %s (MAIL FROM) (msg ID = %s)", fromAddr, mailFrom, msgId)
+		m.log.Msg("not signing, From address is not envelope address",
+			"from_addr", fromAddr, "envelope", mailFrom, "msg_id", msgId)
 		return "", false
 	}
 
@@ -271,7 +275,8 @@ func (m *Modifier) shouldSign(msgId string, h textproto.Header, mailFrom string,
 			compareWith = fromAddr
 		}
 		if !strings.EqualFold(compareWith, authName) {
-			m.log.Printf("not signing, %s (From) != %s (auth) (msg ID = %s)", fromAddr, authName, msgId)
+			m.log.Msg("not signing, From address is not authenticated identity",
+				"from_addr", fromAddr, "auth_id", authName, "msg_id", msgId)
 			return "", false
 		}
 	}
@@ -308,34 +313,29 @@ func (s state) RewriteBody(h textproto.Header, body buffer.Buffer) error {
 	}
 	signer, err := dkim.NewSigner(&opts)
 	if err != nil {
-		s.m.log.Printf("%v", strings.TrimPrefix(err.Error(), "dkim: "))
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 	if err := textproto.WriteHeader(signer, h); err != nil {
-		s.m.log.Printf("I/O error: %v", err)
 		signer.Close()
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 	r, err := body.Open()
 	if err != nil {
-		s.m.log.Printf("I/O error: %v", err)
 		signer.Close()
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 	if _, err := io.Copy(signer, r); err != nil {
-		s.m.log.Printf("I/O error: %v", err)
 		signer.Close()
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 
 	if err := signer.Close(); err != nil {
-		s.m.log.Printf("%v", strings.TrimPrefix(err.Error(), "dkim: "))
-		return err
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 
 	h.Add("DKIM-Signature", signer.SignatureValue())
 
-	s.m.log.Debugf("signed, identifier = %s", id)
+	s.m.log.DebugMsg("signed", "identifier", id)
 
 	return nil
 }

@@ -5,9 +5,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/check"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
@@ -15,18 +15,19 @@ import (
 func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		log.Debugf("non TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
+		log.Debugf("non TCP/IP source, skipped")
 		return module.CheckResult{}
 	}
 
 	names, err := ctx.Resolver.LookupAddr(context.Background(), tcpAddr.IP.String())
 	if err != nil || len(names) == 0 {
-		ctx.Logger.Println(err)
 		return module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 25},
-				Message:      "could look up rDNS address for source",
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 25},
+				Message:      "rDNS lookup failure during policy check",
+				CheckName:    "require_matching_rdns",
+				Err:          err,
 			},
 		}
 	}
@@ -39,12 +40,12 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 			return module.CheckResult{}
 		}
 	}
-	ctx.Logger.Printf("no PTR records for %v IP pointing to %s", tcpAddr.IP, srcDomain)
 	return module.CheckResult{
-		RejectErr: &smtp.SMTPError{
+		Reason: &exterrors.SMTPError{
 			Code:         550,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 25},
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 25},
 			Message:      "rDNS name does not match source hostname",
+			CheckName:    "require_matching_rdns",
 		},
 	}
 }
@@ -52,44 +53,49 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.CheckResult {
 	_, domain, err := address.Split(mailFrom)
 	if err != nil {
-		return module.CheckResult{RejectErr: err}
+		return module.CheckResult{
+			Reason: exterrors.WithFields(err, map[string]interface{}{
+				"check": "require_matching_rdns",
+			}),
+		}
 	}
 	if domain == "" {
-		// TODO: Make it configurable whether <postmaster> is allowed.
 		return module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 8},
-				Message:      "<postmaster> is not allowed",
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
+				Message:      "No domain part",
+				CheckName:    "require_matching_rdns",
 			},
 		}
 	}
 
 	_, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
+		ctx.Logger.Println("non-TCP/IP source")
 		return module.CheckResult{}
 	}
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
-		ctx.Logger.Println(err)
 		return module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 27},
-				Message:      "could not find MX records for MAIL FROM domain",
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 27},
+				Message:      "Could not find MX records for MAIL FROM domain",
+				CheckName:    "require_matching_rdns",
+				Err:          err,
 			},
 		}
 	}
 
 	if len(srcMx) == 0 {
-		ctx.Logger.Printf("%s got no MX records", domain)
 		return module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 27},
-				Message:      "domain in MAIL FROM has no MX records",
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 27},
+				Message:      "Domain in MAIL FROM has no MX records",
+				CheckName:    "require_matching_rdns",
 			},
 		}
 	}
@@ -100,19 +106,19 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		ctx.Logger.Debugf("not TCP/IP source (%v), skipped", ctx.MsgMeta.SrcAddr)
+		ctx.Logger.Printf("non-TCP/IP source, skipped")
 		return module.CheckResult{}
 	}
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
 	if err != nil {
-		ctx.Logger.Println(err)
-		// TODO: Check whether lookup is failed due to temporary error and reject with 4xx code.
 		return module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 				Message:      "DNS lookup failure during policy check",
+				CheckName:    "require_matching_ehlo",
+				Err:          err,
 			},
 		}
 	}
@@ -123,12 +129,12 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 			return module.CheckResult{}
 		}
 	}
-	ctx.Logger.Printf("no A/AAA records found for %s for %s domain", tcpAddr.IP, ctx.MsgMeta.SrcHostname)
 	return module.CheckResult{
-		RejectErr: &smtp.SMTPError{
+		Reason: &exterrors.SMTPError{
 			Code:         550,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 0},
-			Message:      "no matching A/AAA records found for EHLO hostname",
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+			Message:      "No matching A/AAA records found for EHLO hostname",
+			CheckName:    "require_matching_ehlo",
 		},
 	}
 }

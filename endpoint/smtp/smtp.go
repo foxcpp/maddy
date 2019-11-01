@@ -20,28 +20,13 @@ import (
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
 	"github.com/foxcpp/maddy/dns"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/future"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/msgpipeline"
 	"github.com/foxcpp/maddy/target"
 )
-
-func MsgMetaLog(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
-	out := l.Out
-	if out == nil {
-		out = log.DefaultLogger.Out
-	}
-
-	return log.Logger{
-		Out: log.FuncOutput(func(t time.Time, debug bool, str string) {
-			ctxInfo := fmt.Sprintf(", HELO = %s, IP = %s, MAIL FROM = %s, msg ID = %s", msgMeta.SrcHostname, msgMeta.SrcAddr, msgMeta.OriginalFrom, msgMeta.ID)
-			out.Write(t, debug, str+ctxInfo)
-		}, out.Close),
-		Debug: l.Debug,
-		Name:  l.Name,
-	}
-}
 
 type Session struct {
 	endp        *Endpoint
@@ -61,9 +46,11 @@ var errInternal = &smtp.SMTPError{
 func (s *Session) Reset() {
 	if s.delivery != nil {
 		if err := s.delivery.Abort(); err != nil {
-			s.endp.Log.Printf("failed to abort delivery: %v", err)
+			s.endp.Log.Error("delivery abort failed", err)
 		}
+		s.log.Msg("aborted")
 		s.delivery = nil
+		s.log = s.endp.Log
 	}
 }
 
@@ -71,27 +58,29 @@ func (s *Session) Mail(from string) error {
 	var err error
 	s.msgMeta.ID, err = msgpipeline.GenerateMsgID()
 	if err != nil {
-		s.endp.Log.Printf("rand.Rand error: %v", err)
+		s.log.Msg("rand.Rand fail", "err", err)
 		return s.wrapErr(errInternal)
 	}
 	s.msgMeta.OriginalFrom = from
 
-	s.log.Printf("incoming message")
-
-	// Left here for future use.
-	mailCtx := context.TODO()
-
 	if s.endp.resolver != nil && s.msgMeta.SrcAddr != nil {
-		rdnsCtx, cancelRDNS := context.WithCancel(mailCtx)
+		rdnsCtx, cancelRDNS := context.WithCancel(context.TODO())
 		s.msgMeta.SrcRDNSName = future.New()
 		s.cancelRDNS = cancelRDNS
 		go s.fetchRDNSName(rdnsCtx)
 	}
 
 	if !s.endp.deferServerReject {
+		s.log = target.DeliveryLogger(s.log, s.msgMeta)
+		s.log.Msg("incoming message",
+			"src_host", s.msgMeta.SrcHostname,
+			"src_ip", s.msgMeta.SrcAddr.String(),
+			"sender", s.msgMeta.OriginalFrom,
+		)
+
 		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
-			s.log.Printf("sender rejected: %v", err)
+			s.log.Error("MAIL FROM error", err)
 			return s.wrapErr(err)
 		}
 	}
@@ -108,7 +97,7 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 
 	name, err := dns.LookupAddr(ctx, s.endp.resolver, tcpAddr.IP)
 	if err != nil {
-		s.log.Printf("failed to do RDNS lookup for %v: %v", tcpAddr.IP, err)
+		s.log.Error("rDNS error", err)
 		s.msgMeta.SrcRDNSName.Set(nil)
 		return
 	}
@@ -118,15 +107,21 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 
 func (s *Session) Rcpt(to string) error {
 	if s.delivery == nil {
+		s.log = target.DeliveryLogger(s.log, s.msgMeta)
+		s.log.Msg("incoming message",
+			"src_host", s.msgMeta.SrcHostname,
+			"src_ip", s.msgMeta.SrcAddr.String(),
+			"sender", s.msgMeta.OriginalFrom,
+		)
+
 		if s.deliveryErr != nil {
-			s.log.Printf("sender rejected (repeated): %v, RCPT TO = %s", s.deliveryErr, to)
+			s.log.Error("MAIL FROM error (repeated)", s.deliveryErr, "rcpt", to)
 			return s.wrapErr(s.deliveryErr)
 		}
-
 		var err error
 		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
-			s.log.Printf("sender rejected (deferred): %v, RCPT TO = %s", err, to)
+			s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to)
 			s.deliveryErr = err
 			return s.wrapErr(err)
 		}
@@ -134,9 +129,11 @@ func (s *Session) Rcpt(to string) error {
 
 	err := s.delivery.AddRcpt(to)
 	if err != nil {
-		s.log.Printf("recipient rejected: %v, RCPT TO = %s", err, to)
+		s.log.Error("RCPT error", err, "rcpt", to)
+		return s.wrapErr(err)
 	}
-	return s.wrapErr(err)
+	s.log.Msg("RCPT ok", "rcpt", to)
+	return nil
 }
 
 func (s *Session) Logout() error {
@@ -144,6 +141,7 @@ func (s *Session) Logout() error {
 		if err := s.delivery.Abort(); err != nil {
 			s.endp.Log.Printf("failed to abort delivery: %v", err)
 		}
+		s.log.Msg("aborted")
 		s.delivery = nil
 	}
 	if s.cancelRDNS != nil {
@@ -156,13 +154,13 @@ func (s *Session) Data(r io.Reader) error {
 	bufr := bufio.NewReader(r)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
-		s.log.Printf("malformed header or I/O error: %v", err)
+		s.log.Error("DATA error", err)
 		return s.wrapErr(err)
 	}
 
 	if s.endp.submission {
 		if err := SubmissionPrepare(s.msgMeta, header, s.endp.serv.Domain); err != nil {
-			s.log.Printf("malformed header or I/O error: %v", err)
+			s.log.Error("DATA error", err)
 			return s.wrapErr(err)
 		}
 	}
@@ -170,28 +168,29 @@ func (s *Session) Data(r io.Reader) error {
 	// TODO: Disk buffering.
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
-		s.log.Printf("I/O error: %v", err)
+		s.log.Error("DATA error", err)
 		return s.wrapErr(errInternal)
 	}
 	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.serv.Domain, s.msgMeta.OriginalFrom)
 	if err != nil {
+		s.log.Error("DATA error", err)
 		return err
 	}
 	header.Add("Received", received)
 
 	if err := s.delivery.Body(header, buf); err != nil {
-		s.log.Printf("%v", err)
+		s.log.Error("DATA error", err)
 		return s.wrapErr(err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
-		s.log.Printf("%v", err)
+		s.log.Error("DATA error", err)
 		return s.wrapErr(err)
 	}
 
-	s.log.Printf("message accepted")
+	s.log.Msg("accepted")
 	s.delivery = nil
 
 	return nil
@@ -202,14 +201,39 @@ func (s *Session) wrapErr(err error) error {
 		return nil
 	}
 
-	if smtpErr, ok := err.(*smtp.SMTPError); ok {
-		return &smtp.SMTPError{
-			Code:         smtpErr.Code,
-			EnhancedCode: smtpErr.EnhancedCode,
-			Message:      smtpErr.Message + " (msg ID = " + s.msgMeta.ID + ")",
-		}
+	res := &smtp.SMTPError{
+		Code:         554,
+		EnhancedCode: smtp.EnhancedCodeNotSet,
+		Message:      err.Error(),
 	}
-	return fmt.Errorf("%v (msg ID = %s)", err, s.msgMeta.ID)
+
+	if exterrors.IsTemporary(err) {
+		res.Code = 451
+	}
+
+	ctxInfo := exterrors.Fields(err)
+	ctxCode, ok := ctxInfo["smtp_code"].(int)
+	if ok {
+		res.Code = ctxCode
+	}
+	ctxEnchCode, ok := ctxInfo["smtp_enchcode"].(exterrors.EnhancedCode)
+	if ok {
+		res.EnhancedCode = smtp.EnhancedCode(ctxEnchCode)
+	}
+	ctxMsg, ok := ctxInfo["smtp_msg"].(string)
+	if ok {
+		res.Message = ctxMsg
+	}
+
+	if smtpErr, ok := err.(*smtp.SMTPError); ok {
+		s.endp.Log.Printf("plain SMTP error returned, this is deprecated")
+		res.Code = smtpErr.Code
+		res.EnhancedCode = smtpErr.EnhancedCode
+		res.Message = smtpErr.Message
+	}
+
+	res.Message += " (msg ID = " + s.msgMeta.ID + ")"
+	return res
 }
 
 type Endpoint struct {
@@ -383,7 +407,7 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 	}
 
 	if !endp.Auth.CheckPlain(username, password) {
-		endp.Log.Printf("authentication failed for %s (from %v)", username, state.RemoteAddr)
+		endp.Log.Msg("authentication failed", "username", username, "src_ip", state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}
 
@@ -423,7 +447,7 @@ func (endp *Endpoint) newSession(anonymous bool, username, password string, stat
 	return &Session{
 		endp:    endp,
 		msgMeta: ctx,
-		log:     MsgMetaLog(endp.Log, ctx),
+		log:     endp.Log,
 	}
 }
 

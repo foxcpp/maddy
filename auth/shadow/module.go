@@ -74,18 +74,18 @@ func (a *Auth) CheckPlain(username, password string) bool {
 	ent, err := Lookup(username)
 	if err != nil {
 		if err != ErrNoSuchUser {
-			a.Log.Printf("%v, username = %s", err, username)
+			a.Log.Error("lookup error", err, "username", username)
 		}
 		return false
 	}
 
 	if !ent.IsAccountValid() {
-		a.Log.Printf("account is expired, username = %s", username)
+		a.Log.Msg("account is expired", "username", username)
 		return false
 	}
 
 	if !ent.IsPasswordValid() {
-		a.Log.Printf("password is expired, username = %s", username)
+		a.Log.Msg("password is expired", "username", username)
 		return false
 	}
 
@@ -93,7 +93,7 @@ func (a *Auth) CheckPlain(username, password string) bool {
 		if err != ErrWrongPassword {
 			a.Log.Printf("%v", err)
 		}
-		a.Log.Debugf("password verification failed, username = %s", username)
+		a.Log.Msg("password verification failed", "username", username)
 		return false
 	}
 

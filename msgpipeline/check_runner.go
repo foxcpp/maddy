@@ -9,10 +9,9 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
-	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/atomicbool"
 	"github.com/foxcpp/maddy/buffer"
 	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
@@ -134,13 +133,18 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 
 func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner func(module.CheckState) module.CheckResult) error {
 	data := struct {
-		quarantineFlag atomicbool.AtomicBool
-		authResLock    sync.Mutex
-		headerLock     sync.Mutex
-		firstErr       error
+		authResLock sync.Mutex
+		headerLock  sync.Mutex
 
-		setErr sync.Once
-		wg     sync.WaitGroup
+		quarantineErr    error
+		quarantineCheck  string
+		setQuarantineErr sync.Once
+
+		rejectErr    error
+		rejectCheck  string
+		setRejectErr sync.Once
+
+		wg sync.WaitGroup
 	}{}
 
 	for _, state := range states {
@@ -165,10 +169,14 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 			}
 
 			if subCheckRes.Quarantine {
-				data.quarantineFlag.Set(true)
+				data.setQuarantineErr.Do(func() {
+					data.quarantineErr = subCheckRes.Reason
+				})
 			}
-			if subCheckRes.RejectErr != nil {
-				data.setErr.Do(func() { data.firstErr = subCheckRes.RejectErr })
+			if subCheckRes.Reject {
+				data.setRejectErr.Do(func() {
+					data.rejectErr = subCheckRes.Reason
+				})
 			}
 
 			data.wg.Done()
@@ -176,11 +184,12 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 	}
 
 	data.wg.Wait()
-	if data.firstErr != nil {
-		return data.firstErr
+	if data.rejectErr != nil {
+		return data.rejectErr
 	}
 
-	if data.quarantineFlag.IsSet() {
+	if data.quarantineErr != nil {
+		cr.log.Error("quarantined", data.quarantineErr, "reason", data.quarantineErr.Error())
 		cr.mergedRes.Quarantine = true
 	}
 
@@ -266,7 +275,7 @@ func (cr *checkRunner) applyDMARC() error {
 		return dmarcData.err
 	}
 	if dmarcData.record == nil {
-		cr.log.Debugf("no DMARC record (orgDomain = %s)", dmarcData.orgDomain)
+		cr.log.DebugMsg("no record", "orgdomain", dmarcData.orgDomain)
 		return nil
 	}
 
@@ -291,17 +300,15 @@ func (cr *checkRunner) applyDMARC() error {
 	}
 
 	if !dmarcFail {
-		cr.log.Debugf("DMARC check passed (p = %s, orgDomain = %s)", dmarcData.record.Policy, dmarcData.orgDomain)
+		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy, "orgdomain", dmarcData.orgDomain)
 		return nil
 	}
 	// TODO: Report generation.
 
-	if dmarcData.record.Percent == nil || rand.Int31n(100) < int32(*dmarcData.record.Percent) {
-		cr.log.Printf("DMARC check failed: %s (p = %s, orgDomain = %s)",
-			result.Reason, dmarcData.record.Policy, dmarcData.orgDomain)
-	} else {
-		cr.log.Printf("DMARC check ignored: %s (pct = %v, p = %s, orgDomain = %s)",
-			result.Reason, dmarcData.record.Percent, dmarcData.record.Policy, dmarcData.orgDomain)
+	if dmarcData.record.Percent != nil && rand.Int31n(100) > int32(*dmarcData.record.Percent) {
+		cr.log.Msg("DMARC not enforced due to pct",
+			"pct", *dmarcData.record.Percent, "p", dmarcData.record.Policy,
+			"orgdomain", dmarcData.orgDomain, "fromdomain", dmarcData.fromDomain)
 		return nil
 	}
 
@@ -312,20 +319,29 @@ func (cr *checkRunner) applyDMARC() error {
 
 	switch policy {
 	case dmarc.PolicyReject:
-		return &smtp.SMTPError{
+		return &exterrors.SMTPError{
 			Code:         550,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 1},
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
 			Message:      "DMARC check failed",
+			CheckName:    "dmarc",
+			Misc: map[string]interface{}{
+				"reason":     result.Reason,
+				"fromdomain": dmarcData.fromDomain,
+				"orgdomain":  dmarcData.orgDomain,
+			},
 		}
 	case dmarc.PolicyQuarantine:
 		cr.msgMeta.Quarantine = true
+
+		// Mimick the message structure for regular checks.
+		cr.log.Msg("quarantined", "reason", result.Reason, "check", "dmarc",
+			"fromdomain", dmarcData.fromDomain, "orgdomain", dmarcData.orgDomain)
 	}
 	return nil
 }
 
 func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) error {
 	if cr.mergedRes.Quarantine {
-		cr.log.Printf("quarantined message due to check result")
 		cr.msgMeta.Quarantine = true
 	}
 

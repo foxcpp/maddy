@@ -42,9 +42,13 @@ type CheckState interface {
 }
 
 type CheckResult struct {
-	// RejectErr is the error that is reported to the message source
+	// Reason is the error that is reported to the message source
 	// if check decided that the message should be rejected.
-	RejectErr error
+	Reason error
+
+	// Reject is the flag that specifies that the message
+	// should be rejected.
+	Reject bool
 
 	// Quarantine is the flag that specifies that the message
 	// is considered "possibly malicious" and should be

@@ -216,7 +216,6 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	}
 
 	if rcptBlock.rejectErr != nil {
-		dd.log.Debugf("recipient %s rejected: %v", to, rcptBlock.rejectErr)
 		return rcptBlock.rejectErr
 	}
 
@@ -248,10 +247,8 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 		}
 
 		if err := delivery.AddRcpt(to); err != nil {
-			dd.log.Debugf("delivery.AddRcpt(%s) failure, Delivery object = %T: %v", to, delivery, err)
 			return err
 		}
-		dd.log.Debugf("delivery.AddRcpt(%s) ok, Delivery object = %T", to, delivery)
 		delivery.recipients = append(delivery.recipients, originalTo)
 	}
 
@@ -282,7 +279,6 @@ func (dd *msgpipelineDelivery) Body(header textproto.Header, body buffer.Buffer)
 
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Body(header, body); err != nil {
-			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v", delivery, err)
 			return err
 		}
 		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
@@ -351,12 +347,10 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header te
 		}
 
 		if err := delivery.Body(header, body); err != nil {
-			dd.log.Debugf("delivery.Body failure, Delivery object = %T: %v", delivery, err)
 			for _, rcpt := range delivery.recipients {
 				c.SetStatus(rcpt, err)
 			}
 		}
-		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
 	}
 }
 
@@ -365,11 +359,9 @@ func (dd msgpipelineDelivery) Commit() error {
 
 	for _, delivery := range dd.deliveries {
 		if err := delivery.Commit(); err != nil {
-			dd.log.Debugf("delivery.Commit failure, Delivery object = %T: %v", delivery, err)
 			// No point in Committing remaining deliveries, everything is broken already.
 			return err
 		}
-		dd.log.Debugf("delivery.Commit ok, Delivery object = %T", delivery)
 	}
 	return nil
 }
@@ -398,7 +390,6 @@ func (dd msgpipelineDelivery) Abort() error {
 			lastErr = err
 			// Continue anyway and try to Abort all remaining delivery objects.
 		}
-		dd.log.Debugf("delivery.Abort ok, Delivery object = %T", delivery)
 	}
 	dd.log.Debugf("delivery aborted")
 	return lastErr

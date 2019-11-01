@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/module"
@@ -414,10 +413,7 @@ func TestQueueDelivery_TemporaryRcptReject(t *testing.T) {
 	dt := unreliableTarget{
 		rcptFailures: []map[string]error{
 			{
-				"tester1@example.org": &smtp.SMTPError{
-					Code:    400,
-					Message: "go away",
-				},
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), true),
 			},
 		},
 		committed: make(chan testutils.Msg, 10),
@@ -451,10 +447,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 	dt := unreliableTarget{
 		rcptFailures: []map[string]error{
 			{
-				"tester1@example.org": &smtp.SMTPError{
-					Code:    400,
-					Message: "go away",
-				},
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), true),
 			},
 		},
 		committed: make(chan testutils.Msg, 10),
@@ -502,10 +495,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 		dt := unreliableTarget{
 			rcptFailures: []map[string]error{
 				{
-					"tester1@example.org": &smtp.SMTPError{
-						Code:    400,
-						Message: "go away",
-					},
+					"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), true),
 				},
 			},
 			committed: make(chan testutils.Msg, 10),

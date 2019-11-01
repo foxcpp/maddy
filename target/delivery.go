@@ -1,23 +1,15 @@
 package target
 
 import (
-	"time"
-
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
 
 func DeliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
-	out := l.Out
-	if out == nil {
-		out = log.DefaultLogger.Out
-	}
+	eventCtx := make([]interface{}, 0, len(l.Fields)+2)
+	copy(eventCtx, l.Fields)
+	eventCtx = append(eventCtx, "msg_id", msgMeta.ID)
 
-	return log.Logger{
-		Out: log.FuncOutput(func(t time.Time, debug bool, str string) {
-			out.Write(t, debug, str+" (msg ID = "+msgMeta.ID+")")
-		}, out.Close),
-		Name:  l.Name,
-		Debug: l.Debug,
-	}
+	l.Fields = eventCtx
+	return l
 }

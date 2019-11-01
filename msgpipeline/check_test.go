@@ -177,10 +177,10 @@ func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
-		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
-		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
-		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
-		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+		ConnRes:   module.CheckResult{Reject: true, Reason: errors.New("2")},
+		SenderRes: module.CheckResult{Reject: true, Reason: errors.New("3")},
+		RcptRes:   module.CheckResult{Reject: true, Reason: errors.New("4")},
+		BodyRes:   module.CheckResult{Reject: true, Reason: errors.New("5")},
 	}
 	d := MsgPipeline{
 		msgpipelineCfg: msgpipelineCfg{
@@ -213,7 +213,7 @@ func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.ConnRes.RejectErr = nil
+	check_.ConnRes.Reject = false
 
 	t.Run("mail from err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -222,7 +222,7 @@ func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.SenderRes.RejectErr = nil
+	check_.SenderRes.Reject = false
 
 	t.Run("rcpt to err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -231,7 +231,7 @@ func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.RcptRes.RejectErr = nil
+	check_.RcptRes.Reject = false
 
 	t.Run("body err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -240,7 +240,7 @@ func TestMsgPipeline_Globalcheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.BodyRes.RejectErr = nil
+	check_.BodyRes.Reject = false
 
 	t.Run("no err", func(t *testing.T) {
 		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -255,10 +255,10 @@ func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
-		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
-		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
-		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
-		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+		ConnRes:   module.CheckResult{Reject: true, Reason: errors.New("2")},
+		SenderRes: module.CheckResult{Reject: true, Reason: errors.New("3")},
+		RcptRes:   module.CheckResult{Reject: true, Reason: errors.New("4")},
+		BodyRes:   module.CheckResult{Reject: true, Reason: errors.New("5")},
 	}
 	globalCheck := testutils.Check{}
 	d := MsgPipeline{
@@ -293,7 +293,7 @@ func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.ConnRes.RejectErr = nil
+	check_.ConnRes.Reject = false
 
 	t.Run("mail from err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -302,7 +302,7 @@ func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.SenderRes.RejectErr = nil
+	check_.SenderRes.Reject = false
 
 	t.Run("rcpt to err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -311,7 +311,7 @@ func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.RcptRes.RejectErr = nil
+	check_.RcptRes.Reject = false
 
 	t.Run("body err", func(t *testing.T) {
 		_, err := testutils.DoTestDeliveryErr(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -320,7 +320,7 @@ func TestMsgPipeline_SourceCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.BodyRes.RejectErr = nil
+	check_.BodyRes.Reject = false
 
 	t.Run("no err", func(t *testing.T) {
 		testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "rcpt2@example.com"})
@@ -336,10 +336,10 @@ func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 	target := testutils.Target{}
 	check_ := testutils.Check{
 		InitErr:   errors.New("1"),
-		ConnRes:   module.CheckResult{RejectErr: errors.New("2")},
-		SenderRes: module.CheckResult{RejectErr: errors.New("3")},
-		RcptRes:   module.CheckResult{RejectErr: errors.New("4")},
-		BodyRes:   module.CheckResult{RejectErr: errors.New("5")},
+		ConnRes:   module.CheckResult{Reject: true, Reason: errors.New("2")},
+		SenderRes: module.CheckResult{Reject: true, Reason: errors.New("3")},
+		RcptRes:   module.CheckResult{Reject: true, Reason: errors.New("4")},
+		BodyRes:   module.CheckResult{Reject: true, Reason: errors.New("5")},
 
 		InstName: "err_check",
 	}
@@ -384,7 +384,7 @@ func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 		t.Log("!!!", check_.UnclosedStates)
 	})
 
-	check_.ConnRes.RejectErr = nil
+	check_.ConnRes.Reject = false
 
 	t.Run("mail from err", func(t *testing.T) {
 		d.Log = testutils.Logger(t, "msgpipeline")
@@ -396,7 +396,7 @@ func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 		t.Log("!!!", check_.UnclosedStates)
 	})
 
-	check_.SenderRes.RejectErr = nil
+	check_.SenderRes.Reject = false
 
 	t.Run("rcpt to err", func(t *testing.T) {
 		d.Log = testutils.Logger(t, "msgpipeline")
@@ -406,7 +406,7 @@ func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.RcptRes.RejectErr = nil
+	check_.RcptRes.Reject = false
 
 	t.Run("body err", func(t *testing.T) {
 		d.Log = testutils.Logger(t, "msgpipeline")
@@ -416,7 +416,7 @@ func TestMsgPipeline_RcptCheck_Errors(t *testing.T) {
 		}
 	})
 
-	check_.BodyRes.RejectErr = nil
+	check_.BodyRes.Reject = false
 
 	t.Run("no err", func(t *testing.T) {
 		d.Log = testutils.Logger(t, "msgpipeline")

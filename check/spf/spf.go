@@ -10,16 +10,18 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/check"
 	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
 )
+
+const modName = "apply_spf"
 
 type Check struct {
 	instName     string
@@ -36,12 +38,12 @@ type Check struct {
 func New(_, instName string, _, _ []string) (module.Module, error) {
 	return &Check{
 		instName: instName,
-		log:      log.Logger{Name: "apply_spf"},
+		log:      log.Logger{Name: modName},
 	}, nil
 }
 
 func (c *Check) Name() string {
-	return "apply_spf"
+	return modName
 }
 
 func (c *Check) InstanceName() string {
@@ -119,47 +121,56 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 	case spf.Fail:
 		spfAuth.Value = authres.ResultFail
 		return s.c.failAction.Apply(module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 23},
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "SPF authentication failed",
+				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
 	case spf.SoftFail:
 		spfAuth.Value = authres.ResultSoftFail
 		return s.c.softfailAction.Apply(module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 23},
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "SPF authentication soft-failed",
+				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
 	case spf.TempError:
 		spfAuth.Value = authres.ResultTempError
 		return s.c.softfailAction.Apply(module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         451,
-				EnhancedCode: smtp.EnhancedCode{4, 7, 23},
+				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
 				Message:      "SPF authentication failed with temporary error",
+				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
 	case spf.PermError:
 		spfAuth.Value = authres.ResultPermError
 		return s.c.softfailAction.Apply(module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{4, 7, 23},
+				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
 				Message:      "SPF authentication failed with permanent error",
+				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
 	}
 
 	return module.CheckResult{
-		RejectErr:  fmt.Errorf("unknown SPF status: %s", res),
+		Reason: &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
+			Message:      fmt.Sprintf("Unknown SPF status: %s", res),
+			CheckName:    modName,
+		},
 		AuthResult: []authres.Result{spfAuth},
 	}
 }
@@ -167,7 +178,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 	orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(context.Background(), hdr)
 	if err != nil {
-		s.log.Printf("can't fetch DMARC policy (%s, %s): %v", orgDomain, fromDomain, err)
+		s.log.Error("DMARC fetch", err, "orgDomain", orgDomain, "fromDomain", fromDomain)
 		return false
 	}
 	if record == nil {
@@ -186,17 +197,13 @@ func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 func (s *state) CheckConnection() module.CheckResult {
 	ip, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
-		s.log.Printf("skipping message with non-IP SrcAddr (%T)", s.msgMeta.SrcAddr)
+		s.log.Println("non-IP SrcAddr")
 		return module.CheckResult{}
 	}
 
 	if s.c.enforceEarly {
 		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom)
-		if res != spf.Pass {
-			s.log.Printf("result: %s (%v)", res, err)
-		} else {
-			s.log.Debugf("result: %s (%v)", res, err)
-		}
+		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
 
@@ -207,11 +214,7 @@ func (s *state) CheckConnection() module.CheckResult {
 
 	go func() {
 		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom)
-		if res != spf.Pass {
-			s.log.Printf("result: %s (%v)", res, err)
-		} else {
-			s.log.Debugf("result: %s (%v)", res, err)
-		}
+		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()
 
@@ -242,7 +245,7 @@ func (s *state) CheckBody(header textproto.Header, body buffer.Buffer) module.Ch
 
 		checkRes := s.spfResult(res.res, res.err)
 		checkRes.Quarantine = false
-		checkRes.RejectErr = nil
+		checkRes.Reject = false
 		return checkRes
 	}
 
@@ -254,9 +257,9 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register("apply_spf", New)
+	module.Register(modName, New)
 	module.RegisterInstance(&Check{
-		instName: "apply_spf",
-		log:      log.Logger{Name: "apply_spf"},
+		instName: modName,
+		log:      log.Logger{Name: modName},
 	}, &config.Map{Block: &config.Node{}})
 }

@@ -261,13 +261,51 @@ func (q *Queue) dispatch() {
 			q.Log.Debugln("delivery semaphore acquired for", id)
 			meta, header, body, err := q.openMessage(id)
 			if err != nil {
-				q.Log.Printf("failed to read message: %v", err)
+				q.Log.Error("read message", err)
 				return
 			}
 
 			q.tryDelivery(meta, header, body)
 		}()
 	}
+}
+
+func toSMTPErr(err error) *smtp.SMTPError {
+	if err == nil {
+		return nil
+	}
+
+	res := &smtp.SMTPError{
+		Code:         554,
+		EnhancedCode: smtp.EnhancedCodeNotSet,
+	}
+
+	if exterrors.IsTemporaryOrUnspec(err) {
+		res.Code = 451
+	}
+
+	ctxInfo := exterrors.Fields(err)
+	ctxCode, ok := ctxInfo["smtp_code"].(int)
+	if ok {
+		res.Code = ctxCode
+	}
+	ctxEnchCode, ok := ctxInfo["smtp_enchcode"].(smtp.EnhancedCode)
+	if ok {
+		res.EnhancedCode = ctxEnchCode
+	}
+	ctxMsg, ok := ctxInfo["smtp_msg"].(string)
+	if ok {
+		res.Message = ctxMsg
+	}
+
+	if smtpErr, ok := err.(*smtp.SMTPError); ok {
+		log.Printf("plain SMTP error returned, this is deprecated")
+		res.Code = smtpErr.Code
+		res.EnhancedCode = smtpErr.EnhancedCode
+		res.Message = smtpErr.Message
+	}
+
+	return res
 }
 
 func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
@@ -283,27 +321,14 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 			continue
 		}
 
-		dl.Printf("delivered to %s after %d attempt(s)", rcpt, meta.TriesCount+1)
+		dl.Msg("delivered", "rcpt", rcpt, "attempt", meta.TriesCount+1)
 	}
 
 	// Save errors information for reporting in bounce message.
 	meta.FailedRcpts = append(meta.FailedRcpts, partialErr.Failed...)
 	for rcpt, rcptErr := range partialErr.Errs {
-		var smtpErr *smtp.SMTPError
-		var ok bool
-		if smtpErr, ok = rcptErr.(*smtp.SMTPError); !ok {
-			smtpErr = &smtp.SMTPError{
-				Code:         554,
-				EnhancedCode: smtp.EnhancedCode{5, 0, 0},
-				Message:      rcptErr.Error(),
-			}
-			if exterrors.IsTemporaryOrUnspec(rcptErr) {
-				smtpErr.Code = 451
-				smtpErr.EnhancedCode = smtp.EnhancedCode{4, 0, 0}
-			}
-		}
-
-		meta.RcptErrs[rcpt] = smtpErr
+		dl.Error("delivery attempt failed", rcptErr, "rcpt", rcpt)
+		meta.RcptErrs[rcpt] = toSMTPErr(rcptErr)
 	}
 	meta.To = partialErr.TemporaryFailed
 
@@ -312,11 +337,11 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		// Attempt either fully succeeded or completely failed.
 		if meta.TriesCount == q.maxTries {
 			for _, rcpt := range meta.TemporaryFailedRcpts {
-				dl.Printf("gave up trying to deliver to %s", rcpt)
+				dl.Msg("not delivered, temporary error", "rcpt", rcpt)
 			}
 		}
 		for _, rcpt := range meta.FailedRcpts {
-			dl.Printf("failed to deliver to %s", rcpt)
+			dl.Msg("not delivered, permanent error", "rcpt", rcpt)
 		}
 		if (len(meta.FailedRcpts) != 0 || meta.TriesCount == q.maxTries) && !meta.DSN {
 			q.emitDSN(meta, header)
@@ -328,13 +353,15 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	meta.TriesCount++
 
 	if err := q.updateMetadataOnDisk(meta); err != nil {
-		dl.Printf("failed to update meta-data: %v", err)
+		dl.Error("meta-data update", err)
 	}
 
 	nextTryTime := time.Now()
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * time.Duration(math.Pow(q.retryTimeScale, float64(meta.TriesCount-1))))
-	dl.Printf("%d attempt failed, will retry in %v (at %v) for %v",
-		meta.TriesCount, time.Until(nextTryTime), nextTryTime.Truncate(time.Second), meta.To)
+	dl.Msg("will retry",
+		"attempts_count", meta.TriesCount,
+		"next_try_delay", time.Until(nextTryTime),
+		"rcpts", meta.To)
 
 	q.wheel.Add(nextTryTime, meta.MsgMeta.ID)
 }
@@ -385,7 +412,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	if len(acceptedRcpts) == 0 {
 		dl.Debugf("delivery.Abort (no accepted receipients)")
 		if err := delivery.Abort(); err != nil {
-			dl.Printf("delivery.Abort failed: %v", err)
+			dl.Error("delivery.Abort failed", err)
 		}
 		return perr
 	}
@@ -423,7 +450,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		// No recipients succeeded.
 		dl.Debugf("delivery.Abort (all recipients failed)")
 		if err := delivery.Abort(); err != nil {
-			dl.Printf("delivery.Abort failed: %v", err)
+			dl.Msg("delivery.Abort failed", err)
 		}
 		return perr
 	}
@@ -516,15 +543,15 @@ func (q *Queue) removeFromDisk(msgMeta *module.MsgMetadata) {
 	// will detect and report it.
 	headerPath := filepath.Join(q.location, id+".header")
 	if err := os.Remove(headerPath); err != nil {
-		dl.Printf("failed to remove header from disk: %v", err)
+		dl.Error("failed to remove header from disk", err)
 	}
 	bodyPath := filepath.Join(q.location, id+".body")
 	if err := os.Remove(bodyPath); err != nil {
-		dl.Printf("failed to remove body from disk: %v", err)
+		dl.Error("failed to remove body from disk", err)
 	}
 	metaPath := filepath.Join(q.location, id+".meta")
 	if err := os.Remove(metaPath); err != nil {
-		dl.Printf("failed to remove meta-data from disk: %v", err)
+		dl.Error("failed to remove meta-data from disk", err)
 	}
 	dl.Debugf("removed message from disk")
 }
@@ -691,7 +718,7 @@ type BufferedReadCloser struct {
 
 func (q *Queue) tryRemoveDanglingFile(name string) {
 	if err := os.Remove(filepath.Join(q.location, name)); err != nil {
-		q.Log.Println(err)
+		q.Log.Error("dangling file remove failed", err)
 		return
 	}
 	q.Log.Printf("removed dangling file %s", name)
@@ -748,7 +775,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 
 	dsnID, err := msgpipeline.GenerateMsgID()
 	if err != nil {
-		q.Log.Printf("rand.Rand error: %v", err)
+		q.Log.Error("rand.Rand error", err)
 		return
 	}
 
@@ -789,7 +816,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
 	dsnHeader, err := dsn.GenerateDSN(dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
 	if err != nil {
-		dl.Printf("failed to generate fail DSN: %v", err)
+		dl.Msg("failed to generate fail DSN", err)
 		return
 	}
 	dsnBody := buffer.MemoryBuffer{Slice: dsnBodyBlob.Bytes()}
@@ -799,18 +826,18 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 		SrcProto:    "",
 		SrcHostname: q.hostname,
 	}
-	dl.Printf("generated failed DSN, DSN ID = %s", dsnID)
+	dl.Msg("generated failed DSN", "dsn_id", dsnID)
 
 	dsnDelivery, err := q.StartDSN(dsnMeta, "MAILER-DAEMON@"+q.autogenMsgDomain)
 	if err != nil {
-		dl.Printf("failed to enqueue DSN: %v", err)
+		dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
 		return
 	}
 	defer func() {
 		if err != nil {
-			dl.Printf("failed to enqueue DSN: %v", err)
+			dl.Msg("failed to enqueue DSN", err, "dsn_id", dsnID)
 			if err := dsnDelivery.Abort(); err != nil {
-				dl.Printf("failed to abort DSN delivery: %v", err)
+				dl.Error("failed to abort DSN delivery", err, "dsn_id", dsnID)
 			}
 		}
 	}()

@@ -10,10 +10,10 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dkim"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -100,10 +100,11 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 			d.log.Debugf("no signatures present")
 		}
 		return d.c.noSigAction.Apply(module.CheckResult{
-			RejectErr: &smtp.SMTPError{
+			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 7, 20},
-				Message:      "No DKIM signatures present",
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 20},
+				Message:      "No DKIM signatures",
+				CheckName:    "verify_dkim",
 			},
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
@@ -119,9 +120,8 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	textproto.WriteHeader(&b, header)
 	bodyRdr, err := body.Open()
 	if err != nil {
-		d.log.Println("can't open body:", err)
 		return module.CheckResult{
-			RejectErr: err,
+			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "verify_dkim"}),
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPermError,
@@ -133,9 +133,8 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 
 	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
 	if err != nil {
-		d.log.Println("unexpected verification fail:", err)
 		return module.CheckResult{
-			RejectErr: err,
+			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "verify_dkim"}),
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPermError,
@@ -154,7 +153,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		if verif.Err != nil {
 			val = authres.ResultFail
 			reason = strings.TrimPrefix(verif.Err.Error(), "dkim: ")
-			d.log.Printf("%v (domain = %s, identifier = %s)", reason, verif.Domain, verif.Identifier)
+			d.log.DebugMsg("bad signature", "domain", verif.Domain, "identifier", verif.Identifier)
 			if dkim.IsPermFail(err) {
 				val = authres.ResultPermError
 			}
@@ -172,7 +171,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		}
 
 		goodSigs = true
-		d.log.Debugf("good signature from %s (%s)", verif.Domain, verif.Identifier)
+		d.log.DebugMsg("good signature", "domain", verif.Domain, "identifier", verif.Identifier)
 
 		signedFields := make(map[string]struct{}, len(verif.HeaderKeys))
 		for _, field := range verif.HeaderKeys {
@@ -199,9 +198,19 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	}
 
 	if !goodSigs {
+		res.Reason = &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 20},
+			Message:      "No passing DKIM signatures",
+			CheckName:    "verify_dkim",
+		}
 		return d.c.brokenSigAction.Apply(res)
 	}
 	return res
+}
+
+func (d dkimCheckState) Name() string {
+	return "verify_dkim"
 }
 
 func (d dkimCheckState) Close() error {

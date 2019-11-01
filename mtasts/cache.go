@@ -118,7 +118,7 @@ func (c *Cache) RefreshCache() error {
 		// See https://tools.ietf.org/html/rfc8461#section-10.2.
 		cacheHit, _, err := c.fetch(true, time.Now().Add(6*time.Hour), ent.Name())
 		if err != nil {
-			c.Logger.Printf("failed to update MTA-STS policy for %v: %v", ent.Name(), err)
+			c.Logger.Error("policy update error", err, "domain", ent.Name())
 		}
 		if !cacheHit && err == nil {
 			c.Logger.Debugln("updated MTA-STS policy for", ent.Name())
@@ -128,9 +128,9 @@ func (c *Cache) RefreshCache() error {
 		// Remove cached version to save space.
 		if !cacheHit && err == ErrNoPolicy {
 			if err := os.Remove(filepath.Join(c.Location, ent.Name())); err != nil {
-				c.Logger.Println("failed to remove MTA-STS policy for", ent.Name())
+				c.Logger.Error("failed to remove policy", err, "domain", ent.Name())
 			}
-			c.Logger.Debugln("removed MTA-STS policy for", ent.Name())
+			c.Logger.Debugln("removed policy for", ent.Name())
 		}
 	}
 
@@ -190,7 +190,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 		}
 
 		if err := c.store(domain, dnsId, time.Now(), policy); err != nil {
-			c.Logger.Printf("failed to store new policy for %s: %v", domain, err)
+			c.Logger.Error("failed to store new policy", err, "domain", domain)
 			// We still got up-to-date policy, cache is not critcial.
 			return false, cachedPolicy, nil
 		}

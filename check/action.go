@@ -35,13 +35,11 @@ func FailActionDirective(m *config.Map, node *config.Node) (interface{}, error) 
 // Apply merges the result of check execution with action configuration specified
 // in the check configuration.
 func (cfa FailAction) Apply(originalRes module.CheckResult) module.CheckResult {
-	if originalRes.RejectErr == nil {
+	if originalRes.Reason == nil {
 		return originalRes
 	}
 
 	originalRes.Quarantine = cfa.Quarantine || originalRes.Quarantine
-	if !cfa.Reject {
-		originalRes.RejectErr = nil
-	}
+	originalRes.Reject = cfa.Reject || originalRes.Reject
 	return originalRes
 }
