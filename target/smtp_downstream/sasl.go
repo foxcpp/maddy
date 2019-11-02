@@ -12,7 +12,7 @@ type saslClientFactory func(downstreamUser, downstreamPass string) (sasl.Client,
 // for use in outbound connections.
 //
 // Authentication information of the current client should be passed in arguments.
-func (u *Upstream) saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func (u *Downstream) saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Children) != 0 {
 		return nil, m.MatchErr("can't declare a block here")
 	}

@@ -23,7 +23,7 @@ import (
 	"github.com/foxcpp/maddy/target"
 )
 
-type Upstream struct {
+type Downstream struct {
 	instName   string
 	targetsArg []string
 
@@ -37,15 +37,15 @@ type Upstream struct {
 	log log.Logger
 }
 
-func NewUpstream(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	return &Upstream{
+func NewDownstream(_, instName string, _, inlineArgs []string) (module.Module, error) {
+	return &Downstream{
 		instName:   instName,
 		targetsArg: inlineArgs,
 		log:        log.Logger{Name: "smtp_downstream"},
 	}, nil
 }
 
-func (u *Upstream) Init(cfg *config.Map) error {
+func (u *Downstream) Init(cfg *config.Map) error {
 	var targetsArg []string
 	cfg.Bool("debug", true, false, &u.log.Debug)
 	cfg.Bool("require_tls", false, false, &u.requireTLS)
@@ -81,16 +81,16 @@ func (u *Upstream) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (u *Upstream) Name() string {
+func (u *Downstream) Name() string {
 	return "smtp_downstream"
 }
 
-func (u *Upstream) InstanceName() string {
+func (u *Downstream) InstanceName() string {
 	return u.instName
 }
 
 type delivery struct {
-	u   *Upstream
+	u   *Downstream
 	log log.Logger
 
 	msgMeta  *module.MsgMetadata
@@ -102,7 +102,7 @@ type delivery struct {
 	client         *smtp.Client
 }
 
-func (u *Upstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (u *Downstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	d := &delivery{
 		u:        u,
 		log:      target.DeliveryLogger(u.log, msgMeta),
@@ -266,5 +266,5 @@ func (d *delivery) Commit() error {
 }
 
 func init() {
-	module.Register("smtp_downstream", NewUpstream)
+	module.Register("smtp_downstream", NewDownstream)
 }
