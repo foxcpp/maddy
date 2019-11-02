@@ -494,6 +494,14 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	skippedMXs := false
 	for _, mx := range mxs {
+		if mx.Host == "." {
+			return nil, false, &exterrors.SMTPError{
+				Code:         556,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 10},
+				Message:      "Domain does not accept email (null MX)",
+			}
+		}
+
 		authenticated := false
 		// If we have MTA-STS - policy match is enough to mark MX as "safe"
 		if policy != nil {
