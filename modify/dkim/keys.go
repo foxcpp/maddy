@@ -16,36 +16,25 @@ import (
 	"path/filepath"
 )
 
-func (m *Modifier) loadOrGenerateKey(expectedDomain, expectedSelector, keyPath, newKeyAlgo string) (crypto.Signer, error) {
-	// Notes:
-	// . PKCS #8 (RFC 5208) is a superset of PKCS #1 (RFC 3447).
-	// . DKIM records use ASN.1 DER (as in PKCS#1) wrapped in base64 for keys.
-	// . For ed25519, no additional encoding is used.
-
+func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Signer, newKey bool, err error) {
 	f, err := os.Open(keyPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return m.generateAndWrite(expectedDomain, expectedSelector, keyPath, newKeyAlgo)
+			pkey, err = m.generateAndWrite(keyPath, newKeyAlgo)
+			return pkey, true, err
 		}
-		return nil, err
+		return nil, false, err
 	}
 	defer f.Close()
 
 	pemBlob, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	block, _ := pem.Decode(pemBlob)
 	if block == nil {
-		return nil, fmt.Errorf("sign_dkim: %s: invalid PEM block", keyPath)
-	}
-
-	if val := block.Headers["X-DKIM-Selector"]; val != "" && val != expectedSelector {
-		return nil, fmt.Errorf("sign_dkim: %s: selector mismatch, want %s, got %s", keyPath, expectedSelector, val)
-	}
-	if val := block.Headers["X-DKIM-Domain"]; val != "" && val != expectedDomain {
-		return nil, fmt.Errorf("sign_dkim: %s: domain mismatch, want %s, got %s", keyPath, expectedDomain, val)
+		return nil, false, fmt.Errorf("sign_dkim: %s: invalid PEM block", keyPath)
 	}
 
 	var key interface{}
@@ -53,38 +42,38 @@ func (m *Modifier) loadOrGenerateKey(expectedDomain, expectedSelector, keyPath, 
 	case "PRIVATE KEY": // RFC 5208 aka PKCS #8
 		key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
 		}
 	case "RSA PRIVATE KEY": // RFC 3447 aka PKCS #1
 		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
 		}
 	case "EC PRIVATE KEY": // RFC 5915
 		key, err = x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
 		}
 	default:
-		return nil, fmt.Errorf("sign_dkim: %s: not a private key or unsupported format", keyPath)
+		return nil, false, fmt.Errorf("sign_dkim: %s: not a private key or unsupported format", keyPath)
 	}
 
 	switch key := key.(type) {
 	case *rsa.PrivateKey:
 		if err := key.Validate(); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return key, nil
+		return key, false, nil
 	case ed25519.PrivateKey:
-		return key, nil
+		return key, false, nil
 	case *ecdsa.PublicKey:
-		return nil, fmt.Errorf("sign_dkim: %s: ECDSA keys are not supported", keyPath)
+		return nil, false, fmt.Errorf("sign_dkim: %s: ECDSA keys are not supported", keyPath)
 	default:
-		return nil, fmt.Errorf("sign_dkim: %s: unknown key type: %T", keyPath, key)
+		return nil, false, fmt.Errorf("sign_dkim: %s: unknown key type: %T", keyPath, key)
 	}
 }
 
-func (m *Modifier) generateAndWrite(domain, selector, keyPath, newKeyAlgo string) (crypto.Signer, error) {
+func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, error) {
 	wrapErr := func(err error) error {
 		return fmt.Errorf("sign_dkim: generate %s: %w", keyPath, err)
 	}
@@ -123,7 +112,7 @@ func (m *Modifier) generateAndWrite(domain, selector, keyPath, newKeyAlgo string
 		return nil, wrapErr(err)
 	}
 
-	dnsPath, err := writeDNSRecord(keyPath, dkimName, pkey)
+	_, err = writeDNSRecord(keyPath, dkimName, pkey)
 	if err != nil {
 		return nil, wrapErr(err)
 	}
@@ -134,19 +123,11 @@ func (m *Modifier) generateAndWrite(domain, selector, keyPath, newKeyAlgo string
 	}
 
 	if err := pem.Encode(f, &pem.Block{
-		Type: "PRIVATE KEY",
-		Headers: map[string]string{
-			"X-DKIM-Domain":   domain,
-			"X-DKIM-Selector": selector,
-		},
+		Type:  "PRIVATE KEY",
 		Bytes: keyBlob,
 	}); err != nil {
 		return nil, wrapErr(err)
 	}
-
-	m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
-		"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
-		newKeyAlgo, keyPath, dnsPath, selector, domain)
 
 	return pkey, nil
 }

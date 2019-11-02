@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/mail"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -173,10 +174,21 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	keyValues := strings.NewReplacer("{domain}", m.domain, "{selector}", m.selector)
 	keyPath := keyValues.Replace(keyPathTemplate)
 
-	signer, err := m.loadOrGenerateKey(m.domain, m.selector, keyPath, newKeyAlgo)
+	signer, newKey, err := m.loadOrGenerateKey(keyPath, newKeyAlgo)
 	if err != nil {
 		return err
 	}
+
+	if newKey {
+		dnsPath := keyPath + ".dns"
+		if filepath.Ext(keyPath) == ".key" {
+			dnsPath = keyPath[:len(keyPath)-4] + ".dns"
+		}
+		m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
+			"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
+			newKeyAlgo, keyPath, dnsPath, m.selector, m.domain)
+	}
+
 	m.signer = signer
 
 	return nil

@@ -23,9 +23,12 @@ func TestKeyLoad_new(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	signer, err := m.loadOrGenerateKey("example.org", "default", filepath.Join(dir, "testkey.key"), "ed25519")
+	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "ed25519")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !newKey {
+		t.Fatal("newKey=false")
 	}
 
 	recordBlob, err := ioutil.ReadFile(filepath.Join(dir, "testkey.dns"))
@@ -55,9 +58,6 @@ func TestKeyLoad_new(t *testing.T) {
 }
 
 const pkeyEd25519 = `-----BEGIN PRIVATE KEY-----
-X-DKIM-Domain: example.org
-X-DKIM-Selector: default
-
 MC4CAQAwBQYDK2VwBCIEIJG9zs4vi2MYNkL9gUQwlmBLCzDODIJ5/1CwTAZFDm5U
 -----END PRIVATE KEY-----`
 
@@ -77,9 +77,12 @@ func TestKeyLoad_existing_pkcs8(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := m.loadOrGenerateKey("example.org", "default", filepath.Join(dir, "testkey.key"), "ed25519")
+	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "ed25519")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if newKey {
+		t.Fatal("newKey = true")
 	}
 
 	blob := signer.Public().(ed25519.PublicKey)
@@ -130,9 +133,12 @@ func TestKeyLoad_existing_pkcs1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := m.loadOrGenerateKey("example.org", "default", filepath.Join(dir, "testkey.key"), "rsa2048")
+	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "rsa2048")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if newKey {
+		t.Fatal("newKey=true")
 	}
 
 	pubkey := signer.Public().(*rsa.PublicKey)
