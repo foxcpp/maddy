@@ -41,13 +41,6 @@ func (m *Modifier) loadOrGenerateKey(expectedDomain, expectedSelector, keyPath, 
 		return nil, fmt.Errorf("sign_dkim: %s: invalid PEM block", keyPath)
 	}
 
-	if block.Type == "ENCRYPTED PRIVATE KEY" {
-		return nil, fmt.Errorf("sign_dkim: %s: encrypted, can't use", keyPath)
-	}
-	if block.Type != "PRIVATE KEY" && block.Type != "RSA PRIVATE KEY" {
-		return nil, fmt.Errorf("sign_dkim: %s: not a private key", keyPath)
-	}
-
 	if val := block.Headers["X-DKIM-Selector"]; val != "" && val != expectedSelector {
 		return nil, fmt.Errorf("sign_dkim: %s: selector mismatch, want %s, got %s", keyPath, expectedSelector, val)
 	}
@@ -55,9 +48,25 @@ func (m *Modifier) loadOrGenerateKey(expectedDomain, expectedSelector, keyPath, 
 		return nil, fmt.Errorf("sign_dkim: %s: domain mismatch, want %s, got %s", keyPath, expectedDomain, val)
 	}
 
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+	var key interface{}
+	switch block.Type {
+	case "PRIVATE KEY": // RFC 5208 aka PKCS #8
+		key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+		}
+	case "RSA PRIVATE KEY": // RFC 3447 aka PKCS #1
+		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+		}
+	case "EC PRIVATE KEY": // RFC 5915
+		key, err = x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+		}
+	default:
+		return nil, fmt.Errorf("sign_dkim: %s: not a private key or unsupported format", keyPath)
 	}
 
 	switch key := key.(type) {

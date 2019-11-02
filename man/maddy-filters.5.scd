@@ -295,6 +295,10 @@ in newkey_algo.
 Placeholders '{domain}' and '{selector}' will be replaced with corresponding
 values from domain and selector directives.
 
+Additionally, keys in PKCS#1 ("RSA PRIVATE KEY") and 
+RFC 5915 ("EC PRIVATE KEY") can be read by sign_dkim. Note, however that
+newly generated keys are always in PKCS#8.
+
 *Syntax*: oversign_fields _list..._ ++
 *Default*: see below
 
