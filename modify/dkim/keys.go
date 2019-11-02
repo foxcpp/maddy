@@ -63,6 +63,7 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 		if err := key.Validate(); err != nil {
 			return nil, false, err
 		}
+		key.Precompute()
 		return key, false, nil
 	case ed25519.PrivateKey:
 		return key, false, nil
