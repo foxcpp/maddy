@@ -59,7 +59,7 @@ func (s *Session) Mail(from string) error {
 	s.msgMeta.ID, err = msgpipeline.GenerateMsgID()
 	if err != nil {
 		s.log.Msg("rand.Rand fail", "err", err)
-		return s.wrapErr(errInternal)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 	s.msgMeta.OriginalFrom = from
 
@@ -81,7 +81,7 @@ func (s *Session) Mail(from string) error {
 		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
 			s.log.Error("MAIL FROM error", err)
-			return s.wrapErr(err)
+			return s.endp.wrapErr(s.msgMeta.ID, err)
 		}
 	}
 
@@ -116,21 +116,21 @@ func (s *Session) Rcpt(to string) error {
 
 		if s.deliveryErr != nil {
 			s.log.Error("MAIL FROM error (repeated)", s.deliveryErr, "rcpt", to)
-			return s.wrapErr(s.deliveryErr)
+			return s.endp.wrapErr(s.msgMeta.ID, s.deliveryErr)
 		}
 		var err error
 		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
 			s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to)
 			s.deliveryErr = err
-			return s.wrapErr(err)
+			return s.endp.wrapErr(s.msgMeta.ID, err)
 		}
 	}
 
 	err := s.delivery.AddRcpt(to)
 	if err != nil {
 		s.log.Error("RCPT error", err, "rcpt", to)
-		return s.wrapErr(err)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 	s.log.Msg("RCPT ok", "rcpt", to)
 	return nil
@@ -155,13 +155,13 @@ func (s *Session) Data(r io.Reader) error {
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		s.log.Error("DATA error", err)
-		return s.wrapErr(err)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	if s.endp.submission {
 		if err := SubmissionPrepare(s.msgMeta, header, s.endp.serv.Domain); err != nil {
 			s.log.Error("DATA error", err)
-			return s.wrapErr(err)
+			return s.endp.wrapErr(s.msgMeta.ID, err)
 		}
 	}
 
@@ -169,7 +169,7 @@ func (s *Session) Data(r io.Reader) error {
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
 		s.log.Error("DATA error", err)
-		return s.wrapErr(errInternal)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
@@ -182,12 +182,12 @@ func (s *Session) Data(r io.Reader) error {
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Error("DATA error", err)
-		return s.wrapErr(err)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
 		s.log.Error("DATA error", err)
-		return s.wrapErr(err)
+		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	s.log.Msg("accepted")
@@ -196,7 +196,7 @@ func (s *Session) Data(r io.Reader) error {
 	return nil
 }
 
-func (s *Session) wrapErr(err error) error {
+func (endp *Endpoint) wrapErr(msgId string, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -226,13 +226,15 @@ func (s *Session) wrapErr(err error) error {
 	}
 
 	if smtpErr, ok := err.(*smtp.SMTPError); ok {
-		s.endp.Log.Printf("plain SMTP error returned, this is deprecated")
+		endp.Log.Printf("plain SMTP error returned, this is deprecated")
 		res.Code = smtpErr.Code
 		res.EnhancedCode = smtpErr.EnhancedCode
 		res.Message = smtpErr.Message
 	}
 
-	res.Message += " (msg ID = " + s.msgMeta.ID + ")"
+	if msgId != "" {
+		res.Message += " (msg ID = " + msgId + ")"
+	}
 	return res
 }
 
@@ -406,6 +408,11 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 		return nil, smtp.ErrAuthUnsupported
 	}
 
+	// Executed before authentication and session initialization.
+	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
+		return nil, endp.wrapErr("", err)
+	}
+
 	if !endp.Auth.CheckPlain(username, password) {
 		endp.Log.Msg("authentication failed", "username", username, "src_ip", state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
@@ -417,6 +424,11 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
 	if endp.authAlwaysRequired {
 		return nil, smtp.ErrAuthRequired
+	}
+
+	// Executed before authentication and session initialization.
+	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
+		return nil, endp.wrapErr("", err)
 	}
 
 	return endp.newSession(true, "", "", state), nil

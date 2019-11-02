@@ -50,6 +50,22 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	}, err
 }
 
+func (d *MsgPipeline) RunEarlyChecks(state *smtp.ConnectionState) error {
+	// TODO: See if there is some point in parallelization of this
+	// function.
+	for _, check := range d.globalChecks {
+		earlyCheck, ok := check.(module.EarlyCheck)
+		if !ok {
+			continue
+		}
+
+		if err := earlyCheck.CheckConnection(state); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Start starts new message delivery, runs connection and sender checks, sender modifiers
 // and selects source block from config to use for handling.
 //

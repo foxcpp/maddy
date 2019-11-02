@@ -3,6 +3,7 @@ package module
 import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 )
 
@@ -12,6 +13,19 @@ type Check interface {
 	// CheckStateForMsg initializes the "internal" check state required for
 	// processing of the new message.
 	CheckStateForMsg(msgMeta *MsgMetadata) (CheckState, error)
+}
+
+// EarlyCheck is an optional module interface that can be implemented
+// by module implementing Check.
+//
+// It is used as an optimization to reject obviously malicious connections
+// before allocating resources for SMTP session.
+//
+// The Status of this check is accept (no error) or reject (error) only, no
+// advanced handling is available (such as 'quarantine' action and headers
+// prepending).
+type EarlyCheck interface {
+	CheckConnection(*smtp.ConnectionState) error
 }
 
 type CheckState interface {
