@@ -241,6 +241,12 @@ func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
 			return nil
 		}
 
+		// If EHLO == domain (usually the case for small/private email servers)
+		// then don't do a second lookup for the same domain.
+		if list.EHLO && strings.EqualFold(domain, ehlo) {
+			return nil
+		}
+
 		if err := checkDomain(bl.resolver, list, domain); err != nil {
 			return err
 		}
