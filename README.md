@@ -26,6 +26,7 @@ changes happen from time to time**
   - Single process model allows more efficient implementation
 * Useful
   - [Subaddressing][subaddr] support 
+  - [DNSBL][dnsbl] checking support
   - Messages compression (LZ4, Zstd)
  
 Planned:
@@ -73,6 +74,7 @@ The code is under MIT license. See [LICENSE](LICENSE) for more information.
 [dmarc]: https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/
 [mtasts]: https://www.hardenize.com/blog/mta-sts
 [subaddr]: https://en.wikipedia.org/wiki/Email_address#Sub-addressing
+[dnsbl]: https://en.wikipedia.org/wiki/DNSBL
 [backscatter]: https://en.wikipedia.org/wiki/Backscatter_(e-mail)
 
 [setup-tutorial]: https://github.com/foxcpp/maddy/wiki/Tutorial:-Setting-up-a-mail-server-with-maddy

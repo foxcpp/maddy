@@ -230,6 +230,126 @@ Action to take when SPF policy evaluates to a 'permerror' result.
 
 Action to take when SPF policy evaluates to a 'temperror' result.
 
+# DNSBL lookup module (dnsbl)
+
+The dnsbl module implements checking of source IP and hostnames against a set
+of DNS-based Blackhole lists (DNSBLs).
+
+Its configuration consists of module configuration directives and a set
+of blocks specifing lists to use and kind of lookups to perform on them.
+
+```
+dnsbl {
+    debug no
+    check_early no
+    listed_action reject
+
+    # Lists configuration example.
+    dnsbl.example.org {
+        client_ipv4 yes
+        client_ipv6 no
+        ehlo no
+        mailfrom no
+    }
+    hsrbl.example.org {
+        client_ipv4 no
+        client_ipv6 no
+        ehlo yes
+        mailfrom yes
+    }
+}
+```
+
+## Inline arguments
+
+When used inline, arguments specify the list of IP-based BLs to use.
+
+The following configurations are equivalent.
+
+```
+check {
+    dnsbl dnsbl.example.org dnsbl2.example.org
+}
+```
+
+```
+check {
+    dnsbl {
+        dnsbl.example.org dnsbl2.example.org {
+            client_ipv4 yes
+            client_ipv6 no
+            ehlo no
+            mailfrom no
+        }
+    }
+}
+```
+
+## Configuration directives
+
+*Syntax*: debug _boolean_ ++
+*Default*: global directive value
+
+Enable verbose logging.
+
+*Syntax*: check_early _boolean_ ++
+*Default*: no
+
+Check BLs before mail delivery starts and silently reject blacklisted clients.
+
+In particular, this means:
+- No logging is done for rejected messages.
+- listed_action takes no effect. It is always reject.
+- defer_sender_reject from SMTP configuration takes no effect.
+
+If you often get hit by spam attacks, this is recommended to enable this
+setting to save server resources.
+
+*Syntax*: listed_action reject|quarantine|ignore ++
+*Default*: reject
+
+Action to take when one of the client identifiers is listed on the DNSBL.
+
+## List configuration
+
+```
+dnsbl.example.org dnsbl.example.com {
+    client_ipv4 yes
+    client_ipv6 no
+    ehlo no
+    mailfrom no
+}
+```
+
+Directive name and arguments specify the actual DNS zone to query when checking
+the list. Using multiple arguments is equivalent to specifying the same
+configuration separately for each list. 
+
+*Syntax*: client_ipv4 _boolean_ ++
+*Default*: yes
+
+Whether to check address of the IPv4 clients against the list.
+
+*Syntax*: client_ipv6 _boolean_ ++
+*Default*: yes
+
+Whether to check address of the IPv6 clients against the list.
+
+*Syntax*: ehlo _boolean_ ++
+*Default*: no
+
+Whether to check hostname specified n the HELO/EHLO command
+against the list.
+
+This works correctly only with domain-based DNSBLs.
+
+*Syntax*: mailfrom _boolean_ ++
+*Default*: no
+
+Whether to check domain part of the MAIL FROM address against the list.
+
+This works correctly only with domain-based DNSBLs.
+
 # DKIM signing module (sign_dkim)
 
 sign_dkim module is a modifier that signs messages using DKIM
