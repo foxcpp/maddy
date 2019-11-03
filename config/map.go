@@ -619,7 +619,27 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unmatc
 			return nil, m.MatchErr("missing required directive: %s", matcher.name)
 		}
 
-		m.Values[matcher.name] = val
+		// If we put zero values into map then code that checks globalCfg
+		// above will inherit them for required fields instead of failing.
+		//
+		// This is important for fields that are required to be specified
+		// either globally or on per-block basis (e.g. tls, hostname).
+		// For these directives, global Map does have required = false
+		// so global values are default which is usually zero value.
+		//
+		// This is a temporary solutions, of course, in the long-term
+		// the way global values and "inheritance" is handled should be
+		// revised.
+		store := false
+		valT := reflect.TypeOf(val)
+		if valT != nil {
+			zero := reflect.Zero(valT)
+			store = !reflect.DeepEqual(val, zero.Interface())
+		}
+
+		if store {
+			m.Values[matcher.name] = val
+		}
 		if matcher.store != nil {
 			matcher.assign(val)
 		}
