@@ -14,9 +14,9 @@ if [ "$CONFPATH" == "" ]; then
     CONFPATH=/etc/maddy/maddy.conf
 fi
 
-export CGO_CFLAGS=-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS
-export CGO_CXXFLAGS=-g -O2 -D_FORTIFY_SOURCE=2 $CXXFLAGS
-export LDFLAGS=-Wl,-z,relro,-z,now $LDFLAGS
+export CGO_CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS"
+export CGO_CXXFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CXXFLAGS"
+export LDFLAGS="-Wl,-z,relro,-z,now $LDFLAGS"
 export CGO_LDFLAGS=$LDFLAGS
 
 set -euo pipefail
@@ -78,7 +78,7 @@ go get -trimpath -buildmode=pie -ldflags "-extldflags $LDFLAGS" github.com/foxcp
 echo 'Installing maddy...' >&2
 
 sudo mkdir -p "$PREFIX/bin"
-sudo cp "$GOPATH/bin/maddy" "$GOPATH/bin/maddyctl" "$PREFIX/bin/"
+sudo cp --remove-destination "$GOPATH/bin/maddy" "$GOPATH/bin/maddyctl" "$PREFIX/bin/"
 
 echo 'Downloading and installing systemd unit files...' >&2
 
