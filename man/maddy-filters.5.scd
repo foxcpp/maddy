@@ -350,6 +350,15 @@ Whether to check domain part of the MAIL FROM address against the list.
 
 This works correctly only with domain-based DNSBLs.
 
+*Syntax*: whitelist _boolean_ ++
+*Default*: no
+
+This list is a whitelist. If client IP is listed on it, all BL listings should
+be ignored.
+
+This directive can't be used with 'ehlo' and 'mailfrom' since these identifiers
+are under sender control.
+
 # DKIM signing module (sign_dkim)
 
 sign_dkim module is a modifier that signs messages using DKIM

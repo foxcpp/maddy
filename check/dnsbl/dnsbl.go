@@ -1,6 +1,7 @@
 package dnsbl
 
 import (
+	"errors"
 	"net"
 	"strings"
 
@@ -17,7 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type BL struct {
+type List struct {
 	Zone string
 
 	ClientIPv4 bool
@@ -27,7 +28,7 @@ type BL struct {
 	MAILFROM bool
 }
 
-var defaultBL = BL{
+var defaultBL = List{
 	ClientIPv4: true,
 }
 
@@ -36,7 +37,8 @@ type DNSBL struct {
 	checkEarly   bool
 	listedAction check.FailAction
 	inlineBls    []string
-	bls          []BL
+	bls          []List
+	wls          []List
 
 	resolver dns.Resolver
 	log      log.Logger
@@ -76,12 +78,12 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 	for _, inlineBl := range bl.inlineBls {
 		cfg := defaultBL
 		cfg.Zone = inlineBl
-		go bl.testBL(cfg)
+		go bl.testList(cfg)
 		bl.bls = append(bl.bls, cfg)
 	}
 
 	for _, node := range unmatched {
-		if err := bl.readBLCfg(node); err != nil {
+		if err := bl.readListCfg(node); err != nil {
 			return err
 		}
 	}
@@ -89,19 +91,39 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (bl *DNSBL) readBLCfg(node config.Node) error {
-	var blCfg BL
+func (bl *DNSBL) readListCfg(node config.Node) error {
+	var (
+		listCfg   List
+		whitelist bool
+	)
 
 	cfg := config.NewMap(nil, &node)
-	cfg.Bool("client_ipv4", false, defaultBL.ClientIPv4, &blCfg.ClientIPv4)
-	cfg.Bool("client_ipv6", false, defaultBL.ClientIPv4, &blCfg.ClientIPv6)
-	cfg.Bool("ehlo", false, defaultBL.EHLO, &blCfg.EHLO)
-	cfg.Bool("mailfrom", false, defaultBL.EHLO, &blCfg.MAILFROM)
+	cfg.Bool("client_ipv4", false, defaultBL.ClientIPv4, &listCfg.ClientIPv4)
+	cfg.Bool("client_ipv6", false, defaultBL.ClientIPv4, &listCfg.ClientIPv6)
+	cfg.Bool("ehlo", false, defaultBL.EHLO, &listCfg.EHLO)
+	cfg.Bool("mailfrom", false, defaultBL.EHLO, &listCfg.MAILFROM)
+	cfg.Bool("whitelist", false, false, &whitelist)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
 	for _, zone := range append([]string{node.Name}, node.Args...) {
+		zoneCfg := listCfg
+		zoneCfg.Zone = zone
+
+		if whitelist {
+			if zoneCfg.EHLO {
+				return errors.New("dnsbl: 'ehlo' can't be used with 'whitelist'")
+			}
+			if zoneCfg.MAILFROM {
+				return errors.New("dnsbl: 'mailfrom' can't be used with 'whitelist'")
+			}
+
+			bl.wls = append(bl.wls, zoneCfg)
+		} else {
+			bl.bls = append(bl.bls, zoneCfg)
+		}
+
 		// From RFC 5782 Section 7:
 		// >To avoid this situation, systems that use
 		// >DNSxLs SHOULD check for the test entries described in Section 5 to
@@ -111,28 +133,24 @@ func (bl *DNSBL) readBLCfg(node config.Node) error {
 		// Sadly, however, many DNSBLs lack test records so at most we can
 		// log a warning. Also, DNS is kinda slow so we do checks
 		// asynchronously to prevent slowing down server start-up.
-
-		zoneCfg := blCfg
-		zoneCfg.Zone = zone
-		go bl.testBL(zoneCfg)
-		bl.bls = append(bl.bls, zoneCfg)
+		go bl.testList(zoneCfg)
 	}
 
 	return nil
 }
 
-func (bl *DNSBL) testBL(listCfg BL) {
+func (bl *DNSBL) testList(listCfg List) {
 	// Check RFC 5782 Section 5 requirements.
 
-	bl.log.DebugMsg("testing BL for RFC 5782 requirements...", "dnsbl", listCfg.Zone)
+	bl.log.DebugMsg("testing list for RFC 5782 requirements...", "list", listCfg.Zone)
 
 	// 1. IPv4-based DNSxLs MUST contain an entry for 127.0.0.2 for testing purposes.
 	if listCfg.ClientIPv4 {
 		err := checkIP(bl.resolver, listCfg, net.IPv4(127, 0, 0, 2))
 		if err == nil {
-			bl.log.Msg("BL does not contain a test record for 127.0.0.2", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List does not contain a test record for 127.0.0.2", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
-			bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+			bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 			return
 		}
 
@@ -141,10 +159,10 @@ func (bl *DNSBL) testBL(listCfg BL) {
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
-				bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+				bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 				return
 			}
-			bl.log.Msg("BL contains a record for 127.0.0.1", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List contains a record for 127.0.0.1", "list", listCfg.Zone)
 		}
 	}
 
@@ -154,9 +172,9 @@ func (bl *DNSBL) testBL(listCfg BL) {
 
 		err := checkIP(bl.resolver, listCfg, mustIP)
 		if err == nil {
-			bl.log.Msg("BL does not contain a test record for ::FFFF:7F00:2", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List does not contain a test record for ::FFFF:7F00:2", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
-			bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+			bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 			return
 		}
 
@@ -166,10 +184,10 @@ func (bl *DNSBL) testBL(listCfg BL) {
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
-				bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+				bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 				return
 			}
-			bl.log.Msg("BL contains a record for ::FFFF:7F00:1", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List contains a record for ::FFFF:7F00:1", "list", listCfg.Zone)
 		}
 	}
 
@@ -178,9 +196,9 @@ func (bl *DNSBL) testBL(listCfg BL) {
 		// domain name "TEST".
 		err := checkDomain(bl.resolver, listCfg, "test")
 		if err == nil {
-			bl.log.Msg("BL does not contain a test record for 'test' TLD", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List does not contain a test record for 'test' TLD", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
-			bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+			bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 			return
 		}
 
@@ -190,59 +208,85 @@ func (bl *DNSBL) testBL(listCfg BL) {
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
-				bl.log.Error("lookup error, bailing out", err, "dnsbl", listCfg.Zone)
+				bl.log.Error("lookup error, bailing out", err, "list", listCfg.Zone)
 				return
 			}
-			bl.log.Msg("BL contains a record for 'invalid' TLD", "dnsbl", listCfg.Zone)
+			bl.log.Msg("List contains a record for 'invalid' TLD", "list", listCfg.Zone)
 		}
 	}
 }
 
-func (bl *DNSBL) checkPreBody(ip net.IP, ehlo, mailFrom string) error {
+func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
+	if list.ClientIPv4 || list.ClientIPv6 {
+		if err := checkIP(bl.resolver, list, ip); err != nil {
+			return err
+		}
+	}
+
+	if list.EHLO && ehlo != "" {
+		// Skip IPs in EHLO.
+		if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
+			return nil
+		}
+
+		if err := checkDomain(bl.resolver, list, ehlo); err != nil {
+			return err
+		}
+	}
+
+	if list.MAILFROM && mailFrom != "" {
+		_, domain, err := address.Split(mailFrom)
+		if err != nil || domain == "" {
+			// Probably <postmaster> or <>, not much we can check.
+			return nil
+		}
+
+		if err := checkDomain(bl.resolver, list, domain); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
 	eg := errgroup.Group{}
 
 	for _, list := range bl.bls {
 		list := list
 		eg.Go(func() error {
-			if list.ClientIPv4 || list.ClientIPv6 {
-				if err := checkIP(bl.resolver, list, ip); err != nil {
-					return err
-				}
-			}
-
-			if list.EHLO && ehlo != "" {
-				// Skip IPs in EHLO.
-				if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
-					return nil
-				}
-
-				if err := checkDomain(bl.resolver, list, ehlo); err != nil {
-					return err
-				}
-			}
-
-			if list.MAILFROM && mailFrom != "" {
-				_, domain, err := address.Split(mailFrom)
-				if err != nil || domain == "" {
-					// Probably <postmaster> or <>, not much we can check.
-					return nil
-				}
-
-				if err := checkDomain(bl.resolver, list, domain); err != nil {
-					return err
-				}
-			}
-
-			return nil
-
+			return bl.checkList(list, ip, ehlo, mailFrom)
 		})
 	}
 
-	// TODO: Whitelists support.
-	// ... if there is error and it is a ListenErr, then check whitelists
-	// for whether it is whitelisted.
+	err := eg.Wait()
+	_, listed := err.(ListedErr)
+	if !listed {
+		// Lookup error for BL, hard-fail.
+		return err
+	}
+	if len(bl.wls) == 0 {
+		// No whitelists, hence not worth checking.
+		return err
+	}
 
-	return eg.Wait()
+	// Check configured whitelists.
+	for _, list := range bl.wls {
+		list := list
+		eg.Go(func() error {
+			return bl.checkList(list, ip, ehlo, mailFrom)
+		})
+	}
+
+	wlerr := eg.Wait()
+	if wlErr, listedWl := wlerr.(ListedErr); listedWl {
+		// Listed on WL, override the BL result to 'neutral'.
+		bl.log.Msg("WL overrides BL listing", "list", wlErr.List, "listed_identity", wlErr.Identity)
+		return nil
+	}
+
+	// Lookup error for WL, hard-fail.
+	return wlerr
 }
 
 // CheckConnection implements module.EarlyCheck.
@@ -255,7 +299,7 @@ func (bl *DNSBL) CheckConnection(state *smtp.ConnectionState) error {
 		return nil
 	}
 
-	if err := bl.checkPreBody(ip.IP, state.Hostname, ""); err != nil {
+	if err := bl.checkLists(ip.IP, state.Hostname, ""); err != nil {
 		return mangleErr(err)
 	}
 
@@ -283,7 +327,7 @@ func (s state) CheckConnection() module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	if err := s.bl.checkPreBody(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom); err != nil {
+	if err := s.bl.checkLists(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom); err != nil {
 		// TODO: Support per-list actions?
 		return s.bl.listedAction.Apply(module.CheckResult{
 			Reason: mangleErr(err),

@@ -12,19 +12,19 @@ import (
 
 type ListedErr struct {
 	Identity string
-	DNSBL    string
+	List     string
 	Reason   string
 }
 
 func (le ListedErr) Fields() map[string]interface{} {
 	return map[string]interface{}{
-		"check":         "dnsbl",
-		"dnsbl":         le.DNSBL,
-		"identity":      le.Identity,
-		"reason":        le.Reason,
-		"smtp_code":     554,
-		"smtp_enchcode": exterrors.EnhancedCode{5, 7, 0},
-		"smtp_msg":      le.Identity + " is listed in the used DNSBL",
+		"check":           "dnsbl",
+		"list":            le.List,
+		"listed_identity": le.Identity,
+		"reason":          le.Reason,
+		"smtp_code":       554,
+		"smtp_enchcode":   exterrors.EnhancedCode{5, 7, 0},
+		"smtp_msg":        "Client identity listed in the used DNSBL",
 	}
 }
 
@@ -32,7 +32,7 @@ func (le ListedErr) Error() string {
 	return le.Identity + " is listed in the used DNSBL"
 }
 
-func checkDomain(resolver dns.Resolver, cfg BL, domain string) error {
+func checkDomain(resolver dns.Resolver, cfg List, domain string) error {
 	query := domain + "." + cfg.Zone
 
 	addrs, err := resolver.LookupHost(context.Background(), query)
@@ -55,7 +55,7 @@ func checkDomain(resolver dns.Resolver, cfg BL, domain string) error {
 		// mapped to some predefined 'reasons' by BL.
 		return ListedErr{
 			Identity: domain,
-			DNSBL:    cfg.Zone,
+			List:     cfg.Zone,
 			Reason:   strings.Join(addrs, "; "),
 		}
 	}
@@ -65,12 +65,12 @@ func checkDomain(resolver dns.Resolver, cfg BL, domain string) error {
 
 	return ListedErr{
 		Identity: domain,
-		DNSBL:    cfg.Zone,
+		List:     cfg.Zone,
 		Reason:   strings.Join(txts, "; "),
 	}
 }
 
-func checkIP(resolver dns.Resolver, cfg BL, ip net.IP) error {
+func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 	ipv6 := true
 	if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4
@@ -106,7 +106,7 @@ func checkIP(resolver dns.Resolver, cfg BL, ip net.IP) error {
 		// mapped to some predefined 'reasons' by BL.
 		return ListedErr{
 			Identity: ip.String(),
-			DNSBL:    cfg.Zone,
+			List:     cfg.Zone,
 			Reason:   strings.Join(addrs, "; "),
 		}
 	}
@@ -116,7 +116,7 @@ func checkIP(resolver dns.Resolver, cfg BL, ip net.IP) error {
 
 	return ListedErr{
 		Identity: ip.String(),
-		DNSBL:    cfg.Zone,
+		List:     cfg.Zone,
 		Reason:   strings.Join(txts, "; "),
 	}
 }
