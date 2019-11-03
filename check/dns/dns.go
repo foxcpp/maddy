@@ -110,7 +110,38 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ctx.MsgMeta.SrcHostname)
+	ehlo := ctx.MsgMeta.SrcHostname
+
+	if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
+		// IP in EHLO, checking against source IP directly.
+
+		ehloIP := net.ParseIP(ehlo[1 : len(ehlo)-1])
+		if ehloIP == nil {
+			return module.CheckResult{
+				Reason: &exterrors.SMTPError{
+					Code:         550,
+					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+					Message:      "Malformed IP in EHLO",
+					CheckName:    "require_matching_ehlo",
+				},
+			}
+		}
+
+		if !ehloIP.Equal(tcpAddr.IP) {
+			return module.CheckResult{
+				Reason: &exterrors.SMTPError{
+					Code:         550,
+					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+					Message:      "IP in EHLO is not the same as actual client IP",
+					CheckName:    "require_matching_ehlo",
+				},
+			}
+		}
+
+		return module.CheckResult{}
+	}
+
+	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ehlo)
 	if err != nil {
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
@@ -125,7 +156,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 
 	for _, ip := range srcIPs {
 		if tcpAddr.IP.Equal(ip.IP) {
-			ctx.Logger.Debugf("A/AAA record found for %s for %s domain", tcpAddr.IP, ctx.MsgMeta.SrcHostname)
+			ctx.Logger.Debugf("A/AAA record found for %s for %s domain", tcpAddr.IP, ehlo)
 			return module.CheckResult{}
 		}
 	}
