@@ -2,8 +2,8 @@ package smtp_downstream
 
 import (
 	"github.com/emersion/go-sasl"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 )
 
 type saslClientFactory func(downstreamUser, downstreamPass string) (sasl.Client, error)
@@ -29,10 +29,14 @@ func (u *Downstream) saslAuthDirective(m *config.Map, node *config.Node) (interf
 		return func(downstreamUser, downstreamPass string) (sasl.Client, error) {
 			if downstreamUser == "" || downstreamPass == "" {
 				u.log.Printf("client is not authenticated, can't forward credentials")
-				return nil, &smtp.SMTPError{
+				return nil, &exterrors.SMTPError{
 					Code:         530,
-					EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 					Message:      "Authentication is required",
+					TargetName:   "smtp_downstream",
+					Misc: map[string]interface{}{
+						"reason": "Credentials forwarding is requested but the client is not authenticated",
+					},
 				}
 			}
 			// TODO: See if it is useful to support custom identity argument.

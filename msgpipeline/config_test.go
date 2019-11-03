@@ -5,15 +5,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/config/parser"
+	"github.com/foxcpp/maddy/exterrors"
 )
 
 func policyError(code int) error {
-	return &smtp.SMTPError{
-		Message:      "Message rejected due to local policy",
+	return &exterrors.SMTPError{
+		Message:      "Message rejected due to a local policy",
 		Code:         code,
-		EnhancedCode: smtp.EnhancedCode{5, 7, 0},
+		EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+		Misc: map[string]interface{}{
+			"reason": "reject directive used",
+		},
 	}
 }
 

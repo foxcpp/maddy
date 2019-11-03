@@ -18,13 +18,13 @@ import (
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/auth"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/dns"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -65,10 +65,12 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 		var err error
 		accountName, _, err = address.Split(rcptTo)
 		if err != nil {
-			return &smtp.SMTPError{
+			return &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
-				Message:      "Invalid recipient address: " + err.Error(),
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
+				Message:      "Invalid recipient address",
+				TargetName:   "sql",
+				Err:          err,
 			}
 		}
 	}
@@ -86,10 +88,12 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 
 	if err := d.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
-			return &smtp.SMTPError{
+			return &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 1},
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
 				Message:      "User doesn't exist",
+				TargetName:   "sql",
+				Err:          err,
 			}
 		}
 		return err

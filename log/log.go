@@ -97,7 +97,11 @@ func (l Logger) Error(msg string, err error, fields ...interface{}) {
 	}
 	sort.Strings(errKeys)
 
-	allFields = append(allFields, "reason", err.Error())
+	// If there is already a 'reason' field - use it, it probably
+	// provides a better explaination than error text itself.
+	if errFields["reason"] == nil {
+		allFields = append(allFields, "reason", err.Error())
+	}
 	for _, key := range errKeys {
 		allFields = append(allFields, key, errFields[key])
 	}

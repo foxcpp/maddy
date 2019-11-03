@@ -159,7 +159,7 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	if s.endp.submission {
-		if err := SubmissionPrepare(s.msgMeta, header, s.endp.serv.Domain); err != nil {
+		if err := s.submissionPrepare(header); err != nil {
 			s.log.Error("DATA error", err)
 			return s.endp.wrapErr(s.msgMeta.ID, err)
 		}

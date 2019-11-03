@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/modify"
 	"github.com/foxcpp/maddy/module"
 )
@@ -241,10 +241,10 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 	return &rcpt, nil
 }
 
-func parseRejectDirective(node config.Node) (*smtp.SMTPError, error) {
+func parseRejectDirective(node config.Node) (*exterrors.SMTPError, error) {
 	code := 554
-	enchCode := smtp.EnhancedCode{5, 7, 0}
-	msg := "Message rejected due to local policy"
+	enchCode := exterrors.EnhancedCode{5, 7, 0}
+	msg := "Message rejected due to a local policy"
 	var err error
 	switch len(node.Args) {
 	case 3:
@@ -274,20 +274,23 @@ func parseRejectDirective(node config.Node) (*smtp.SMTPError, error) {
 	default:
 		return nil, config.NodeErr(&node, "invalid count of arguments")
 	}
-	return &smtp.SMTPError{
-		Message:      msg,
+	return &exterrors.SMTPError{
 		Code:         code,
 		EnhancedCode: enchCode,
+		Message:      msg,
+		Misc: map[string]interface{}{
+			"reason": "reject directive used",
+		},
 	}, nil
 }
 
-func parseEnhancedCode(s string) (smtp.EnhancedCode, error) {
+func parseEnhancedCode(s string) (exterrors.EnhancedCode, error) {
 	parts := strings.Split(s, ".")
 	if len(parts) != 3 {
-		return smtp.EnhancedCode{}, fmt.Errorf("wrong amount of enhanced code parts")
+		return exterrors.EnhancedCode{}, fmt.Errorf("wrong amount of enhanced code parts")
 	}
 
-	code := smtp.EnhancedCode{}
+	code := exterrors.EnhancedCode{}
 	for i, part := range parts {
 		num, err := strconv.Atoi(part)
 		if err != nil {

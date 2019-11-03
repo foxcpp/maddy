@@ -8,6 +8,7 @@ import (
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/modify"
 	"github.com/foxcpp/maddy/module"
@@ -159,10 +160,14 @@ func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, er
 		// is not a valid RFC 282 address and only a special
 		// value for SMTP.
 		if err != nil && mailFrom != "" {
-			return sourceBlock{}, &smtp.SMTPError{
+			return sourceBlock{}, &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
-				Message:      "Invalid sender address: " + err.Error(),
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
+				Message:      "Invalid sender address",
+				Err:          err,
+				Misc: map[string]interface{}{
+					"reason": "Can't extract local-part and host-part",
+				},
 			}
 		}
 
@@ -418,10 +423,14 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 		// Then try domain-only.
 		_, domain, err := address.Split(rcptTo)
 		if err != nil {
-			return nil, &smtp.SMTPError{
+			return nil, &exterrors.SMTPError{
 				Code:         501,
-				EnhancedCode: smtp.EnhancedCode{5, 1, 3},
-				Message:      "Invalid recipient address: " + err.Error(),
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
+				Message:      "Invalid recipient address",
+				Err:          err,
+				Misc: map[string]interface{}{
+					"reason": "Can't extract local-part and host-part",
+				},
 			}
 		}
 
@@ -452,9 +461,8 @@ func (dd *msgpipelineDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo str
 
 	newSender, err := rcptModifiersState.RewriteSender(dd.sourceAddr)
 	if err == nil && newSender != dd.sourceAddr {
-		dd.log.Printf("Per-recipient modifier changed sender address. This is not supported and will "+
-			"be ignored. RCPT TO = %s, original MAIL FROM = %s, modified MAIL FROM = %s",
-			rcptTo, dd.sourceAddr, newSender)
+		dd.log.Msg("Per-recipient modifier changed sender address. This is not supported and will "+
+			"be ignored.", "rcpt", rcptTo, "originalFrom", dd.sourceAddr, "modifiedFrom", newSender)
 	}
 
 	dd.rcptModifiersState[rcptBlock] = rcptModifiersState
