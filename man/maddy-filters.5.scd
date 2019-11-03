@@ -297,6 +297,9 @@ Enable verbose logging.
 
 Check BLs before mail delivery starts and silently reject blacklisted clients.
 
+For this to work correctly, check should not be used in source/destination
+pipeline block.
+
 In particular, this means:
 - No logging is done for rejected messages.
 - listed_action takes no effect. It is always reject.
