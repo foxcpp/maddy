@@ -412,7 +412,6 @@ func (dd msgpipelineDelivery) Abort() error {
 			// Continue anyway and try to Abort all remaining delivery objects.
 		}
 	}
-	dd.log.Debugf("delivery aborted")
 	return lastErr
 }
 
