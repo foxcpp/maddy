@@ -6,10 +6,11 @@ import (
 )
 
 func DeliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
-	eventCtx := make([]interface{}, 0, len(l.Fields)+2)
-	copy(eventCtx, l.Fields)
-	eventCtx = append(eventCtx, "msg_id", msgMeta.ID)
-
-	l.Fields = eventCtx
+	fields := make(map[string]interface{}, len(l.Fields)+1)
+	for k, v := range l.Fields {
+		fields[k] = v
+	}
+	fields["msg_id"] = msgMeta.ID
+	l.Fields = fields
 	return l
 }
