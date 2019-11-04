@@ -89,6 +89,9 @@ func (l Logger) Msg(msg string, fields ...interface{}) {
 func (l Logger) Error(msg string, err error, fields ...interface{}) {
 	errFields := exterrors.Fields(err)
 	allFields := make(map[string]interface{}, len(fields)+len(errFields)+2)
+	for k, v := range errFields {
+		allFields[k] = v
+	}
 
 	// If there is already a 'reason' field - use it, it probably
 	// provides a better explaination than error text itself.
