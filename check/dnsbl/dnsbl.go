@@ -297,6 +297,10 @@ func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
 
 // CheckConnection implements module.EarlyCheck.
 func (bl *DNSBL) CheckConnection(state *smtp.ConnectionState) error {
+	if !bl.checkEarly {
+		return nil
+	}
+
 	ip, ok := state.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		bl.log.Msg("non-TCP/IP source",
@@ -327,6 +331,11 @@ func (bl *DNSBL) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckStat
 }
 
 func (s state) CheckConnection() module.CheckResult {
+	if s.bl.checkEarly {
+		// Already checked before.
+		return module.CheckResult{}
+	}
+
 	ip, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
 	if !ok {
 		s.log.Msg("non-TCP/IP source")

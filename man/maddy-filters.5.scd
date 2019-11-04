@@ -304,6 +304,7 @@ In particular, this means:
 - No logging is done for rejected messages.
 - listed_action takes no effect. It is always reject.
 - defer_sender_reject from SMTP configuration takes no effect.
+- MAIL FROM is not checked, even if specified.
 
 If you often get hit by spam attacks, this is recommended to enable this
 setting to save server resources.
