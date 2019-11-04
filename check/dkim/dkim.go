@@ -121,7 +121,13 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	bodyRdr, err := body.Open()
 	if err != nil {
 		return module.CheckResult{
-			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "verify_dkim"}),
+			Reason: exterrors.WithTemporary(
+				exterrors.WithFields(err, map[string]interface{}{
+					"check":    "verify_dkim",
+					"smtp_msg": "Internal I/O error",
+				}),
+				false,
+			),
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPermError,
@@ -134,7 +140,10 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
 	if err != nil {
 		return module.CheckResult{
-			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "verify_dkim"}),
+			Reason: exterrors.WithFields(err, map[string]interface{}{
+				"check":    "verify_dkim",
+				"smtp_msg": "Internal error during policy check",
+			}),
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPermError,
@@ -152,8 +161,11 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 		reason := ""
 		if verif.Err != nil {
 			val = authres.ResultFail
+
 			reason = strings.TrimPrefix(verif.Err.Error(), "dkim: ")
-			d.log.DebugMsg("bad signature", "domain", verif.Domain, "identifier", verif.Identifier)
+			if !d.c.brokenSigAction.Reject || !d.c.brokenSigAction.Quarantine {
+				d.log.DebugMsg("bad signature", "domain", verif.Domain, "identifier", verif.Identifier)
+			}
 			if dkim.IsPermFail(err) {
 				val = authres.ResultPermError
 			}
