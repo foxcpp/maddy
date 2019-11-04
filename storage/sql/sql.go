@@ -169,7 +169,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.String("driver", false, true, "", &driver)
 	cfg.StringList("dsn", false, true, nil, &dsn)
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
-		return "", nil
+		return "messages", nil
 	}, func(m *config.Map, node *config.Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 0 or 1 arguments")
@@ -212,7 +212,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	dsnStr := strings.Join(dsn, " ")
 
-	if err := os.MkdirAll("messages", os.ModeDir|os.ModePerm); err != nil {
+	if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
 		return err
 	}
 	extStore := &imapsql.FSStore{Root: fsstoreLocation}
