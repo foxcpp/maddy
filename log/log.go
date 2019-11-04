@@ -62,6 +62,13 @@ func (l Logger) Println(val ...interface{}) {
 // Key-value pairs are built from fields slice which should contain key strings
 // followed by corresponding values.  That is, for example, []interface{"key",
 // "value", "key2", "value2"}.
+//
+// If value in fields implements LogFormatter, it will be represented by the
+// string returned by FormatLog method. Same goes for fmt.Stringer and error
+// interfaces.
+//
+// Additionally, time.Time is written as a string in ISO 8601 format.
+// time.Duration follows fmt.Stringer rule above.
 func (l Logger) Msg(msg string, fields ...interface{}) {
 	m := make(map[string]interface{}, len(fields)/2)
 	fieldsToMap(fields, m)
