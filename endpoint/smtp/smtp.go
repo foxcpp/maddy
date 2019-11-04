@@ -29,12 +29,13 @@ import (
 )
 
 type Session struct {
-	endp        *Endpoint
-	delivery    module.Delivery
-	deliveryErr error
-	msgMeta     *module.MsgMetadata
-	log         log.Logger
-	cancelRDNS  func()
+	endp             *Endpoint
+	delivery         module.Delivery
+	deliveryErr      error
+	msgMeta          *module.MsgMetadata
+	log              log.Logger
+	cancelRDNS       func()
+	repeatedMailErrs int
 }
 
 var errInternal = &smtp.SMTPError{
@@ -52,6 +53,8 @@ func (s *Session) Reset() {
 		s.delivery = nil
 		s.log = s.endp.Log
 	}
+	s.deliveryErr = nil
+	s.repeatedMailErrs = 0
 }
 
 func (s *Session) Mail(from string) error {
@@ -108,16 +111,18 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 func (s *Session) Rcpt(to string) error {
 	if s.delivery == nil {
 		s.log = target.DeliveryLogger(s.log, s.msgMeta)
-		s.log.Msg("incoming message",
-			"src_host", s.msgMeta.SrcHostname,
-			"src_ip", s.msgMeta.SrcAddr.String(),
-			"sender", s.msgMeta.OriginalFrom,
-		)
 
-		if s.deliveryErr != nil {
-			s.log.Error("MAIL FROM error (repeated)", s.deliveryErr, "rcpt", to)
+		if s.deliveryErr == nil {
+			s.log.Msg("incoming message",
+				"src_host", s.msgMeta.SrcHostname,
+				"src_ip", s.msgMeta.SrcAddr.String(),
+				"sender", s.msgMeta.OriginalFrom,
+			)
+		} else {
+			s.repeatedMailErrs += 1
 			return s.endp.wrapErr(s.msgMeta.ID, s.deliveryErr)
 		}
+
 		var err error
 		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
 		if err != nil {
@@ -146,6 +151,12 @@ func (s *Session) Logout() error {
 	}
 	if s.cancelRDNS != nil {
 		s.cancelRDNS()
+	}
+	if s.repeatedMailErrs != 0 {
+		s.log.Msg("MAIL FROM error repeated multiple times", "count", s.repeatedMailErrs)
+
+		// XXX: Workaround for go-smtp calling Logout twice.
+		s.repeatedMailErrs = 0
 	}
 	return nil
 }
