@@ -94,6 +94,9 @@ func (l Logger) Error(msg string, err error, fields ...interface{}) {
 }
 
 func (l Logger) DebugMsg(kind string, fields ...interface{}) {
+	if !l.Debug {
+		return
+	}
 	m := make(map[string]interface{}, len(fields)/2)
 	fieldsToMap(fields, m)
 	l.log(true, l.formatMsg(kind, m))
