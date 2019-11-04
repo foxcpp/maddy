@@ -29,13 +29,15 @@ import (
 )
 
 type Session struct {
-	endp             *Endpoint
-	delivery         module.Delivery
-	deliveryErr      error
-	msgMeta          *module.MsgMetadata
-	log              log.Logger
-	cancelRDNS       func()
+	endp        *Endpoint
+	delivery    module.Delivery
+	deliveryErr error
+	msgMeta     *module.MsgMetadata
+	log         log.Logger
+	cancelRDNS  func()
+
 	repeatedMailErrs int
+	loggedRcptErrors int
 }
 
 var errInternal = &smtp.SMTPError{
@@ -119,7 +121,7 @@ func (s *Session) Rcpt(to string) error {
 				"sender", s.msgMeta.OriginalFrom,
 			)
 		} else {
-			s.repeatedMailErrs += 1
+			s.repeatedMailErrs++
 			return s.endp.wrapErr(s.msgMeta.ID, s.deliveryErr)
 		}
 
@@ -134,7 +136,13 @@ func (s *Session) Rcpt(to string) error {
 
 	err := s.delivery.AddRcpt(to)
 	if err != nil {
-		s.log.Error("RCPT error", err, "rcpt", to)
+		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
+			s.log.Error("RCPT error", err, "rcpt", to)
+			s.loggedRcptErrors++
+			if s.loggedRcptErrors == s.endp.maxLoggedRcptErrors {
+				s.log.Msg("further RCPT TO errors will not be logged")
+			}
+		}
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 	s.log.Msg("RCPT ok", "rcpt", to)
@@ -258,10 +266,11 @@ type Endpoint struct {
 	pipeline  *msgpipeline.MsgPipeline
 	resolver  dns.Resolver
 
-	authAlwaysRequired bool
-	submission         bool
-	lmtp               bool
-	deferServerReject  bool
+	authAlwaysRequired  bool
+	submission          bool
+	lmtp                bool
+	deferServerReject   bool
+	maxLoggedRcptErrors int
 
 	listenersWg sync.WaitGroup
 
@@ -353,6 +362,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
+	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
 	cfg.AllowUnknown()
 	unmatched, err := cfg.Process()
 	if err != nil {

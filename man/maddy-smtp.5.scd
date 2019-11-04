@@ -97,6 +97,13 @@ is received. This allows maddy to log recipient address of the rejected
 message and also improves interoperability with (improperly implemented)
 clients that don't expect an error early in session.
 
+*Syntax*: max_logged_rcpt_errors _integer_ ++
+*Default*: 5
+
+Amount of RCPT-time errors that should be logged. Further errors will be
+handled silently. This is to prevent log flooding during email dictonary
+attacks (address probing).
+
 # Submission module (submission)
 
 Module 'submission' implements all functionality of the 'smtp' module and adds
