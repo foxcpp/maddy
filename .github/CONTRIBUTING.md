@@ -30,3 +30,12 @@ Ask for advise if you are not sure. We don't bite.
 
 maddy design summary and some recommendations are provided in
 [HACKING.md](../HACKING.md) file.
+
+## Commits
+
+1. Prefix commit message with a package path if it affects only a single
+   package.
+2. Provide reasoning for details in the source code itself (via comments),
+   provide reasoning for high-level decisions in the commit message.
+3. Make sure every commit builds & passes tests. Otherwise `git bisect` becomes
+   unusable.
