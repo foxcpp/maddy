@@ -615,7 +615,7 @@ Similar to the format used by popular MTAs.
 
 Example:
 ```
-# Replaces dog@domain to dog@domain for any domain.
+# Replaces dog@domain to cat@domain for any domain.
 dog: cat
 
 # Replaces dog@domain to dog@example.com for any domain.
