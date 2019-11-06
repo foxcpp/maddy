@@ -34,21 +34,23 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				return msgpipelineCfg{}, config.NodeErr(&node, "empty checks block")
 			}
 
-			var err error
-			cfg.globalChecks, err = parseChecksGroup(globals, node.Children)
+			globalChecks, err := parseChecksGroup(globals, node.Children)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
+
+			cfg.globalChecks = append(cfg.globalChecks, globalChecks...)
 		case "modify":
 			if len(node.Children) == 0 {
 				return msgpipelineCfg{}, config.NodeErr(&node, "empty modifiers block")
 			}
 
-			var err error
-			cfg.globalModifiers, err = parseModifiersGroup(globals, node.Children)
+			globalModifiers, err := parseModifiersGroup(globals, node.Children)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
+
+			cfg.globalModifiers.Modifiers = append(cfg.globalModifiers.Modifiers, globalModifiers.Modifiers...)
 		case "source":
 			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
 			if err != nil {
@@ -123,21 +125,23 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 				return sourceBlock{}, config.NodeErr(&node, "empty checks block")
 			}
 
-			var err error
-			src.checks, err = parseChecksGroup(globals, node.Children)
+			checks, err := parseChecksGroup(globals, node.Children)
 			if err != nil {
 				return sourceBlock{}, err
 			}
+
+			src.checks = append(src.checks, checks...)
 		case "modify":
 			if len(node.Children) == 0 {
 				return sourceBlock{}, config.NodeErr(&node, "empty modifiers block")
 			}
 
-			var err error
-			src.modifiers, err = parseModifiersGroup(globals, node.Children)
+			modifiers, err := parseModifiersGroup(globals, node.Children)
 			if err != nil {
 				return sourceBlock{}, err
 			}
+
+			src.modifiers.Modifiers = append(src.modifiers.Modifiers, modifiers.Modifiers...)
 		case "destination":
 			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)
 			if err != nil {
@@ -195,21 +199,23 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 				return nil, config.NodeErr(&node, "empty checks block")
 			}
 
-			var err error
-			rcpt.checks, err = parseChecksGroup(globals, node.Children)
+			checks, err := parseChecksGroup(globals, node.Children)
 			if err != nil {
 				return nil, err
 			}
+
+			rcpt.checks = append(rcpt.checks, checks...)
 		case "modify":
 			if len(node.Children) == 0 {
 				return nil, config.NodeErr(&node, "empty modifiers block")
 			}
 
-			var err error
-			rcpt.modifiers, err = parseModifiersGroup(globals, node.Children)
+			modifiers, err := parseModifiersGroup(globals, node.Children)
 			if err != nil {
 				return nil, err
 			}
+
+			rcpt.modifiers.Modifiers = append(rcpt.modifiers.Modifiers, modifiers.Modifiers...)
 		case "deliver_to":
 			if rcpt.rejectErr != nil {
 				return nil, config.NodeErr(&node, "can't use 'reject' and 'deliver_to' together")

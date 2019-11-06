@@ -252,6 +252,30 @@ func TestMsgPipelineCfg_GlobalChecks(t *testing.T) {
 	}
 }
 
+func TestMsgPipelineCfg_GlobalChecksMultiple(t *testing.T) {
+	str := `
+		check {
+			test_check
+		}
+		check {
+			test_check
+		}
+		default_destination {
+			reject 500
+		}
+	`
+
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if len(parsed.globalChecks) != 2 {
+		t.Fatalf("wrong amount of test_check's in globalChecks: %d", len(parsed.globalChecks))
+	}
+}
+
 func TestMsgPipelineCfg_SourceChecks(t *testing.T) {
 	str := `
 		source example.org {
@@ -277,6 +301,34 @@ func TestMsgPipelineCfg_SourceChecks(t *testing.T) {
 	}
 }
 
+func TestMsgPipelineCfg_SourceChecks_Multiple(t *testing.T) {
+	str := `
+		source example.org {
+			check {
+				test_check
+			}
+			check {
+				test_check
+			}
+
+			reject 500
+		}
+		default_source {
+			reject 500
+		}
+	`
+
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if len(parsed.perSource["example.org"].checks) != 2 {
+		t.Fatalf("wrong amount of test_check's in source checks: %d", len(parsed.perSource["example.org"].checks))
+	}
+}
+
 func TestMsgPipelineCfg_RcptChecks(t *testing.T) {
 	str := `
 		destination example.org {
@@ -299,5 +351,33 @@ func TestMsgPipelineCfg_RcptChecks(t *testing.T) {
 
 	if len(parsed.defaultSource.perRcpt["example.org"].checks) == 0 {
 		t.Fatalf("missing test_check in rcpt checks")
+	}
+}
+
+func TestMsgPipelineCfg_RcptChecks_Multiple(t *testing.T) {
+	str := `
+		destination example.org {
+			check {
+				test_check
+			}
+			check {
+				test_check
+			}
+
+			reject 500
+		}
+		default_destination {
+			reject 500
+		}
+	`
+
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if len(parsed.defaultSource.perRcpt["example.org"].checks) != 2 {
+		t.Fatalf("wrong amount of test_check's in rcpt checks: %d", len(parsed.defaultSource.perRcpt["example.org"].checks))
 	}
 }
