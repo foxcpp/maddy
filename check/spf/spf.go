@@ -108,6 +108,12 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		Reason: err.Error(),
 	}
 
+	if err != nil {
+		spfAuth.Reason = err.Error()
+	} else if res == spf.None {
+		spfAuth.Reason = "no policy"
+	}
+
 	switch res {
 	case spf.None:
 		spfAuth.Value = authres.ResultNone
