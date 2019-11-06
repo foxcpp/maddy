@@ -121,35 +121,28 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	bodyRdr, err := body.Open()
 	if err != nil {
 		return module.CheckResult{
+			Reject: true,
 			Reason: exterrors.WithTemporary(
 				exterrors.WithFields(err, map[string]interface{}{
 					"check":    "verify_dkim",
 					"smtp_msg": "Internal I/O error",
 				}),
-				false,
+				true,
 			),
-			AuthResult: []authres.Result{
-				&authres.DKIMResult{
-					Value:  authres.ResultPermError,
-					Reason: err.Error(),
-				},
-			},
 		}
 	}
 
 	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
 	if err != nil {
 		return module.CheckResult{
-			Reason: exterrors.WithFields(err, map[string]interface{}{
-				"check":    "verify_dkim",
-				"smtp_msg": "Internal error during policy check",
-			}),
-			AuthResult: []authres.Result{
-				&authres.DKIMResult{
-					Value:  authres.ResultPermError,
-					Reason: err.Error(),
-				},
-			},
+			Reject: true,
+			Reason: exterrors.WithTemporary(
+				exterrors.WithFields(err, map[string]interface{}{
+					"check":    "verify_dkim",
+					"smtp_msg": "Internal error during policy check",
+				}),
+				true,
+			),
 		}
 	}
 
