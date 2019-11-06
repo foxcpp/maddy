@@ -2,8 +2,10 @@ package spf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"runtime/debug"
 	"strings"
 
 	"blitiri.com.ar/go/spf"
@@ -219,6 +221,14 @@ func (s *state) CheckConnection() module.CheckResult {
 	// Otherwise, we take action based on SPF only.
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during spf.CheckHostWithSender: %v\n%s", err, stack)
+				close(s.spfFetch)
+			}
+		}()
+
 		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
@@ -241,7 +251,19 @@ func (s *state) CheckBody(header textproto.Header, body buffer.Buffer) module.Ch
 		return module.CheckResult{}
 	}
 
-	res := <-s.spfFetch
+	res, ok := <-s.spfFetch
+	if !ok {
+		return module.CheckResult{
+			Reject: true,
+			Reason: exterrors.WithTemporary(
+				exterrors.WithFields(errors.New("panic recovered"), map[string]interface{}{
+					"check":    "spf",
+					"smtp_msg": "Internal error during policy check",
+				}),
+				true,
+			),
+		}
+	}
 	if s.relyOnDMARC(header) {
 		if res.res != spf.Pass || res.err != nil {
 			s.log.Printf("deferring action due to a DMARC policy")

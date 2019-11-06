@@ -2,7 +2,9 @@ package msgpipeline
 
 import (
 	"context"
+	"errors"
 	"math/rand"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -254,6 +256,24 @@ func (cr *checkRunner) fetchDMARC(header textproto.Header) {
 	var ctx context.Context
 	ctx, cr.dmarcPolicyCancel = context.WithCancel(context.Background())
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during DMARC fetch: %v\n%s", err, stack)
+				cr.dmarcPolicy <- struct {
+					orgDomain  string
+					fromDomain string
+					record     *dmarc.Record
+					err        error
+				}{
+					orgDomain:  "",
+					fromDomain: "",
+					record:     nil,
+					err:        exterrors.WithTemporary(errors.New("Internal server error"), true),
+				}
+			}
+		}()
+
 		orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(ctx, header)
 		cr.dmarcPolicy <- struct {
 			orgDomain  string

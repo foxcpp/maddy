@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,13 @@ func (m *Modifier) Init(cfg *config.Map) error {
 var reloadInterval = 15 * time.Second
 
 func (m *Modifier) aliasesReloader() {
+	defer func() {
+		if err := recover(); err != nil {
+			stack := debug.Stack()
+			log.Printf("panic during aliases reload: %v\n%s", err, stack)
+		}
+	}()
+
 	// TODO: Review the possibility of using inotify or similar mechanisms.
 	t := time.NewTicker(reloadInterval)
 

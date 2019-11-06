@@ -49,6 +49,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -244,6 +245,17 @@ func (q *Queue) Close() error {
 	return nil
 }
 
+// discardBroken changes the name of metadata file to have .meta_broken
+// extension.
+//
+// Further attempts to deliver (due to a timewheel) it will fail due to
+// non-existent meta-data file.
+//
+// No error handling is done since this function is called from panic handler.
+func (q *Queue) discardBroken(id string) {
+	os.Rename(filepath.Join(q.location, id+".meta"), filepath.Join(q.location, id+".meta_broken"))
+}
+
 func (q *Queue) dispatch() {
 	for slot := range q.wheel.Dispatch() {
 		q.Log.Debugln("starting delivery for", slot.Value)
@@ -256,6 +268,12 @@ func (q *Queue) dispatch() {
 			defer func() {
 				<-q.deliverySemaphore
 				q.deliveryWg.Done()
+
+				if err := recover(); err != nil {
+					stack := debug.Stack()
+					log.Printf("panic during queue dispatch %s: %v\n%s", id, err, stack)
+					q.discardBroken(id)
+				}
 			}()
 
 			q.Log.Debugln("delivery semaphore acquired for", id)
@@ -504,6 +522,12 @@ func (qd *queueDelivery) Commit() error {
 		defer func() {
 			<-qd.q.deliverySemaphore
 			qd.q.deliveryWg.Done()
+
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during queue dispatch: %v\n%s", err, stack)
+				qd.q.discardBroken(qd.meta.MsgMeta.ID)
+			}
 		}()
 
 		qd.q.tryDelivery(qd.meta, qd.header, qd.body)
