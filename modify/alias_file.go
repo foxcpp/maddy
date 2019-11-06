@@ -96,11 +96,15 @@ func (m *Modifier) aliasesReloader() {
 	for {
 		select {
 		case <-t.C:
-			var latestStamp time.Time
+			var (
+				latestStamp  time.Time
+				filesRemoved bool
+			)
 			for _, file := range m.files {
 				info, err := os.Stat(file)
 				if err != nil {
 					if os.IsNotExist(err) {
+						filesRemoved = true
 						continue
 					}
 					m.log.Printf("%v", err)
@@ -112,7 +116,7 @@ func (m *Modifier) aliasesReloader() {
 				}
 			}
 
-			if !latestStamp.After(m.aliasesStamp) {
+			if !latestStamp.After(m.aliasesStamp) && !filesRemoved {
 				continue
 			}
 			m.log.Printf("alias files changed, reloading")
@@ -125,6 +129,7 @@ func (m *Modifier) aliasesReloader() {
 						m.log.Printf("ignoring non-existent file: %s", file)
 					} else {
 						m.log.Println(err)
+						goto dontreplace
 					}
 					continue
 				}
@@ -138,6 +143,7 @@ func (m *Modifier) aliasesReloader() {
 			m.stopReloader <- struct{}{}
 			return
 		}
+	dontreplace:
 	}
 }
 
