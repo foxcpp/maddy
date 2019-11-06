@@ -3,8 +3,13 @@ package modify
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/testutils"
 )
 
 func TestReadFile(t *testing.T) {
@@ -16,6 +21,7 @@ func TestReadFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer os.Remove(f.Name())
+		defer f.Close()
 		if _, err := f.WriteString(file); err != nil {
 			t.Fatal(err)
 		}
@@ -109,4 +115,177 @@ func TestRewriteRcpt(t *testing.T) {
 	// in this case.
 	test("postmaster", "test2",
 		map[string]string{"postmaster": "test2"})
+}
+
+func TestAliasesReload(t *testing.T) {
+	t.Parallel()
+
+	const file = `cat: dog`
+
+	f, err := ioutil.TempFile("", "maddy-tests-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(file); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	f.Close()
+
+	mod, err := New("", "", nil, []string{f.Name()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := mod.(*Modifier)
+	aliases.log = testutils.Logger(t, "alias_file")
+	defer aliases.Close()
+
+	if err := mod.Init(&config.Map{Block: &config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// This delay is somehow important. Not sure why.
+	time.Sleep(250 * time.Millisecond)
+
+	if err := ioutil.WriteFile(f.Name(), []byte("dog: cat"), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 10; i++ {
+		time.Sleep(reloadInterval + 50*time.Millisecond)
+		aliases.aliasesLck.RLock()
+		if aliases.aliases["dog"] != "" {
+			aliases.aliasesLck.RUnlock()
+			break
+		}
+		aliases.aliasesLck.RUnlock()
+	}
+
+	aliases.aliasesLck.RLock()
+	defer aliases.aliasesLck.RUnlock()
+	if aliases.aliases["dog"] == "" {
+		t.Fatal("New aliases were not loaded")
+	}
+}
+
+func TestAliasesReload_Broken(t *testing.T) {
+	t.Parallel()
+
+	const file = `cat: dog`
+
+	f, err := ioutil.TempFile("", "maddy-tests-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(file); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	f.Close()
+
+	mod, err := New("", "", nil, []string{f.Name()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := mod.(*Modifier)
+	aliases.log = testutils.Logger(t, "alias_file")
+	defer aliases.Close()
+
+	if err := mod.Init(&config.Map{Block: &config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// This delay is somehow important. Not sure why.
+	time.Sleep(250 * time.Millisecond)
+
+	if err := ioutil.WriteFile(f.Name(), []byte("dog"), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(3 * reloadInterval)
+
+	aliases.aliasesLck.RLock()
+	defer aliases.aliasesLck.RUnlock()
+	if aliases.aliases["cat"] == "" {
+		t.Fatal("New aliases were loaded or map changed", aliases.aliases)
+	}
+}
+
+func TestAliasesReload_Removed(t *testing.T) {
+	t.Parallel()
+
+	const file = `cat: dog`
+
+	f, err := ioutil.TempFile("", "maddy-tests-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(file); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	f.Close()
+
+	mod, err := New("", "", nil, []string{f.Name()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := mod.(*Modifier)
+	aliases.log = testutils.Logger(t, "alias_file")
+	defer aliases.Close()
+
+	if err := mod.Init(&config.Map{Block: &config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// This delay is somehow important. Not sure why.
+	time.Sleep(250 * time.Millisecond)
+
+	os.Remove(f.Name())
+
+	time.Sleep(3 * reloadInterval)
+
+	aliases.aliasesLck.RLock()
+	defer aliases.aliasesLck.RUnlock()
+	if aliases.aliases["cat"] != "" {
+		t.Fatal("Old aliases are still loaded")
+	}
+}
+
+func TestAliasesInit_NonExistent(t *testing.T) {
+	t.Parallel()
+
+	const file = `cat: dog`
+
+	f, err := ioutil.TempFile("", "maddy-tests-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(file); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	f.Close()
+
+	mod, err := New("", "", nil, []string{f.Name(), filepath.Join(os.TempDir(), "totally-non-existent-path-i-really-hope")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := mod.(*Modifier)
+	aliases.log = testutils.Logger(t, "alias_file")
+	defer aliases.Close()
+
+	if err := mod.Init(&config.Map{Block: &config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if aliases.aliases["cat"] != "dog" {
+		t.Fatal("Aliases are not loaded")
+	}
+}
+
+func init() {
+	reloadInterval = 250 * time.Millisecond
 }
