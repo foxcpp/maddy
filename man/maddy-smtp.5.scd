@@ -153,23 +153,27 @@ The pipeline is responsible for
   does final processing (delivery) of the message.
 
 Message handling flow is as follows:
-. Execute checks referenced in top-level 'check' block (if any)
-. Execute modifiers referenced in top-level 'modify' block (if any)
-. If there are 'source' blocks - select one that matches message sender (as
+- Execute checks referenced in top-level 'check' blocks (if any)
+- Execute modifiers referenced in top-level 'modify' blocks (if any)
+- If there are 'source' blocks - select one that matches message sender (as
   specified in MAIL FROM). If there are no 'source' blocks - entire
   configuration is assumed to be the 'default_source' block.
-. Execute checks referenced in 'check' block inside selected 'source' block
+- Execute checks referenced in 'check' blocks inside selected 'source' block
   (if any).
-. Execute modifiers referenced in 'modify' block inside selected 'source'
+- Execute modifiers referenced in 'modify' blocks inside selected 'source'
   block (if any).
 
 Then, for each recipient:
-. Select 'destination' block that matches it. If there are
+- Select 'destination' block that matches it. If there are
   no 'destination' blocks - entire used 'source' block is interpreted as if it
   was a 'default_destination' block.
-. If used block contains 'reject' directive - reject the recipient with
+- Execute checks referenced in 'check' block inside selected 'destination' block
+  (if any).
+- Execute modifiers referenced in 'modify' block inside selected 'destination'
+  block (if any).
+- If used block contains 'reject' directive - reject the recipient with
   specified SMTP status code.
-. If used block contains 'deliver_to' directive - pass the message to the
+- If used block contains 'deliver_to' directive - pass the message to the
   specified target module configuration block. Only recipients that are handled
   by used block are visible to the target.
 
