@@ -476,14 +476,12 @@ func (dd *msgpipelineDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery
 
 	deliveryObj, err := tgt.Start(dd.msgMeta, dd.sourceAddr)
 	if err != nil {
-		dd.log.Debugf("tgt.Start(%s) failure, target = %s (%s): %v",
-			dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name(), err)
+		dd.log.Debugf("tgt.Start(%s) failure, target = %s: %v", dd.sourceAddr, objectName(tgt), err)
 		return nil, err
 	}
 	delivery_ = &delivery{Delivery: deliveryObj}
 
-	dd.log.Debugf("tgt.Start(%s) ok, target = %s (%s)",
-		dd.sourceAddr, tgt.(module.Module).InstanceName(), tgt.(module.Module).Name())
+	dd.log.Debugf("tgt.Start(%s) ok, target = %s (%s)", dd.sourceAddr, objectName(tgt))
 
 	dd.deliveries[tgt] = delivery_
 	return delivery_, nil

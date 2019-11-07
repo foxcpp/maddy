@@ -230,6 +230,17 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 			}
 
 			rcpt.targets = append(rcpt.targets, mod)
+		case "reroute":
+			if len(node.Children) == 0 {
+				return nil, config.NodeErr(&node, "missing or empty reroute pipeline configuration")
+			}
+
+			pipeline, err := New(globals, node.Children)
+			if err != nil {
+				return nil, err
+			}
+
+			rcpt.targets = append(rcpt.targets, pipeline)
 		case "reject":
 			if len(rcpt.targets) != 0 {
 				return nil, config.NodeErr(&node, "can't use 'reject' and 'deliver_to' together")

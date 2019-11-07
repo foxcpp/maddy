@@ -61,6 +61,7 @@ syn keyword maddyModule
 	\ test_check
 	\ test_modifier
 	\ verify_dkim
+	\ aliases_file
 
 syn keyword maddyDispatchDir
 	\ check
@@ -71,6 +72,7 @@ syn keyword maddyDispatchDir
 	\ destination
 	\ reject
 	\ deliver_to
+	\ reroute
 
 " grep --no-file -E 'cfg..+\(".+", ' **.go | sed -E 's/.+cfg..+\("([^"]+)", .+/\1/' | sort -u
 syn keyword maddyModDir

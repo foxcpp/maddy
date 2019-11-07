@@ -72,7 +72,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 			continue
 		}
 
-		cr.log.Debugf("initializing state for %v (%p)", check.(module.Module).InstanceName(), check)
+		cr.log.Debugf("initializing state for %v (%p)", objectName(check), check)
 		state, err := check.CheckStateForMsg(cr.msgMeta)
 		if err != nil {
 			closeStates()

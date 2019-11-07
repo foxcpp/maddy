@@ -340,6 +340,36 @@ default_source {
 }
 ```
 
+*Syntax*: reroute { ... } ++
+*Context*: pipeline configuration, source block, destination block
+
+This directive allows to make message routing decisions based on the 
+result of modifiers. The block can contain all pipeline directives and they
+will be handled the same with the exception that source and destination rules
+will use the final recipient and sender values (e.g. after all modifiers are
+applied).
+
+Here is the concrete example how it can be useful:
+```
+destination example.org {
+    modify {
+        alias_file /etc/maddy/aliases
+    }
+    reroute {
+        destination example.org {
+            deliver_to local_mailboxes
+        }
+        default_destination {
+            deliver_to remote_queue
+        }
+    }
+}
+```
+
+This configuration allows to specify alias local addresses to remote ones
+without being an open relay, since remote_queue can be used only if remote
+address was introduced as a result of rewrite of local address.
+
 *Syntax*: destination _rule..._ { ... } ++
 *Context*: pipeline configuration, source block
 
