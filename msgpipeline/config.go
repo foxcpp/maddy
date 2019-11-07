@@ -104,7 +104,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 	}
 
 	if len(defaultSrcRaw) == 0 {
-		return msgpipelineCfg{}, config.NodeErr(&nodes[0], "missing or empty default source block, use 'reject' to reject messages")
+		return msgpipelineCfg{}, config.NodeErr(&nodes[0], "missing or empty default source block, use default_source { reject } to reject messages")
 	}
 
 	var err error
@@ -182,7 +182,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 	}
 
 	if len(defaultRcptRaw) == 0 {
-		return sourceBlock{}, config.NodeErr(&nodes[0], "missing or empty default source block, use 'reject' to reject messages")
+		return sourceBlock{}, config.NodeErr(&nodes[0], "missing or empty default destination block, use default_destination { reject } to reject messages")
 	}
 
 	var err error
