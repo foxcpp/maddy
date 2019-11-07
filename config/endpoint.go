@@ -25,15 +25,7 @@ func (e Endpoint) String() string {
 	if e.Host == "" && e.Port == "" {
 		return ""
 	}
-	scheme := e.Scheme
-	if scheme == "" {
-		if e.Port == "993" {
-			scheme = "imaps"
-		} else {
-			scheme = "imap"
-		}
-	}
-	s := scheme
+	s := e.Scheme
 	if s != "" {
 		s += "://"
 	}

@@ -23,7 +23,11 @@ func TestStandardizeAddress(t *testing.T) {
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Didn't parse URL %q correctly\ngot %#v\nwant %#v", expected.Original, actual, expected)
-			return
+			continue
+		}
+
+		if actual.String() != expected.Original {
+			t.Errorf("actual.String() = %s, want %s", actual.String(), expected.Original)
 		}
 	}
 }
