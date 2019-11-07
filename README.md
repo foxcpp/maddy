@@ -49,8 +49,11 @@ Reference documentation is maintained as a set of man pages
 in the [scdoc](https://git.sr.ht/~sircmpwn/scdoc) format.
 Rendered pages can be browsed [here](https://foxcpp.dev/maddy-reference).
 
-Tutorials and misc articles will be added to
+Tutorials and misc articles can be found on
 the [project wiki](https://github.com/foxcpp/maddy/wiki).
+
+Examples of more advanced configurations with explainations can be 
+found in the [examples](examples/) directory.
 
 ## Community
 
