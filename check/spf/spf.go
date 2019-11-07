@@ -106,8 +106,6 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		Value: authres.ResultNone,
 		Helo:  s.msgMeta.SrcHostname,
 		From:  fromDomain,
-		// SPF library always returns an error value we can use as a reason.
-		Reason: err.Error(),
 	}
 
 	if err != nil {
