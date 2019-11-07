@@ -299,6 +299,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 
 func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
+	endp.serv.ErrorLog = endp.Log
 	if err := endp.setConfig(cfg); err != nil {
 		return err
 	}
