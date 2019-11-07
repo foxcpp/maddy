@@ -364,11 +364,11 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
 	cfg.AllowUnknown()
-	unmatched, err := cfg.Process()
+	unknown, err := cfg.Process()
 	if err != nil {
 		return err
 	}
-	endp.pipeline, err = msgpipeline.New(cfg.Globals, unmatched)
+	endp.pipeline, err = msgpipeline.New(cfg.Globals, unknown)
 	if err != nil {
 		return err
 	}

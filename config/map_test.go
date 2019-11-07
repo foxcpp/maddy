@@ -202,6 +202,48 @@ func TestMapProcess_Duplicate(t *testing.T) {
 	}
 }
 
+func TestMapProcess_Unexpected(t *testing.T) {
+	cfg := Node{
+		Children: []Node{
+			{
+				Name: "foo",
+				Args: []string{"baz"},
+			},
+			{
+				Name: "bar",
+				Args: []string{"baz"},
+			},
+		},
+	}
+
+	m := NewMap(nil, &cfg)
+
+	foo := ""
+	m.Custom("bar", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+		return n.Args[0], nil
+	}, &foo)
+
+	_, err := m.Process()
+	if err == nil {
+		t.Errorf("Expected failure")
+	}
+
+	m.AllowUnknown()
+
+	unknown, err := m.Process()
+	if err != nil {
+		t.Errorf("Unexpected failure: %v", err)
+	}
+
+	if len(unknown) != 1 {
+		t.Fatalf("Wrong amount of unknown nodes: %v", len(unknown))
+	}
+
+	if unknown[0].Name != "foo" {
+		t.Fatalf("Wrong node in unknown: %v", unknown[0].Name)
+	}
+}
+
 func TestMapInt(t *testing.T) {
 	cfg := Node{
 		Children: []Node{

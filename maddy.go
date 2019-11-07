@@ -34,14 +34,14 @@ func Start(cfg []config.Node) error {
 	globals.Custom("log", false, false, defaultLogOutput, logOutput, &log.DefaultLogger.Out)
 	globals.Bool("debug", false, log.DefaultLogger.Debug, &log.DefaultLogger.Debug)
 	globals.AllowUnknown()
-	unmatched, err := globals.Process()
+	unknown, err := globals.Process()
 	if err != nil {
 		return err
 	}
 
 	defer log.DefaultLogger.Out.Close()
 
-	insts, err := instancesFromConfig(globals.Values, unmatched)
+	insts, err := instancesFromConfig(globals.Values, unknown)
 	if err != nil {
 		return err
 	}

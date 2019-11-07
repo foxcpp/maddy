@@ -70,7 +70,7 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 			return check.FailAction{Reject: true}, nil
 		}, check.FailActionDirective, &bl.listedAction)
 	cfg.AllowUnknown()
-	unmatched, err := cfg.Process()
+	unknown, err := cfg.Process()
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 		bl.bls = append(bl.bls, cfg)
 	}
 
-	for _, node := range unmatched {
+	for _, node := range unknown {
 		if err := bl.readListCfg(node); err != nil {
 			return err
 		}

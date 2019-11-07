@@ -559,13 +559,13 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 // Process maps variables from global configuration and block passed in NewMap.
 //
 // If Map instance was not created using NewMap - Process panics.
-func (m *Map) Process() (unmatched []Node, err error) {
+func (m *Map) Process() (unknown []Node, err error) {
 	return m.ProcessWith(m.Globals, m.Block)
 }
 
 // Process maps variables from global configuration and block passed in arguments.
-func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unmatched []Node, err error) {
-	unmatched = make([]Node, 0, len(block.Children))
+func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknown []Node, err error) {
+	unknown = make([]Node, 0, len(block.Children))
 	matched := make(map[string]bool)
 	m.Values = make(map[string]interface{})
 
@@ -581,7 +581,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unmatc
 			if !m.allowUnknown {
 				return nil, m.MatchErr("unexpected directive: %s", subnode.Name)
 			}
-			unmatched = append(unmatched, subnode)
+			unknown = append(unknown, subnode)
 			continue
 		}
 
@@ -645,5 +645,5 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unmatc
 		}
 	}
 
-	return unmatched, nil
+	return unknown, nil
 }
