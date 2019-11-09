@@ -113,6 +113,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 
 	if len(cr.checkedRcpts) != 0 {
 		for _, rcpt := range cr.checkedRcpts {
+			rcpt := rcpt
 			err := cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
 				res := s.CheckRcpt(rcpt)
 				return res
