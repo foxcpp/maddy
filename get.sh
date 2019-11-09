@@ -1,7 +1,9 @@
 #!/bin/sh
 
+REQUIRED_GOVERSION=1.13.0
+
 if [ "$GOVERSION" == "" ]; then
-    GOVERSION=1.13.0
+    GOVERSION=1.13.4
 fi
 if [ "$MADDYVERSION" == "" ]; then
     MADDYVERSION=master
@@ -35,9 +37,9 @@ ensure_go_toolchain() {
         SYSGOMAJOR=`cut -f1 -d. <<<$SYSGOVERSION`
         SYSGOMINOR=`cut -f2 -d. <<<$SYSGOVERSION`
         SYSGOPATCH=`cut -f3 -d. <<<$SYSGOVERSION`
-        WANTEDGOMAJOR=`cut -f1 -d. <<<$GOVERSION`
-        WANTEDGOMINOR=`cut -f2 -d. <<<$GOVERSION`
-        WANTEDGOPATCH=`cut -f3 -d. <<<$GOVERSION`
+        WANTEDGOMAJOR=`cut -f1 -d. <<<$REQUIRED_GOVERSION`
+        WANTEDGOMINOR=`cut -f2 -d. <<<$REQUIRED_GOVERSION`
+        WANTEDGOPATCH=`cut -f3 -d. <<<$REQUIRED_GOVERSION`
 
         downloadgo=0
         if [ $SYSGOMAJOR -ne $WANTEDGOMAJOR ]; then
