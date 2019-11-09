@@ -37,6 +37,11 @@ See section 'TLS configuration' in *maddy*(1) for valid options.
 
 Write all commands and responses to stderr.
 
+*Syntax*: io_errors _boolean_ ++
+*Default*: no
+
+Log I/O errors.
+
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
 

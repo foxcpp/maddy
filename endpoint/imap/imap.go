@@ -53,6 +53,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	var (
 		insecureAuth bool
 		ioDebug      bool
+		ioErrors     bool
 	)
 
 	cfg.Custom("auth", false, true, nil, modconfig.AuthDirective, &endp.Auth)
@@ -60,6 +61,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
+	cfg.Bool("io_errors", false, false, &ioErrors)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -89,7 +91,11 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
 	endp.serv.TLSConfig = endp.tlsConfig
-	endp.serv.ErrorLog = &endp.Log
+	if ioErrors {
+		endp.serv.ErrorLog = &endp.Log
+	} else {
+		endp.serv.ErrorLog = log.Logger{Out: log.NopOutput{}}
+	}
 	if ioDebug {
 		endp.serv.Debug = endp.Log.DebugWriter()
 		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
