@@ -481,7 +481,7 @@ func (dd *msgpipelineDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery
 	}
 	delivery_ = &delivery{Delivery: deliveryObj}
 
-	dd.log.Debugf("tgt.Start(%s) ok, target = %s (%s)", dd.sourceAddr, objectName(tgt))
+	dd.log.Debugf("tgt.Start(%s) ok, target = %s", dd.sourceAddr, objectName(tgt))
 
 	dd.deliveries[tgt] = delivery_
 	return delivery_, nil
