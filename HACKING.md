@@ -76,4 +76,48 @@ definition represent "inline arguments". They are passed to the module instance
 directly and not used anyhow by other code (i.e. they are not guaranteed to be
 unique).
 
+## Error handling
+
+Familarize yourself with the github.com/foxcpp/maddy/exterrors package and
+make sure you have the following for returned errors.
+- SMTP status information (smtp\_code, smtp\_enchcode, smtp\_msg fields)
+- Temporary() == true for temporary errors (see exterrors.WithTemporary)
+- Field that includes module name
+
+The easiest way to get all of these is to use exterrors.SMTPError.
+
+If you start any goroutines - make sure to catch panics to make sure severe
+bugs will not bring the whole server down.
+
+## Adding a check
+
+"Check" is a module that inspects the message and flags it as spam or rejects
+it altogether based on some condition.
+
+The skeleton for the stateful check module can be found in check/skeleton.go.
+Throw it into a file in `check/check_name` directory and start ~~breaking~~
+extending it.
+
+If you don't need any per-message state, you can use StatelessCheck wrapper.
+See check/dns directory for a working example.
+
+Here are some guidelines to make sure your check works well:
+- RTFM, docs well tell you about any caveats.
+- Don't share any state _between_ messages, your code will be executed in
+  parallel.
+- Use github.com/foxcpp/maddy/check.FailAction to select behavior on check
+  failures. See other checks for examples on how to use it.
+- You can assume that order of check functions execution is as follows:
+  CheckConnection, CheckSender, CheckRcpt, CheckBody.
+
+## Adding a modifier
+
+"Modifier" is a module that can modify some parts of the message data. 
+
+Note, currently this is not possible to modify the body contents, only header
+can be modified.
+
+Structure of the modifier implementation is similar to the structure of check
+implementation, check modify/replace\_addr.go for a working example.
+
 [1]: https://github.com/foxcpp/maddy/wiki/Dev:-Comments-on-design
