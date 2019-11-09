@@ -213,15 +213,12 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 
 func (rd *remoteDelivery) AddRcpt(to string) error {
 	if rd.msgMeta.Quarantine {
-		return exterrors.WithFields(
-			exterrors.WithTemporary(
-				errors.New("remote: refusing to deliver quarantined message"),
-				false,
-			),
-			map[string]interface{}{
-				"target": "remote",
-			},
-		)
+		return &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+			Message:      "Refusing to deliver quarantined message",
+			TargetName:   "remote",
+		}
 	}
 
 	_, domain, err := address.Split(to)
@@ -232,15 +229,12 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	// Special-case for <postmaster> address. If it is not handled by a rewrite rule before
 	// - we should not attempt to do anything with it and reject it as invalid.
 	if domain == "" {
-		return exterrors.WithFields(
-			exterrors.WithTemporary(
-				errors.New("remote: <postmaster> address is not supported"),
-				false,
-			),
-			map[string]interface{}{
-				"target": "remote",
-			},
-		)
+		return &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
+			Message:      "<postmaster> address it no ssupported",
+			TargetName:   "remote",
+		}
 	}
 
 	// serverName (MX serv. address) is very useful for tracing purposes and should be logged on all related errors.
@@ -266,7 +260,38 @@ type multipleErrs struct {
 func (m *multipleErrs) Error() string {
 	m.statusLck.Lock()
 	defer m.statusLck.Unlock()
-	return fmt.Sprintf("remote: partial delivery failure, per-rcpt info: %+v", m.errs)
+	return fmt.Sprintf("Partial delivery failure, per-rcpt info: %+v", m.errs)
+}
+
+func (m *multipleErrs) Fields() map[string]interface{} {
+	m.statusLck.Lock()
+	defer m.statusLck.Unlock()
+
+	// If there are any temporary errors - the sender should retry to make sure
+	// all recipients will get the message. However, since we can't tell it
+	// which recipients got the message, this will generate duplicates for
+	// them.
+	//
+	// We favor delivery with duplicates over incomplete delivery here.
+
+	var (
+		code     = 550
+		enchCode = exterrors.EnhancedCode{5, 0, 0}
+	)
+	for _, err := range m.errs {
+		if exterrors.IsTemporary(err) {
+			code = 451
+			enchCode = exterrors.EnhancedCode{4, 0, 0}
+		}
+	}
+
+	return map[string]interface{}{
+		"smtp_code":     code,
+		"smtp_enchcode": enchCode,
+		"smtp_msg":      "Partial delivery failure, additional attempts may result in duplicates",
+		"target":        "remote",
+		"errs":          m.errs,
+	}
 }
 
 func (m *multipleErrs) SetStatus(rcptTo string, err error) {
@@ -289,7 +314,12 @@ func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) er
 func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, b buffer.Buffer) {
 	if rd.msgMeta.Quarantine {
 		for _, rcpt := range rd.recipients {
-			c.SetStatus(rcpt, exterrors.WithTemporary(errors.New("remote: refusing to deliver quarantined message"), false))
+			c.SetStatus(rcpt, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+				Message:      "Refusing to deliver quarantined message",
+				TargetName:   "remote",
+			})
 		}
 		return
 	}
@@ -331,6 +361,8 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 				setErr(err)
 				return
 			}
+
+			setErr(nil)
 		}()
 	}
 
@@ -403,7 +435,23 @@ func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	stsPolicy, err := rt.mtastsCache.Get(domain)
 	if err != nil && err != mtasts.ErrNoPolicy {
 		rt.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
-		return nil, exterrors.WithTemporary(err, true)
+		code := 501
+		enchCode := exterrors.EnhancedCode{5, 0, 0}
+		if exterrors.IsTemporary(err) {
+			code = 420
+			enchCode = exterrors.EnhancedCode{4, 0, 0}
+		}
+		return nil, &exterrors.SMTPError{
+			Code:         code,
+			EnhancedCode: enchCode,
+			Message:      "Failed to fetch recipient MTA-STS policy",
+			TargetName:   "remote",
+			Err:          err,
+			Misc: map[string]interface{}{
+				"reason": err.Error(),
+				"domain": domain,
+			},
+		}
 	}
 	return stsPolicy, nil
 }
@@ -449,7 +497,12 @@ func (rt *Target) connectToServer(address string, requireTLS bool) (*smtp.Client
 			return nil, err
 		}
 	} else if requireTLS {
-		return nil, exterrors.WithTemporary(errors.New("remote: TLS is required but unsupported by MX"), false)
+		return nil, &exterrors.SMTPError{
+			Code:         523,
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
+			Message:      "TLS is required but unsupported by MX",
+			TargetName:   "remote",
+		}
 	}
 
 	return cl, nil
@@ -474,7 +527,10 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	dnssecOk, mxs, err := rd.lookupMX(domain)
 	if err != nil {
-		return nil, false, err
+		return nil, false, exterrors.WithFields(err,
+			map[string]interface{}{
+				"target": "remote",
+			})
 	}
 
 	// Fallback to A/AAA RR when no MX records are present as
@@ -543,9 +599,19 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	if len(candidates) == 0 {
 		if skippedMXs {
-			return nil, false, errors.New("remote: no usable MXs found (ignoring non-authenticated MXs)")
+			return nil, false, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+				Message:      "No usable MXs found (ignoring non-authenticated MXs)",
+				TargetName:   "remote",
+			}
 		}
-		return nil, false, errors.New("remote: no usable MXs found")
+		return nil, false, &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "No usable MXs found",
+			TargetName:   "remote",
+		}
 	}
 
 	return candidates, requireTLS, nil
