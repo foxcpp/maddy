@@ -143,7 +143,7 @@ func (c *statelessCheck) InstanceName() string {
 // Note about CheckResult that is returned by the functions:
 // StatelessCheck supports different action types based on the user configuration, but the particular check
 // code doesn't need to know about it. It should assume that it is always "Reject" and hence it should
-// populate RejectErr field of the result object with the relevant error description.
+// populate Reason field of the result object with the relevant error description.
 func RegisterStatelessCheck(name string, defaultFailAction FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
 	module.Register(name, func(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
 		if len(inlineArgs) != 0 {
