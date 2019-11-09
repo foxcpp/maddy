@@ -94,7 +94,7 @@ func (l Logger) Error(msg string, err error, fields ...interface{}) {
 	}
 
 	// If there is already a 'reason' field - use it, it probably
-	// provides a better explaination than error text itself.
+	// provides a better explanation than error text itself.
 	if errFields["reason"] == nil {
 		allFields["reason"] = err.Error()
 	}

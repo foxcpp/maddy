@@ -48,7 +48,7 @@ func checkDomain(resolver dns.Resolver, cfg List, domain string) error {
 		return nil
 	}
 
-	// Attempt to extract explaination string.
+	// Attempt to extract explanation string.
 	txts, err := resolver.LookupTXT(context.Background(), query)
 	if err != nil || len(txts) == 0 {
 		// Not significant, include addresses as reason. Usually they are
@@ -99,7 +99,7 @@ func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 		return nil
 	}
 
-	// Attempt to extract explaination string.
+	// Attempt to extract explanation string.
 	txts, err := resolver.LookupTXT(context.Background(), query)
 	if err != nil || len(txts) == 0 {
 		// Not significant, include addresses as reason. Usually they are
