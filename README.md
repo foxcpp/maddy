@@ -58,7 +58,7 @@ found in the [examples](examples/) directory.
 ## Community
 
 There is IRC channel on freenode.net named
-[##maddy](https://webchat.freenode.net/##maddy). You can join it if you have
+[#maddy](https://webchat.freenode.net/#maddy). You can join it if you have
 any questions or just want to talk.
 
 Also there is public mailing list for maddy-related discussions on
