@@ -59,7 +59,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 	if err != nil {
 		return module.CheckResult{
 			Reason: exterrors.WithFields(err, map[string]interface{}{
-				"check": "require_matching_rdns",
+				"check": "require_mx_record",
 			}),
 		}
 	}
@@ -132,7 +132,10 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 	if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
 		// IP in EHLO, checking against source IP directly.
 
-		ehloIP := net.ParseIP(ehlo[1 : len(ehlo)-1])
+		ehlo = ehlo[1 : len(ehlo)-1]
+		ehlo = strings.TrimPrefix(ehlo, "IPv6:")
+		ehloIP := net.ParseIP(ehlo)
+
 		if ehloIP == nil {
 			return module.CheckResult{
 				Reason: &exterrors.SMTPError{
