@@ -296,6 +296,7 @@ func toSMTPErr(err error) *smtp.SMTPError {
 	res := &smtp.SMTPError{
 		Code:         554,
 		EnhancedCode: smtp.EnhancedCodeNotSet,
+		Message:      "Internal server error",
 	}
 
 	if exterrors.IsTemporaryOrUnspec(err) {

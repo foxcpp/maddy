@@ -40,12 +40,6 @@ type Session struct {
 	loggedRcptErrors int
 }
 
-var errInternal = &smtp.SMTPError{
-	Code:         451,
-	EnhancedCode: smtp.EnhancedCode{4, 0, 0},
-	Message:      "Internal server error",
-}
-
 func (s *Session) Reset() {
 	if s.delivery != nil {
 		if err := s.delivery.Abort(); err != nil {
@@ -223,7 +217,10 @@ func (endp *Endpoint) wrapErr(msgId string, err error) error {
 	res := &smtp.SMTPError{
 		Code:         554,
 		EnhancedCode: smtp.EnhancedCodeNotSet,
-		Message:      err.Error(),
+		// Err on the side of caution if the error lacks SMTP annotations. If
+		// we just pass the error text through, we might accidenetally disclose
+		// details of server configuration.
+		Message: "Internal server error",
 	}
 
 	if exterrors.IsTemporary(err) {
