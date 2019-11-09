@@ -312,7 +312,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	for _, addr := range endp.addrs {
 		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
-			return fmt.Errorf("smtp: invalid address: %s", addr)
+			return fmt.Errorf("%s: invalid address: %s", addr, endp.name)
 		}
 
 		addresses = append(addresses, saddr)
@@ -381,7 +381,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		endp.authAlwaysRequired = true
 
 		if endp.Auth == nil {
-			return fmt.Errorf("smtp: auth. provider must be set for submission endpoint")
+			return fmt.Errorf("%s: auth. provider must be set for submission endpoint", endp.name)
 		}
 	}
 
@@ -399,13 +399,13 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
 		if err != nil {
-			return fmt.Errorf("failed to bind on %v: %v", addr, err)
+			return fmt.Errorf("%s: %w", endp.name, err)
 		}
 		endp.Log.Printf("listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.serv.TLSConfig == nil {
-				return errors.New("smtp: can't bind on SMTPS endpoint without TLS configuration")
+				return fmt.Errorf("%s: can't bind on SMTPS endpoint without TLS configuration", endp.name)
 			}
 			l = tls.NewListener(l, endp.serv.TLSConfig)
 		}

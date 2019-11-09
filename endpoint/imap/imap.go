@@ -104,13 +104,13 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		var err error
 		l, err = net.Listen(addr.Network(), addr.Address())
 		if err != nil {
-			return fmt.Errorf("failed to bind on %v: %v", addr, err)
+			return fmt.Errorf("imap: %v", err)
 		}
 		endp.Log.Printf("listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.tlsConfig == nil {
-				return errors.New("can't bind on IMAPS endpoint without TLS configuration")
+				return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
 			}
 			l = tls.NewListener(l, endp.tlsConfig)
 		}
