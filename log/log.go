@@ -138,7 +138,10 @@ func (l Logger) formatMsg(msg string, fields map[string]interface{}) string {
 		for k, v := range l.Fields {
 			fields[k] = v
 		}
-		marshalOrderedJSON(&formatted, fields)
+		if err := marshalOrderedJSON(&formatted, fields); err != nil {
+			// Fallback to printing the message with minimal processing.
+			return fmt.Sprintf("[BROKEN FORMATTING: %v] %v %+v", err, msg, fields)
+		}
 	}
 
 	return formatted.String()

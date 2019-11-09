@@ -289,7 +289,11 @@ func TestMsgPipeline_PerRcptReject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
-	defer delivery.Abort()
+	defer func() {
+		if err := delivery.Abort(); err != nil {
+			t.Fatalf("unexpected Abort err: %v", err)
+		}
+	}()
 
 	if err := delivery.AddRcpt("rcpt2@example.com"); err == nil {
 		t.Fatalf("expected error for delivery.AddRcpt(rcpt2@example.com), got nil")

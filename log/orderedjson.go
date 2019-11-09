@@ -36,7 +36,7 @@ func marshalOrderedJSON(output *strings.Builder, m map[string]interface{}) error
 		output.Write(jsonKey)
 		output.WriteString(":")
 
-		val := m[string(key)]
+		val := m[key]
 		switch casted := val.(type) {
 		case time.Time:
 			val = casted.Format("2006-01-02T15:04:05.000")

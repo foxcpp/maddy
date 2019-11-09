@@ -244,17 +244,3 @@ func (d *Dispenser) numLineBreaks(tknIdx int) int {
 	}
 	return strings.Count(d.tokens[tknIdx].Text, "\n")
 }
-
-// isNewLine determines whether the current token is on a different
-// line (higher line number) than the previous token. It handles imported
-// tokens correctly. If there isn't a previous token, it returns true.
-func (d *Dispenser) isNewLine() bool {
-	if d.cursor < 1 {
-		return true
-	}
-	if d.cursor > len(d.tokens)-1 {
-		return false
-	}
-	return d.tokens[d.cursor-1].File != d.tokens[d.cursor].File ||
-		d.tokens[d.cursor-1].Line+d.numLineBreaks(d.cursor-1) < d.tokens[d.cursor].Line
-}

@@ -117,7 +117,7 @@ func (d dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) m
 	// TODO: Optimize that so we can avoid serializing header once more.
 	// https://github.com/emersion/go-msgauth/issues/10.
 	b := bytes.Buffer{}
-	textproto.WriteHeader(&b, header)
+	_ = textproto.WriteHeader(&b, header)
 	bodyRdr, err := body.Open()
 	if err != nil {
 		return module.CheckResult{

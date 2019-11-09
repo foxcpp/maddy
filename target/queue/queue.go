@@ -253,7 +253,11 @@ func (q *Queue) Close() error {
 //
 // No error handling is done since this function is called from panic handler.
 func (q *Queue) discardBroken(id string) {
-	os.Rename(filepath.Join(q.location, id+".meta"), filepath.Join(q.location, id+".meta_broken"))
+	err := os.Rename(filepath.Join(q.location, id+".meta"), filepath.Join(q.location, id+".meta_broken"))
+	if err != nil {
+		// Note: Global logger is used in case there is something wrong with Queue.Log.
+		log.Printf("can't mark the queue message as broken: %v", err)
+	}
 }
 
 func (q *Queue) dispatch() {

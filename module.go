@@ -14,7 +14,7 @@ type modInfo struct {
 func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([]module.Module, error) {
 	var (
 		endpoints []modInfo
-		mods      []modInfo
+		mods      = make([]modInfo, 0, len(nodes))
 	)
 
 	for _, block := range nodes {
