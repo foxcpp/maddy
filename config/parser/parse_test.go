@@ -158,6 +158,21 @@ var cases = []struct {
 		false,
 	},
 	{
+		"backslash on the end of line",
+		`a a1 a2 \
+		   a3 a4`,
+		[]Node{
+			{
+				Name:     "a",
+				Args:     []string{"a1", "a2", "a3", "a4"},
+				Children: nil,
+				File:     "test",
+				Line:     1,
+			},
+		},
+		false,
+	},
+	{
 		"directive with missing closing brace on different line",
 		`a a1 a2 {
 			a_child1 c1arg1 c1arg2

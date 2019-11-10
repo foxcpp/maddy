@@ -32,6 +32,9 @@ argument for directive0"
 
 Quotes and only quotes can be escaped inside literals: \\"
 
+Backslash can be used at the end of line to continue the directve on the next
+line.
+
 ## Blocks
 
 A directive may have several subdirectives. They are written in a {-enclosed

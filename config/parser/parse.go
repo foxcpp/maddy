@@ -76,22 +76,36 @@ func (ctx *parseContext) readNode() (Node, error) {
 		node.Snippet = true
 	}
 
-	for ctx.NextArg() {
-		// name arg0 arg1 {
-		//              # ^ called when we hit this token
-		//   c0
-		//   c1
-		// }
-		if ctx.Val() == "{" {
-			var err error
-			node.Children, err = ctx.readNodes()
-			if err != nil {
-				return node, err
+	var continueOnLF bool
+	for {
+		for ctx.NextArg() || (continueOnLF && ctx.NextLine()) {
+			continueOnLF = false
+			// name arg0 arg1 {
+			//              # ^ called when we hit this token
+			//   c0
+			//   c1
+			// }
+			if ctx.Val() == "{" {
+				var err error
+				node.Children, err = ctx.readNodes()
+				if err != nil {
+					return node, err
+				}
+				break
 			}
-			break
-		}
 
-		node.Args = append(node.Args, ctx.Val())
+			node.Args = append(node.Args, ctx.Val())
+		}
+		if len(node.Args) != 0 && node.Args[len(node.Args)-1] == `\` {
+			last := len(node.Args) - 1
+			node.Args[last] = node.Args[last][:len(node.Args[last])-1]
+			if len(node.Args[last]) == 0 {
+				node.Args = node.Args[:last]
+			}
+			continueOnLF = true
+			continue
+		}
+		break
 	}
 
 	macroName, macroArgs, err := ctx.parseAsMacro(&node)
