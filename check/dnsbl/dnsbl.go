@@ -276,6 +276,8 @@ func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
 		return err
 	}
 
+	eg = errgroup.Group{}
+
 	// Check configured whitelists.
 	for _, list := range bl.wls {
 		list := list
