@@ -12,6 +12,7 @@ import (
 	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/dns"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
@@ -312,7 +313,7 @@ func (bl *DNSBL) CheckConnection(state *smtp.ConnectionState) error {
 	}
 
 	if err := bl.checkLists(ip.IP, state.Hostname, ""); err != nil {
-		return mangleErr(err)
+		return exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"})
 	}
 
 	return nil
@@ -347,7 +348,7 @@ func (s state) CheckConnection() module.CheckResult {
 	if err := s.bl.checkLists(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom); err != nil {
 		// TODO: Support per-list actions?
 		return s.bl.listedAction.Apply(module.CheckResult{
-			Reason: mangleErr(err),
+			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"}),
 		})
 	}
 

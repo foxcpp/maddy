@@ -154,28 +154,3 @@ func queryString(ip net.IP) string {
 	}
 	return res.String()
 }
-
-// mangleErr adds smtp_* fields to DNSBL check error that mask
-// details about used DNSBL.
-func mangleErr(err error) error {
-	_, ok := err.(ListedErr)
-	if ok {
-		// ListenErr is already safe due to smtp_* fields.
-		return err
-	}
-
-	smtpCode := 554
-	smtpEnchCode := exterrors.EnhancedCode{5, 7, 0}
-	if exterrors.IsTemporary(err) {
-		smtpCode = 451
-		smtpEnchCode = exterrors.EnhancedCode{4, 7, 0}
-	}
-
-	return exterrors.WithFields(err, map[string]interface{}{
-		"check":         "dnsbl",
-		"reason":        err.Error(),
-		"smtp_code":     smtpCode,
-		"smtp_enchcode": smtpEnchCode,
-		"smtp_msg":      "Internal error during policy check",
-	})
-}
