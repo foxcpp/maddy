@@ -42,7 +42,7 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 
 		factory := module.Get(modName)
 		if factory == nil {
-			return nil, config.NodeErr(&block, "unknown module: %s", modName)
+			return nil, config.NodeErr(&block, "unknown module or global directive: %s", modName)
 		}
 
 		if module.HasInstance(instName) {
