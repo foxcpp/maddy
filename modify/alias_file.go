@@ -126,7 +126,7 @@ func (m *Modifier) aliasesReloader() {
 				m.aliases = map[string]string{}
 				m.aliasesStamp = time.Now()
 				m.aliasesLck.Unlock()
-				return
+				continue
 			}
 			m.log.Printf("alias files changed, reloading")
 
