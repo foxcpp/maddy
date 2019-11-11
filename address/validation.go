@@ -9,20 +9,25 @@ Rules for validation are subset of rules listed here:
 https://emailregex.com/email-validation-summary/
 */
 
-// Valid checks whether ths string is valid as a email address.
+// Valid checks whether ths string is valid as a email address as defined by
+// RFC 5321.
 func Valid(addr string) bool {
 	if len(addr) > 320 { // RFC 3696 says it's 320, not 255.
 		return false
 	}
-	parts := strings.Split(addr, "@")
-	switch len(parts) {
-	case 1:
-		return strings.EqualFold(addr, "postmaster")
-	case 2:
-		return ValidMailboxName(parts[0]) && ValidDomain(parts[1])
-	default:
+
+	mbox, domain, err := Split(addr)
+	if err != nil {
 		return false
 	}
+
+	// The only case where this can be true is "postmaster".
+	// So allow it.
+	if domain == "" {
+		return true
+	}
+
+	return ValidMailboxName(mbox) && ValidDomain(domain)
 }
 
 // ValidMailboxName checks whether the specified string is a valid mailbox-name
@@ -42,6 +47,7 @@ func ValidDomain(domain string) bool {
 	if strings.Contains(domain, "..") {
 		return false
 	}
+	// FIXME: This disallows punycode.
 	if strings.Contains(domain, "--") {
 		return false
 	}
