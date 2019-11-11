@@ -322,6 +322,8 @@ dnsbl.example.org dnsbl.example.com {
     client_ipv6 no
     ehlo no
     mailfrom no
+    responses 127.0.0.1/24
+    whitelist no
 }
 ```
 
@@ -353,6 +355,12 @@ This works correctly only with domain-based DNSBLs.
 Whether to check domain part of the MAIL FROM address against the list.
 
 This works correctly only with domain-based DNSBLs.
+
+*Syntax*: responses _cidr|ip..._ ++
+*Default*: 127.0.0.1/24
+
+IP networks (in CIDR notation) or addresses to permit in list lookup results.
+Addresses not matching any entry in this directives will be ignored.
 
 *Syntax*: whitelist _boolean_ ++
 *Default*: no

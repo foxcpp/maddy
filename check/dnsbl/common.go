@@ -86,7 +86,7 @@ func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 
 	query := queryString(ip) + "." + cfg.Zone
 
-	addrs, err := resolver.LookupHost(context.Background(), query)
+	addrs, err := resolver.LookupIPAddr(context.Background(), query)
 	if err != nil {
 		if dnsErr, ok := err.(*net.DNSError); ok && dnsErr.IsNotFound {
 			return nil
@@ -95,7 +95,24 @@ func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 		return err
 	}
 
-	if len(addrs) == 0 {
+	filteredAddrs := make([]net.IPAddr, 0, len(addrs))
+addrsLoop:
+	for _, addr := range addrs {
+		// No responses whitelist configured - permit all.
+		if len(cfg.Responses) == 0 {
+			filteredAddrs = append(filteredAddrs, addr)
+			continue
+		}
+
+		for _, respNet := range cfg.Responses {
+			if respNet.Contains(addr.IP) {
+				filteredAddrs = append(filteredAddrs, addr)
+				continue addrsLoop
+			}
+		}
+	}
+
+	if len(filteredAddrs) == 0 {
 		return nil
 	}
 
@@ -104,10 +121,16 @@ func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 	if err != nil || len(txts) == 0 {
 		// Not significant, include addresses as reason. Usually they are
 		// mapped to some predefined 'reasons' by BL.
+
+		reasonParts := make([]string, 0, len(filteredAddrs))
+		for _, addr := range filteredAddrs {
+			reasonParts = append(reasonParts, addr.IP.String())
+		}
+
 		return ListedErr{
 			Identity: ip.String(),
 			List:     cfg.Zone,
-			Reason:   strings.Join(addrs, "; "),
+			Reason:   strings.Join(reasonParts, "; "),
 		}
 	}
 

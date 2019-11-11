@@ -27,6 +27,8 @@ type List struct {
 
 	EHLO     bool
 	MAILFROM bool
+
+	Responses []net.IPNet
 }
 
 var defaultBL = List{
@@ -94,8 +96,9 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 
 func (bl *DNSBL) readListCfg(node config.Node) error {
 	var (
-		listCfg   List
-		whitelist bool
+		listCfg      List
+		whitelist    bool
+		responseNets []string
 	)
 
 	cfg := config.NewMap(nil, &node)
@@ -104,8 +107,23 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 	cfg.Bool("ehlo", false, defaultBL.EHLO, &listCfg.EHLO)
 	cfg.Bool("mailfrom", false, defaultBL.EHLO, &listCfg.MAILFROM)
 	cfg.Bool("whitelist", false, false, &whitelist)
+	cfg.StringList("responses", false, false, []string{"127.0.0.1/24"}, &responseNets)
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	for _, resp := range responseNets {
+		// If there is no / - it is a plain IP address, append
+		// '/32'.
+		if !strings.Contains(resp, "/") {
+			resp += "/32"
+		}
+
+		_, ipNet, err := net.ParseCIDR(resp)
+		if err != nil {
+			return err
+		}
+		listCfg.Responses = append(listCfg.Responses, *ipNet)
 	}
 
 	for _, zone := range append([]string{node.Name}, node.Args...) {

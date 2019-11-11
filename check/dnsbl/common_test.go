@@ -120,6 +120,42 @@ func TestCheckIP(t *testing.T) {
 	})
 	test(map[string]mockdns.Zone{
 		"4.3.2.1.example.org.": {
+			A: []string{"128.0.0.1"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		Responses: []net.IPNet{
+			{
+				IP:   net.IPv4(127, 0, 0, 1),
+				Mask: net.IPv4Mask(255, 255, 255, 0),
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), nil)
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"128.0.0.1"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		Responses: []net.IPNet{
+			{
+				IP:   net.IPv4(127, 0, 0, 0),
+				Mask: net.IPv4Mask(255, 255, 255, 0),
+			},
+			{
+				IP:   net.IPv4(128, 0, 0, 0),
+				Mask: net.IPv4Mask(255, 255, 255, 0),
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), ListedErr{
+		Identity: "1.2.3.4",
+		List:     "example.org",
+		Reason:   "128.0.0.1",
+	})
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
 			A: []string{"127.0.0.1"},
 		},
 	}, List{Zone: "example.org"}, net.IPv4(1, 2, 3, 4), nil)
