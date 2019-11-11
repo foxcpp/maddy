@@ -17,6 +17,10 @@ func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
 	newChildrens := make([]Node, 0, len(node.Children))
 	containsImports := false
 	for _, child := range node.Children {
+		if err := ctx.expandImports(&child, expansionDepth+1); err != nil {
+			return err
+		}
+
 		if child.Name == "import" {
 			// We check it here instead of function start so we can
 			// use line information from import directive that is likely

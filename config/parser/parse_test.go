@@ -372,6 +372,37 @@ var cases = []struct {
 		false,
 	},
 	{
+		"snippet expansion inside a block",
+		`(foo) { a }
+        foo {
+            boo
+            import foo
+        }`,
+		[]Node{
+			{
+				Name: "foo",
+				Args: []string{},
+				Children: []Node{
+					{
+						Name: "boo",
+						Args: []string{},
+						File: "test",
+						Line: 3,
+					},
+					{
+						Name: "a",
+						Args: []string{},
+						File: "test",
+						Line: 1,
+					},
+				},
+				File: "test",
+				Line: 2,
+			},
+		},
+		false,
+	},
+	{
 		"missing snippet",
 		`import foo`,
 		nil,
