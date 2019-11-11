@@ -97,8 +97,9 @@ func (m *Modifier) aliasesReloader() {
 		select {
 		case <-t.C:
 			var (
-				latestStamp  time.Time
-				filesRemoved bool
+				latestStamp   time.Time
+				filesRemoved  bool
+				filesExisting bool
 			)
 			for _, file := range m.files {
 				info, err := os.Stat(file)
@@ -111,6 +112,7 @@ func (m *Modifier) aliasesReloader() {
 					continue
 				}
 
+				filesExisting = true
 				if info.ModTime().After(latestStamp) {
 					latestStamp = info.ModTime()
 				}
@@ -118,6 +120,13 @@ func (m *Modifier) aliasesReloader() {
 
 			if !latestStamp.After(m.aliasesStamp) && !filesRemoved {
 				continue
+			}
+			if !filesExisting {
+				m.aliasesLck.Lock()
+				m.aliases = map[string]string{}
+				m.aliasesStamp = time.Now()
+				m.aliasesLck.Unlock()
+				return
 			}
 			m.log.Printf("alias files changed, reloading")
 
