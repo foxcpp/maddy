@@ -86,8 +86,10 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			case 0:
 				cfg.doDMARC = true
 			}
-		default:
+		case "deliver_to", "reroute", "destination", "default_destination", "reject":
 			othersRaw = append(othersRaw, node)
+		default:
+			return msgpipelineCfg{}, config.NodeErr(&node, "unknown pipeline directive: %s", node.Name)
 		}
 	}
 
@@ -164,8 +166,10 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 				return sourceBlock{}, config.NodeErr(&node, "duplicate 'default_destination' block")
 			}
 			defaultRcptRaw = node.Children
-		default:
+		case "deliver_to", "reroute", "reject":
 			othersRaw = append(othersRaw, node)
+		default:
+			return sourceBlock{}, config.NodeErr(&node, "unknown pipeline directive: %s", node.Name)
 		}
 	}
 
