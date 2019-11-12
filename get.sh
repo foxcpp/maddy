@@ -17,7 +17,7 @@ fi
 if [ "$CONFPATH" == "" ]; then
     CONFPATH=/etc/maddy/maddy.conf
 fi
-if [ "$SUDO" == ""]; then
+if [ "$SUDO" == "" ]; then
     SUDO=$SUDO
 fi
 
