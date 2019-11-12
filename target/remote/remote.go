@@ -434,7 +434,6 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	stsPolicy, err := rt.mtastsCache.Get(domain)
 	if err != nil && err != mtasts.ErrNoPolicy {
-		rt.Log.Printf("failed to fetch MTA-STS policy for %s: %v", domain, err)
 		code := 501
 		enchCode := exterrors.EnhancedCode{5, 0, 0}
 		if exterrors.IsTemporary(err) {
