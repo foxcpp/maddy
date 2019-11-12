@@ -64,7 +64,7 @@ func usersCreate(be UserDB, ctx *cli.Context) error {
 
 	var pass string
 	if ctx.IsSet("password") {
-		pass = ctx.String("password,p")
+		pass = ctx.String("password")
 	} else {
 		var err error
 		pass, err = clitools.ReadPassword("Enter password for new user")
