@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 REQUIRED_GOVERSION=1.13.0
 
