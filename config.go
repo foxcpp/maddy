@@ -96,5 +96,7 @@ func reinitLogging() {
 		return
 	}
 
+	out.Close()
+
 	log.DefaultLogger.Out = newOut
 }
