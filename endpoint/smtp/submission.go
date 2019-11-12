@@ -96,11 +96,11 @@ func (s *Session) submissionPrepare(header textproto.Header) error {
 	}
 
 	if dateHdr := header.Get("Date"); dateHdr != "" {
-		_, err := time.Parse("Mon, 2 Jan 2006 15:04:05 -0700", dateHdr)
+		_, err := parseMessageDateTime(dateHdr)
 		if err != nil {
 			return &exterrors.SMTPError{
 				Code:    554,
-				Message: "Malformed Data header",
+				Message: "Malformed Date header",
 				Misc: map[string]interface{}{
 					"modifier": "submission_prepare",
 					"date":     dateHdr,
