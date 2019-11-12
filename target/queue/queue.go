@@ -845,7 +845,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
 	dsnHeader, err := dsn.GenerateDSN(dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
 	if err != nil {
-		dl.Msg("failed to generate fail DSN", err)
+		dl.Error("failed to generate fail DSN", err)
 		return
 	}
 	dsnBody := buffer.MemoryBuffer{Slice: dsnBodyBlob.Bytes()}
