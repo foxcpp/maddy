@@ -18,7 +18,7 @@ if [ "$CONFPATH" == "" ]; then
     CONFPATH=/etc/maddy/maddy.conf
 fi
 if [ "$SUDO" == "" ]; then
-    SUDO=$SUDO
+    SUDO=sudo
 fi
 
 export CGO_CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS"
@@ -33,7 +33,7 @@ ensure_go_toolchain() {
     if ! which go >/dev/null; then
         download=1
     else
-        SYSGOVERSION=`go version | grep -Po "([0-9]+\.){2}[0-9]+"`
+        SYSGOVERSION=`go version | cut -f3 -d ' ' | grep -Po "([0-9]+\.){2}[0-9]+"`
         SYSGOMAJOR=`cut -f1 -d. <<<$SYSGOVERSION`
         SYSGOMINOR=`cut -f2 -d. <<<$SYSGOVERSION`
         SYSGOPATCH=`cut -f3 -d. <<<$SYSGOVERSION`
@@ -72,8 +72,8 @@ ensure_go_toolchain() {
 }
 
 download_and_compile() {
-    export GOPATH="$PWD/gopath"
-    export GOBIN="$GOPATH/bin"
+    export GOPATH="$PWD/gopath:$GOPATH"
+    export GOBIN="$PWD/gopath/bin"
 
     echo 'Downloading and compiling maddy...' >&2
 
@@ -86,7 +86,7 @@ install_executables() {
     echo 'Installing maddy...' >&2
 
     $SUDO mkdir -p "$PREFIX/bin"
-    $SUDO cp --remove-destination "$GOPATH/bin/maddy" "$GOPATH/bin/maddyctl" "$PREFIX/bin/"
+    $SUDO cp --remove-destination "$PWD/gopath/bin/maddy" "$PWD/gopath/bin/maddyctl" "$PREFIX/bin/"
 }
 
 install_systemd() {
