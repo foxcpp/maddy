@@ -117,7 +117,14 @@ func fieldsToMap(fields []interface{}, out map[string]interface{}) {
 	for i, val := range fields {
 		if i%2 == 0 {
 			// Key
-			lastKey = val.(string)
+			key, ok := val.(string)
+			if !ok {
+				// Misformatted arguments, attempt to provide useful message
+				// anyway.
+				out[fmt.Sprint("field", i)] = key
+				continue
+			}
+			lastKey = key
 		} else {
 			// Value
 			out[lastKey] = val
