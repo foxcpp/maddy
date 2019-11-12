@@ -124,7 +124,7 @@ func (rt *Target) initMXAuth(methods []string) error {
 		if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
 			return err
 		}
-		rt.mtastsCache.Logger = &rt.Log
+		rt.mtastsCache.Logger = rt.Log
 		// MTA-STS policies typically have max_age around one day, so updating them
 		// twice a day should keep them up-to-date most of the time.
 		rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
@@ -433,7 +433,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 
 func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	stsPolicy, err := rt.mtastsCache.Get(domain)
-	if err != nil && err != mtasts.ErrNoPolicy {
+	if err != nil && !mtasts.IsNoPolicy(err) {
 		code := 501
 		enchCode := exterrors.EnhancedCode{5, 0, 0}
 		if exterrors.IsTemporary(err) {
@@ -459,7 +459,7 @@ func (rt *Target) stsCacheUpdater() {
 	// Always update cache on start-up since we may have been down for some
 	// time.
 	rt.Log.Debugln("updating MTA-STS cache...")
-	if err := rt.mtastsCache.RefreshCache(); err != nil {
+	if err := rt.mtastsCache.Refresh(); err != nil {
 		rt.Log.Msg("MTA-STS cache update error", err)
 	}
 	rt.Log.Debugln("updating MTA-STS cache... done!")
@@ -468,7 +468,7 @@ func (rt *Target) stsCacheUpdater() {
 		select {
 		case <-rt.stsCacheUpdateTick.C:
 			rt.Log.Debugln("updating MTA-STS cache...")
-			if err := rt.mtastsCache.RefreshCache(); err != nil {
+			if err := rt.mtastsCache.Refresh(); err != nil {
 				rt.Log.Msg("MTA-STS cache opdate error", err)
 			}
 			rt.Log.Debugln("updating MTA-STS cache... done!")

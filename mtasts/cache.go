@@ -58,10 +58,24 @@ type Resolver interface {
 type Cache struct {
 	Location string
 	Resolver Resolver
-	Logger   *log.Logger
+	Logger   log.Logger
+
+	// Hook for testing, if non-nil replaces the downloadPolicy implementation
+	// above.
+	downloadPolicy func(string) (*Policy, error)
 }
 
-var ErrNoPolicy = errors.New("mtasts: no MTA-STS policy found")
+func IsNoPolicy(err error) bool {
+	return err == errIgnorePolicy
+}
+
+// errIgnorePolicy indicates that remote domain offers an MTA-STS policy,
+// but it is ignored due to some error.
+//
+// For the package user it is essentially the same as errNoPolicy, but this
+// error is used differently by the Cache.Refresh method, it does not cause
+// the cached policy to be removed.
+var errIgnorePolicy = errors.New("mtasts: policy ignored due to errors")
 
 // Get reads policy from cache or tries to fetch it from Policy Host.
 func (c *Cache) Get(domain string) (*Policy, error) {
@@ -101,7 +115,7 @@ func (c *Cache) load(domain string) (id string, fetchTime time.Time, p *Policy, 
 	return data.ID, data.FetchTime, data.Policy, nil
 }
 
-func (c *Cache) RefreshCache() error {
+func (c *Cache) Refresh() error {
 	dir, err := ioutil.ReadDir(c.Location)
 	if err != nil {
 		return err
@@ -117,21 +131,15 @@ func (c *Cache) RefreshCache() error {
 		// which makes it useless.
 		// See https://tools.ietf.org/html/rfc8461#section-10.2.
 		cacheHit, _, err := c.fetch(true, time.Now().Add(6*time.Hour), ent.Name())
-		if err != nil {
+		if err != nil && err != errIgnorePolicy {
 			c.Logger.Error("policy update error", err, "domain", ent.Name())
 		}
 		if !cacheHit && err == nil {
 			c.Logger.Debugln("updated MTA-STS policy for", ent.Name())
 		}
 
-		// This means cached version is expired and remote offers no updated policy.
-		// Remove cached version to save space.
-		if !cacheHit && err == ErrNoPolicy {
-			if err := os.Remove(filepath.Join(c.Location, ent.Name())); err != nil {
-				c.Logger.Error("failed to remove policy", err, "domain", ent.Name())
-			}
-			c.Logger.Debugln("removed policy for", ent.Name())
-		}
+		// TODO: figure out how to clean stale entires from cache
+		// and if this is really necessary.
 	}
 
 	return nil
@@ -142,7 +150,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 	cachedId, fetchTime, cachedPolicy, err := c.load(domain)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			// Something wrong with FS directory used for caching, this is bad.
+			// Something wrong with the FS directory used for caching, this is bad.
 			return false, nil, err
 		}
 
@@ -155,8 +163,14 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 	if !ignoreDns {
 		records, err := c.Resolver.LookupTXT(context.Background(), "_mta-sts."+domain)
 		if err != nil {
+			if validCache {
+				c.Logger.Error("failed lookup the DNS record, using cache", err, "domain", domain)
+				return true, cachedPolicy, nil
+			}
+
 			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
-				return false, nil, ErrNoPolicy
+				c.Logger.Error("failed lookup the DNS record, ignoring", err, "domain", domain)
+				return false, nil, errIgnorePolicy
 			}
 			return false, nil, err
 		}
@@ -170,27 +184,40 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 		//   Domain, as discussed in Section 5.1, "Policy Application Control Flow".)
 		if len(records) != 1 {
 			if validCache {
+				c.Logger.Msg("multiple DNS records, using cache", "domain", domain)
 				return true, cachedPolicy, nil
 			}
-			return false, nil, ErrNoPolicy
+			c.Logger.Msg("multiple DNS records, ignoring", "domain", domain)
+			return false, nil, errIgnorePolicy
 		}
 		dnsId, err = readDNSRecord(records[0])
 		if err != nil {
 			if validCache {
+				c.Logger.Error("failed read the DNS record, using cache", err, "domain", domain)
 				return true, cachedPolicy, nil
 			}
-			return false, nil, ErrNoPolicy
+			c.Logger.Error("failed read the DNS record, ignoring", err, "domain", domain)
+			return false, nil, errIgnorePolicy
 		}
 	}
 
 	if !validCache || dnsId != cachedId {
-		policy, err := downloadPolicy(domain)
+		download := downloadPolicy
+		if c.downloadPolicy != nil {
+			download = c.downloadPolicy
+		}
+		policy, err := download(domain)
 		if err != nil {
-			return false, nil, err
+			if validCache {
+				c.Logger.Error("failed to fetch new policy, using cache", err, "domain", domain)
+				return true, cachedPolicy, nil
+			}
+			c.Logger.Error("failed to fetch new policy, ignoring", err, "domain", domain)
+			return false, nil, errIgnorePolicy
 		}
 
 		if err := c.store(domain, dnsId, time.Now(), policy); err != nil {
-			c.Logger.Error("failed to store new policy", err, "domain", domain)
+			c.Logger.Error("failed to store the new policy", err, "domain", domain)
 			// We still got up-to-date policy, cache is not critcial.
 			return false, cachedPolicy, nil
 		}
