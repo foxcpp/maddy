@@ -25,6 +25,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/check/dkim"
 	_ "github.com/foxcpp/maddy/internal/check/dns"
 	_ "github.com/foxcpp/maddy/internal/check/dnsbl"
+	_ "github.com/foxcpp/maddy/internal/check/requiretls"
 	_ "github.com/foxcpp/maddy/internal/check/spf"
 	_ "github.com/foxcpp/maddy/internal/endpoint/imap"
 	_ "github.com/foxcpp/maddy/internal/endpoint/smtp"

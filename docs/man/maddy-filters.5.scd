@@ -35,7 +35,7 @@ storage, the storage backend can place the message in the 'Junk' mailbox.
 Another thing to keep in mind that 'remote' module (see *maddy-targets*(5))
 will refuse to send quarantined messages.
 
-# DNS checks
+# Simple checks
 
 ## Configuration directives
 
@@ -77,6 +77,14 @@ specified in EHLO/HELO command.
 
 By default, quarantines messages coming from servers with mismatched or missing
 PTR record, use 'fail_action' directive to change that.
+
+## require_tls
+
+Check that the source server is connected via TLS; either directly, or by using
+the STARTTLS command.
+
+By default, rejects messages coming from unencrypted servers. Use the
+'fail_action' directive to change that.
 
 # DKIM authentication module (verify_dkim)
 
