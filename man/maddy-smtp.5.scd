@@ -147,19 +147,25 @@ rules that describe how to handle messages.
 The pipeline is responsible for
 - Running message filters (called "checks"), (e.g. DKIM signature verification,
   DNSBL lookup and so on).
+
 - Running message modifiers (e.g. DKIM signature creation).
+
 - Assocating each message recipient with one or more delivery targets.
   Delivery target is a module (with corresponding config block) that
   does final processing (delivery) of the message.
 
 Message handling flow is as follows:
 - Execute checks referenced in top-level 'check' blocks (if any)
+
 - Execute modifiers referenced in top-level 'modify' blocks (if any)
+
 - If there are 'source' blocks - select one that matches message sender (as
   specified in MAIL FROM). If there are no 'source' blocks - entire
   configuration is assumed to be the 'default_source' block.
+
 - Execute checks referenced in 'check' blocks inside selected 'source' block
   (if any).
+
 - Execute modifiers referenced in 'modify' blocks inside selected 'source'
   block (if any).
 
@@ -167,12 +173,16 @@ Then, for each recipient:
 - Select 'destination' block that matches it. If there are
   no 'destination' blocks - entire used 'source' block is interpreted as if it
   was a 'default_destination' block.
+
 - Execute checks referenced in 'check' block inside selected 'destination' block
   (if any).
+
 - Execute modifiers referenced in 'modify' block inside selected 'destination'
   block (if any).
+
 - If used block contains 'reject' directive - reject the recipient with
   specified SMTP status code.
+
 - If used block contains 'deliver_to' directive - pass the message to the
   specified target module configuration block. Only recipients that are handled
   by used block are visible to the target.
