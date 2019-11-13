@@ -28,6 +28,10 @@ Supported RDBMS:
 Can be used as a storage backend (for IMAP), authentication backend (IMAP &
 SMTP) or delivery target (SMTP).
 
+## Arguments
+
+Specify the driver and DSN.
+
 ## Configuration directives
 
 *Syntax*: driver _string_ ++
@@ -38,6 +42,8 @@ REQUIRED.
 Use a specified driver to communicate with the database. Supported values:
 sqlite3, postgres.
 
+Should be specified either via an argument or via this directive.
+
 *Syntax*: dsn _string_ ++
 *Default*: not specified
 
@@ -47,6 +53,8 @@ Data Source Name, the driver-specific value that specifies the database to use.
 
 For SQLite3 this is just a file path.
 For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters
+
+Should be specified either via an argument or via this directive.
 
 *Syntax*: fsstore _directory_ ++
 *Default*: messages/

@@ -43,6 +43,9 @@ type Storage struct {
 	authDomains      []string
 	junkMbox         string
 
+	inlineDriver string
+	inlineDsn    []string
+
 	resolver dns.Resolver
 }
 
@@ -142,14 +145,20 @@ func (store *Storage) InstanceName() string {
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("sql: no inline args")
-	}
-	return &Storage{
+	store := &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},
 		resolver: net.DefaultResolver,
-	}, nil
+	}
+	if len(inlineArgs) != 0 {
+		if len(inlineArgs) == 1 {
+			return nil, errors.New("sql: expected at least 2 arguments")
+		}
+
+		store.inlineDriver = inlineArgs[0]
+		store.inlineDsn = inlineArgs[1:]
+	}
+	return store, nil
 }
 
 func (store *Storage) Init(cfg *config.Map) error {
@@ -166,8 +175,8 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// configured).
 		LazyUpdatesInit: true,
 	}
-	cfg.String("driver", false, true, "", &driver)
-	cfg.StringList("dsn", false, true, nil, &dsn)
+	cfg.String("driver", false, false, store.inlineDriver, &driver)
+	cfg.StringList("dsn", false, false, store.inlineDsn, &dsn)
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "messages", nil
 	}, func(m *config.Map, node *config.Node) (interface{}, error) {
@@ -189,6 +198,13 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if dsn == nil {
+		return errors.New("sql: dsn is required")
+	}
+	if driver == "" {
+		return errors.New("sql: driver is required")
 	}
 
 	opts.Log = &store.Log
