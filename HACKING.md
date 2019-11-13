@@ -25,7 +25,7 @@
   Allow connecting components in arbitrary ways instead of restricting users to
   predefined templates.
 
-- **Use Go concurrency features to a full extent.**
+- **Use Go concurrency features to the full extent.**
   Do as much I/O as possible in parallel to minimize latencies. It is silly to
   not do so when it is possible.
 
@@ -43,38 +43,23 @@ well.
 There are components called "modules". They are represented by objects
 implementing the module.Module interface. Each module gets its unique name.
 The function used to create a module instance is saved with this name as a key
-into the global map called "modules registry". Each module can be created
-multiple times, each instance gets its unique name and is placed into a global
-map (a separate one) too.
+into the global map called "modules registry". 
 
-Modules can reference each other by instance names (module.GetInstance). When a
-module instance reference is acquired, the caller usually checks whether the
-module in question implements the needed interface. Module implementers are
-discouraged from using module.GetInstance directly and should prefer using
-ModuleFromNode or config.Map matchers. These functions handle "inline module
-definition" syntax in addition to simple instance references.
+Whenever module needs another module for some functionality, it references it
+using a configuration directive with a matcher that internalls calls
+modconfig.ModuleFromNode. That function looks up the module "constructor" in
+the registry, calls it with corresponding arguments, checks whether the
+returned module satisfies the needed interfaces and then initializes it.
 
-Module instances are initialized lazily if they are referenced by other modules
-(module.GetInstance calls mod.Init if necessary). Module instances not
-referenced explicitly anywhere but still defined in the configuration are
-initialized in arbitrary order by the Start function (below).
+Alternatively, if configuration uses &-syntax to reference existing
+configuration block, ModuleFromNode simply looks it up in the global instances
+registry. All modules defined the configuration as a separate top-level blocks
+are created before main initialization and are placed in the instances registry
+where they can be looked up as mentioned before.
 
-Module instances that are defined by the code itself ("implicitly defined") may
-be left uninitialized unless they are used.
-
-A single module instance can have one or more names. The first name is called
-"instance name" and is the primary one, it is used in logs.  Other names are
-called "aliases" and only used by module.GetInstance (e.g. module instance can
-be fetched by any name).
-
-Some module instances are defined "inline" in user configuration. That is.
-their configuration block is placed right where they are used. These instances
-have no instance names and are not added to the global map so they can not be
-accessed by modules other than one that used ConfigFromNode on the
-corresponding config block. All arguments after the module name in an inline
-definition represent "inline arguments". They are passed to the module instance
-directly and not used anyhow by other code (i.e. they are not guaranteed to be
-unique).
+Top-level defined module instances are initialized (Init method) lazily as they
+are required by other modules. 'smtp' and 'imap' modules follow a special
+initialization path, so they are always initialized directly.
 
 ## Error handling
 

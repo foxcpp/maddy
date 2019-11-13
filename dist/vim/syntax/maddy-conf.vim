@@ -31,9 +31,14 @@ syn match maddyInt '\<\d\+\>'
 syn match maddyInt '\<[-+]\d\+\>'
 syn match maddyFloat '\<[-+]\d\+\.\d*\<'
 
+syn match maddyReference /[ \t]&[^ \t]\+/ms=s+1 contains=maddyReferenceSign
+syn match maddyReferenceSign /&/ contained
+
 hi def link maddyBool		Boolean
 hi def link maddyInt		Number
 hi def link maddyFloat		Float
+
+hi def link maddyReferenceSign	Special
 
 " Module values
 

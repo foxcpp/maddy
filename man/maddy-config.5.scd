@@ -182,43 +182,6 @@ Also note that the following is not valid, unlike Duration values syntax:
 32M5K
 ```
 
-## "Inline" configuration blocks
-
-In most cases where you are supposed to specify configuration block name, you
-can instead write module name and include configuration block itself.
-
-Like that:
-```
-something {
-    auth sql {
-        driver sqlite3
-        dsn auth.db
-    }
-}
-```
-instead of
-```
-sql thing_name {
-    driver sqlite3
-    dsn auth.db
-}
-
-something {
-    auth thing_name
-}
-```
-
-In that syntax, arguments specified after module name are not considered to be
-configuration block names and instead passed directly to the module.
-Some modules use them to allow writing more compact configuration, e.g. sql module
-allows you to specify driver and DSN in "inline arguments" this way:
-```
-something {
-    auth sql sqlite3 auth.db
-}
-```
-
-
 # ADDRESS DEFINITIONS
 
 Maddy configuration uses URL-like syntax to specify network addresses.

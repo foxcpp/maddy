@@ -50,6 +50,7 @@ func (dd dummyDelivery) Commit() error {
 }
 
 func init() {
-	module.Register("dummy", nil)
-	module.RegisterInstance(&Dummy{instName: "dummy"}, nil)
+	module.Register("dummy", func(_, instName string, _, _ []string) (module.Module, error) {
+		return &Dummy{instName: instName}, nil
+	})
 }

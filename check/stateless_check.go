@@ -163,24 +163,4 @@ func RegisterStatelessCheck(name string, defaultFailAction FailAction, connCheck
 			bodyCheck:   bodyCheck,
 		}, nil
 	})
-
-	// Here is the problem with global configuration.
-	// We can't grab it here because this function is likely
-	// called from init(). This RegisterInstance call
-	// needs to be moved somewhere after global config parsing
-	// so we will be able to pass globals to config.Map constructed
-	// here and then let Init access it.
-	// TODO.
-
-	module.RegisterInstance(&statelessCheck{
-		modName:  name,
-		instName: name,
-		resolver: net.DefaultResolver,
-		logger:   log.Logger{Name: name},
-
-		connCheck:   connCheck,
-		senderCheck: senderCheck,
-		rcptCheck:   rcptCheck,
-		bodyCheck:   bodyCheck,
-	}, &config.Map{Block: &config.Node{}})
 }

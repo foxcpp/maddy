@@ -10,36 +10,8 @@ messages that are unwanted, such as potential spam or messages with spoofed
 sender address. They are limited in ways they can modify the message and their
 execution is heavily parallelized to improve performance.
 
-"Modifiers" are not executed in parallel and are allowed to modify the message
-in any way.
-
-As a convention, most of modules listed here don't require a separate
-configuration block explicitly and have implicit configuration block defined
-with the name as a module itself. That is, you don't have to write this:
-```
-check {
-    verify_dkim { }
-}
-```
-or this:
-```
-verify_dkim {
-    # empty
-}
-
-somewhere {
-    check {
-        verify_dkim
-    }
-}
-```
-If default check behavior works fine for you. You can just use module name to
-reference its default config:
-```
-check {
-    verify_dkim
-}
-```
+"Modifiers" are executed serially in order they are referenced in the
+configuration and are allowed to modify the message data and meta-data.
 
 # Check actions
 
@@ -260,9 +232,9 @@ dnsbl {
 }
 ```
 
-## Inline arguments
+## Arguments
 
-When used inline, arguments specify the list of IP-based BLs to use.
+Arguments specify the list of IP-based BLs to use.
 
 The following configurations are equivalent.
 
@@ -392,10 +364,10 @@ sign_dkim {
 }
 ```
 
-## Inline args 
+## Arguments
 
-When inline definitions are used, domain and selector can be specified
-in arguments, so actual sign_dkim use can be shortened to the following: 
+domain and selector can be specified in arguments, so actual sign_dkim use can
+be shortened to the following: 
 ```
 modify {
     sign_dkim example.org selector
@@ -415,7 +387,7 @@ Enable verbose logging for sign_dkim.
 *REQUIRED.*
 
 ADministrative Management Domain (ADMD) taking responsibility for signed
-messages. Should be specified either as a directive or as an inline
+messages. Should be specified either as a directive or as an 
 argument.
 
 *Syntax*: selector _string_ ++
@@ -424,7 +396,7 @@ argument.
 *REQUIRED.*
 
 Identifier of used key within the ADMD.
-Should be specified either as a directive or as an inline argument.
+Should be specified either as a directive or as an argument.
 
 *Syntax*: key_path _string_ ++
 *Default*: dkim_keys/{domain}\_{selector}.key
@@ -553,7 +525,7 @@ Matching is done either by full address string or regexp that should match
 entire address (it is implicitly wrapped with ^ and $). In either case,
 matching is case-insensitive.
 
-Configuration is done using inline arguments or 'from' and 'to'
+Configuration is done using arguments or 'from' and 'to'
 directives. See below for examples.
 
 ```
@@ -596,12 +568,9 @@ alias_file {
 }
 ```
 
-Can be shortened to the following when defined 'inline':
-```
-modify {
-    alias_file files...
-}
-```
+## Arguments
+
+Specify the list of files to load aliases from.
 
 ## Auto-reloading
 
@@ -661,4 +630,4 @@ Enable verbose log.
 
 List of files to read aliases from. Non-existent files are skipped.
 
-At least one file should be specified either via directive or inline arguments.
+At least one file should be specified either via directive or arguments.

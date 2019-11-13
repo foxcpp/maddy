@@ -84,10 +84,10 @@ I/O write timeout.
 
 Limit the size of incoming messages to 'size'.
 
-*Syntax*: auth _block_name_ ++
+*Syntax*: auth _module_reference_ ++
 *Default*: not specified
 
-Use an authentication module with a specified configuration block name.
+Use the specified module for authentication.
 
 *Syntax*: defer_sender_reject _boolean_ ++
 *Default*: yes
@@ -141,8 +141,8 @@ lmtp unix://lmtp.sock {
 
 # Mesage pipeline
 
-Message pipeline is a set of module configuration blocks and associated
-rules that describe how to handle messages.
+Message pipeline is a set of module references and associated rules that
+describe how to handle messages.
 
 The pipeline is responsible for
 - Running message filters (called "checks"), (e.g. DKIM signature verification,
@@ -151,8 +151,8 @@ The pipeline is responsible for
 - Running message modifiers (e.g. DKIM signature creation).
 
 - Assocating each message recipient with one or more delivery targets.
-  Delivery target is a module (with corresponding config block) that
-  does final processing (delivery) of the message.
+  Delivery target is a module that does final processing (delivery) of the
+  message.
 
 Message handling flow is as follows:
 - Execute checks referenced in top-level 'check' blocks (if any)
@@ -184,7 +184,7 @@ Then, for each recipient:
   specified SMTP status code.
 
 - If used block contains 'deliver_to' directive - pass the message to the
-  specified target module configuration block. Only recipients that are handled
+  specified target module. Only recipients that are handled
   by used block are visible to the target.
 
 Each recipient is handled only by a single 'destination' block, duplicated
@@ -256,7 +256,7 @@ default_source {
 *Syntax*: check { ... } ++
 *Context*: pipeline configuration, source block, destination block
 
-List of the configuration block names for checks that should be executed on
+List of the module references for checks that should be executed on
 messages handled by block where 'check' is placed in.
 
 Note that message body checks placed in destination block are currently
@@ -282,7 +282,7 @@ check {
 *Default*: not specified ++
 *Context*: pipeline configuration, source block, destination block
 
-List of the configuration block names for modifiers that should be executed on
+List of the module references for modifiers that should be executed on
 messages handled by block where 'modify' is placed in.
 
 Message modifiers are similar to checks with the difference in that checks

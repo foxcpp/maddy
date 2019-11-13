@@ -11,9 +11,11 @@ package modconfig
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/config/parser"
+	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 )
 
@@ -43,35 +45,30 @@ func initInlineModule(modObj module.Module, globals map[string]interface{}, bloc
 // args should contain values that are used to create module.
 // It should be either module name + instance name or just module name. Further extensions
 // may add other string arguments (currently, they can be accessed by module instances
-// as aliases argument to constructor).
+// as inlineArgs argument to constructor).
 //
 // It checks using reflection whether it is possible to store a module object into modObj
 // pointer (e.g. it implements all necessary interfaces) and stores it if everything is fine.
 // If module object doesn't implement necessary module interfaces - error is returned.
 // If modObj is not a pointer, ModuleFromNode panics.
 func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]interface{}, moduleIface interface{}) error {
-	// single argument
-	//  - instance name of an existing module
-	// single argument + block
-	//  - module name, inline definition
-	// two+ arguments + block
-	//  - module name and instance name, inline definition
-	// two+ arguments, no block
-	//  - module name and instance name, inline definition, empty config block
-
 	if len(args) == 0 {
 		return parser.NodeErr(inlineCfg, "at least one argument is required")
 	}
 
+	referenceExisting := strings.HasPrefix(args[0], "&")
+
 	var modObj module.Module
 	var err error
-	if inlineCfg.Children != nil || len(args) > 1 {
-		modObj, err = createInlineModule(args[0], args[1:])
-	} else {
-		if len(args) != 1 {
-			return parser.NodeErr(inlineCfg, "exactly one argument is to use existing config block")
+	if referenceExisting {
+		if len(args) != 1 || inlineCfg.Children != nil {
+			return parser.NodeErr(inlineCfg, "exactly one argument is required to use existing config block")
 		}
-		modObj, err = module.GetInstance(args[0])
+		modObj, err = module.GetInstance(args[0][1:])
+		log.Debugf("%s:%d: reference %s", inlineCfg.File, inlineCfg.Line, args[0])
+	} else {
+		log.Debugf("%s:%d: new module %s %v", inlineCfg.File, inlineCfg.Line, args[0], args[1:])
+		modObj, err = createInlineModule(args[0], args[1:])
 	}
 	if err != nil {
 		return err
@@ -86,7 +83,7 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 
 	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))
 
-	if inlineCfg.Children != nil || len(args) > 1 {
+	if !referenceExisting {
 		if err := initInlineModule(modObj, globals, inlineCfg); err != nil {
 			return err
 		}

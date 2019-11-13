@@ -232,8 +232,4 @@ func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState
 
 func init() {
 	module.Register("verify_dkim", New)
-	module.RegisterInstance(&Check{
-		instName: "verify_dkim",
-		log:      log.Logger{Name: "verify_dkim"},
-	}, &config.Map{Block: &config.Node{}})
 }

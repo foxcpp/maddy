@@ -59,44 +59,68 @@ certain well-defined task. Modules can be connected to each other in arbitrary
 ways to achieve wanted functionality. Default configuration file defines
 set of modules that together implement typical email server stack.
 
-A single module can be used multiple times with different configuration,
-each configuration block gets its unique name. When referencing modules
-from configuration of other modules, configuration block name is typically
-used instead of module name itself. Here is the example:
-```
-module1 config1 {
-    blah_blah
-}
+To specify the module that should be used by another module for something, look
+for configuration directives with "module reference" argument. Then
+put the module name as an argument for it. Optionally, if referenced module
+needs that, put additional arguments after the name. You can also put a
+configuration block with additional directives specifing the module
+configuration.
 
-module2 config2 {
-    # This directive means that the module2 with configuration
-    # block config2 will module1 for some of its functionality. For
-    # example, it may send messages to it for some handling (filtering
-    # or delivery, you got the idea). module1 will handle them in accordance
-    # with the config1 block.
-    target config1
-}
-```
-
-Generic syntax for module configuration block is as follows:
+Here are some examples:
 
 ```
-module_name config_block_name optional_aliases... {
-    configuration
-    directives
-    for_this
-    module
+smtp ... {
+    # Deliver messages to the 'dummy' module with the default configuration.
+    deliver_to dummy
+
+    # Deliver messages to the 'smtp_downstream' module with
+    # 'tcp://127.0.0.1:1125' argument as a configuration.
+    deliver_to smtp_downstream tcp://127.0.0.1:1125
+
+    # Deliver messages to the 'queue' module with the specified configuration.
+    deliver_to queue {
+        target ...
+        max_tries 10
+    }
 }
 ```
-If more than one config_block_name is specified, they all will be usable.
-Basically, they will be aliased to the first name.
 
-If config_block_name is omitted, it will be the same as module_name.
-Configuration block name must be unique.
+Additionally, module configuration can be placed in a separate named block
+at the top-level and merely referenced by its name where it is needed.
 
-Modules implementing service endpoints don't use arguments syntax explained
-above. Instead they use arguments to specify list of addresses to listen on.
-There is no 'configuration block name' in this case.
+Here is the example:
+```
+sql local_mailboxes {
+    driver sqlite3
+    dsn all.db
+}
+
+smtp ... {
+    deliver_to &local_mailboxes
+}
+```
+
+It is recommended to use this syntax for modules that are 'expensive' to
+initialize such as storage backends and authentication providers.
+
+For top-level configuration block definition, syntax is as follows:
+```
+module_name config_block_name... {
+    module_configuration
+}
+```
+If config_block_name is omitted, it will be the same as module_name. Multiple
+names can be specified. All names must be unique.
+
+Usual module arguments can't be specified when using this syntax, however,
+modules usually provide explicit directives that allow to specify the needed
+values. For example 'sql sqlite3 all.db' is equivalent to 
+```
+sql {
+    driver sqlite3
+    dsn all.db
+}
+```
 
 # Reference documentation conventions
 

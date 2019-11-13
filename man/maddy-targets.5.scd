@@ -34,9 +34,9 @@ queue {
 }
 ```
 
-## Inline arguments
+## Arguments
 
-When used inline, first argument specifies directory to use for storage.
+First argument specifies directory to use for storage.
 Relative paths are relative to the StateDirectory.
 
 ## Configuration directives

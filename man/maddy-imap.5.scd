@@ -50,11 +50,12 @@ Enable verbose logging.
 *Syntax*: insecure_auth _boolean_ ++
 *Default*: no (yes if TLS is disabled)
 
-*Syntax*: auth _block_name_
+*Syntax*: auth _module_reference_
 
-Use an authentication module with a specified configuration block name.
+Use the specified module for authentication.
 *Required.*
 
-*Syntax*: storage _block_name_
+*Syntax*: storage _module_reference_
 
-Use a storage module with a specified configuration block name. *Required.*
+Use the specified module for message storage.
+*Required.*

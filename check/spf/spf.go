@@ -284,8 +284,4 @@ func (s *state) Close() error {
 
 func init() {
 	module.Register(modName, New)
-	module.RegisterInstance(&Check{
-		instName: modName,
-		log:      log.Logger{Name: modName},
-	}, &config.Map{Block: &config.Node{}})
 }
