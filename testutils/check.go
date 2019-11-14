@@ -14,6 +14,11 @@ type Check struct {
 	RcptRes   module.CheckResult
 	BodyRes   module.CheckResult
 
+	ConnCalls   int
+	SenderCalls int
+	RcptCalls   int
+	BodyCalls   int
+
 	UnclosedStates int
 
 	InstName string
@@ -49,18 +54,22 @@ type checkState struct {
 }
 
 func (cs *checkState) CheckConnection() module.CheckResult {
+	cs.check.ConnCalls++
 	return cs.check.ConnRes
 }
 
 func (cs *checkState) CheckSender(from string) module.CheckResult {
+	cs.check.SenderCalls++
 	return cs.check.SenderRes
 }
 
 func (cs *checkState) CheckRcpt(to string) module.CheckResult {
+	cs.check.RcptCalls++
 	return cs.check.RcptRes
 }
 
 func (cs *checkState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+	cs.check.BodyCalls++
 	return cs.check.BodyRes
 }
 

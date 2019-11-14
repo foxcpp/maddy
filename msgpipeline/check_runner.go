@@ -21,9 +21,12 @@ import (
 // checkRunner runs groups of checks, collects and merges results.
 // It also makes sure that each check gets only one state object created.
 type checkRunner struct {
-	msgMeta      *module.MsgMetadata
-	mailFrom     string
-	checkedRcpts []string
+	msgMeta  *module.MsgMetadata
+	mailFrom string
+
+	checkedRcpts         []string
+	checkedRcptsPerCheck map[module.CheckState]map[string]struct{}
+	checkedRcptsLock     sync.Mutex
 
 	doDMARC     bool
 	dmarcPolicy chan struct {
@@ -43,8 +46,9 @@ type checkRunner struct {
 
 func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger) *checkRunner {
 	return &checkRunner{
-		msgMeta: msgMeta,
-		log:     log,
+		msgMeta:              msgMeta,
+		checkedRcptsPerCheck: map[module.CheckState]map[string]struct{}{},
+		log:                  log,
 		dmarcPolicy: make(chan struct {
 			orgDomain  string
 			fromDomain string
@@ -115,6 +119,19 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 		for _, rcpt := range cr.checkedRcpts {
 			rcpt := rcpt
 			err := cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+				// Avoid calling CheckRcpt for the same recipient for the same check
+				// multiple times, even if requested.
+				cr.checkedRcptsLock.Lock()
+				if _, ok := cr.checkedRcptsPerCheck[s][rcpt]; ok {
+					cr.checkedRcptsLock.Unlock()
+					return module.CheckResult{}
+				}
+				if cr.checkedRcptsPerCheck[s] == nil {
+					cr.checkedRcptsPerCheck[s] = make(map[string]struct{})
+				}
+				cr.checkedRcptsPerCheck[s][rcpt] = struct{}{}
+				cr.checkedRcptsLock.Unlock()
+
 				res := s.CheckRcpt(rcpt)
 				return res
 			})
@@ -200,25 +217,10 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 }
 
 func (cr *checkRunner) checkConnSender(checks []module.Check, mailFrom string) error {
-	states, err := cr.checkStates(checks)
-	if err != nil {
-		return err
-	}
-
-	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckConnection()
-		return res
-	})
-	if err != nil {
-		return err
-	}
-	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckSender(mailFrom)
-		return res
-	})
-
 	cr.mailFrom = mailFrom
 
+	// checkStates will run CheckConnection and CheckSender.
+	_, err := cr.checkStates(checks)
 	return err
 }
 
@@ -229,6 +231,17 @@ func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
 	}
 
 	err = cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
+		cr.checkedRcptsLock.Lock()
+		if _, ok := cr.checkedRcptsPerCheck[s][rcptTo]; ok {
+			cr.checkedRcptsLock.Unlock()
+			return module.CheckResult{}
+		}
+		if cr.checkedRcptsPerCheck[s] == nil {
+			cr.checkedRcptsPerCheck[s] = make(map[string]struct{})
+		}
+		cr.checkedRcptsPerCheck[s][rcptTo] = struct{}{}
+		cr.checkedRcptsLock.Unlock()
+
 		res := s.CheckRcpt(rcptTo)
 		return res
 	})
