@@ -12,30 +12,52 @@ import (
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
 	"github.com/foxcpp/maddy/address"
+	"github.com/foxcpp/maddy/dns"
 	"golang.org/x/net/publicsuffix"
 )
 
-func FetchRecord(ctx context.Context, hdr textproto.Header) (orgDomain, fromDomain string, record *dmarc.Record, err error) {
+func FetchRecord(r dns.Resolver, ctx context.Context, hdr textproto.Header) (orgDomain, fromDomain string, record *dmarc.Record, err error) {
 	orgDomain, fromDomain, err = extractDomains(hdr)
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	// TODO: Use DNSSEC-aware resolver.
-	txts, err := net.DefaultResolver.LookupTXT(ctx, "_dmarc."+orgDomain)
+	// 1. Lookup using From Domain.
+	txts, err := r.LookupTXT(ctx, "_dmarc."+fromDomain)
 	if err != nil {
-		return orgDomain, fromDomain, nil, err
+		dnsErr, ok := err.(*net.DNSError)
+		if !ok || !dnsErr.IsNotFound {
+			return orgDomain, fromDomain, nil, err
+		}
 	}
 	if len(txts) == 0 {
+		// No records or 'no such host', try orgDomain.
+		txts, err = r.LookupTXT(ctx, "_dmarc."+orgDomain)
+		if err != nil {
+			dnsErr, ok := err.(*net.DNSError)
+			if !ok || !dnsErr.IsNotFound {
+				return orgDomain, fromDomain, nil, err
+			}
+		}
+		// Still nothing? Bail out.
+		if len(txts) == 0 {
+			return orgDomain, fromDomain, nil, nil
+		}
+	}
+
+	// Exclude records that are not DMARC policies.
+	records := txts[:0]
+	for _, txt := range txts {
+		if strings.HasPrefix(txt, "v=DMARC1") {
+			records = append(records, txt)
+		}
+	}
+	// Multiple records => no record.
+	if len(records) > 1 || len(records) == 0 {
 		return orgDomain, fromDomain, nil, nil
 	}
 
-	txt := strings.Join(txts, "")
-
-	record, err = dmarc.Parse(txt)
-	if err == dmarc.ErrNoPolicy {
-		return orgDomain, fromDomain, nil, nil
-	}
+	record, err = dmarc.Parse(records[0])
 	return orgDomain, fromDomain, record, err
 }
 

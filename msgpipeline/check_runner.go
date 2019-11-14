@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-msgauth/dmarc"
 	"github.com/foxcpp/maddy/buffer"
 	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
@@ -29,6 +30,7 @@ type checkRunner struct {
 	checkedRcptsLock     sync.Mutex
 
 	doDMARC     bool
+	resolver    dns.Resolver
 	dmarcPolicy chan struct {
 		orgDomain  string
 		fromDomain string
@@ -288,7 +290,7 @@ func (cr *checkRunner) fetchDMARC(header textproto.Header) {
 			}
 		}()
 
-		orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(ctx, header)
+		orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(cr.resolver, ctx, header)
 		cr.dmarcPolicy <- struct {
 			orgDomain  string
 			fromDomain string
@@ -306,35 +308,31 @@ func (cr *checkRunner) fetchDMARC(header textproto.Header) {
 func (cr *checkRunner) applyDMARC() error {
 	dmarcData := <-cr.dmarcPolicy
 	if dmarcData.err != nil {
-		return dmarcData.err
-	}
-	if dmarcData.record == nil {
-		cr.log.DebugMsg("no record", "orgdomain", dmarcData.orgDomain)
-		return nil
-	}
-
-	dmarcFail := false
-	var result authres.DMARCResult
-
-	if dmarcData.err != nil {
-		result = authres.DMARCResult{
+		result := authres.DMARCResult{
 			Value:  authres.ResultPermError,
 			Reason: dmarcData.err.Error(),
 			From:   dmarcData.orgDomain,
 		}
-		if dmarc.IsTempFail(dmarcData.err) {
+		if exterrors.IsTemporary(dmarcData.err) {
 			result.Value = authres.ResultTempError
 		}
 		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
-		dmarcFail = true
-	} else {
-		result = maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult)
+		return nil
+	}
+	if dmarcData.record == nil {
+		result := authres.DMARCResult{
+			Value: authres.ResultNone,
+			From:  dmarcData.orgDomain,
+		}
 		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
-		dmarcFail = result.Value != authres.ResultPass
+		return nil
 	}
 
-	if !dmarcFail {
-		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy, "orgdomain", dmarcData.orgDomain)
+	result := maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult)
+	cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
+
+	if result.Value == authres.ResultPass {
+		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy, "org_domain", dmarcData.orgDomain)
 		return nil
 	}
 	// TODO: Report generation.
@@ -342,7 +340,7 @@ func (cr *checkRunner) applyDMARC() error {
 	if dmarcData.record.Percent != nil && rand.Int31n(100) > int32(*dmarcData.record.Percent) {
 		cr.log.Msg("DMARC not enforced due to pct",
 			"pct", *dmarcData.record.Percent, "p", dmarcData.record.Policy,
-			"orgdomain", dmarcData.orgDomain, "fromdomain", dmarcData.fromDomain)
+			"org_domain", dmarcData.orgDomain, "from_domain", dmarcData.fromDomain)
 		return nil
 	}
 
@@ -359,9 +357,9 @@ func (cr *checkRunner) applyDMARC() error {
 			Message:      "DMARC check failed",
 			CheckName:    "dmarc",
 			Misc: map[string]interface{}{
-				"reason":     result.Reason,
-				"fromdomain": dmarcData.fromDomain,
-				"orgdomain":  dmarcData.orgDomain,
+				"reason":      result.Reason,
+				"from_domain": dmarcData.fromDomain,
+				"org_domain":  dmarcData.orgDomain,
 			},
 		}
 	case dmarc.PolicyQuarantine:
@@ -369,7 +367,7 @@ func (cr *checkRunner) applyDMARC() error {
 
 		// Mimick the message structure for regular checks.
 		cr.log.Msg("quarantined", "reason", result.Reason, "check", "dmarc",
-			"fromdomain", dmarcData.fromDomain, "orgdomain", dmarcData.orgDomain)
+			"from_domain", dmarcData.fromDomain, "org_domain", dmarcData.orgDomain)
 	}
 	return nil
 }

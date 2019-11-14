@@ -371,6 +371,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		return err
 	}
 	endp.pipeline.Hostname = endp.serv.Domain
+	endp.pipeline.Resolver = endp.resolver
 	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
 
 	endp.serv.AuthDisabled = endp.Auth == nil

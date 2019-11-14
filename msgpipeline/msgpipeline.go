@@ -1,6 +1,7 @@
 package msgpipeline
 
 import (
+	"net"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -8,6 +9,7 @@ import (
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/modify"
@@ -16,7 +18,7 @@ import (
 )
 
 // MsgPipeline is a object that is responsible for selecting delivery targets
-// for the message and running necessary checks and modifier.
+// for the message and running necessary checks and modifiers.
 //
 // It implements module.DeliveryTarget.
 //
@@ -25,6 +27,7 @@ import (
 type MsgPipeline struct {
 	msgpipelineCfg
 	Hostname string
+	Resolver dns.Resolver
 
 	Log log.Logger
 }
@@ -48,6 +51,7 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	parsedCfg, err := parseMsgPipelineRootCfg(globals, cfg)
 	return &MsgPipeline{
 		msgpipelineCfg: parsedCfg,
+		Resolver:       net.DefaultResolver,
 	}, err
 }
 
@@ -83,6 +87,7 @@ func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 	}
 	dd.checkRunner = newCheckRunner(msgMeta, dd.log)
 	dd.checkRunner.doDMARC = d.doDMARC
+	dd.checkRunner.resolver = d.Resolver
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}
