@@ -1,11 +1,16 @@
 package testutils
 
 import (
+	"flag"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/foxcpp/maddy/log"
+)
+
+var (
+	debugLog = flag.Bool("test.debuglog", false, "Turn on debug log messages")
 )
 
 func Logger(t *testing.T, name string) log.Logger {
@@ -21,6 +26,6 @@ func Logger(t *testing.T, name string) log.Logger {
 			return nil
 		}),
 		Name:  name,
-		Debug: true,
+		Debug: *debugLog,
 	}
 }
