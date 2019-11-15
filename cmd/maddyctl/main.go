@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/emersion/go-imap/backend"
+	"github.com/foxcpp/maddy"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,20 +30,20 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "maddyctl"
 	app.Usage = "maddy mail server administration utility"
-	app.Version = buildInfo()
+	app.Version = maddy.BuildInfo()
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "config",
 			Usage:  "Configuration file to use",
 			EnvVar: "MADDY_CONFIG",
-			Value:  "/etc/maddy/maddy.conf",
+			Value:  filepath.Join(maddy.ConfigDirectory, "maddy.conf"),
 		},
 		cli.StringFlag{
 			Name:   "state",
 			Usage:  "State directory to use",
 			EnvVar: "MADDY_STATE",
-			Value:  "/var/lib/maddy",
+			Value:  maddy.DefaultStateDirectory,
 		},
 	}
 

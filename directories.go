@@ -1,9 +1,4 @@
-package main
-
-import (
-	"os"
-	"path/filepath"
-)
+package maddy
 
 var (
 	// ConfigDirectory specifies platform-specific value
@@ -46,19 +41,3 @@ var (
 	// only for purposes of modification using -X linker flag.
 	DefaultLibexecDirectory = "/usr/lib/maddy"
 )
-
-func ensureDirectoryWritable(path string) error {
-	if err := os.MkdirAll(path, 0700); err != nil {
-		return err
-	}
-
-	testFile, err := os.Create(filepath.Join(path, "writeable-test"))
-	if err != nil {
-		return err
-	}
-	testFile.Close()
-	if err := os.Remove(testFile.Name()); err != nil {
-		return err
-	}
-	return nil
-}

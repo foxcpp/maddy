@@ -1,18 +1,17 @@
-package main
+package maddy
 
 import (
-	"fmt"
 	"runtime/debug"
 )
 
 var Version = "unknown (built from source tree)"
 
-func buildInfo() string {
+func BuildInfo() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		if info.Main.Version == "(devel)" {
 			return Version
 		}
-		return fmt.Sprintf("%s %s", info.Main.Version, info.Main.Sum)
+		return info.Main.Version + " " + info.Main.Sum
 	}
-	return Version
+	return Version + " (GOPATH build)"
 }
