@@ -1,10 +1,14 @@
 package queue
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -541,4 +545,265 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 	t.Run("NoHeader", func(t *testing.T) {
 		test(t, ".header")
 	})
+}
+
+func TestQueueDelivery_AbortIfNoRecipients(t *testing.T) {
+	t.Parallel()
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), true),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), true),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+}
+
+func TestQueueDelivery_AbortNoDangling(t *testing.T) {
+	t.Parallel()
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), true),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), true),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	// Copied from testutils.DoTestDelivery.
+	IDRaw := sha1.Sum([]byte(t.Name()))
+	encodedID := hex.EncodeToString(IDRaw[:])
+
+	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	ctx := module.MsgMetadata{
+		DontTraceSender: true,
+		ID:              encodedID,
+	}
+	delivery, err := q.Start(&ctx, "test3@example.org")
+	if err != nil {
+		t.Fatalf("unexpected Start err: %v", err)
+	}
+	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
+		if err := delivery.AddRcpt(rcpt); err != nil {
+			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
+		}
+	}
+	if err := delivery.Body(textproto.Header{}, body); err != nil {
+		t.Fatalf("unexpected Body err: %v", err)
+	}
+	if err := delivery.Abort(); err != nil {
+		t.Fatalf("unexpected Abort err: %v", err)
+	}
+
+	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDSN(t *testing.T) {
+	t.Parallel()
+
+	dsnTarget := unreliableTarget{
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	q.hostname = "mx.example.org"
+	q.autogenMsgDomain = "example.org"
+	q.dsnPipeline = &dsnTarget
+	defer cleanQueue(t, q)
+
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+
+	// Wait for message delivery attempt to complete (aborted because all recipients fail).
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+
+	// Wait for DSN.
+	msg := readMsgChanTimeout(t, dsnTarget.committed, 5*time.Second)
+
+	if msg.MailFrom != "" {
+		t.Fatalf("wrong MAIL FROM address in DSN: %v", msg.MailFrom)
+	}
+	if !reflect.DeepEqual(msg.RcptTo, []string{"tester@example.com"}) {
+		t.Fatalf("wrong RCPT TO address in DSN: %v", msg.RcptTo)
+	}
+}
+
+func TestQueueDSN_FromEmptyAddr(t *testing.T) {
+	t.Parallel()
+
+	dsnTarget := unreliableTarget{
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	q.hostname = "mx.example.org"
+	q.autogenMsgDomain = "example.org"
+	q.dsnPipeline = &dsnTarget
+	defer cleanQueue(t, q)
+
+	testutils.DoTestDelivery(t, q, "", []string{"tester1@example.org", "tester2@example.org"})
+
+	// Wait for message delivery attempt to complete (aborted because all recipients fail).
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+
+	time.Sleep(1 * time.Second)
+
+	// There should be no DSN for it.
+	if dsnTarget.passedMessages != 0 {
+		t.Errorf("dsnTarget accepted %d messages", dsnTarget.passedMessages)
+	}
+	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDSN_NoDSNforDSN(t *testing.T) {
+	t.Parallel()
+
+	dsnTarget := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"tester1@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+				"tester2@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	q.hostname = "mx.example.org"
+	q.autogenMsgDomain = "example.org"
+	q.dsnPipeline = &dsnTarget
+	defer cleanQueue(t, q)
+
+	testutils.DoTestDelivery(t, q, "tester@example.org", []string{"tester1@example.org", "tester2@example.org"})
+
+	// Wait for message delivery attempt to complete (aborted because all recipients fail).
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+
+	// DSN will be emitted but will fail, so 'aborted'
+	readMsgChanTimeout(t, dsnTarget.aborted, 5*time.Second)
+
+	time.Sleep(1 * time.Second)
+
+	// There should be no DSN for DSN (dsnTarget handled one message - the DSN itself).
+	if dsnTarget.passedMessages != 1 {
+		t.Errorf("dsnTarget accepted %d messages", dsnTarget.passedMessages)
+	}
+	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDSN_RcptRewrite(t *testing.T) {
+	t.Parallel()
+
+	dsnTarget := unreliableTarget{
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+
+	dt := unreliableTarget{
+		rcptFailures: []map[string]error{
+			{
+				"test@example.org":  exterrors.WithTemporary(errors.New("go away"), false),
+				"test2@example.org": exterrors.WithTemporary(errors.New("go away"), false),
+			},
+		},
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	q.hostname = "mx.example.org"
+	q.autogenMsgDomain = "example.org"
+	q.dsnPipeline = &dsnTarget
+	defer cleanQueue(t, q)
+
+	IDRaw := sha1.Sum([]byte(t.Name()))
+	encodedID := hex.EncodeToString(IDRaw[:])
+
+	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	ctx := module.MsgMetadata{
+		DontTraceSender: true,
+		OriginalRcpts: map[string]string{
+			"test@example.org":  "test+public@example.com",
+			"test2@example.org": "test2+public@example.com",
+		},
+		ID: encodedID,
+	}
+	delivery, err := q.Start(&ctx, "test3@example.org")
+	if err != nil {
+		t.Fatalf("unexpected Start err: %v", err)
+	}
+	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
+		if err := delivery.AddRcpt(rcpt); err != nil {
+			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
+		}
+	}
+	if err := delivery.Body(textproto.Header{}, body); err != nil {
+		t.Fatalf("unexpected Body err: %v", err)
+	}
+	if err := delivery.Commit(); err != nil {
+		t.Fatalf("unexpected Commit err: %v", err)
+	}
+
+	// Wait for message delivery attempt to complete (aborted because all recipients fail).
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+
+	// Wait for DSN.
+	msg := readMsgChanTimeout(t, dsnTarget.committed, 5*time.Second)
+
+	if msg.MailFrom != "" {
+		t.Fatalf("wrong MAIL FROM address in DSN: %v", msg.MailFrom)
+	}
+	if !reflect.DeepEqual(msg.RcptTo, []string{"test3@example.org"}) {
+		t.Fatalf("wrong RCPT TO address in DSN: %v", msg.RcptTo)
+	}
+
+	if bytes.Contains(msg.Body, []byte("test@example.org")) || bytes.Contains(msg.Body, []byte("test2@example.org")) {
+		t.Errorf("DSN contents mention real final addresses")
+	}
+	if !bytes.Contains(msg.Body, []byte("test+public@example.com")) || !bytes.Contains(msg.Body, []byte("test2+public@example.com")) {
+		t.Errorf("DSN contents do not mention original addresses")
+	}
 }
