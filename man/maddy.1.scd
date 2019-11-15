@@ -1,5 +1,7 @@
 maddy(1) "maddy mail server" "maddy reference documentation"
 
+; vim: ft=markdown noexpandtab
+
 ; TITLE Introduction
 ; NO_TOC
 
@@ -34,8 +36,8 @@ emptor.*
 	Default is /usr/lib/maddy.
 
 *-log* _targets..._
-    Logging targets. Format is the same as 'log' config directive. Affects
-    logging before configuration parsing completes.
+	Logging targets. Format is the same as 'log' config directive. Affects
+	logging before configuration parsing completes.
 
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.
