@@ -39,12 +39,6 @@ func main() {
 			EnvVar: "MADDY_CONFIG",
 			Value:  filepath.Join(maddy.ConfigDirectory, "maddy.conf"),
 		},
-		cli.StringFlag{
-			Name:   "state",
-			Usage:  "State directory to use",
-			EnvVar: "MADDY_STATE",
-			Value:  maddy.DefaultStateDirectory,
-		},
 	}
 
 	app.Commands = []cli.Command{
@@ -576,11 +570,6 @@ func openStorage(ctx *cli.Context) (Storage, error) {
 		return nil, errors.New("Error: config is required")
 	}
 
-	statePath := ctx.GlobalString("state")
-	if cfgPath == "" {
-		return nil, errors.New("Error: state is required")
-	}
-
 	cfgBlock := ctx.String("cfg-block")
 	if cfgBlock == "" {
 		return nil, errors.New("Error: cfg-block is required")
@@ -588,10 +577,6 @@ func openStorage(ctx *cli.Context) (Storage, error) {
 
 	root, node, err := findBlockInCfg(cfgPath, cfgBlock)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := os.Chdir(statePath); err != nil {
 		return nil, err
 	}
 
@@ -609,11 +594,6 @@ func openUserDB(ctx *cli.Context) (UserDB, error) {
 		return nil, errors.New("Error: config is required")
 	}
 
-	statePath := ctx.GlobalString("state")
-	if cfgPath == "" {
-		return nil, errors.New("Error: state is required")
-	}
-
 	cfgBlock := ctx.String("cfg-block")
 	if cfgBlock == "" {
 		return nil, errors.New("Error: cfg-block is required")
@@ -621,10 +601,6 @@ func openUserDB(ctx *cli.Context) (UserDB, error) {
 
 	root, node, err := findBlockInCfg(cfgPath, cfgBlock)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := os.Chdir(statePath); err != nil {
 		return nil, err
 	}
 

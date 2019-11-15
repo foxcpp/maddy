@@ -27,23 +27,15 @@ emptor.*
 	Show help message and exit.
 
 *-config* _path_
-	Path to configuration file. Default is /etc/maddy/maddy.conf.
-
-*-state* _path_
-	Path to the state directory. This directory will be used to store all
-	persistent data and should be writable. Default is /var/lib/maddy.
+	Path to the configuration file. Default is /etc/maddy/maddy.conf.
 
 *-libexec* _path_
 	Path to the libexec directory. Helper executables will be searched here.
 	Default is /usr/lib/maddy.
 
-*-runtime* _path_
-	Path to the runtime directory. Temporary data will be stored here.  It is
-	not recommended to use tmpfs for it since runtime directory is used only
-	for large objects that can't be stored in RAM directly.
-
 *-log* _targets..._
-	Logging targets. Format is the same as 'log' config directive.
+    Logging targets. Format is the same as 'log' config directive. Affects
+    logging before configuration parsing completes.
 
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.
@@ -137,6 +129,18 @@ can be used.
 # Global directives
 
 These directives applied for all configuration blocks that don't override it.
+
+*Syntax*: statedir _path_ ++
+*Default*: /var/lib/maddy
+
+The path to the state directory. This directory will be used to store all
+persistent data and should be writable.
+
+*Syntax*: runtimedir _path_ ++
+*Default*: /run/maddy
+
+The path to the runtime directory. Used for Unix sockets and other temporary
+objects. Should be writable.
 
 *Syntax*: hostname _domain_ ++
 *Default*: not specified

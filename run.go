@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -24,10 +25,8 @@ var (
 // logging initialization, directives setup, configuration reading. After all that, it
 // calls moduleMain to initialize and run modules.
 func Run() int {
-	flag.StringVar(&config.StateDirectory, "state", DefaultStateDirectory, "path to the state directory")
 	flag.StringVar(&config.LibexecDirectory, "libexec", DefaultLibexecDirectory, "path to the libexec directory")
-	flag.StringVar(&config.RuntimeDirectory, "runtime", DefaultRuntimeDirectory, "path to the runtime directory")
-	flag.BoolVar(&log.DefaultLogger.Debug, "debug", false, "enable debug logging")
+	flag.BoolVar(&log.DefaultLogger.Debug, "debug", false, "enable debug logging early")
 
 	var (
 		configPath   = flag.String("config", filepath.Join(ConfigDirectory, "maddy.conf"), "path to configuration file")
@@ -41,8 +40,6 @@ func Run() int {
 		return 0
 	}
 
-	flag.Parse()
-
 	var err error
 	log.DefaultLogger.Out, err = LogOutputOption(strings.Split(*logTargets, " "))
 	if err != nil {
@@ -52,26 +49,16 @@ func Run() int {
 
 	initDebug()
 
-	// Lost the configuration before initDirs to make sure we will
-	// interpret the relative path correctly (initDirs changes the working
-	// directory).
 	f, err := os.Open(*configPath)
 	if err != nil {
-		log.Printf("cannot open %q: %v\n", configPath, err)
+		log.Printf("cannot open %q: %v\n", *configPath, err)
 		return 2
 	}
 	defer f.Close()
 
-	if err := initDirs(); err != nil {
-		log.Println(err)
-		return 2
-	}
-
-	// But but actually parse it after initDirs since it also sets a couple of
-	// environment variables that may be used in the configuration.
 	cfg, err := parser.Read(f, *configPath)
 	if err != nil {
-		log.Printf("cannot parse %q: %v\n", configPath, err)
+		log.Printf("cannot parse %q: %v\n", *configPath, err)
 		return 2
 	}
 
@@ -103,7 +90,17 @@ func initDebug() {
 	}
 }
 
-func initDirs() error {
+func InitDirs() error {
+	if config.StateDirectory == "" {
+		config.StateDirectory = DefaultStateDirectory
+	}
+	if config.RuntimeDirectory == "" {
+		config.RuntimeDirectory = DefaultRuntimeDirectory
+	}
+	if config.LibexecDirectory == "" {
+		config.LibexecDirectory = DefaultLibexecDirectory
+	}
+
 	if err := ensureDirectoryWritable(config.StateDirectory); err != nil {
 		return err
 	}
@@ -113,30 +110,14 @@ func initDirs() error {
 
 	// Make sure all paths we are going to use are absolute
 	// before we change the working directory.
-	var err error
-	config.StateDirectory, err = filepath.Abs(config.StateDirectory)
-	if err != nil {
-		return err
+	if !filepath.IsAbs(config.StateDirectory) {
+		return errors.New("statedir should be absolute")
 	}
-	config.LibexecDirectory, err = filepath.Abs(config.LibexecDirectory)
-	if err != nil {
-		return err
+	if !filepath.IsAbs(config.RuntimeDirectory) {
+		return errors.New("runtimedir should be absolute")
 	}
-	config.RuntimeDirectory, err = filepath.Abs(config.RuntimeDirectory)
-	if err != nil {
-		return err
-	}
-
-	// Make directory constants accessible in configuration by using
-	// environment variables expansion.
-	if err := os.Setenv("MADDYSTATE", config.StateDirectory); err != nil {
-		log.Println(err)
-	}
-	if err := os.Setenv("MADDYLIBEXEC", config.LibexecDirectory); err != nil {
-		log.Println(err)
-	}
-	if err := os.Setenv("MADDYRUNTIME", config.RuntimeDirectory); err != nil {
-		log.Println(err)
+	if !filepath.IsAbs(config.LibexecDirectory) {
+		return errors.New("-libexec should be absolute")
 	}
 
 	// Change the working directory to make all relative paths

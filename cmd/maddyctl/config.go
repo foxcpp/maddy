@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/foxcpp/maddy"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/config/parser"
 )
@@ -16,7 +17,21 @@ func findBlockInCfg(path, cfgBlock string) (root, block *config.Node, err error)
 	}
 	defer f.Close()
 
-	// Global variables relevant for sql module.
+	globals := config.NewMap(nil, &config.Node{Children: nodes})
+	globals.String("state", false, false, maddy.DefaultStateDirectory, &config.StateDirectory)
+	globals.String("runtime", false, false, maddy.DefaultRuntimeDirectory, &config.RuntimeDirectory)
+
+	// We don't care about other directives, but permit them.
+	globals.AllowUnknown()
+
+	if _, err := globals.Process(); err != nil {
+		return nil, nil, err
+	}
+
+	if err := maddy.InitDirs(); err != nil {
+		return nil, nil, err
+	}
+
 	for _, node := range nodes {
 		if node.Name != "sql" {
 			continue

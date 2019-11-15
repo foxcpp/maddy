@@ -83,10 +83,6 @@ independently of whether $VAR is defined.
 directive0 {$VAR}
 ```
 
-maddy defines following environment variables refereing to the corresponding
-directories specified in command line arguments (or default values of them):
-MADDYSTATE, MADDYLIBEXEC, MADDYRUNTIME.
-
 ## Snippets & imports
 
 You can reuse blocks of configuration by defining them as "snippets". Snippet
