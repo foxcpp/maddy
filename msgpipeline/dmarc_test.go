@@ -41,6 +41,7 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	for _, rcpt := range to {
 		if err := delivery.AddRcpt(rcpt); err != nil {
 			if err := delivery.Abort(); err != nil {
+				t.Log("delivery.Abort:", err)
 			}
 			return encodedID, err
 		}
@@ -223,7 +224,7 @@ func TestDMARC(t *testing.T) {
 	test(map[string]mockdns.Zone{
 		"_dmarc.example.com.": mockdns.Zone{
 			Err: &net.DNSError{
-				Err:         "the dns server is going insane, temporarly",
+				Err:         "the dns server is going insane, temporary",
 				IsTemporary: true,
 			},
 		},

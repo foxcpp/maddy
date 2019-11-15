@@ -419,7 +419,9 @@ func TestCacheRefresh(t *testing.T) {
 	c.downloadPolicy = mockDownloadPolicy(expectedPolicy, nil)
 
 	// It should fetch the new record.
-	c.Refresh()
+	if err := c.Refresh(); err != nil {
+		t.Fatalf("cache refresh: %v", err)
+	}
 
 	// Then don't allow Get to refetch the record.
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
@@ -470,7 +472,9 @@ func TestCacheRefresh_Error(t *testing.T) {
 	// Don't let Refresh refetch the record.
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
-	c.Refresh()
+	if err := c.Refresh(); err != nil {
+		t.Fatalf("cache refresh: %v", err)
+	}
 
 	// It should return the old record from cache.
 	policy, err = c.Get("example.org")
