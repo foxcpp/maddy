@@ -1,7 +1,5 @@
 maddy(1) "maddy mail server" "maddy reference documentation"
 
-; vim: ft=markdown noexpandtab
-
 ; TITLE Introduction
 ; NO_TOC
 
