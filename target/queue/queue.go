@@ -693,12 +693,20 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		return nil, err
 	}
 
+	if err := headerFile.Sync(); err != nil {
+		return nil, err
+	}
+
+	if err := bodyFile.Sync(); err != nil {
+		return nil, err
+	}
+
 	return buffer.FileBuffer{Path: bodyPath}, nil
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	metaPath := filepath.Join(q.location, meta.MsgMeta.ID+".meta")
-	file, err := os.Create(metaPath)
+	file, err := os.Create(metaPath + ".new")
 	if err != nil {
 		return err
 	}
@@ -715,6 +723,15 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	if err := json.NewEncoder(file).Encode(metaCopy); err != nil {
 		return err
 	}
+
+	if err := file.Sync(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(metaPath+".new", metaPath); err != nil {
+		return err
+	}
+
 	return nil
 }
 
