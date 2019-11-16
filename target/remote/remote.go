@@ -189,12 +189,15 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 	if err == nil {
 		return nil
 	}
+
 	switch err := err.(type) {
+	case *exterrors.SMTPError:
+		return err
 	case *smtp.SMTPError:
 		return &exterrors.SMTPError{
 			Code:         err.Code,
 			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
-			Message:      err.Message,
+			Message:      serverName + " said: " + err.Message,
 			TargetName:   "remote",
 			Misc: map[string]interface{}{
 				"remote_server": serverName,
@@ -202,17 +205,23 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Err: err,
 		}
 	case *net.OpError:
-		return exterrors.WithTemporary(
-			exterrors.WithFields(
-				err.Err,
-				map[string]interface{}{
-					"remote_addr": err.Addr,
-					"io_op":       err.Op,
-					"target":      "remote",
-				},
-			),
-			err.Temporary(),
-		)
+		code := 550
+		enchCode := exterrors.EnhancedCode{5, 4, 0}
+		if err.Temporary() {
+			code = 421
+			enchCode = exterrors.EnhancedCode{4, 4, 2}
+		}
+		return &exterrors.SMTPError{
+			Code:         code,
+			EnhancedCode: enchCode,
+			Message:      "Network I/O error",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"reason":      err.Error(),
+				"remote_addr": err.Addr,
+				"io_op":       err.Op,
+			},
+		}
 	default:
 		return exterrors.WithFields(err, map[string]interface{}{
 			"remote_server": serverName,
@@ -226,7 +235,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 		return &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-			Message:      "Refusing to deliver quarantined message",
+			Message:      "Refusing to deliver a quarantined message",
 			TargetName:   "remote",
 		}
 	}
@@ -506,7 +515,9 @@ func (rd *remoteDelivery) Commit() error {
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
 		rd.Log.Debugf("disconnected from %s", conn.serverName)
-		conn.Quit()
+		if err := conn.Quit(); err != nil {
+			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
+		}
 	}
 	return nil
 }
@@ -537,7 +548,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 			if len(addrs) != 1 {
 				rd.Log.Error("connect error", err, "remote_server", addr)
 			}
-			lastErr = err
+			lastErr = rd.wrapClientErr(err, conn.serverName)
 			continue
 		}
 	}
@@ -546,7 +557,9 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	}
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
-		conn.Quit()
+		if err := conn.Quit(); err != nil {
+			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
+		}
 		return nil, rd.wrapClientErr(err, conn.serverName)
 	}
 
@@ -559,7 +572,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	stsPolicy, err := rt.mtastsGet(domain)
 	if err != nil && !mtasts.IsNoPolicy(err) {
-		code := 501
+		code := 554
 		enchCode := exterrors.EnhancedCode{5, 0, 0}
 		if exterrors.IsTemporary(err) {
 			code = 420
@@ -568,7 +581,7 @@ func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 		return nil, &exterrors.SMTPError{
 			Code:         code,
 			EnhancedCode: enchCode,
-			Message:      "Failed to fetch recipient MTA-STS policy",
+			Message:      "Failed to fetch the recipient policy",
 			TargetName:   "remote",
 			Err:          err,
 			Misc: map[string]interface{}{
@@ -629,7 +642,7 @@ func (rt *Target) connectToServer(address string, requireTLS bool) (*smtp.Client
 		return nil, &exterrors.SMTPError{
 			Code:         523,
 			EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
-			Message:      "TLS is required but unsupported by MX",
+			Message:      "TLS is required but unsupported by the used MX",
 			TargetName:   "remote",
 		}
 	}
@@ -656,10 +669,7 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	dnssecOk, mxs, err := rd.lookupMX(domain)
 	if err != nil {
-		return nil, false, exterrors.WithFields(err,
-			map[string]interface{}{
-				"target": "remote",
-			})
+		return nil, false, err
 	}
 
 	// Fallback to A/AAA RR when no MX records are present as
@@ -677,7 +687,6 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	candidates = make([]string, 0, len(mxs))
 
-	skippedMXs := false
 	for _, mx := range mxs {
 		if mx.Host == "." {
 			return nil, false, &exterrors.SMTPError{
@@ -704,7 +713,6 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 				// Honor *enforced* policy and skip non-matching MXs even if we
 				// don't require authentication.
 				rd.Log.Msg("ignoring MX due to MTA-STS", "mx", mx.Host, "domain", domain)
-				skippedMXs = true
 				continue
 			}
 		}
@@ -721,7 +729,6 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		if !authenticated {
 			if rd.rt.requireMXAuth {
 				rd.Log.Msg("ignoring non-authenticated MX", "mx", mx.Host, "domain", domain)
-				skippedMXs = true
 				continue
 			}
 			if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled {
@@ -733,18 +740,10 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 	}
 
 	if len(candidates) == 0 {
-		if skippedMXs {
-			return nil, false, &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-				Message:      "No usable MXs found (ignoring non-authenticated MXs)",
-				TargetName:   "remote",
-			}
-		}
 		return nil, false, &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "No usable MXs found",
+			Message:      "No usable MXs found (ignoring non-authenticated MXs)",
 			TargetName:   "remote",
 		}
 	}
@@ -770,10 +769,47 @@ func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net
 		if rd.rt.extResolver == nil {
 			return false, nil, errors.New("remote: can't do DNSSEC verification without security-aware resolver")
 		}
-		return rd.rt.extResolver.AuthLookupMX(context.Background(), domain)
+		ad, records, err := rd.rt.extResolver.AuthLookupMX(context.Background(), domain)
+		if err != nil {
+			code := 554
+			enchCode := exterrors.EnhancedCode{5, 4, 4}
+			if exterrors.IsTemporary(err) {
+				code = 451
+				enchCode = exterrors.EnhancedCode{4, 4, 4}
+			}
+			return false, nil, &exterrors.SMTPError{
+				Code:         code,
+				EnhancedCode: enchCode,
+				Message:      "MX lookup error",
+				TargetName:   "remote",
+				Err:          err,
+				Misc: map[string]interface{}{
+					"reason": err.Error(),
+				},
+			}
+		}
+		return ad, records, nil
 	}
 
 	records, err = rd.rt.resolver.LookupMX(context.Background(), domain)
+	if err != nil {
+		code := 554
+		enchCode := exterrors.EnhancedCode{5, 4, 4}
+		if exterrors.IsTemporary(err) {
+			code = 451
+			enchCode = exterrors.EnhancedCode{4, 4, 4}
+		}
+		return false, nil, &exterrors.SMTPError{
+			Code:         code,
+			EnhancedCode: enchCode,
+			Message:      "MX lookup error",
+			TargetName:   "remote",
+			Err:          err,
+			Misc: map[string]interface{}{
+				"reason": err.Error(),
+			},
+		}
+	}
 	return false, records, err
 }
 

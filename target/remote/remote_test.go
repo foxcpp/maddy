@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -313,7 +314,7 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
 		t.Errorf("Wrong smtp_enchcode: %v", val)
 	}
-	if val, _ := fields["smtp_msg"].(string); val != "Hey" {
+	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
 		t.Errorf("Wrong smtp_msg: %v", val)
 	}
 
@@ -488,7 +489,7 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
 		t.Errorf("Wrong smtp_enchcode: %v", val)
 	}
-	if val, _ := fields["smtp_msg"].(string); val != "Hey" {
+	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
 		t.Errorf("Wrong smtp_msg: %v", val)
 	}
 
@@ -504,7 +505,7 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
 		t.Errorf("Wrong smtp_enchcode: %v", val)
 	}
-	if val, _ := fields["smtp_msg"].(string); val != "Hey" {
+	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
 		t.Errorf("Wrong smtp_msg: %v", val)
 	}
 
@@ -561,7 +562,7 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
 		t.Errorf("Wrong smtp_enchcode: %v", val)
 	}
-	if val, _ := fields["smtp_msg"].(string); val != "Hey" {
+	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
 		t.Errorf("Wrong smtp_msg: %v", val)
 	}
 
@@ -988,7 +989,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
 			t.Errorf("Wrong smtp_enchcode: %v", val)
 		}
-		if val, _ := fields["smtp_msg"].(string); val != "Hey" {
+		if val, _ := fields["smtp_msg"].(string); !strings.HasSuffix(val, "Hey") {
 			t.Errorf("Wrong smtp_msg: %v", val)
 		}
 	}
