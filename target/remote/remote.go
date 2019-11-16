@@ -205,15 +205,9 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Err: err,
 		}
 	case *net.OpError:
-		code := 550
-		enchCode := exterrors.EnhancedCode{5, 4, 0}
-		if err.Temporary() {
-			code = 421
-			enchCode = exterrors.EnhancedCode{4, 4, 2}
-		}
 		return &exterrors.SMTPError{
-			Code:         code,
-			EnhancedCode: enchCode,
+			Code:         421,
+			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
 			Message:      "Network I/O error",
 			TargetName:   "remote",
 			Misc: map[string]interface{}{
