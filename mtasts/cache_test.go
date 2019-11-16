@@ -58,7 +58,7 @@ func TestCacheGet_Error_DNS(t *testing.T) {
 	defer os.RemoveAll(c.Location)
 
 	_, err := c.Get("example.org")
-	if err != errIgnorePolicy {
+	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
 }
@@ -79,7 +79,7 @@ func TestCacheGet_Error_HTTPS(t *testing.T) {
 	defer os.RemoveAll(c.Location)
 
 	_, err := c.Get("example.org")
-	if err != errIgnorePolicy {
+	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
 }
@@ -282,7 +282,7 @@ func TestCacheGet_HTTPGet_ErrNoPolicy(t *testing.T) {
 	// >cached policy, senders MUST continue with delivery as though the
 	// >domain has not implemented MTA-STS.
 	_, err := c.Get("example.org")
-	if err != errIgnorePolicy {
+	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
 }

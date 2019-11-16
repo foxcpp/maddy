@@ -166,7 +166,7 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
@@ -183,7 +183,10 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 		}
 	}
 	t.Log("-- delivery.Body")
-	if err := delivery.Body(textproto.Header{}, body); err != nil {
+	hdr := textproto.Header{}
+	hdr.Add("B", "2")
+	hdr.Add("A", "1")
+	if err := delivery.Body(hdr, body); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
 	t.Log("-- delivery.Commit")
@@ -200,7 +203,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
@@ -217,7 +220,10 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 		}
 	}
 	t.Log("-- delivery.BodyNonAtomic")
-	delivery.(module.PartialDelivery).BodyNonAtomic(c, textproto.Header{}, body)
+	hdr := textproto.Header{}
+	hdr.Add("B", "2")
+	hdr.Add("A", "1")
+	delivery.(module.PartialDelivery).BodyNonAtomic(c, hdr, body)
 	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
 		t.Fatalf("unexpected Commit err: %v", err)
@@ -226,13 +232,18 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	return encodedID
 }
 
+const DeliveryData = "A: 1\n" +
+	"B: 2\n" +
+	"\n" +
+	"foobar\n"
+
 func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
 	t.Helper()
 
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
@@ -253,7 +264,10 @@ func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to 
 		}
 	}
 	t.Log("-- delivery.Body")
-	if err := delivery.Body(textproto.Header{}, body); err != nil {
+	hdr := textproto.Header{}
+	hdr.Add("B", "2")
+	hdr.Add("A", "1")
+	if err := delivery.Body(hdr, body); err != nil {
 		t.Log("-- delivery.Abort")
 		if err := delivery.Abort(); err != nil {
 			t.Log("-- delivery.Abort:", err)
@@ -298,7 +312,7 @@ func CheckMsg(t *testing.T, msg *Msg, sender string, rcpt []string) {
 	if !reflect.DeepEqual(msg.RcptTo, rcpt) {
 		t.Errorf("wrong recipients, want %v, got %v", rcpt, msg.RcptTo)
 	}
-	if string(msg.Body) != "foobar" {
+	if string(msg.Body) != "foobar\r\n" {
 		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.Body))
 	}
 }

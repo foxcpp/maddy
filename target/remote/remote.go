@@ -40,6 +40,8 @@ const (
 	AuthCommonDomain = "common_domain"
 )
 
+var addressSuffix = ":25"
+
 type Target struct {
 	name          string
 	hostname      string
@@ -49,7 +51,12 @@ type Target struct {
 	mxAuth        map[string]struct{}
 
 	resolver    dns.Resolver
+	dialer      func(network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
+
+	// This is the callback that is usually mtastsCache.Get,
+	// but replaced by tests to mock mtasts.Cache.
+	mtastsGet func(domain string) (*mtasts.Policy, error)
 
 	mtastsCache        mtasts.Cache
 	stsCacheUpdateTick *time.Ticker
@@ -67,6 +74,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	return &Target{
 		name:        instName,
 		resolver:    net.DefaultResolver,
+		dialer:      net.Dial,
 		mtastsCache: mtasts.Cache{Resolver: net.DefaultResolver},
 		Log:         log.Logger{Name: "remote"},
 
@@ -128,6 +136,7 @@ func (rt *Target) initMXAuth(methods []string) error {
 		// MTA-STS policies typically have max_age around one day, so updating them
 		// twice a day should keep them up-to-date most of the time.
 		rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
+		rt.mtastsGet = rt.mtastsCache.Get
 		go rt.stsCacheUpdater()
 	}
 
@@ -190,6 +199,7 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Misc: map[string]interface{}{
 				"remote_server": serverName,
 			},
+			Err: err,
 		}
 	case *net.OpError:
 		return exterrors.WithTemporary(
@@ -436,7 +446,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 }
 
 func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
-	stsPolicy, err := rt.mtastsCache.Get(domain)
+	stsPolicy, err := rt.mtastsGet(domain)
 	if err != nil && !mtasts.IsNoPolicy(err) {
 		code := 501
 		enchCode := exterrors.EnhancedCode{5, 0, 0}
@@ -484,7 +494,12 @@ func (rt *Target) stsCacheUpdater() {
 }
 
 func (rt *Target) connectToServer(address string, requireTLS bool) (*smtp.Client, error) {
-	cl, err := smtp.Dial(address + ":25")
+	conn, err := rt.dialer("tcp", address+addressSuffix)
+	if err != nil {
+		return nil, err
+	}
+
+	cl, err := smtp.NewClient(conn, address)
 	if err != nil {
 		return nil, err
 	}

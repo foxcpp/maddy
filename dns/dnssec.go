@@ -14,14 +14,14 @@ import (
 // indicating whether DNSSEC verification was performed by the server).
 type ExtResolver struct {
 	cl  *dns.Client
-	cfg *dns.ClientConfig
+	Cfg *dns.ClientConfig
 }
 
 func (e ExtResolver) exchange(ctx context.Context, msg *dns.Msg) (*dns.Msg, error) {
 	var resp *dns.Msg
 	var lastErr error
-	for _, srv := range e.cfg.Servers {
-		resp, _, lastErr = e.cl.ExchangeContext(ctx, msg, net.JoinHostPort(srv, e.cfg.Port))
+	for _, srv := range e.Cfg.Servers {
+		resp, _, lastErr = e.cl.ExchangeContext(ctx, msg, net.JoinHostPort(srv, e.Cfg.Port))
 		if lastErr == nil {
 			break
 		}
@@ -180,6 +180,6 @@ func NewExtResolver() (*ExtResolver, error) {
 	}
 	return &ExtResolver{
 		cl:  cl,
-		cfg: cfg,
+		Cfg: cfg,
 	}, nil
 }

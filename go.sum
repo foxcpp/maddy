@@ -37,6 +37,8 @@ github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca h1:OYhqtJI4
 github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca/go.mod h1:3h+HsGTCFHmk4ngJ2IV/YPhdlaOcR6hcgqM3yca9v7c=
 github.com/emersion/go-message v0.10.8 h1:1l1Vb+0By9U1ITTH3FgKfJQWQ9sTI3N1smPe6SS3QXY=
 github.com/emersion/go-message v0.10.8/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
+github.com/emersion/go-message v0.10.9-0.20191116124005-65fd0119e899 h1:KQ2ms0F+BcPuPHSDayTbkpsUs+IdbJ4jArwJ8rhiCXQ=
+github.com/emersion/go-message v0.10.9-0.20191116124005-65fd0119e899/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c h1:0as6ct8PVWrlCofyWPh8o/fNRr6/DPbjkBicSG+3ZQI=
 github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
@@ -57,6 +59,8 @@ github.com/foxcpp/go-imap-sql v0.3.2-0.20191109135752-42bd4cfc6673 h1:YDvjzA0mFu
 github.com/foxcpp/go-imap-sql v0.3.2-0.20191109135752-42bd4cfc6673/go.mod h1:ooCDdmcUlEhvNl57ROzeZTpqJuoMP3HNd03kemcF4AE=
 github.com/foxcpp/go-mockdns v0.0.0-20191106145138-6730d684cd67 h1:Iy/2DzPd4zU7DHoABDPOJFq/nD0R5ez6OLLTX7eNqF4=
 github.com/foxcpp/go-mockdns v0.0.0-20191106145138-6730d684cd67/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
+github.com/foxcpp/go-mockdns v0.0.0-20191116171058-8cd4f834ca1c h1:EglF2XfE1BF/UlQTNXBpVtrJovH8luaFCbAYgf7MbBE=
+github.com/foxcpp/go-mockdns v0.0.0-20191116171058-8cd4f834ca1c/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/frankban/quicktest v1.5.0 h1:Tb4jWdSpdjKzTUicPnY61PZxKbDoGa7ABbrReT3gQVY=
 github.com/frankban/quicktest v1.5.0/go.mod h1:jaStnuzAqU1AJdCO0l53JDCJrVDKcS03DbaAcR7Ks/o=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=

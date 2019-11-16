@@ -66,16 +66,15 @@ type Cache struct {
 }
 
 func IsNoPolicy(err error) bool {
-	return err == errIgnorePolicy
+	return err == ErrIgnorePolicy
 }
 
-// errIgnorePolicy indicates that remote domain offers an MTA-STS policy,
+// ErrIgnorePolicy indicates that remote domain offers an MTA-STS policy,
 // but it is ignored due to some error.
 //
-// For the package user it is essentially the same as errNoPolicy, but this
-// error is used differently by the Cache.Refresh method, it does not cause
-// the cached policy to be removed.
-var errIgnorePolicy = errors.New("mtasts: policy ignored due to errors")
+// Callers should not check for this directly and use IsNoPolicy
+// function to decide actual handling strategy.
+var ErrIgnorePolicy = errors.New("mtasts: policy ignored due to errors")
 
 // Get reads policy from cache or tries to fetch it from Policy Host.
 func (c *Cache) Get(domain string) (*Policy, error) {
@@ -131,7 +130,7 @@ func (c *Cache) Refresh() error {
 		// which makes it useless.
 		// See https://tools.ietf.org/html/rfc8461#section-10.2.
 		cacheHit, _, err := c.fetch(true, time.Now().Add(6*time.Hour), ent.Name())
-		if err != nil && err != errIgnorePolicy {
+		if err != nil && err != ErrIgnorePolicy {
 			c.Logger.Error("policy update error", err, "domain", ent.Name())
 		}
 		if !cacheHit && err == nil {
@@ -170,7 +169,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 
 			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
 				c.Logger.Error("failed lookup the DNS record, ignoring", err, "domain", domain)
-				return false, nil, errIgnorePolicy
+				return false, nil, ErrIgnorePolicy
 			}
 			return false, nil, err
 		}
@@ -188,7 +187,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 				return true, cachedPolicy, nil
 			}
 			c.Logger.Msg("multiple DNS records, ignoring", "domain", domain)
-			return false, nil, errIgnorePolicy
+			return false, nil, ErrIgnorePolicy
 		}
 		dnsId, err = readDNSRecord(records[0])
 		if err != nil {
@@ -197,7 +196,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 				return true, cachedPolicy, nil
 			}
 			c.Logger.Error("failed read the DNS record, ignoring", err, "domain", domain)
-			return false, nil, errIgnorePolicy
+			return false, nil, ErrIgnorePolicy
 		}
 	}
 
@@ -213,7 +212,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 				return true, cachedPolicy, nil
 			}
 			c.Logger.Error("failed to fetch new policy, ignoring", err, "domain", domain)
-			return false, nil, errIgnorePolicy
+			return false, nil, ErrIgnorePolicy
 		}
 
 		if err := c.store(domain, dnsId, time.Now(), policy); err != nil {
