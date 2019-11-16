@@ -305,8 +305,10 @@ func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) er
 		errs: make(map[string]error),
 	}
 	rd.BodyNonAtomic(&merr, header, buffer)
-	if len(merr.errs) != 0 {
-		return &merr
+	for _, v := range merr.errs {
+		if v != nil {
+			return &merr
+		}
 	}
 	return nil
 }
@@ -332,6 +334,7 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 		go func() {
 			defer wg.Done()
 			setErr := func(err error) {
+				err = rd.wrapClientErr(err, conn.serverName)
 				for _, rcpt := range conn.recipients {
 					c.SetStatus(rcpt, err)
 				}
