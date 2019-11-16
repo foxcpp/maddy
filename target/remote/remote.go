@@ -382,7 +382,7 @@ func (rd *remoteDelivery) Commit() error {
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
 		rd.Log.Debugf("disconnected from %s", conn.serverName)
-		conn.Close()
+		conn.Quit()
 	}
 	return nil
 }
