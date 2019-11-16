@@ -133,7 +133,11 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 		f(s)
 	}
 
-	go s.Serve(l)
+	go func() {
+		if err := s.Serve(l); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	// Dial it once it make sure Server completes its initialization before
 	// we try to use it. Notably, if test fails before connecting to the server,
@@ -222,7 +226,11 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 		RootCAs: pool,
 	}
 
-	go s.Serve(l)
+	go func() {
+		if err := s.Serve(l); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	// Dial it once it make sure Server completes its initialization before
 	// we try to use it. Notably, if test fails before connecting to the server,
@@ -264,7 +272,7 @@ func FailOnConn(t *testing.T, addr string) net.Listener {
 	go func() {
 		_, err := tarpit.Accept()
 		if err == nil {
-			t.Fatal("No connection expected")
+			t.Error("No connection expected")
 		}
 	}()
 	return tarpit
