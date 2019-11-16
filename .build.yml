@@ -11,7 +11,7 @@ tasks:
       go build ./...
   - test: |
       cd maddy
-      go test ./... -cover
+      go test ./... -cover -race
   - build-man-pages: |
       cd maddy/man
       scdoc < maddy.1.scd > /dev/null
