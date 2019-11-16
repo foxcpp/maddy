@@ -3,7 +3,6 @@ package remote
 import (
 	"errors"
 	"net"
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -84,20 +83,7 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
@@ -148,20 +134,7 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
@@ -274,20 +247,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_AuthMX_CommonDomain_Fail(t *testing.T) {
@@ -402,20 +362,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
@@ -517,20 +464,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@[127.0.0.1]"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@[127.0.0.1]"})
 }
 
 func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {

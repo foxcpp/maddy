@@ -6,10 +6,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/exterrors"
 )
 
 // Test server runner, based on emersion/go-smtp tests.
@@ -22,7 +25,6 @@ type SMTPMessage struct {
 
 type SMTPBackend struct {
 	Messages []*SMTPMessage
-	Anonmsgs []*SMTPMessage
 
 	MailErr error
 	RcptErr map[string]error
@@ -35,6 +37,28 @@ func (be *SMTPBackend) Login(_ *smtp.ConnectionState, username, password string)
 
 func (be *SMTPBackend) AnonymousLogin(_ *smtp.ConnectionState) (smtp.Session, error) {
 	return &session{backend: be, anonymous: true}, nil
+}
+
+func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) {
+	if len(be.Messages) <= indx {
+		t.Errorf("Expected at least %d messages in mailbox, got %d", indx+1, len(be.Messages))
+		return
+	}
+
+	msg := be.Messages[indx]
+	if msg.From != from {
+		t.Errorf("Wrong MAIL FROM: %v", msg.From)
+	}
+
+	sort.Strings(msg.To)
+	sort.Strings(rcptTo)
+
+	if !reflect.DeepEqual(msg.To, rcptTo) {
+		t.Errorf("Wrong RCPT TO: %v", msg.To)
+	}
+	if string(msg.Data) != DeliveryData {
+		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
+	}
 }
 
 type session struct {
@@ -244,4 +268,22 @@ func FailOnConn(t *testing.T, addr string) net.Listener {
 		}
 	}()
 	return tarpit
+}
+
+func CheckSMTPErr(t *testing.T, err error, code int, enchCode exterrors.EnhancedCode, msg string) {
+	if err == nil {
+		t.Error("Expected an error, got none")
+		return
+	}
+
+	fields := exterrors.Fields(err)
+	if val, _ := fields["smtp_code"].(int); val != code {
+		t.Errorf("Wrong smtp_code: %v", val)
+	}
+	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); val != enchCode {
+		t.Errorf("Wrong smtp_enchcode: %v", val)
+	}
+	if val, _ := fields["smtp_msg"].(string); val != msg {
+		t.Errorf("Wrong smtp_msg: %v", val)
+	}
 }

@@ -5,9 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -49,19 +47,7 @@ func TestRemoteDelivery(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
 
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_IPLiteral(t *testing.T) {
@@ -93,19 +79,7 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@[127.0.0.1]"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@[127.0.0.1]"})
 }
 
 func TestRemoteDelivery_FallbackMX(t *testing.T) {
@@ -130,20 +104,7 @@ func TestRemoteDelivery_FallbackMX(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
@@ -178,19 +139,7 @@ func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_Abort(t *testing.T) {
@@ -303,20 +252,7 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 	}
 
 	err = delivery.AddRcpt("test@example.invalid")
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
-
-	fields := exterrors.Fields(err)
-	if val, _ := fields["smtp_code"].(int); val != 550 {
-		t.Errorf("Wrong smtp_code: %v", val)
-	}
-	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
-		t.Errorf("Wrong smtp_enchcode: %v", val)
-	}
-	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
-		t.Errorf("Wrong smtp_msg: %v", val)
-	}
+	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
 	if err := delivery.Abort(); err != nil {
 		t.Fatal(err)
@@ -337,7 +273,7 @@ func TestRemoteDelivery_NoMX(t *testing.T) {
 	tgt := Target{
 		name:        "remote",
 		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
+		resolver:    resolver,
 		dialer:      resolver.Dial,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
@@ -385,9 +321,8 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err == nil {
-		t.Fatal("Expected an error, got none")
-	}
+	err = delivery.AddRcpt("test@example.invalid")
+	testutils.CheckSMTPErr(t, err, 556, exterrors.EnhancedCode{5, 1, 10}, "Domain does not accept email (null MX)")
 
 	if err := delivery.Abort(); err != nil {
 		t.Fatal(err)
@@ -478,36 +413,10 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 	}
 
 	err = delivery.AddRcpt("test@example.invalid")
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
-
-	fields := exterrors.Fields(err)
-	if val, _ := fields["smtp_code"].(int); val != 550 {
-		t.Errorf("Wrong smtp_code: %v", val)
-	}
-	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
-		t.Errorf("Wrong smtp_enchcode: %v", val)
-	}
-	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
-		t.Errorf("Wrong smtp_msg: %v", val)
-	}
+	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
 	err = delivery.AddRcpt("test2@example.invalid")
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
-
-	fields = exterrors.Fields(err)
-	if val, _ := fields["smtp_code"].(int); val != 550 {
-		t.Errorf("Wrong smtp_code: %v", val)
-	}
-	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
-		t.Errorf("Wrong smtp_enchcode: %v", val)
-	}
-	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
-		t.Errorf("Wrong smtp_msg: %v", val)
-	}
+	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
 	if err := delivery.Abort(); err != nil {
 		t.Fatal(err)
@@ -551,20 +460,7 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 	}
 
 	err = delivery.AddRcpt("test@example.invalid")
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
-
-	fields := exterrors.Fields(err)
-	if val, _ := fields["smtp_code"].(int); val != 550 {
-		t.Errorf("Wrong smtp_code: %v", val)
-	}
-	if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
-		t.Errorf("Wrong smtp_enchcode: %v", val)
-	}
-	if val, _ := fields["smtp_msg"].(string); val != "mx.example.invalid. said: Hey" {
-		t.Errorf("Wrong smtp_msg: %v", val)
-	}
+	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
 	// It should be possible to, however, add another recipient and continue
 	// delivery as if nothing happened.
@@ -584,19 +480,7 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test2@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test2@example.invalid"})
 }
 
 func TestRemoteDelivery_DownMX(t *testing.T) {
@@ -629,20 +513,7 @@ func TestRemoteDelivery_DownMX(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_AllMXDown(t *testing.T) {
@@ -711,33 +582,8 @@ func TestRemoteDelivery_Split(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid", "test@example2.invalid"})
 
-	if len(be1.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be1.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
-
-	if len(be2.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg = be2.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example2.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be1.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+	be2.CheckMsg(t, 0, "test@example.com", []string{"test@example2.invalid"})
 }
 
 func TestRemoteDelivery_Split_Fail(t *testing.T) {
@@ -808,19 +654,7 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(be2.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be2.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example2.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be2.CheckMsg(t, 0, "test@example.com", []string{"test@example2.invalid"})
 }
 
 func TestRemoteDelivery_BodyErr(t *testing.T) {
@@ -930,14 +764,8 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	err = delivery.Body(hdr, body)
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	fields := exterrors.Fields(err)
-	if code, _ := fields["smtp_code"].(int); code != 451 {
-		t.Errorf("Wrong smtp_code: %v", code)
-	}
+	testutils.CheckSMTPErr(t, err, 451, exterrors.EnhancedCode{4, 0, 0},
+		"Partial delivery failure, additional attempts may result in duplicates")
 
 	if err := delivery.Abort(); err != nil {
 		t.Fatal(err)
@@ -971,27 +799,6 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		Code:         550,
 		EnhancedCode: smtp.EnhancedCode{5, 1, 2},
 		Message:      "Hey",
-	}
-	checkErr := func(err error) {
-		t.Helper()
-
-		t.Logf("%#v", err)
-
-		if err == nil {
-			t.Error("Expected an error, got none")
-			return
-		}
-
-		fields := exterrors.Fields(err)
-		if val, _ := fields["smtp_code"].(int); val != 550 {
-			t.Errorf("Wrong smtp_code: %v", val)
-		}
-		if val, _ := fields["smtp_enchcode"].(exterrors.EnhancedCode); (val != exterrors.EnhancedCode{5, 1, 2}) {
-			t.Errorf("Wrong smtp_enchcode: %v", val)
-		}
-		if val, _ := fields["smtp_msg"].(string); !strings.HasSuffix(val, "Hey") {
-			t.Errorf("Wrong smtp_msg: %v", val)
-		}
 	}
 
 	tgt := Target{
@@ -1027,8 +834,10 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	}
 	delivery.(module.PartialDelivery).BodyNonAtomic(&c, hdr, body)
 
-	checkErr(c.errs["test@example.invalid"])
-	checkErr(c.errs["test2@example.invalid"])
+	testutils.CheckSMTPErr(t, c.errs["test@example.invalid"],
+		550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
+	testutils.CheckSMTPErr(t, c.errs["test2@example.invalid"],
+		550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 	if err := c.errs["test@example2.invalid"]; err != nil {
 		t.Errorf("Unexpected error for non-failing connection: %v", err)
 	}
@@ -1092,20 +901,7 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 	}
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-
-	if len(be.Messages) != 1 {
-		t.Fatalf("Expected to receive a message, got none")
-	}
-	msg := be.Messages[0]
-	if msg.From != "test@example.com" {
-		t.Errorf("Wrong MAIL FROM: %v", msg.From)
-	}
-	if !reflect.DeepEqual(msg.To, []string{"test@example.invalid"}) {
-		t.Errorf("Wrong RCPT TO: %v", msg.To)
-	}
-	if string(msg.Data) != testutils.DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
-	}
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestMain(m *testing.M) {
