@@ -23,7 +23,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 		// so err on the side of caution.
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         40,
+				Code:         420,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 25},
 				Message:      "DNS lookup failure during policy check",
 				CheckName:    "require_matching_rdns",
@@ -58,9 +58,15 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 	_, domain, err := address.Split(mailFrom)
 	if err != nil {
 		return module.CheckResult{
-			Reason: exterrors.WithFields(err, map[string]interface{}{
-				"check": "require_mx_record",
-			}),
+			Reason: &exterrors.SMTPError{
+				Code:         501,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
+				Message:      "Malformed sender address",
+				CheckName:    "require_mx_record",
+				Misc: map[string]interface{}{
+					"reason": err.Error(),
+				},
+			},
 		}
 	}
 	if domain == "" {
@@ -82,11 +88,11 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
-		code := 501
-		enchCode := exterrors.EnhancedCode{5, 7, 27}
+		code := 550
+		enchCode := exterrors.EnhancedCode{5, 7, 0}
 		if exterrors.IsTemporary(err) {
 			code = 420
-			enchCode = exterrors.EnhancedCode{4, 7, 27}
+			enchCode = exterrors.EnhancedCode{4, 7, 0}
 		}
 
 		return module.CheckResult{
@@ -111,7 +117,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 			Reason: &exterrors.SMTPError{
 				Code:         501,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 27},
-				Message:      "Domain in MAIL FROM has no MX records",
+				Message:      "Domain in MAIL FROM does not have any MX records",
 				CheckName:    "require_mx_record",
 			},
 		}
@@ -163,11 +169,11 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ehlo)
 	if err != nil {
-		code := 501
-		enchCode := exterrors.EnhancedCode{5, 7, 27}
+		code := 550
+		enchCode := exterrors.EnhancedCode{5, 7, 0}
 		if exterrors.IsTemporary(err) {
 			code = 420
-			enchCode = exterrors.EnhancedCode{4, 7, 27}
+			enchCode = exterrors.EnhancedCode{4, 7, 0}
 		}
 
 		return module.CheckResult{
