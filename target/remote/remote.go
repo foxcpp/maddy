@@ -422,6 +422,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	}
 
 	if err := conn.Mail(rd.mailFrom); err != nil {
+		conn.Quit()
 		return nil, rd.wrapClientErr(err, conn.serverName)
 	}
 
