@@ -16,18 +16,13 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-func FetchRecord(r dns.Resolver, ctx context.Context, hdr textproto.Header) (orgDomain, fromDomain string, record *dmarc.Record, err error) {
-	orgDomain, fromDomain, err = extractDomains(hdr)
-	if err != nil {
-		return "", "", nil, err
-	}
-
+func FetchRecord(r dns.Resolver, ctx context.Context, orgDomain, fromDomain string) (*dmarc.Record, error) {
 	// 1. Lookup using From Domain.
 	txts, err := r.LookupTXT(ctx, "_dmarc."+fromDomain)
 	if err != nil {
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok || !dnsErr.IsNotFound {
-			return orgDomain, fromDomain, nil, err
+			return nil, err
 		}
 	}
 	if len(txts) == 0 {
@@ -36,12 +31,12 @@ func FetchRecord(r dns.Resolver, ctx context.Context, hdr textproto.Header) (org
 		if err != nil {
 			dnsErr, ok := err.(*net.DNSError)
 			if !ok || !dnsErr.IsNotFound {
-				return orgDomain, fromDomain, nil, err
+				return nil, err
 			}
 		}
 		// Still nothing? Bail out.
 		if len(txts) == 0 {
-			return orgDomain, fromDomain, nil, nil
+			return nil, nil
 		}
 	}
 
@@ -54,11 +49,10 @@ func FetchRecord(r dns.Resolver, ctx context.Context, hdr textproto.Header) (org
 	}
 	// Multiple records => no record.
 	if len(records) > 1 || len(records) == 0 {
-		return orgDomain, fromDomain, nil, nil
+		return nil, nil
 	}
 
-	record, err = dmarc.Parse(records[0])
-	return orgDomain, fromDomain, record, err
+	return dmarc.Parse(records[0])
 }
 
 func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) authres.DMARCResult {
@@ -139,7 +133,7 @@ func isAligned(orgDomain, authDomain string, mode dmarc.AlignmentMode) bool {
 		strings.HasSuffix(authDomain, "."+orgDomain)
 }
 
-func extractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
+func ExtractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
 	// TODO: Add textproto.Header.Count method.
 	var firstFrom string
 	for fields := hdr.FieldsByKey("From"); fields.Next(); {

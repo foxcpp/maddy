@@ -182,7 +182,13 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 }
 
 func (s *state) relyOnDMARC(hdr textproto.Header) bool {
-	orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(net.DefaultResolver, context.Background(), hdr)
+	orgDomain, fromDomain, err := maddydmarc.ExtractDomains(hdr)
+	if err != nil {
+		s.log.Error("DMARC domains extract", err)
+		return false
+	}
+
+	record, err := maddydmarc.FetchRecord(net.DefaultResolver, context.Background(), orgDomain, fromDomain)
 	if err != nil {
 		s.log.Error("DMARC fetch", err, "orgDomain", orgDomain, "fromDomain", fromDomain)
 		return false

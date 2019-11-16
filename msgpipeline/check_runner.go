@@ -269,6 +269,18 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 }
 
 func (cr *checkRunner) fetchDMARC(header textproto.Header) {
+	orgDomain, fromDomain, err := maddydmarc.ExtractDomains(header)
+	if err != nil {
+		cr.dmarcPolicy <- struct {
+			orgDomain  string
+			fromDomain string
+			record     *dmarc.Record
+			err        error
+		}{
+			err: err,
+		}
+	}
+
 	var ctx context.Context
 	ctx, cr.dmarcPolicyCancel = context.WithCancel(context.Background())
 	go func() {
@@ -290,7 +302,7 @@ func (cr *checkRunner) fetchDMARC(header textproto.Header) {
 			}
 		}()
 
-		orgDomain, fromDomain, record, err := maddydmarc.FetchRecord(cr.resolver, ctx, header)
+		record, err := maddydmarc.FetchRecord(cr.resolver, ctx, orgDomain, fromDomain)
 		cr.dmarcPolicy <- struct {
 			orgDomain  string
 			fromDomain string

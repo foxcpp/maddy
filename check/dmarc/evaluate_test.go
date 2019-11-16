@@ -366,7 +366,7 @@ func TestExtractDomains(t *testing.T) {
 			panic(err)
 		}
 
-		orgDomain, fromDomain, err := extractDomains(hdr)
+		orgDomain, fromDomain, err := ExtractDomains(hdr)
 		if c.orgDomain == "" && err == nil {
 			t.Errorf("%d: expected failure, got orgDomain = %s, fromDomain = %s", i, orgDomain, fromDomain)
 			return
