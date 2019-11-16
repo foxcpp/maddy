@@ -247,6 +247,13 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 		}
 	}
 
+	if strings.HasPrefix(domain, "[") {
+		domain, err = rd.domainFromIP(domain)
+		if err != nil {
+			return err
+		}
+	}
+
 	// serverName (MX serv. address) is very useful for tracing purposes and should be logged on all related errors.
 	conn, err := rd.connectionForDomain(domain)
 	if err != nil {
@@ -260,6 +267,110 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	rd.recipients = append(rd.recipients, to)
 	conn.recipients = append(conn.recipients, to)
 	return nil
+}
+
+func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
+	if !strings.HasSuffix(ipLiteral, "]") {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Malformed address literal",
+			TargetName:   "remote",
+		}
+	}
+	ip := ipLiteral[1 : len(ipLiteral)-1]
+	ip = strings.TrimPrefix(ip, "IPv6:")
+
+	if !rd.rt.requireMXAuth {
+		names, err := rd.rt.resolver.LookupAddr(context.Background(), ip)
+		if err != nil {
+			return "", &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+				Message:      "Cannot use that recipient IP",
+				TargetName:   "remote",
+				Misc: map[string]interface{}{
+					"reason": err.Error(),
+				},
+				Err: err,
+			}
+		}
+		if len(names) == 0 {
+			return "", &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+				Message:      "Cannot use this recipient IP",
+				TargetName:   "remote",
+				Misc: map[string]interface{}{
+					"reason": "Missing PTR record",
+				},
+			}
+		}
+
+		return names[0], nil
+	}
+
+	// With required MX authentication, we require DNSSEC-signed PTR.
+	// Most ISPs don't provide this, so this will fail 99.99% of times.
+
+	if _, ok := rd.rt.mxAuth[AuthDNSSEC]; !ok {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Cannot authenticate the recipient IP",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"reason": "DNSSEC authentication should be enabled for IP literals to be accepted",
+			},
+		}
+	}
+
+	if rd.rt.extResolver == nil {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Cannot authenticate the recipient IP",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"reason": "Cannot do DNSSEC authentication without a security-aware resolver",
+			},
+		}
+	}
+
+	ad, names, err := rd.rt.extResolver.AuthLookupAddr(context.Background(), ip)
+	if err != nil {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Cannot use that recipient IP",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"reason": err.Error(),
+			},
+			Err: err,
+		}
+	}
+	if len(names) == 0 {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Used recipient IP lacks a rDNS name",
+			TargetName:   "remote",
+		}
+	}
+	if !ad {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Cannot authenticate the recipient IP",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"reason": "Reverse zone is not DNSSEC-signed",
+			},
+		}
+	}
+
+	return names[0], nil
 }
 
 type multipleErrs struct {
@@ -577,6 +688,12 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		}
 
 		authenticated := false
+
+		// This is exactly the domain we wanted to want to send a message to.
+		if strings.EqualFold(mx.Host, domain) {
+			authenticated = true
+		}
+
 		// If we have MTA-STS - policy match is enough to mark MX as "safe"
 		if policy != nil {
 			if policy.Match(mx.Host) {

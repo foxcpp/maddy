@@ -63,6 +63,50 @@ func TestRemoteDelivery(t *testing.T) {
 	}
 }
 
+func TestRemoteDelivery_IPLiteral(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"1.0.0.127.in-addr.arpa.": {
+			PTR: []string{"mx.example.invalid."},
+		},
+	}
+	resolver := mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &resolver,
+		dialer:      resolver.Dial,
+		extResolver: nil,
+		Log:         testutils.Logger(t, "remote"),
+	}
+
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
+
+	if len(be.Messages) != 1 {
+		t.Fatalf("Expected to receive a message, got none")
+	}
+	msg := be.Messages[0]
+	if msg.From != "test@example.com" {
+		t.Errorf("Wrong MAIL FROM: %v", msg.From)
+	}
+	if !reflect.DeepEqual(msg.To, []string{"test@[127.0.0.1]"}) {
+		t.Errorf("Wrong RCPT TO: %v", msg.To)
+	}
+	if string(msg.Data) != testutils.DeliveryData {
+		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
+	}
+}
+
 func TestRemoteDelivery_FallbackMX(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()

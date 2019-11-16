@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/module"
 )
 
@@ -174,12 +175,12 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
-		t.Fatalf("unexpected Start err: %v", err)
+		t.Fatalf("unexpected Start err: %v %+v", err, exterrors.Fields(err))
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
-			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
+			t.Fatalf("unexpected AddRcpt err for %s: %v %+v", rcpt, err, exterrors.Fields(err))
 		}
 	}
 	t.Log("-- delivery.Body")
@@ -187,11 +188,11 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	if err := delivery.Body(hdr, body); err != nil {
-		t.Fatalf("unexpected Body err: %v", err)
+		t.Fatalf("unexpected Body err: %v %+v", err, exterrors.Fields(err))
 	}
 	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
-		t.Fatalf("unexpected Commit err: %v", err)
+		t.Fatalf("unexpected Commit err: %v %+v", err, exterrors.Fields(err))
 	}
 
 	return encodedID
@@ -211,12 +212,12 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&ctx, from)
 	if err != nil {
-		t.Fatalf("unexpected Start err: %v", err)
+		t.Fatalf("unexpected Start err: %v %+v", err, exterrors.Fields(err))
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
-			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
+			t.Fatalf("unexpected AddRcpt err for %s: %v %+v", rcpt, err, exterrors.Fields(err))
 		}
 	}
 	t.Log("-- delivery.BodyNonAtomic")
@@ -226,7 +227,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	delivery.(module.PartialDelivery).BodyNonAtomic(c, hdr, body)
 	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
-		t.Fatalf("unexpected Commit err: %v", err)
+		t.Fatalf("unexpected Commit err: %v %+v", err, exterrors.Fields(err))
 	}
 
 	return encodedID
@@ -258,7 +259,7 @@ func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to 
 		if err := delivery.AddRcpt(rcpt); err != nil {
 			t.Log("-- delivery.Abort")
 			if err := delivery.Abort(); err != nil {
-				t.Log("-- delivery.Abort:", err)
+				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
 			}
 			return encodedID, err
 		}

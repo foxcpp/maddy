@@ -262,12 +262,6 @@ func TestRemoteDelivery_AuthMX_CommonDomain(t *testing.T) {
 	}
 	resolver := &mockdns.Resolver{Zones: zones}
 
-	dnsSrv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dnsSrv.Close()
-
 	tgt := Target{
 		name:          "remote",
 		hostname:      "mx.example.com",
@@ -312,12 +306,6 @@ func TestRemoteDelivery_AuthMX_CommonDomain_Fail(t *testing.T) {
 	}
 	resolver := &mockdns.Resolver{Zones: zones}
 
-	dnsSrv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dnsSrv.Close()
-
 	tgt := Target{
 		name:          "remote",
 		hostname:      "mx.example.com",
@@ -329,7 +317,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain_Fail(t *testing.T) {
 		Log:           testutils.Logger(t, "remote"),
 	}
 
-	_, err = testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -351,12 +339,6 @@ func TestRemoteDelivery_AuthMX_CommonDomain_NotETLDp1(t *testing.T) {
 	}
 	resolver := &mockdns.Resolver{Zones: zones}
 
-	dnsSrv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dnsSrv.Close()
-
 	tgt := Target{
 		name:          "remote",
 		hostname:      "mx.example.com",
@@ -368,7 +350,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain_NotETLDp1(t *testing.T) {
 		Log:           testutils.Logger(t, "remote"),
 	}
 
-	_, err = testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -481,6 +463,123 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	}
 
 	_, err = testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+}
+
+func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"1.0.0.127.in-addr.arpa.": {
+			AD:  true,
+			PTR: []string{"mx.example.invalid."},
+		},
+	}
+	resolver := mockdns.Resolver{Zones: zones}
+
+	dnsSrv, err := mockdns.NewServer(zones)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dnsSrv.Close()
+
+	dialer := net.Dialer{}
+	dialer.Resolver = &net.Resolver{}
+	dnsSrv.PatchNet(dialer.Resolver)
+	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
+
+	extResolver, err := dns.NewExtResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	extResolver.Cfg.Servers = []string{addr.IP.String()}
+	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
+
+	tgt := Target{
+		name:          "remote",
+		hostname:      "mx.example.com",
+		resolver:      &resolver,
+		dialer:        resolver.Dial,
+		extResolver:   extResolver,
+		requireMXAuth: true,
+		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},
+		Log:           testutils.Logger(t, "remote"),
+	}
+
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
+
+	if len(be.Messages) != 1 {
+		t.Fatalf("Expected to receive a message, got none")
+	}
+	msg := be.Messages[0]
+	if msg.From != "test@example.com" {
+		t.Errorf("Wrong MAIL FROM: %v", msg.From)
+	}
+	if !reflect.DeepEqual(msg.To, []string{"test@[127.0.0.1]"}) {
+		t.Errorf("Wrong RCPT TO: %v", msg.To)
+	}
+	if string(msg.Data) != testutils.DeliveryData {
+		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
+	}
+}
+
+func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
+	tarpit := testutils.FailOnConn(t, "127.0.0.1"+addressSuffix)
+	defer tarpit.Close()
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"1.0.0.127.in-addr.arpa.": {
+			PTR: []string{"mx.example.invalid."},
+		},
+	}
+	resolver := mockdns.Resolver{Zones: zones}
+
+	dnsSrv, err := mockdns.NewServer(zones)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dnsSrv.Close()
+
+	dialer := net.Dialer{}
+	dialer.Resolver = &net.Resolver{}
+	dnsSrv.PatchNet(dialer.Resolver)
+	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
+
+	extResolver, err := dns.NewExtResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	extResolver.Cfg.Servers = []string{addr.IP.String()}
+	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
+
+	tgt := Target{
+		name:          "remote",
+		hostname:      "mx.example.com",
+		resolver:      &resolver,
+		dialer:        resolver.Dial,
+		extResolver:   extResolver,
+		requireMXAuth: true,
+		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},
+		Log:           testutils.Logger(t, "remote"),
+	}
+
+	_, err = testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
