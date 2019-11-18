@@ -260,9 +260,9 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 }
 
 func TestRemoteDelivery_NoMX(t *testing.T) {
-	_, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
+	tarpit := testutils.FailOnConn(t, "127.0.0.1"+addressSuffix)
+	defer tarpit.Close()
+
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{},

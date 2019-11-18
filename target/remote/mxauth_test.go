@@ -366,9 +366,8 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 }
 
 func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
-	_, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
+	tarpit := testutils.FailOnConn(t, "127.0.0.1"+addressSuffix)
+	defer tarpit.Close()
 
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {

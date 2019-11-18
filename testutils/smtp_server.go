@@ -8,6 +8,7 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -135,6 +136,9 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 
 	go func() {
 		if err := s.Serve(l); err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
 			t.Error(err)
 		}
 	}()
@@ -228,6 +232,9 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 
 	go func() {
 		if err := s.Serve(l); err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
 			t.Error(err)
 		}
 	}()
