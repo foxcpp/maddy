@@ -170,9 +170,7 @@ func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, er
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
 				Message:      "Invalid sender address",
 				Err:          err,
-				Misc: map[string]interface{}{
-					"reason": "Can't extract local-part and host-part",
-				},
+				Reason:       "Can't extract local-part and host-part",
 			}
 		}
 
@@ -432,9 +430,7 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
 				Message:      "Invalid recipient address",
 				Err:          err,
-				Misc: map[string]interface{}{
-					"reason": "Can't extract local-part and host-part",
-				},
+				Reason:       "Can't extract local-part and host-part",
 			}
 		}
 

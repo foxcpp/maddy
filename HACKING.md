@@ -43,7 +43,7 @@ well.
 There are components called "modules". They are represented by objects
 implementing the module.Module interface. Each module gets its unique name.
 The function used to create a module instance is saved with this name as a key
-into the global map called "modules registry". 
+into the global map called "modules registry".
 
 Whenever module needs another module for some functionality, it references it
 using a configuration directive with a matcher that internalls calls
@@ -66,10 +66,32 @@ initialization path, so they are always initialized directly.
 Familarize yourself with the github.com/foxcpp/maddy/exterrors package and
 make sure you have the following for returned errors.
 - SMTP status information (smtp\_code, smtp\_enchcode, smtp\_msg fields)
+  - SMTP message text should contain a generic description of the error
+    condition without any details to prevent accidental disclosure of the
+    server configuration details.
 - Temporary() == true for temporary errors (see exterrors.WithTemporary)
-- Field that includes module name
+- Field that includes the module name
 
 The easiest way to get all of these is to use exterrors.SMTPError.
+Put the original error into the Err field, so it can be inspected using
+errors.Is, errors.Unwrap, etc. Put the module name into CheckName or
+TargetName. Add any additional context information using the Misc field.
+Note, the SMTP status code overrides the result of exterrors.IsTemporary()
+for that error object, so set it using exterrors.SMTPCode that uses IsTemporary
+to select between two codes.
+
+If the error you are wrapping contains details in its structure fields (like
+`*net.OpError`) - copy these values into Misc map, put the underlying error
+object (net.OpError.Err, for example) into the Err field.
+Avoid using Reason unless you are sure you can provide the error message better
+than the Err.Error() or Err is nil.
+
+Do not attempt to add a SMTP status information for every single possible
+error. Use exterrors.WithFields with basic information for errors you don't
+expect. The SMTP client will get the "Internal server error" message and this
+is generally the right thing to do on unexpected errors.
+
+### Goroutines and panics
 
 If you start any goroutines - make sure to catch panics to make sure severe
 bugs will not bring the whole server down.
@@ -97,7 +119,7 @@ Here are some guidelines to make sure your check works well:
 
 ## Adding a modifier
 
-"Modifier" is a module that can modify some parts of the message data. 
+"Modifier" is a module that can modify some parts of the message data.
 
 Note, currently this is not possible to modify the body contents, only header
 can be modified.

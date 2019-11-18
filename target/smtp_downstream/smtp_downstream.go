@@ -232,8 +232,8 @@ func (d *delivery) wrapClientErrAddr(err error, addr string) error {
 			Message:      "DNS error",
 			TargetName:   "smtp_downstream",
 			Err:          err,
+			Reason:       err.Err,
 			Misc: map[string]interface{}{
-				"reason":            err.Err,
 				"downstream_server": addr,
 			},
 		}
@@ -245,7 +245,6 @@ func (d *delivery) wrapClientErrAddr(err error, addr string) error {
 			TargetName:   "smtp_downstream",
 			Err:          err,
 			Misc: map[string]interface{}{
-				"reason":      err.Error(),
 				"remote_addr": err.Addr,
 				"io_op":       err.Op,
 			},

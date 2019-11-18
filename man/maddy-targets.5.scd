@@ -252,7 +252,7 @@ Valid values:
 
   Request "external" SASL authentication. This is usually used for
   authentication using TLS client certificates. See *maddy-tls*(5)
-  for how to specify client certificate.
+  for how to specify the client certificate.
 
 *Syntax*: target _endpoints..._ ++
 *Default:* not specified

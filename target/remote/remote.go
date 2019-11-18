@@ -211,7 +211,6 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Message:      "Network I/O error",
 			TargetName:   "remote",
 			Misc: map[string]interface{}{
-				"reason":      err.Error(),
 				"remote_addr": err.Addr,
 				"io_op":       err.Op,
 			},
@@ -292,10 +291,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 				Message:      "Cannot use that recipient IP",
 				TargetName:   "remote",
-				Misc: map[string]interface{}{
-					"reason": err.Error(),
-				},
-				Err: err,
+				Err:          err,
 			}
 		}
 		if len(names) == 0 {
@@ -304,9 +300,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 				Message:      "Cannot use this recipient IP",
 				TargetName:   "remote",
-				Misc: map[string]interface{}{
-					"reason": "Missing PTR record",
-				},
+				Reason:       "Missing the PTR record",
 			}
 		}
 
@@ -322,9 +316,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 			Message:      "Cannot authenticate the recipient IP",
 			TargetName:   "remote",
-			Misc: map[string]interface{}{
-				"reason": "DNSSEC authentication should be enabled for IP literals to be accepted",
-			},
+			Reason:       "DNSSEC authentication should be enabled for IP literals to be accepted",
 		}
 	}
 
@@ -334,9 +326,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 			Message:      "Cannot authenticate the recipient IP",
 			TargetName:   "remote",
-			Misc: map[string]interface{}{
-				"reason": "Cannot do DNSSEC authentication without a security-aware resolver",
-			},
+			Reason:       "Cannot do DNSSEC authentication without a security-aware resolver",
 		}
 	}
 
@@ -347,10 +337,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 			Message:      "Cannot use that recipient IP",
 			TargetName:   "remote",
-			Misc: map[string]interface{}{
-				"reason": err.Error(),
-			},
-			Err: err,
+			Err:          err,
 		}
 	}
 	if len(names) == 0 {
@@ -367,9 +354,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 			Message:      "Cannot authenticate the recipient IP",
 			TargetName:   "remote",
-			Misc: map[string]interface{}{
-				"reason": "Reverse zone is not DNSSEC-signed",
-			},
+			Reason:       "Reverse zone is not DNSSEC-signed",
 		}
 	}
 
@@ -579,7 +564,6 @@ func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 			TargetName:   "remote",
 			Err:          err,
 			Misc: map[string]interface{}{
-				"reason": err.Error(),
 				"domain": domain,
 			},
 		}
@@ -777,9 +761,6 @@ func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net
 				Message:      "MX lookup error",
 				TargetName:   "remote",
 				Err:          err,
-				Misc: map[string]interface{}{
-					"reason": err.Error(),
-				},
 			}
 		}
 		return ad, records, nil
@@ -799,9 +780,6 @@ func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net
 			Message:      "MX lookup error",
 			TargetName:   "remote",
 			Err:          err,
-			Misc: map[string]interface{}{
-				"reason": err.Error(),
-			},
 		}
 	}
 	return false, records, err

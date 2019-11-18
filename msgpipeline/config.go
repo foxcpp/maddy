@@ -299,9 +299,7 @@ func parseRejectDirective(node config.Node) (*exterrors.SMTPError, error) {
 		Code:         code,
 		EnhancedCode: enchCode,
 		Message:      msg,
-		Misc: map[string]interface{}{
-			"reason": "reject directive used",
-		},
+		Reason:       "reject directive used",
 	}, nil
 }
 

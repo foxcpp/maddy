@@ -25,7 +25,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 			Reason: &exterrors.SMTPError{
 				Code:         420,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 25},
-				Message:      "DNS lookup failure during policy check",
+				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_rdns",
 			},
 		}
@@ -63,9 +63,6 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
 				Message:      "Malformed sender address",
 				CheckName:    "require_mx_record",
-				Misc: map[string]interface{}{
-					"reason": err.Error(),
-				},
 			},
 		}
 	}
@@ -74,7 +71,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 			Reason: &exterrors.SMTPError{
 				Code:         501,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
-				Message:      "No domain part",
+				Message:      "No domain part in address",
 				CheckName:    "require_mx_record",
 			},
 		}
@@ -88,26 +85,13 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
-		code := 550
-		enchCode := exterrors.EnhancedCode{5, 7, 0}
-		if exterrors.IsTemporary(err) {
-			code = 420
-			enchCode = exterrors.EnhancedCode{4, 7, 0}
-		}
-
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         code,
-				EnhancedCode: enchCode,
-				Message:      "DNS lookup failure during policy check",
+				Code:         exterrors.SMTPCode(err, 420, 550),
+				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
+				Message:      "DNS error during policy check",
 				CheckName:    "require_mx_record",
 				Err:          err,
-				// Since net and miekg/dns errors are not annotated with
-				// context information, Err: err is essentially no-op. Provide
-				// original error text for logging explicitly.
-				Misc: map[string]interface{}{
-					"reason": err.Error(),
-				},
 			},
 		}
 	}
@@ -158,7 +142,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 				Reason: &exterrors.SMTPError{
 					Code:         550,
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-					Message:      "IP in EHLO is not the same as actual client IP",
+					Message:      "IP in EHLO is not the same as the actual client IP",
 					CheckName:    "require_matching_ehlo",
 				},
 			}
@@ -169,26 +153,13 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ehlo)
 	if err != nil {
-		code := 550
-		enchCode := exterrors.EnhancedCode{5, 7, 0}
-		if exterrors.IsTemporary(err) {
-			code = 420
-			enchCode = exterrors.EnhancedCode{4, 7, 0}
-		}
-
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         code,
-				EnhancedCode: enchCode,
-				Message:      "DNS lookup failure during policy check",
+				Code:         exterrors.SMTPCode(err, 420, 550),
+				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
+				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_ehlo",
 				Err:          err,
-				// Since net and miekg/dns errors are not annotated with
-				// context information, Err: err is essentially no-op. Provide
-				// original error text for logging explicitly.
-				Misc: map[string]interface{}{
-					"reason": err.Error(),
-				},
 			},
 		}
 	}
@@ -203,7 +174,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 		Reason: &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-			Message:      "No matching A/AAA records found for EHLO hostname",
+			Message:      "No matching A/AAA records found for the EHLO hostname",
 			CheckName:    "require_matching_ehlo",
 		},
 	}

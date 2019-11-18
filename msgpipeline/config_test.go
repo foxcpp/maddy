@@ -14,9 +14,7 @@ func policyError(code int) error {
 		Message:      "Message rejected due to a local policy",
 		Code:         code,
 		EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-		Misc: map[string]interface{}{
-			"reason": "reject directive used",
-		},
+		Reason:       "reject directive used",
 	}
 }
 

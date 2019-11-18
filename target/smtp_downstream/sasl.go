@@ -33,9 +33,7 @@ func saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 					Message:      "Authentication is required",
 					TargetName:   "smtp_downstream",
-					Misc: map[string]interface{}{
-						"reason": "Credentials forwarding is requested but the client is not authenticated",
-					},
+					Reason:       "Credentials forwarding is requested but the client is not authenticated",
 				}
 			}
 			// TODO: See if it is useful to support custom identity argument.
