@@ -78,6 +78,7 @@ syn keyword maddyDispatchDir
 	\ reject
 	\ deliver_to
 	\ reroute
+	\ dmarc
 
 " grep --no-file -E 'cfg..+\(".+", ' **.go | sed -E 's/.+cfg..+\("([^"]+)", .+/\1/' | sort -u
 syn keyword maddyModDir

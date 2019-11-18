@@ -14,8 +14,7 @@ changes happen from time to time**
   - IMAP4rev1 & SMTP server in one binary
   - [DKIM][dkim] signing and verification
   - [SPF][spf] policy enforcement
-  - [DMARC][dmarc] policy enforcement (experimental,
-    enable with `dmarc on` in smtp config)
+  - [DMARC][dmarc] policy enforcement
   - [MTA-STS][mtasts] policy enforcement
 * Simple to configure
   - Two steps (excluding messing with DNS) to get your own
