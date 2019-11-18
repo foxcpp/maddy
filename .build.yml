@@ -1,10 +1,10 @@
-image: alpine/edge
+image: archlinux
 packages:
   - go
-  - linux-pam-dev
+  - pam
   - scdoc
 sources:
-  - https://github.com/emersion/maddy
+  - https://github.com/foxcpp/maddy
 tasks:
   - build: |
       cd maddy
