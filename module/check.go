@@ -12,6 +12,11 @@ import (
 type Check interface {
 	// CheckStateForMsg initializes the "internal" check state required for
 	// processing of the new message.
+	//
+	// NOTE: Returned CheckState object must be hashable (usable as a map key).
+	// This is used to deduplicate Check* calls, the easiest way to achieve
+	// this is to have CheckState as a pointer to some struct, all pointers
+	// are hashable.
 	CheckStateForMsg(msgMeta *MsgMetadata) (CheckState, error)
 }
 

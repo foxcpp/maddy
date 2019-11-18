@@ -344,14 +344,14 @@ type state struct {
 }
 
 func (bl *DNSBL) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
-	return state{
+	return &state{
 		bl:      bl,
 		msgMeta: msgMeta,
 		log:     target.DeliveryLogger(bl.log, msgMeta),
 	}, nil
 }
 
-func (s state) CheckConnection() module.CheckResult {
+func (s *state) CheckConnection() module.CheckResult {
 	if s.bl.checkEarly {
 		// Already checked before.
 		return module.CheckResult{}
@@ -375,19 +375,19 @@ func (s state) CheckConnection() module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (state) CheckSender(string) module.CheckResult {
+func (*state) CheckSender(string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (state) CheckRcpt(string) module.CheckResult {
+func (*state) CheckRcpt(string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (state) CheckBody(textproto.Header, buffer.Buffer) module.CheckResult {
+func (*state) CheckBody(textproto.Header, buffer.Buffer) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (state) Close() error {
+func (*state) Close() error {
 	return nil
 }
 

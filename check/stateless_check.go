@@ -53,7 +53,7 @@ type statelessCheckState struct {
 	msgMeta *module.MsgMetadata
 }
 
-func (s statelessCheckState) CheckConnection() module.CheckResult {
+func (s *statelessCheckState) CheckConnection() module.CheckResult {
 	if s.c.connCheck == nil {
 		return module.CheckResult{}
 	}
@@ -66,7 +66,7 @@ func (s statelessCheckState) CheckConnection() module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
+func (s *statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
 	if s.c.senderCheck == nil {
 		return module.CheckResult{}
 	}
@@ -79,7 +79,7 @@ func (s statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
+func (s *statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
 	if s.c.rcptCheck == nil {
 		return module.CheckResult{}
 	}
@@ -92,7 +92,7 @@ func (s statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s *statelessCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.bodyCheck == nil {
 		return module.CheckResult{}
 	}
@@ -105,12 +105,12 @@ func (s statelessCheckState) CheckBody(header textproto.Header, body buffer.Buff
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s statelessCheckState) Close() error {
+func (s *statelessCheckState) Close() error {
 	return nil
 }
 
 func (c *statelessCheck) CheckStateForMsg(ctx *module.MsgMetadata) (module.CheckState, error) {
-	return statelessCheckState{
+	return &statelessCheckState{
 		c:       c,
 		msgMeta: ctx,
 	}, nil
