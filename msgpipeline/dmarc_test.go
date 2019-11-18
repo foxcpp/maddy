@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/buffer"
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/testutils"
 )
@@ -117,7 +118,7 @@ func TestDMARC(t *testing.T) {
 			return
 		}
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("unexpected error: %v %+v", err, exterrors.Fields(err))
 			return
 		}
 
@@ -142,6 +143,7 @@ func TestDMARC(t *testing.T) {
 	// No policy => DMARC 'none'
 	test(map[string]mockdns.Zone{}, "From: hello@example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultNone)
 
 	// Policy present & identifiers align => DMARC 'pass'
@@ -151,7 +153,26 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
+
+	// No SPF check run => DMARC 'none', no action taken
+	test(map[string]mockdns.Zone{
+		"_dmarc.example.org.": mockdns.Zone{
+			TXT: []string{"v=DMARC1; p=reject"},
+		},
+	}, "From: hello@example.org\r\n\r\n", []authres.Result{
+		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+	}, false, false, authres.ResultNone)
+
+	// No DKIM check run => DMARC 'none', no action taken
+	test(map[string]mockdns.Zone{
+		"_dmarc.example.org.": mockdns.Zone{
+			TXT: []string{"v=DMARC1; p=reject"},
+		},
+	}, "From: hello@example.org\r\n\r\n", []authres.Result{
+		&authres.SPFResult{Value: authres.ResultPass, From: "example.org", Helo: "mx.example.org"},
+	}, false, false, authres.ResultNone)
 
 	// Check org. domain and from domain, prefer from domain.
 	// https://tools.ietf.org/html/rfc7489#section-6.6.3
@@ -161,6 +182,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
 	test(map[string]mockdns.Zone{
 		"_dmarc.sub.example.org.": mockdns.Zone{
@@ -168,6 +190,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
 	test(map[string]mockdns.Zone{
 		"_dmarc.sub.example.org.": mockdns.Zone{
@@ -178,6 +201,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
 
 	// Non-DMARC records are ignored.
@@ -188,6 +212,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
 
 	// Multiple policies => no policy.
@@ -198,6 +223,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultNone)
 
 	// Malformed policy => no policy
@@ -207,6 +233,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultNone)
 
 	// Policy fetch error => DMARC 'permerror' but the message
@@ -217,6 +244,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPermError)
 
 	// Policy fetch error => DMARC 'temperror' but the message
@@ -230,6 +258,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultTempError)
 
 	// Misaligned From vs DKIM => DMARC 'fail'.
@@ -242,6 +271,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultFail)
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to reject
@@ -251,6 +281,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, true, false, "")
 
 	// Misaligned From vs DKIM => DMARC 'fail'
@@ -261,6 +292,7 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@sub.example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultFail)
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to quarantine.
@@ -270,5 +302,6 @@ func TestDMARC(t *testing.T) {
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
+		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, true, authres.ResultFail)
 }

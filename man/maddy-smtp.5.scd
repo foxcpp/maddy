@@ -114,7 +114,7 @@ check module.
 *NOTE*: Report generation is not implemented now.
 
 *NOTE*: DMARC needs apply_spf and verify_dkim checks to function correctly.
-Without these checks, you will get false negatives.
+Without these, DMARC check will not run.
 
 # Submission module (submission)
 

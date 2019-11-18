@@ -59,11 +59,14 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 	var (
 		spfAligned   = false
 		spfTempFail  = false
+		spfPresent   = false
 		dkimAligned  = false
 		dkimTempFail = false
+		dkimPresent  = false
 	)
 	for _, res := range results {
 		if dkimRes, ok := res.(*authres.DKIMResult); ok {
+			dkimPresent = true
 			if isAligned(orgDomain, dkimRes.Domain, record.DKIMAlignment) {
 				switch dkimRes.Value {
 				case authres.ResultPass:
@@ -74,6 +77,7 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 			}
 		}
 		if spfRes, ok := res.(*authres.SPFResult); ok {
+			spfPresent = true
 			var aligned bool
 			if spfRes.From == "" {
 				aligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
@@ -88,6 +92,14 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 					spfTempFail = true
 				}
 			}
+		}
+	}
+
+	if !spfPresent || !dkimPresent {
+		return authres.DMARCResult{
+			Value:  authres.ResultNone,
+			Reason: "Not enough information (required checks are disabled)",
+			From:   orgDomain,
 		}
 	}
 

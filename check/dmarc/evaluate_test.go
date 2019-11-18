@@ -30,7 +30,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			orgDomain: "example.org",
 			record:    &dmarc.Record{},
 
-			output: authres.ResultFail,
+			output: authres.ResultNone,
 		},
 		{ // 1
 			orgDomain: "example.org",
@@ -40,6 +40,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value: authres.ResultFail,
 					From:  "example.org",
 					Helo:  "mx.example.org",
+				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
 				},
 			},
 			output: authres.ResultFail,
@@ -53,6 +57,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "example.org",
 					Helo:  "mx.example.org",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultPass,
 		},
@@ -64,6 +72,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value: authres.ResultFail,
 					From:  "example.org",
 					Helo:  "mx.example.org",
+				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
 				},
 			},
 			output: authres.ResultFail,
@@ -77,6 +89,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "example.com",
 					Helo:  "mx.example.com",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultFail,
 		},
@@ -88,6 +104,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value: authres.ResultPass,
 					From:  "cbg.bounces.example.com",
 					Helo:  "mx.example.com",
+				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
 				},
 			},
 			output: authres.ResultPass,
@@ -103,6 +123,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "cbg.bounces.example.com",
 					Helo:  "mx.example.com",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultFail,
 		},
@@ -114,6 +138,11 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value:  authres.ResultFail,
 					Domain: "example.org",
 				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
+				},
 			},
 			output: authres.ResultFail,
 		},
@@ -124,6 +153,11 @@ func TestEvaluateAlignment(t *testing.T) {
 				&authres.DKIMResult{
 					Value:  authres.ResultPass,
 					Domain: "example.org",
+				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
 				},
 			},
 			output: authres.ResultPass,
@@ -219,6 +253,11 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value:  authres.ResultFail,
 					Domain: "example.com",
 				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
+				},
 			},
 			output: authres.ResultPass,
 		},
@@ -230,6 +269,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value: authres.ResultPass,
 					From:  "",
 					Helo:  "mx.example.com",
+				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
 				},
 			},
 			output: authres.ResultPass,
@@ -245,6 +288,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "",
 					Helo:  "mx.example.com",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultFail,
 		},
@@ -259,6 +306,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "",
 					Helo:  "mx.example.com",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultFail,
 		},
@@ -271,6 +322,10 @@ func TestEvaluateAlignment(t *testing.T) {
 					From:  "",
 					Helo:  "mx.example.com",
 				},
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
 			},
 			output: authres.ResultTempError,
 		},
@@ -281,6 +336,11 @@ func TestEvaluateAlignment(t *testing.T) {
 				&authres.DKIMResult{
 					Value:  authres.ResultTempError,
 					Domain: "example.com",
+				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
 				},
 			},
 			output: authres.ResultTempError,
@@ -329,6 +389,11 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value:  authres.ResultTempError,
 					Domain: "example.org",
 				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
+				},
 			},
 			output: authres.ResultPass,
 		},
@@ -344,8 +409,29 @@ func TestEvaluateAlignment(t *testing.T) {
 					Value:  authres.ResultTempError,
 					Domain: "example.org",
 				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
+				},
 			},
 			output: authres.ResultTempError,
+		},
+		{ // 23
+			orgDomain: "example.org",
+			record:    &dmarc.Record{},
+			results: []authres.Result{
+				&authres.DKIMResult{
+					Value:  authres.ResultNone,
+					Domain: "example.org",
+				},
+				&authres.SPFResult{
+					Value: authres.ResultNone,
+					From:  "example.org",
+					Helo:  "mx.example.org",
+				},
+			},
+			output: authres.ResultFail,
 		},
 	}
 	for i, case_ := range cases {

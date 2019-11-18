@@ -347,6 +347,13 @@ func (cr *checkRunner) applyDMARC() error {
 		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy, "org_domain", dmarcData.orgDomain)
 		return nil
 	}
+	if result.Value == authres.ResultNone {
+		cr.log.Msg("none with exiting policy",
+			"p", dmarcData.record.Policy,
+			"org_domain",
+			dmarcData.orgDomain, "reason", result.Reason)
+		return nil
+	}
 	// TODO: Report generation.
 
 	if dmarcData.record.Percent != nil && rand.Int31n(100) > int32(*dmarcData.record.Percent) {
