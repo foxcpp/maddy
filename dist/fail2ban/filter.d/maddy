@@ -1,2 +1,0 @@
-[Definition]
-failregex = authentication failed \(username="(.+)"; src_ip="<HOST>:[0-9]+"\)
