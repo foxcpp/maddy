@@ -143,10 +143,7 @@ func (d *delivery) connect() error {
 		lastDownstream = addr
 	}
 	if lastErr != nil {
-		return exterrors.WithFields(lastErr, map[string]interface{}{
-			"target":            "smtp_downstream",
-			"downstream_server": lastDownstream,
-		})
+		return d.wrapClientErrAddr(lastErr, lastDownstream)
 	}
 
 	if d.u.saslFactory != nil {
@@ -209,6 +206,10 @@ func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*
 }
 
 func (d *delivery) wrapClientErr(err error) error {
+	return d.wrapClientErrAddr(err, d.downstreamAddr)
+}
+
+func (d *delivery) wrapClientErrAddr(err error, addr string) error {
 	if err == nil {
 		return nil
 	}
@@ -219,13 +220,39 @@ func (d *delivery) wrapClientErr(err error) error {
 			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
 			Message:      err.Message,
 			TargetName:   "smtp_downstream",
+			Err:          err,
 			Misc: map[string]interface{}{
-				"downstream_server": d.downstreamAddr,
+				"downstream_server": addr,
+			},
+		}
+	case *net.DNSError:
+		return &exterrors.SMTPError{
+			Code:         exterrors.SMTPCode(err, 421, 550),
+			EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4}),
+			Message:      "DNS error",
+			TargetName:   "smtp_downstream",
+			Err:          err,
+			Misc: map[string]interface{}{
+				"reason":            err.Err,
+				"downstream_server": addr,
+			},
+		}
+	case *net.OpError:
+		return &exterrors.SMTPError{
+			Code:         421,
+			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
+			Message:      "Network I/O error",
+			TargetName:   "smtp_downstream",
+			Err:          err,
+			Misc: map[string]interface{}{
+				"reason":      err.Error(),
+				"remote_addr": err.Addr,
+				"io_op":       err.Op,
 			},
 		}
 	default:
 		return exterrors.WithFields(err, map[string]interface{}{
-			"downstream_server": d.downstreamAddr,
+			"downstream_server": addr,
 			"target":            "smtp_downstream",
 		})
 	}

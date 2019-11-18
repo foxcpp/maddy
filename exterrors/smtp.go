@@ -64,3 +64,24 @@ func (se *SMTPError) Temporary() bool {
 func (se *SMTPError) Error() string {
 	return se.Message
 }
+
+// SMTPCode is a convenience function that returns one of its arguments
+// depending on the result of exterrors.IsTemporary for the specified error
+// object.
+func SMTPCode(err error, temporaryCode, permanentCode int) int {
+	if IsTemporary(err) {
+		return temporaryCode
+	}
+	return permanentCode
+}
+
+// SMTPEnchCode is a convenience function changes the first number of the SMTP enhanced
+// status code based on the value exterrors.IsTemporary returns for the specified
+// error object.
+func SMTPEnchCode(err error, code EnhancedCode) EnhancedCode {
+	if IsTemporary(err) {
+		code[0] = 4
+	}
+	code[0] = 5
+	return code
+}
