@@ -6,13 +6,13 @@ import (
 	"github.com/foxcpp/maddy/exterrors"
 )
 
-type saslClientFactory func(downstreamUser, downstreamPass string) (sasl.Client, error)
+type saslClientFactory = func(downstreamUser, downstreamPass string) (sasl.Client, error)
 
 // saslAuthDirective returns saslClientFactory function used to create sasl.Client.
 // for use in outbound connections.
 //
 // Authentication information of the current client should be passed in arguments.
-func (u *Downstream) saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	if len(node.Children) != 0 {
 		return nil, m.MatchErr("can't declare a block here")
 	}
@@ -28,7 +28,6 @@ func (u *Downstream) saslAuthDirective(m *config.Map, node *config.Node) (interf
 		}
 		return func(downstreamUser, downstreamPass string) (sasl.Client, error) {
 			if downstreamUser == "" || downstreamPass == "" {
-				u.log.Printf("client is not authenticated, can't forward credentials")
 				return nil, &exterrors.SMTPError{
 					Code:         530,
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},

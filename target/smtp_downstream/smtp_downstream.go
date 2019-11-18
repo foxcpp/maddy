@@ -59,7 +59,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	//   Pick next server from list each time.
 	cfg.Custom("auth", false, false, func() (interface{}, error) {
 		return nil, nil
-	}, u.saslAuthDirective, &u.saslFactory)
+	}, saslAuthDirective, &u.saslFactory)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return tls.Config{}, nil
 	}, config.TLSClientBlock, &u.tlsConfig)

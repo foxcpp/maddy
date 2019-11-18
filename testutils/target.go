@@ -162,18 +162,20 @@ func (dtd *testTargetDelivery) Commit() error {
 }
 
 func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []string) string {
+	return DoTestDeliveryMeta(t, tgt, from, to, &module.MsgMetadata{})
+}
+
+func DoTestDeliveryMeta(t *testing.T, tgt module.DeliveryTarget, from string, to []string, msgMeta *module.MsgMetadata) string {
 	t.Helper()
 
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
-	ctx := module.MsgMetadata{
-		DontTraceSender: true,
-		ID:              encodedID,
-	}
+	msgMeta.DontTraceSender = true
+	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(&ctx, from)
+	delivery, err := tgt.Start(msgMeta, from)
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v %+v", err, exterrors.Fields(err))
 	}
@@ -239,18 +241,20 @@ const DeliveryData = "A: 1\n" +
 	"foobar\n"
 
 func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
+	return DoTestDeliveryErrMeta(t, tgt, from, to, &module.MsgMetadata{})
+}
+
+func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string, to []string, msgMeta *module.MsgMetadata) (string, error) {
 	t.Helper()
 
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
-	ctx := module.MsgMetadata{
-		DontTraceSender: true,
-		ID:              encodedID,
-	}
+	msgMeta.DontTraceSender = true
+	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(&ctx, from)
+	delivery, err := tgt.Start(msgMeta, from)
 	if err != nil {
 		return encodedID, err
 	}
