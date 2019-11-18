@@ -14,7 +14,7 @@ imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
     debug no
     insecure_auth no
     auth pam
-    storage local_mailboxes
+    storage &local_mailboxes
 }
 ```
 

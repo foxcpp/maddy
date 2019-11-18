@@ -23,7 +23,7 @@ smtp tcp://0.0.0.0:25 {
 
     # Example pipeline ocnfiguration.
     destination example.org {
-        deliver_to local_mboxes
+        deliver_to &local_mailboxes
     }
     default_destination {
         reject
@@ -115,7 +115,7 @@ Cc, Bcc, Reply-To are correct and adds Message-ID and Date if it is missing.
 
 ```
 submission tcp://0.0.0.0:587 tls://0.0.0.0:465 {
-    # ... same as smtp ... 
+    # ... same as smtp ...
 }
 ```
 
@@ -126,7 +126,7 @@ LMTP (RFC 2033) protocol.
 
 ```
 lmtp unix://lmtp.sock {
-    # ... same as smtp ... 
+    # ... same as smtp ...
 }
 ```
 
@@ -234,7 +234,7 @@ source example.org {
     # We are example.com, so deliver all messages with recipients
     # at example.com to our local mailboxes.
     destination example.com {
-        deliver_to local_mailboxes
+        deliver_to &local_mailboxes
     }
 
     # We don't do anything with recipients at different domains
@@ -342,7 +342,7 @@ Example:
 # All messages coming from example.org domain will be delivered
 # to local_mailboxes.
 source example.org {
-    deliver_to local_mailboxes
+    deliver_to &local_mailboxes
 }
 # Messages coming from different domains will be rejected.
 default_source {
@@ -353,7 +353,7 @@ default_source {
 *Syntax*: reroute { ... } ++
 *Context*: pipeline configuration, source block, destination block
 
-This directive allows to make message routing decisions based on the 
+This directive allows to make message routing decisions based on the
 result of modifiers. The block can contain all pipeline directives and they
 will be handled the same with the exception that source and destination rules
 will use the final recipient and sender values (e.g. after all modifiers are
@@ -367,10 +367,10 @@ destination example.org {
     }
     reroute {
         destination example.org {
-            deliver_to local_mailboxes
+            deliver_to &local_mailboxes
         }
         default_destination {
-            deliver_to remote_queue
+            deliver_to &remote_queue
         }
     }
 }
@@ -398,7 +398,7 @@ Example:
 # Messages with recipients at example.com domain will be
 # delivered to local_mailboxes target.
 destination example.com {
-    deliver_to local_mailboxes
+    deliver_to &local_mailboxes
 }
 
 # Messages with other recipients will be rejected.
