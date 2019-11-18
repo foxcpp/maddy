@@ -211,7 +211,7 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 	}
 
 	if data.quarantineErr != nil {
-		cr.log.Error("quarantined", data.quarantineErr, "reason", data.quarantineErr.Error())
+		cr.log.Error("quarantined", data.quarantineErr)
 		cr.mergedRes.Quarantine = true
 	}
 

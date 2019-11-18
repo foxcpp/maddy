@@ -96,7 +96,9 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 
 	name, err := dns.LookupAddr(ctx, s.endp.resolver, tcpAddr.IP)
 	if err != nil {
-		s.log.Error("rDNS error", err)
+		reason, misc := exterrors.UnwrapDNSErr(err)
+		misc["reason"] = reason
+		s.log.Error("rDNS error", exterrors.WithFields(err, misc))
 		s.msgMeta.SrcRDNSName.Set(nil)
 		return
 	}

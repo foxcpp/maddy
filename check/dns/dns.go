@@ -85,6 +85,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
+		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:         exterrors.SMTPCode(err, 420, 550),
@@ -92,6 +93,8 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 				Message:      "DNS error during policy check",
 				CheckName:    "require_mx_record",
 				Err:          err,
+				Reason:       reason,
+				Misc:         misc,
 			},
 		}
 	}
@@ -153,6 +156,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 
 	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ehlo)
 	if err != nil {
+		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:         exterrors.SMTPCode(err, 420, 550),
@@ -160,6 +164,8 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_ehlo",
 				Err:          err,
+				Reason:       reason,
+				Misc:         misc,
 			},
 		}
 	}

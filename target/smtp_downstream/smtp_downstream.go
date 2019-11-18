@@ -226,16 +226,16 @@ func (d *delivery) wrapClientErrAddr(err error, addr string) error {
 			},
 		}
 	case *net.DNSError:
+		reason, misc := exterrors.UnwrapDNSErr(err)
+		misc["downstream_server"] = addr
 		return &exterrors.SMTPError{
 			Code:         exterrors.SMTPCode(err, 421, 550),
 			EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4}),
 			Message:      "DNS error",
 			TargetName:   "smtp_downstream",
 			Err:          err,
-			Reason:       err.Err,
-			Misc: map[string]interface{}{
-				"downstream_server": addr,
-			},
+			Reason:       reason,
+			Misc:         misc,
 		}
 	case *net.OpError:
 		return &exterrors.SMTPError{
