@@ -112,7 +112,11 @@ func (u *Downstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	if err := d.connect(); err != nil {
 		return nil, err
 	}
-	return d, d.client.Mail(mailFrom)
+	if err := d.client.Mail(mailFrom); err != nil {
+		d.client.Quit()
+		return nil, d.wrapClientErr(err)
+	}
+	return d, nil
 }
 
 func (d *delivery) connect() error {
@@ -148,10 +152,12 @@ func (d *delivery) connect() error {
 	if d.u.saslFactory != nil {
 		saslClient, err := d.u.saslFactory(d.msgMeta.AuthUser, d.msgMeta.AuthPassword)
 		if err != nil {
+			d.client.Quit()
 			return err
 		}
 
 		if err := d.client.Auth(saslClient); err != nil {
+			d.client.Quit()
 			return err
 		}
 	}
