@@ -206,7 +206,7 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 		}
 	case *net.OpError:
 		return &exterrors.SMTPError{
-			Code:         421,
+			Code:         450,
 			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
 			Message:      "Network I/O error",
 			TargetName:   "remote",
@@ -551,15 +551,9 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
 	stsPolicy, err := rt.mtastsGet(domain)
 	if err != nil && !mtasts.IsNoPolicy(err) {
-		code := 554
-		enchCode := exterrors.EnhancedCode{5, 0, 0}
-		if exterrors.IsTemporary(err) {
-			code = 420
-			enchCode = exterrors.EnhancedCode{4, 0, 0}
-		}
 		return nil, &exterrors.SMTPError{
-			Code:         code,
-			EnhancedCode: enchCode,
+			Code:         exterrors.SMTPCode(err, 450, 554),
+			EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 0, 0}),
 			Message:      "Failed to fetch the recipient policy",
 			TargetName:   "remote",
 			Err:          err,

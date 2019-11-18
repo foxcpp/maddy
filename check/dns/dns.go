@@ -23,7 +23,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 		// so err on the side of caution.
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         420,
+				Code:         450,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 25},
 				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_rdns",
@@ -88,7 +88,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         exterrors.SMTPCode(err, 420, 550),
+				Code:         exterrors.SMTPCode(err, 450, 550),
 				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
 				Message:      "DNS error during policy check",
 				CheckName:    "require_mx_record",
@@ -159,7 +159,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         exterrors.SMTPCode(err, 420, 550),
+				Code:         exterrors.SMTPCode(err, 450, 550),
 				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
 				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_ehlo",
