@@ -132,7 +132,7 @@ func (rt *Target) initMXAuth(methods []string) error {
 		if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
 			return err
 		}
-		rt.mtastsCache.Logger = rt.Log
+		rt.mtastsCache.Logger = log.Logger{Name: "remote/mtasts", Debug: rt.Log.Debug}
 		// MTA-STS policies typically have max_age around one day, so updating them
 		// twice a day should keep them up-to-date most of the time.
 		rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
