@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"crypto/tls"
 	"flag"
 	"math/rand"
 	"net"
@@ -847,6 +848,33 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	}
 }
 
+func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
+	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
+	defer srv.Close()
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &mockdns.Resolver{Zones: zones},
+		dialer:      resolver.Dial,
+		extResolver: nil,
+		tlsConfig:   &tls.Config{},
+		Log:         testutils.Logger(t, "remote"),
+	}
+
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
 func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()
@@ -902,6 +930,36 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
+	_, _, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
+	defer srv.Close()
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &mockdns.Resolver{Zones: zones},
+		dialer:      resolver.Dial,
+		extResolver: nil,
+		tlsConfig:   &tls.Config{},
+		requireTLS:  true,
+		Log:         testutils.Logger(t, "remote"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
 }
 
 func TestMain(m *testing.M) {

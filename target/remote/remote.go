@@ -522,7 +522,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 	for _, addr := range addrs {
 		conn.serverName = addr
 
-		conn.Client, err = rd.rt.connectToServer(addr, requireTLS)
+		conn.Client, err = rd.connectToServer(addr, requireTLS, true)
 		if err != nil {
 			if len(addrs) != 1 {
 				rd.Log.Error("connect error", err, "remote_server", addr)
@@ -589,8 +589,8 @@ func (rt *Target) stsCacheUpdater() {
 	}
 }
 
-func (rt *Target) connectToServer(address string, requireTLS bool) (*smtp.Client, error) {
-	conn, err := rt.dialer("tcp", address+addressSuffix)
+func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS bool) (*smtp.Client, error) {
+	conn, err := rd.rt.dialer("tcp", address+addressSuffix)
 	if err != nil {
 		return nil, err
 	}
@@ -600,22 +600,28 @@ func (rt *Target) connectToServer(address string, requireTLS bool) (*smtp.Client
 		return nil, err
 	}
 
-	if err := cl.Hello(rt.hostname); err != nil {
+	if err := cl.Hello(rd.rt.hostname); err != nil {
 		return nil, err
 	}
 
-	if tlsOk, _ := cl.Extension("STARTTLS"); tlsOk {
-		cfg := rt.tlsConfig.Clone()
-		cfg.ServerName = address
-		if err := cl.StartTLS(cfg); err != nil {
-			return nil, err
-		}
-	} else if requireTLS {
-		return nil, &exterrors.SMTPError{
-			Code:         523,
-			EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
-			Message:      "TLS is required but unsupported by the used MX",
-			TargetName:   "remote",
+	if attemptTLS {
+		if tlsOk, _ := cl.Extension("STARTTLS"); tlsOk {
+			cfg := rd.rt.tlsConfig.Clone()
+			cfg.ServerName = address
+			if err := cl.StartTLS(cfg); err != nil {
+				if !requireTLS {
+					rd.Log.Error("TLS error, falling back to plain-text connection", err, "remote_server", address)
+					return rd.connectToServer(address, false, false)
+				}
+				return nil, err
+			}
+		} else if requireTLS {
+			return nil, &exterrors.SMTPError{
+				Code:         523,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
+				Message:      "TLS is required but unsupported by the used MX",
+				TargetName:   "remote",
+			}
 		}
 	}
 
