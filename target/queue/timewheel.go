@@ -3,6 +3,7 @@ package queue
 import (
 	"container/list"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -12,27 +13,34 @@ type TimeSlot struct {
 }
 
 type TimeWheel struct {
+	stopped uint32
+
 	slots     *list.List
 	slotsLock sync.Mutex
 
 	updateNotify chan time.Time
 	stopNotify   chan struct{}
 
-	dispatch chan TimeSlot
+	dispatch func(TimeSlot)
 }
 
-func NewTimeWheel() *TimeWheel {
+func NewTimeWheel(dispatch func(TimeSlot)) *TimeWheel {
 	tw := &TimeWheel{
 		slots:        list.New(),
 		stopNotify:   make(chan struct{}),
 		updateNotify: make(chan time.Time),
-		dispatch:     make(chan TimeSlot, 10),
+		dispatch:     dispatch,
 	}
 	go tw.tick()
 	return tw
 }
 
 func (tw *TimeWheel) Add(target time.Time, value interface{}) {
+	if atomic.LoadUint32(&tw.stopped) == 1 {
+		// Already stopped, ignore.
+		return
+	}
+
 	if value == nil {
 		panic("can't insert nil objects into TimeWheel queue")
 	}
@@ -45,6 +53,8 @@ func (tw *TimeWheel) Add(target time.Time, value interface{}) {
 }
 
 func (tw *TimeWheel) Close() {
+	atomic.StoreUint32(&tw.stopped, 1)
+
 	// Idempotent Close is convenient sometimes.
 	if tw.stopNotify == nil {
 		return
@@ -56,7 +66,6 @@ func (tw *TimeWheel) Close() {
 	tw.stopNotify = nil
 
 	close(tw.updateNotify)
-	close(tw.dispatch)
 }
 
 func (tw *TimeWheel) tick() {
@@ -95,7 +104,8 @@ func (tw *TimeWheel) tick() {
 				tw.slotsLock.Lock()
 				tw.slots.Remove(closestEl)
 				tw.slotsLock.Unlock()
-				tw.dispatch <- closestSlot
+
+				tw.dispatch(closestSlot)
 
 				// break inside of select exits select, not for loop
 				goto breakinnerloop
@@ -115,8 +125,4 @@ func (tw *TimeWheel) tick() {
 		}
 	breakinnerloop:
 	}
-}
-
-func (tw *TimeWheel) Dispatch() <-chan TimeSlot {
-	return tw.dispatch
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/exterrors"
+	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/testutils"
 )
@@ -33,6 +34,7 @@ func newTestQueue(t *testing.T, target module.DeliveryTarget) *Queue {
 }
 
 func cleanQueue(t *testing.T, q *Queue) {
+	t.Log("--- queue.Close")
 	if err := q.Close(); err != nil {
 		t.Fatal("queue.Close:", err)
 	}
@@ -44,7 +46,6 @@ func cleanQueue(t *testing.T, q *Queue) {
 func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Queue {
 	mod, _ := NewQueue("", "queue", nil, nil)
 	q := mod.(*Queue)
-	q.Log = testutils.Logger(t, "queue")
 	q.initialRetryTime = 0
 	q.retryTimeScale = 1
 	q.postInitDelay = 0
@@ -52,8 +53,10 @@ func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Qu
 	q.location = dir
 	q.Target = target
 
-	if !testing.Verbose() {
+	if testing.Verbose() {
 		q.Log = testutils.Logger(t, "queue")
+	} else {
+		q.Log = log.Logger{Out: log.NopOutput{}}
 	}
 
 	if err := q.start(1); err != nil {
@@ -527,7 +530,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Dangling files should be removing during load.
+		// Dangling files should be removed during load.
 		q = newTestQueueDir(t, &dt, q.location)
 		q.Close()
 
@@ -806,4 +809,8 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 	if !bytes.Contains(msg.Body, []byte("test+public@example.com")) || !bytes.Contains(msg.Body, []byte("test2+public@example.com")) {
 		t.Errorf("DSN contents do not mention original addresses")
 	}
+}
+
+func init() {
+	testutils.DontRecover = true
 }

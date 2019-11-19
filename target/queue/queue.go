@@ -66,6 +66,7 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/msgpipeline"
 	"github.com/foxcpp/maddy/target"
+	"github.com/foxcpp/maddy/testutils"
 )
 
 // partialError describes state of partially successful message delivery.
@@ -167,6 +168,16 @@ type QueueMetadata struct {
 	DSN bool
 }
 
+type queueSlot struct {
+	ID string
+
+	// If nil - Hdr and Body are invalid, all values should be read from
+	// disk.
+	Meta *QueueMetadata
+	Hdr  *textproto.Header
+	Body buffer.Buffer
+}
+
 func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	q := &Queue{
 		name:             instName,
@@ -226,7 +237,7 @@ func (q *Queue) Init(cfg *config.Map) error {
 }
 
 func (q *Queue) start(maxParallelism int) error {
-	q.wheel = NewTimeWheel()
+	q.wheel = NewTimeWheel(q.dispatch)
 	q.deliverySemaphore = make(chan struct{}, maxParallelism)
 
 	if err := q.readDiskQueue(); err != nil {
@@ -235,13 +246,13 @@ func (q *Queue) start(maxParallelism int) error {
 
 	q.Log.Debugf("delivery target: %T", q.Target)
 
-	go q.dispatch()
 	return nil
 }
 
 func (q *Queue) Close() error {
-	q.deliveryWg.Wait()
 	q.wheel.Close()
+	q.deliveryWg.Wait()
+
 	return nil
 }
 
@@ -260,36 +271,54 @@ func (q *Queue) discardBroken(id string) {
 	}
 }
 
-func (q *Queue) dispatch() {
-	for slot := range q.wheel.Dispatch() {
-		q.Log.Debugln("starting delivery for", slot.Value)
-		id := slot.Value.(string)
+func (q *Queue) dispatch(value TimeSlot) {
+	slot := value.Value.(queueSlot)
 
-		q.deliveryWg.Add(1)
-		go func() {
-			q.Log.Debugln("waiting on delivery semaphore for", id)
-			q.deliverySemaphore <- struct{}{}
-			defer func() {
-				<-q.deliverySemaphore
-				q.deliveryWg.Done()
+	q.Log.Debugln("starting delivery for", slot.ID)
 
-				if err := recover(); err != nil {
-					stack := debug.Stack()
-					log.Printf("panic during queue dispatch %s: %v\n%s", id, err, stack)
-					q.discardBroken(id)
-				}
-			}()
+	q.deliveryWg.Add(1)
+	go func() {
+		q.Log.Debugln("waiting on delivery semaphore for", slot.ID)
+		q.deliverySemaphore <- struct{}{}
+		defer func() {
+			<-q.deliverySemaphore
+			q.deliveryWg.Done()
 
-			q.Log.Debugln("delivery semaphore acquired for", id)
-			meta, header, body, err := q.openMessage(id)
-			if err != nil {
-				q.Log.Error("read message", err)
+			if testutils.DontRecover {
 				return
 			}
 
-			q.tryDelivery(meta, header, body)
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during queue dispatch %s: %v\n%s", slot.ID, err, stack)
+				q.discardBroken(slot.ID)
+			}
 		}()
-	}
+
+		q.Log.Debugln("delivery semaphore acquired for", slot.ID)
+		var (
+			meta *QueueMetadata
+			hdr  textproto.Header
+			body buffer.Buffer
+		)
+		if slot.Meta == nil {
+			var err error
+			meta, hdr, body, err = q.openMessage(slot.ID)
+			if err != nil {
+				q.Log.Error("read message", err, slot.ID)
+				return
+			}
+			if meta == nil {
+				panic("wtf")
+			}
+		} else {
+			meta = slot.Meta
+			hdr = *slot.Hdr
+			body = slot.Body
+		}
+
+		q.tryDelivery(meta, hdr, body)
+	}()
 }
 
 func toSMTPErr(err error) *smtp.SMTPError {
@@ -387,7 +416,15 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		"next_try_delay", time.Until(nextTryTime),
 		"rcpts", meta.To)
 
-	q.wheel.Add(nextTryTime, meta.MsgMeta.ID)
+	q.wheel.Add(nextTryTime, queueSlot{
+		ID: meta.MsgMeta.ID,
+
+		// Do not keep (meta-)data in memory to reduce usage.  At this point,
+		// it is safe on disk and next try will reread it.
+		Meta: nil,
+		Hdr:  nil,
+		Body: nil,
+	})
 }
 
 func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
@@ -522,22 +559,12 @@ func (qd *queueDelivery) Abort() error {
 }
 
 func (qd *queueDelivery) Commit() error {
-	qd.q.deliveryWg.Add(1)
-	go func() {
-		qd.q.deliverySemaphore <- struct{}{}
-		defer func() {
-			<-qd.q.deliverySemaphore
-			qd.q.deliveryWg.Done()
-
-			if err := recover(); err != nil {
-				stack := debug.Stack()
-				log.Printf("panic during queue dispatch: %v\n%s", err, stack)
-				qd.q.discardBroken(qd.meta.MsgMeta.ID)
-			}
-		}()
-
-		qd.q.tryDelivery(qd.meta, qd.header, qd.body)
-	}()
+	qd.q.wheel.Add(time.Time{}, queueSlot{
+		ID:   qd.meta.MsgMeta.ID,
+		Meta: qd.meta,
+		Hdr:  &qd.header,
+		Body: qd.body,
+	})
 	return nil
 }
 
@@ -641,7 +668,9 @@ func (q *Queue) readDiskQueue() error {
 		}
 
 		q.Log.Debugf("will try to deliver (msg ID = %s) in %v (%v)", id, time.Until(nextTryTime), nextTryTime)
-		q.wheel.Add(nextTryTime, id)
+		q.wheel.Add(nextTryTime, queueSlot{
+			ID: id,
+		})
 		loadedCount++
 	}
 
