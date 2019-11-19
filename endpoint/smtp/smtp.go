@@ -136,7 +136,7 @@ func (s *Session) Rcpt(to string) error {
 			s.log.Error("RCPT error", err, "rcpt", to)
 			s.loggedRcptErrors++
 			if s.loggedRcptErrors == s.endp.maxLoggedRcptErrors {
-				s.log.Msg("further RCPT TO errors will not be logged")
+				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.msgMeta.SrcAddr)
 			}
 		}
 		return s.endp.wrapErr(s.msgMeta.ID, err)
@@ -157,7 +157,7 @@ func (s *Session) Logout() error {
 		s.cancelRDNS()
 	}
 	if s.repeatedMailErrs != 0 {
-		s.log.Msg("MAIL FROM error repeated multiple times", "count", s.repeatedMailErrs)
+		s.log.Msg("MAIL FROM error repeated a lot, possible dictonary attack", "count", s.repeatedMailErrs, "src_ip", s.msgMeta.SrcAddr)
 
 		// XXX: Workaround for go-smtp calling Logout twice.
 		s.repeatedMailErrs = 0
