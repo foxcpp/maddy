@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 )
 
@@ -163,12 +164,26 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 		records, err := c.Resolver.LookupTXT(context.Background(), "_mta-sts."+domain)
 		if err != nil {
 			if validCache {
-				c.Logger.Error("failed lookup the DNS record, using cache", err, "domain", domain)
+				if dnsErr, ok := err.(*net.DNSError); ok || !dnsErr.IsNotFound {
+					reason, misc := exterrors.UnwrapDNSErr(err)
+					if reason != "" {
+						misc["reason"] = reason
+					}
+					err = exterrors.WithFields(err, misc)
+					c.Logger.Error("failed lookup the DNS record, using cache", err, "domain", domain)
+				}
 				return true, cachedPolicy, nil
 			}
 
 			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
-				c.Logger.Error("failed lookup the DNS record, ignoring", err, "domain", domain)
+				if dnsErr, ok := err.(*net.DNSError); ok || !dnsErr.IsNotFound {
+					reason, misc := exterrors.UnwrapDNSErr(err)
+					if reason != "" {
+						misc["reason"] = reason
+					}
+					err = exterrors.WithFields(err, misc)
+					c.Logger.Error("failed lookup the DNS record, ignoring", err, "domain", domain)
+				}
 				return false, nil, ErrIgnorePolicy
 			}
 			return false, nil, err
