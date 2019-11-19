@@ -97,7 +97,13 @@ func (se *SMTPError) Temporary() bool {
 }
 
 func (se *SMTPError) Error() string {
-	return se.Err.Error()
+	if se.Reason != "" {
+		return se.Reason
+	}
+	if se.Err != nil {
+		return se.Err.Error()
+	}
+	return se.Message
 }
 
 // SMTPCode is a convenience function that returns one of its arguments
