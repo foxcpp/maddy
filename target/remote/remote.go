@@ -89,7 +89,9 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Bool("require_tls", false, false, &rt.requireTLS)
-	cfg.EnumList("authenticate_mx", false, false, []string{AuthDisabled, AuthDNSSEC, AuthMTASTS}, []string{AuthMTASTS, AuthDNSSEC}, &mxAuth)
+	cfg.EnumList("authenticate_mx", false, false,
+		[]string{AuthDisabled, AuthDNSSEC, AuthMTASTS, AuthCommonDomain},
+		[]string{AuthMTASTS, AuthDNSSEC}, &mxAuth)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
