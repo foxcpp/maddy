@@ -11,17 +11,20 @@ if [ "$script_dir" = "$PWD" ]; then
 fi
 
 if [ "$pkgdir" = "" ]; then
-    pkgdir=$PWD/maddy-pkgdir-`date +%s`
-    rm -rf $pkgdir
-    mkdir $pkgdir
+    pkgdir="$PWD"/maddy-pkgdir-$(date +%s)
+    rm -rf "$pkgdir"
+    mkdir "$pkgdir"
 fi
-export PREFIX=$pkgdir/usr FAIL2BANDIR=$pkgdir/etc/fail2ban CONFPATH=$pkgdir/etc/maddy/maddy.conf NO_RUN=1 SUDO=fakeroot
-source $script_dir/get.sh
+export PREFIX="$pkgdir"/usr FAIL2BANDIR="$pkgdir"/etc/fail2ban CONFPATH="$pkgdir"/etc/maddy/maddy.conf NO_RUN=1 SUDO=fakeroot
+# shellcheck source=get.sh
+. "$script_dir"/get.sh
+
+set -euo pipefail
 
 mkdir -p maddy-setup
 cd maddy-setup/
 
-function run() {
+run() {
     ensure_go_toolchain
     download_and_compile
     install_executables
