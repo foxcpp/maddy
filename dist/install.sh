@@ -7,6 +7,9 @@ if [ -z "$FAIL2BANDIR" ]; then
     FAIL2BANDIR=/etc/fail2ban
 fi
 
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd $script_dir
+
 install -Dm 0644 -t "$PREFIX/share/vim/vimfiles/ftdetect/" vim/ftdetect/maddy-conf.vim
 install -Dm 0644 -t "$PREFIX/share/vim/vimfiles/ftplugin/" vim/ftplugin/maddy-conf.vim
 install -Dm 0644 -t "$PREFIX/share/vim/vimfiles/syntax/" vim/syntax/maddy-conf.vim

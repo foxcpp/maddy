@@ -20,6 +20,9 @@ fi
 if [ "$SUDO" == "" ]; then
     SUDO=sudo
 fi
+if [ "$NO_RUN" == "" ]; then
+    NO_RUN=0
+fi
 
 export CGO_CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS"
 export CGO_CXXFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CXXFLAGS"
@@ -97,13 +100,9 @@ install_executables() {
 install_dist() {
     echo 'Installing dist files...' >&2
 
-    pushd "`source_dir`/dist" >/dev/null
-    $SUDO ./install.sh
-    popd >/dev/null
+    $SUDO "`source_dir`/dist/install.sh"
 
     $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g" "$SYSTEMDUNITS/system/maddy.service" "$SYSTEMDUNITS/system/maddy@.service"
-
-    $SUDO systemctl daemon-reload
 }
 
 install_man() {
@@ -122,14 +121,14 @@ install_man() {
 
     echo 'Installing man pages...' >&2
     for f in `source_dir`/man/*.1.scd; do
-        scdoc < "$f" | gzip > tmp.gz
-        $SUDO install -Dm 0644 tmp.gz "$PREFIX/share/man/man1"
+        scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
+        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$PREFIX/share/man/man1/`basename -s .scd $f`.gz"
     done
     for f in `source_dir`/man/*.5.scd; do
-        scdoc < "$f" | gzip > tmp.gz
-        $SUDO install -Dm 0644 tmp.gz "$PREFIX/share/man/man5"
+        scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
+        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$PREFIX/share/man/man5/`basename -s .scd $f`.gz"
     done
-    rm tmp.gz
+    rm /tmp/maddy-tmp.gz
 
 }
 
@@ -144,19 +143,22 @@ install_config() {
     if ! [ -e "$CONFPATH" ]; then
         echo 'Installing default configuration...' >&2
 
-        cp "`source_dir`/maddy.conf" .
+        install "`source_dir`/maddy.conf" /tmp/maddy.conf
 
         host=`hostname`
+        set +e # premit to fail
         read -p "What's your domain, btw? [$host] > " DOMAIN
+        set -e
         if [ "$DOMAIN" = "" ]; then
             DOMAIN=$host
         fi
         echo 'Good, I will put that into configuration for you.' >&2
 
-        sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" maddy.conf
-        sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" maddy.conf
+        sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" /tmp/maddy.conf
+        sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" /tmp/maddy.conf
 
-        $SUDO install -Dm 0644 maddy.conf "$CONFPATH"
+        $SUDO install -Dm 0644 /tmp/maddy.conf "$CONFPATH"
+        rm /tmp/maddy.conf
     else
         echo "Configuration already exists in /etc/maddy/maddy.conf, skipping defaults installation." >&2
     fi
@@ -173,6 +175,7 @@ run() {
     install_man
     install_config
     create_user
+    $SUDO systemctl daemon-reload
 
     echo "Okay, almost ready." >&2
     echo "It's up to you to figure out TLS certificates and DNS stuff, though." >&2
@@ -180,4 +183,6 @@ run() {
     echo "https://github.com/foxcpp/maddy/wiki/Tutorial:-Setting-up-a-mail-server-with-maddy" >&2
 }
 
-run
+if [ "$NO_RUN" != "1" ]; then
+    run
+fi
