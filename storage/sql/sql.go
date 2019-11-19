@@ -269,6 +269,10 @@ func (store *Storage) IMAPExtensions() []string {
 	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE"}
 }
 
+func (store *Storage) CreateMessageLimit() *uint32 {
+	return store.Back.CreateMessageLimit()
+}
+
 func (store *Storage) Updates() <-chan backend.Update {
 	return store.Back.Updates()
 }
