@@ -137,7 +137,7 @@ broken DKIM signatures.
 
 # SPF policy enforcement module (apply_spf)
 
-This is the check module that verifies whether IP address of the client is 
+This is the check module that verifies whether IP address of the client is
 authorized to send messages for domain in MAIL FROM address.
 
 ```
@@ -179,13 +179,26 @@ Make policy decision on MAIL FROM stage (before the message body is received).
 This makes it impossible to apply DMARC override (see below). It recommended
 to leave the default value.
 
+*Syntax*: none_action reject|qurantine|ignore ++
+*Default*: ignore
+
+Action to take when SPF policy evaluates to a 'none' result.
+
+See https://tools.ietf.org/html/rfc7208#section-2.6 for meaning of
+SPF results.
+
+*Syntax*: neutral_action reject|qurantine|ignore ++
+*Default*: ignore
+
+Action to take when SPF policy evaluates to a 'neutral' result.
+
+See https://tools.ietf.org/html/rfc7208#section-2.6 for meaning of
+SPF results.
+
 *Syntax*: fail_action reject|qurantine|ignore ++
 *Default*: quarantine
 
 Action to take when SPF policy evaluates to a 'fail' result.
-
-See https://tools.ietf.org/html/rfc7208#section-2.6 for meaning of
-SPF results.
 
 *Syntax*: softfail_action reject|qurantine|ignore ++
 *Default*: quarantine
@@ -301,7 +314,7 @@ dnsbl.example.org dnsbl.example.com {
 
 Directive name and arguments specify the actual DNS zone to query when checking
 the list. Using multiple arguments is equivalent to specifying the same
-configuration separately for each list. 
+configuration separately for each list.
 
 *Syntax*: client_ipv4 _boolean_ ++
 *Default*: yes
@@ -367,7 +380,7 @@ sign_dkim {
 ## Arguments
 
 domain and selector can be specified in arguments, so actual sign_dkim use can
-be shortened to the following: 
+be shortened to the following:
 ```
 modify {
     sign_dkim example.org selector
@@ -387,7 +400,7 @@ Enable verbose logging for sign_dkim.
 *REQUIRED.*
 
 ADministrative Management Domain (ADMD) taking responsibility for signed
-messages. Should be specified either as a directive or as an 
+messages. Should be specified either as a directive or as an
 argument.
 
 *Syntax*: selector _string_ ++
@@ -408,7 +421,7 @@ in newkey_algo.
 Placeholders '{domain}' and '{selector}' will be replaced with corresponding
 values from domain and selector directives.
 
-Additionally, keys in PKCS#1 ("RSA PRIVATE KEY") and 
+Additionally, keys in PKCS#1 ("RSA PRIVATE KEY") and
 RFC 5915 ("EC PRIVATE KEY") can be read by sign_dkim. Note, however that
 newly generated keys are always in PKCS#8.
 
@@ -460,20 +473,20 @@ Default set of signed fields:
 *Default*: relaxed
 
 Canonicalization algorithm to use for header fields. With 'relaxed', whitespace within
-fields can be modified without breaking the signature, with 'simple' no 
+fields can be modified without breaking the signature, with 'simple' no
 modifications are allowed.
 
 *Syntax*: body_canon relaxed|simple ++
 *Default*: relaxed
 
 Canonicalization algorithm to use for message body. With 'relaxed', whitespace within
-can be modified without breaking the signature, with 'simple' no 
+can be modified without breaking the signature, with 'simple' no
 modifications are allowed.
 
 *Syntax*: sig_expiry _duration_ ++
 *Default*: 120h
 
-Time for which signature should be considered valid. Mainly used to prevent 
+Time for which signature should be considered valid. Mainly used to prevent
 unauthorized resending of old messages.
 
 *Syntax*: hash _hash_ ++
@@ -506,14 +519,14 @@ Valid values:
 - envelope +
   Require MAIL FROM address to match From header.
 - auth +
-  If authorization identity contains @ - then require it to 
+  If authorization identity contains @ - then require it to
   fully match From header. Otherwise, check only local-part
   (username).
-  
+
 *Syntax*: allow_multiple_from _boolean_ ++
 *Default*: no
 
-Allow multiple addresses in From header field for purposes of 
+Allow multiple addresses in From header field for purposes of
 require_sender_match checks. Only first address will be checked, however.
 
 # Sender/recipient replacement modules (replace_sender, replace_rcpt)
@@ -574,7 +587,7 @@ Specify the list of files to load aliases from.
 
 ## Auto-reloading
 
-The module checks used files for changes every 15 seconds, if changes are 
+The module checks used files for changes every 15 seconds, if changes are
 detected - all files are reloaded.
 
 No changes are applied if any file contains syntax errors.

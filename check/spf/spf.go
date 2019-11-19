@@ -29,6 +29,8 @@ type Check struct {
 	instName     string
 	enforceEarly bool
 
+	noneAction     check.FailAction
+	neutralAction  check.FailAction
 	failAction     check.FailAction
 	softfailAction check.FailAction
 	permerrAction  check.FailAction
@@ -55,6 +57,14 @@ func (c *Check) InstanceName() string {
 func (c *Check) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &c.log.Debug)
 	cfg.Bool("enforce_early", true, true, &c.enforceEarly)
+	cfg.Custom("none_action", false, false,
+		func() (interface{}, error) {
+			return check.FailAction{}, nil
+		}, check.FailActionDirective, &c.noneAction)
+	cfg.Custom("neutral_action", false, false,
+		func() (interface{}, error) {
+			return check.FailAction{}, nil
+		}, check.FailActionDirective, &c.neutralAction)
 	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
 			return check.FailAction{Quarantine: true}, nil
@@ -117,10 +127,26 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 	switch res {
 	case spf.None:
 		spfAuth.Value = authres.ResultNone
-		return module.CheckResult{AuthResult: []authres.Result{spfAuth}}
+		return s.c.noneAction.Apply(module.CheckResult{
+			Reason: &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
+				Message:      "No SPF policy",
+				CheckName:    modName,
+			},
+			AuthResult: []authres.Result{spfAuth},
+		})
 	case spf.Neutral:
 		spfAuth.Value = authres.ResultNeutral
-		return module.CheckResult{AuthResult: []authres.Result{spfAuth}}
+		return s.c.neutralAction.Apply(module.CheckResult{
+			Reason: &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
+				Message:      "Neutral SPF result is not permitted",
+				CheckName:    modName,
+			},
+			AuthResult: []authres.Result{spfAuth},
+		})
 	case spf.Pass:
 		spfAuth.Value = authres.ResultPass
 		return module.CheckResult{AuthResult: []authres.Result{spfAuth}}
