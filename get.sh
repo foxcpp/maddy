@@ -82,6 +82,11 @@ download_and_compile() {
     go get -trimpath -buildmode=pie -ldflags "-extldflags $LDFLAGS" github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
 }
 
+source_dir() {
+    maddy_version_tag=`"$PWD/gopath/bin/maddy" -v | cut -f2 -d ' '`
+    echo $PWD/gopath/pkg/mod/github.com/foxcpp/maddy@$maddy_version_tag
+}
+
 install_executables() {
     echo 'Installing maddy...' >&2
 
@@ -89,17 +94,43 @@ install_executables() {
     $SUDO cp --remove-destination "$PWD/gopath/bin/maddy" "$PWD/gopath/bin/maddyctl" "$PREFIX/bin/"
 }
 
-install_systemd() {
-    echo 'Downloading and installing systemd unit files...' >&2
+install_dist() {
+    echo 'Installing dist files...' >&2
 
-    wget -q "https://raw.githubusercontent.com/foxcpp/maddy/$MADDYVERSION/dist/systemd/maddy.service" -O maddy.service
-    wget -q "https://raw.githubusercontent.com/foxcpp/maddy/$MADDYVERSION/dist/systemd/maddy@.service" -O maddy@.service
+    pushd "`source_dir`/dist" >/dev/null
+    $SUDO ./install.sh
+    popd >/dev/null
 
-    sed -Ei "s!/usr/bin!$PREFIX/bin!g" maddy.service maddy@.service
+    $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g" "$SYSTEMDUNITS/system/maddy.service" "$SYSTEMDUNITS/system/maddy@.service"
 
-    $SUDO mkdir -p "$SYSTEMDUNITS/system/"
-    $SUDO cp maddy.service maddy@.service "$SYSTEMDUNITS/system/"
     $SUDO systemctl daemon-reload
+}
+
+install_man() {
+    set +e
+    if ! which scdoc &>/dev/null; then
+        echo 'No scdoc utility found. Skipping man pages installation.' >&2
+        set -e
+        return
+    fi
+    if ! which gzip &>/dev/null; then
+        echo 'No gzip utility found. Skipping man pages installation.' >&2
+        set -e
+        return
+    fi
+    set -e
+
+    echo 'Installing man pages...' >&2
+    for f in `source_dir`/man/*.1.scd; do
+        scdoc < "$f" | gzip > tmp.gz
+        $SUDO install -Dm 0644 tmp.gz "$PREFIX/share/man/man1"
+    done
+    for f in `source_dir`/man/*.5.scd; do
+        scdoc < "$f" | gzip > tmp.gz
+        $SUDO install -Dm 0644 tmp.gz "$PREFIX/share/man/man5"
+    done
+    rm tmp.gz
+
 }
 
 create_user() {
@@ -111,10 +142,9 @@ create_user() {
 install_config() {
     echo 'Using configuration path:' $CONFPATH
     if ! [ -e "$CONFPATH" ]; then
-        echo 'Downloading and installing default configuration...' >&2
+        echo 'Installing default configuration...' >&2
 
-        wget -q "https://raw.githubusercontent.com/foxcpp/maddy/$MADDYVERSION/maddy.conf" -O maddy.conf
-        $SUDO mkdir -p /etc/maddy/
+        cp "`source_dir`/maddy.conf" .
 
         host=`hostname`
         read -p "What's your domain, btw? [$host] > " DOMAIN
@@ -126,7 +156,7 @@ install_config() {
         sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" maddy.conf
         sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" maddy.conf
 
-        $SUDO cp maddy.conf $CONFPATH
+        $SUDO install -Dm 0644 maddy.conf "$CONFPATH"
     else
         echo "Configuration already exists in /etc/maddy/maddy.conf, skipping defaults installation." >&2
     fi
@@ -139,7 +169,8 @@ run() {
     ensure_go_toolchain
     download_and_compile
     install_executables
-    install_systemd
+    install_dist
+    install_man
     install_config
     create_user
 
