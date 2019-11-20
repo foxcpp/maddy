@@ -619,6 +619,7 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 	}
 
 	if err := cl.Hello(rd.rt.hostname); err != nil {
+		cl.Quit()
 		return nil, err
 	}
 
@@ -627,6 +628,7 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 			cfg := rd.rt.tlsConfig.Clone()
 			cfg.ServerName = address
 			if err := cl.StartTLS(cfg); err != nil {
+				cl.Quit()
 				if !requireTLS {
 					rd.Log.Error("TLS error, falling back to plain-text connection", err, "mx", address)
 					return rd.connectToServer(address, false, false)
@@ -634,6 +636,7 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 				return nil, err
 			}
 		} else if requireTLS {
+			cl.Quit()
 			return nil, &exterrors.SMTPError{
 				Code:         523,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 10},

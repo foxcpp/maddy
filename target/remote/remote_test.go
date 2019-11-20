@@ -851,6 +851,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
@@ -878,6 +879,7 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
@@ -907,6 +909,7 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
