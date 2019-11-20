@@ -202,7 +202,7 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Message:      serverName + " said: " + err.Message,
 			TargetName:   "remote",
 			Misc: map[string]interface{}{
-				"remote_server": serverName,
+				"mx": serverName,
 			},
 			Err: err,
 		}
@@ -219,8 +219,8 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 		}
 	default:
 		return exterrors.WithFields(err, map[string]interface{}{
-			"remote_server": serverName,
-			"target":        "remote",
+			"mx":     serverName,
+			"target": "remote",
 		})
 	}
 }
@@ -510,7 +510,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		return c, nil
 	}
 
-	addrs, requireTLS, err := rd.lookupAndFilter(domain)
+	authMXs, nonAuthMXs, requireTLS, err := rd.lookupAndFilter(domain)
 	if err != nil {
 		return nil, err
 	}
@@ -521,19 +521,35 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 
 	var lastErr error
 	conn := &remoteConnection{}
-	for _, addr := range addrs {
+
+	addrs := append(make([]string, 0, len(authMXs)+len(nonAuthMXs)), authMXs...)
+	addrs = append(addrs, nonAuthMXs...)
+	rd.Log.DebugMsg("considering", "mxs", addrs)
+	for i, addr := range addrs {
 		conn.serverName = addr
 
 		conn.Client, err = rd.connectToServer(addr, requireTLS, true)
 		if err != nil {
 			if len(addrs) != 1 {
-				rd.Log.Error("connect error", err, "remote_server", addr)
+				rd.Log.Error("connect error", err, "mx", addr, "domain", domain)
 			}
 			lastErr = rd.wrapClientErr(err, conn.serverName)
 			continue
 		}
+		if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled && i >= len(authMXs) {
+			rd.Log.Msg("using non-authenticated MX", "mx", addr, "domain", domain)
+		}
 	}
 	if conn.Client == nil {
+		if lastErr == nil {
+			return nil, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+				Message:      "No usable MXs",
+				TargetName:   "remote",
+			}
+
+		}
 		return nil, lastErr
 	}
 
@@ -544,7 +560,7 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		return nil, rd.wrapClientErr(err, conn.serverName)
 	}
 
-	rd.Log.DebugMsg("connected", "remote_server", conn.serverName)
+	rd.Log.DebugMsg("connected", "mx", conn.serverName)
 	rd.connections[domain] = conn
 
 	return conn, nil
@@ -612,7 +628,7 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 			cfg.ServerName = address
 			if err := cl.StartTLS(cfg); err != nil {
 				if !requireTLS {
-					rd.Log.Error("TLS error, falling back to plain-text connection", err, "remote_server", address)
+					rd.Log.Error("TLS error, falling back to plain-text connection", err, "mx", address)
 					return rd.connectToServer(address, false, false)
 				}
 				return nil, err
@@ -630,12 +646,12 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 	return cl, nil
 }
 
-func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, requireTLS bool, err error) {
+func (rd *remoteDelivery) lookupAndFilter(domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
 	var policy *mtasts.Policy
 	if _, use := rd.rt.mxAuth[AuthMTASTS]; use {
 		policy, err = rd.rt.getSTSPolicy(domain)
 		if err != nil {
-			return nil, false, err
+			return nil, nil, false, err
 		}
 		if policy != nil {
 			switch policy.Mode {
@@ -649,7 +665,7 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 
 	dnssecOk, mxs, err := rd.lookupMX(domain)
 	if err != nil {
-		return nil, false, err
+		return nil, nil, false, err
 	}
 
 	// Fallback to A/AAA RR when no MX records are present as
@@ -665,11 +681,12 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		return mxs[i].Pref < mxs[j].Pref
 	})
 
-	candidates = make([]string, 0, len(mxs))
+	authMXs = make([]string, 0, len(mxs))
+	nonAuthMXs = make([]string, 0, len(mxs))
 
 	for _, mx := range mxs {
 		if mx.Host == "." {
-			return nil, false, &exterrors.SMTPError{
+			return nil, nil, false, &exterrors.SMTPError{
 				Code:         556,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 10},
 				Message:      "Domain does not accept email (null MX)",
@@ -687,7 +704,7 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		if policy != nil {
 			if policy.Match(mx.Host) {
 				// Policy in 'testing' mode is enough to authenticate MX too.
-				rd.Log.Msg("authenticated MX using MTA-STS", "mx", mx.Host, "domain", domain)
+				rd.Log.DebugMsg("authenticated MX using MTA-STS", "mx", mx.Host, "domain", domain)
 				authenticated = true
 			} else if policy.Mode == mtasts.ModeEnforce {
 				// Honor *enforced* policy and skip non-matching MXs even if we
@@ -698,11 +715,11 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 		}
 		// If we have DNSSEC - DNSSEC-signed MX record also qualifies as "safe".
 		if dnssecOk {
-			rd.Log.Msg("authenticated MX using DNSSEC", "mx", mx.Host, "domain", domain)
+			rd.Log.DebugMsg("authenticated MX using DNSSEC", "mx", mx.Host, "domain", domain)
 			authenticated = true
 		}
 		if _, use := rd.rt.mxAuth[AuthCommonDomain]; use && commonDomainCheck(domain, mx.Host) {
-			rd.Log.Msg("authenticated MX using common domain rule", "mx", mx.Host, "domain", domain)
+			rd.Log.DebugMsg("authenticated MX using common domain rule", "mx", mx.Host, "domain", domain)
 			authenticated = true
 		}
 
@@ -711,24 +728,16 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (candidates []string, r
 				rd.Log.Msg("ignoring non-authenticated MX", "mx", mx.Host, "domain", domain)
 				continue
 			}
-			if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled {
-				rd.Log.Msg("using non-authenticated MX", "mx", mx.Host, "domain", domain)
-			}
 		}
 
-		candidates = append(candidates, mx.Host)
-	}
-
-	if len(candidates) == 0 {
-		return nil, false, &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "No usable MXs found (ignoring non-authenticated MXs)",
-			TargetName:   "remote",
+		if authenticated {
+			authMXs = append(authMXs, mx.Host)
+		} else {
+			nonAuthMXs = append(nonAuthMXs, mx.Host)
 		}
 	}
 
-	return candidates, requireTLS, nil
+	return authMXs, nonAuthMXs, requireTLS, nil
 }
 
 func commonDomainCheck(domain string, mx string) bool {

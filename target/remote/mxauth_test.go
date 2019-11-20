@@ -86,6 +86,57 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
+func TestRemoteDelivery_AuthMX_PreferAuth(t *testing.T) {
+	tarpit := testutils.FailOnConn(t, "127.0.0.2"+addressSuffix)
+	defer tarpit.Close()
+
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{
+				{Host: "non-auth.example.invalid.", Pref: 5},
+				{Host: "mx.example.invalid.", Pref: 10},
+			},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"non-auth.example.invalid.": {
+			A: []string{"127.0.0.2"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:          "remote",
+		hostname:      "mx.example.com",
+		resolver:      &mockdns.Resolver{Zones: zones},
+		dialer:        resolver.Dial,
+		extResolver:   nil,
+		requireMXAuth: true,
+		tlsConfig:     clientCfg,
+		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
+		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+			if domain != "example.invalid" {
+				return nil, errors.New("Wrong domain in lookup")
+			}
+
+			return &mtasts.Policy{
+				// Testing policy is enough.
+				Mode: mtasts.ModeTesting,
+				MX:   []string{"mx.example.invalid"},
+			}, nil
+		},
+		Log: testutils.Logger(t, "remote"),
+	}
+
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
 func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 	// Hang the test if it actually connects to the non-matching MX to
 	// deliver the message.
