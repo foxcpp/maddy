@@ -98,6 +98,7 @@ func (tw *TimeWheel) tick() {
 
 		timer := time.NewTimer(closestSlot.Time.Sub(now))
 
+	selectloop:
 		for {
 			select {
 			case <-timer.C:
@@ -107,8 +108,7 @@ func (tw *TimeWheel) tick() {
 
 				tw.dispatch(closestSlot)
 
-				// break inside of select exits select, not for loop
-				goto breakinnerloop
+				break selectloop
 			case newTarget := <-tw.updateNotify:
 				// Avoid unnecessary restarts if new target is not going to affect our
 				// current wait time.
@@ -118,11 +118,11 @@ func (tw *TimeWheel) tick() {
 
 				timer.Stop()
 				// Recalculate new slot time.
+				break selectloop
 			case <-tw.stopNotify:
 				tw.stopNotify <- struct{}{}
 				return
 			}
 		}
-	breakinnerloop:
 	}
 }
