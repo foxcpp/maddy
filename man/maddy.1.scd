@@ -34,8 +34,10 @@ emptor.*
 	Default is /usr/lib/maddy.
 
 *-log* _targets..._
-	Logging targets. Format is the same as 'log' config directive. Affects
-	logging before configuration parsing completes.
+	Comma-separated list of logging targets. Valid values are the same as the
+	'log' config directie. Affects logging before configuration parsing
+	completes and after it, if the different value is not specified in the
+	configuration.
 
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.
@@ -106,7 +108,7 @@ names can be specified. All names must be unique.
 
 Usual module arguments can't be specified when using this syntax, however,
 modules usually provide explicit directives that allow to specify the needed
-values. For example 'sql sqlite3 all.db' is equivalent to 
+values. For example 'sql sqlite3 all.db' is equivalent to
 ```
 sql {
     driver sqlite3
@@ -191,20 +193,20 @@ Write log to one of more "targets".
 The target can be one or the following:
 
 - stderr
-  
-  Write logs to stderr.
+
+	Write logs to stderr.
 
 - stderr_ts
-  
-  Write logs to stderr with timestamps.
+
+	Write logs to stderr with timestamps.
 
 - syslog
-  
-  Send logs to the local syslog daemon.
+
+	Send logs to the local syslog daemon.
 
 - _file path_
-  
-  Write (append) logs to file.
+
+	Write (append) logs to file.
 
 Example:
 ```

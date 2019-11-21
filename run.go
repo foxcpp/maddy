@@ -46,7 +46,7 @@ func Run() int {
 	}
 
 	var err error
-	log.DefaultLogger.Out, err = LogOutputOption(strings.Split(*logTargets, " "))
+	log.DefaultLogger.Out, err = LogOutputOption(strings.Split(*logTargets, ","))
 	if err != nil {
 		systemdStatusErr(err)
 		log.Println(err)
