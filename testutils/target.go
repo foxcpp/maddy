@@ -292,7 +292,13 @@ func CheckMsg(t *testing.T, msg *Msg, sender string, rcpt []string) {
 	idRaw := sha1.Sum([]byte(t.Name()))
 	encodedId := hex.EncodeToString(idRaw[:])
 
-	if msg.MsgMeta.ID != encodedId {
+	CheckMsgID(t, msg, sender, rcpt, encodedId)
+}
+
+func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string) {
+	t.Helper()
+
+	if msg.MsgMeta.ID != id {
 		t.Errorf("empty or wrong delivery context for passed message? %+v", msg.MsgMeta)
 	}
 	if msg.MailFrom != sender {

@@ -443,7 +443,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	msgMeta.ID = msgMeta.ID + "-" + strconv.Itoa(meta.TriesCount+1)
 	dl.Debugf("using message ID = %s", msgMeta.ID)
 
-	delivery, err := deliveryTarget.Start(meta.MsgMeta, meta.From)
+	delivery, err := deliveryTarget.Start(msgMeta, meta.From)
 	if err != nil {
 		dl.Debugf("target.Start failed: %v", err)
 		perr.Failed = append(perr.Failed, meta.To...)
