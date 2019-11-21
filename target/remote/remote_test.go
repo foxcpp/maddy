@@ -938,6 +938,7 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	_, _, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1"+addressSuffix)
 	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
