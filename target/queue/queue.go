@@ -163,9 +163,6 @@ type QueueMetadata struct {
 
 	FirstAttempt time.Time
 	LastAttempt  time.Time
-
-	// Whether this is a delivery notification.
-	DSN bool
 }
 
 type queueSlot struct {
@@ -396,7 +393,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		for _, rcpt := range meta.FailedRcpts {
 			dl.Msg("not delivered, permanent error", "rcpt", rcpt)
 		}
-		if (len(meta.FailedRcpts)+len(meta.TemporaryFailedRcpts) != 0) && !meta.DSN {
+		if len(meta.FailedRcpts)+len(meta.TemporaryFailedRcpts) != 0 {
 			q.emitDSN(meta, header)
 		}
 		q.removeFromDisk(meta.MsgMeta)
@@ -434,16 +431,11 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 		statusLock: new(sync.Mutex),
 	}
 
-	deliveryTarget := q.Target
-	if meta.DSN {
-		deliveryTarget = q.dsnPipeline
-	}
-
 	msgMeta := meta.MsgMeta.DeepCopy()
 	msgMeta.ID = msgMeta.ID + "-" + strconv.Itoa(meta.TriesCount+1)
 	dl.Debugf("using message ID = %s", msgMeta.ID)
 
-	delivery, err := deliveryTarget.Start(msgMeta, meta.From)
+	delivery, err := q.Target.Start(msgMeta, meta.From)
 	if err != nil {
 		dl.Debugf("target.Start failed: %v", err)
 		perr.Failed = append(perr.Failed, meta.To...)
@@ -576,18 +568,6 @@ func (qd *queueDelivery) Commit() error {
 
 func (q *Queue) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	meta := &QueueMetadata{
-		MsgMeta:      msgMeta,
-		From:         mailFrom,
-		RcptErrs:     map[string]*smtp.SMTPError{},
-		FirstAttempt: time.Now(),
-		LastAttempt:  time.Now(),
-	}
-	return &queueDelivery{q: q, meta: meta}, nil
-}
-
-func (q *Queue) StartDSN(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	meta := &QueueMetadata{
-		DSN:          true,
 		MsgMeta:      msgMeta,
 		From:         mailFrom,
 		RcptErrs:     map[string]*smtp.SMTPError{},
@@ -915,7 +895,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)
 
-	dsnDelivery, err := q.StartDSN(dsnMeta, "")
+	dsnDelivery, err := q.dsnPipeline.Start(dsnMeta, "")
 	if err != nil {
 		dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
 		return
