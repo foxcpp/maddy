@@ -23,6 +23,9 @@ fi
 if [ "$NO_RUN" == "" ]; then
     NO_RUN=0
 fi
+if [ "$HOSTNAME" == "" ]; then
+    HOSTNAME=$(hostname)
+fi
 
 export CGO_CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS"
 export CGO_CXXFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CXXFLAGS"
@@ -145,7 +148,7 @@ install_config() {
 
         install "$(source_dir)/maddy.conf" /tmp/maddy.conf
 
-        host=$(hostname)
+        host=$HOSTNAME
         set +e # premit to fail if stdin is /dev/null (in package.sh)
         read -rp "What's your domain, btw? [$host] > " DOMAIN
         set -e
