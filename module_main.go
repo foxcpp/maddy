@@ -127,6 +127,10 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 		mods = append(mods, modInfo{instance: inst, cfg: block})
 	}
 
+	if len(endpoints) == 0 {
+		return nil, fmt.Errorf("at least one endpoint should be configured")
+	}
+
 	for _, endp := range endpoints {
 		if err := endp.instance.Init(config.NewMap(globals, &endp.cfg)); err != nil {
 			return nil, err
