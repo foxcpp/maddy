@@ -43,6 +43,7 @@ func Run() int {
 	var err error
 	log.DefaultLogger.Out, err = LogOutputOption(strings.Split(*logTargets, " "))
 	if err != nil {
+		systemdStatusErr(err)
 		log.Println(err)
 		return 2
 	}
@@ -51,18 +52,21 @@ func Run() int {
 
 	f, err := os.Open(*configPath)
 	if err != nil {
-		log.Printf("cannot open %q: %v\n", *configPath, err)
+		systemdStatusErr(err)
+		log.Println(err)
 		return 2
 	}
 	defer f.Close()
 
 	cfg, err := parser.Read(f, *configPath)
 	if err != nil {
-		log.Printf("cannot parse %q: %v\n", *configPath, err)
+		systemdStatusErr(err)
+		log.Println(err)
 		return 2
 	}
 
 	if err := moduleMain(cfg); err != nil {
+		systemdStatusErr(err)
 		log.Println(err)
 		return 2
 	}

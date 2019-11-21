@@ -6,6 +6,9 @@ Documentation=https://github.com/foxcpp/maddy/wiki
 After=network.target
 
 [Service]
+Type=notify
+NotifyAccess=main
+
 # For systemd before 235. Assumes pre-existing user & group.
 User=maddy
 Group=maddy

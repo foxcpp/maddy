@@ -3,6 +3,9 @@ Description=maddy mail server (using %i.conf)
 After=network.target
 
 [Service]
+Type=notify
+NotifyAccess=main
+
 # For systemd before 235. Assumes pre-existing user & group.
 User=maddy
 Group=maddy

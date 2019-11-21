@@ -55,7 +55,11 @@ func moduleMain(cfg []config.Node) error {
 		return err
 	}
 
+	systemdStatus(SDReady, "Listening for incoming connections...")
+
 	handleSignals()
+
+	systemdStatus(SDStopping, "Waiting for running transactions to complete...")
 
 	for _, inst := range insts {
 		if closer, ok := inst.(io.Closer); ok {

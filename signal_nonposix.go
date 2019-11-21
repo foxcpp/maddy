@@ -16,7 +16,7 @@ func handleSignals() os.Signal {
 
 	s := <-sig
 	go func() {
-		s := waitForSignal()
+		s := handleSignals()
 		log.Printf("forced shutdown due to signal (%v)!", s)
 		os.Exit(1)
 	}()
