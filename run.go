@@ -70,8 +70,6 @@ func Run() int {
 	return 0
 }
 
-var ()
-
 func initDebug() {
 	if *profileEndpoint != "" {
 		go func() {

@@ -1,6 +1,7 @@
 package maddy
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/foxcpp/maddy/config"
@@ -132,22 +133,13 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 		}
 	}
 
-	// We initialize all non-endpoint modules defined at top-level
-	// just for purpose of checking that they have a valid configuration.
-	//
-	// Modules that are actually used will be pulled by lazy initialization
-	// logic during endpoint initialization.
 	for _, inst := range mods {
 		if module.Initialized[inst.instance.InstanceName()] {
 			continue
 		}
 
-		log.Printf("%s (%s) is not used anywhere", inst.instance.InstanceName(), inst.instance.Name())
-
-		module.Initialized[inst.instance.InstanceName()] = true
-		if err := inst.instance.Init(config.NewMap(globals, &inst.cfg)); err != nil {
-			return nil, err
-		}
+		return nil, fmt.Errorf("Unused configuration block at %s:%d - %s (%s)",
+			inst.cfg.File, inst.cfg.Line, inst.instance.InstanceName(), inst.instance.Name())
 	}
 
 	res := make([]module.Module, 0, len(mods)+len(endpoints))
