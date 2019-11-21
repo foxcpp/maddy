@@ -207,11 +207,27 @@ func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
 			Err: err,
 		}
 	case *net.OpError:
+		if _, ok := err.Err.(*net.DNSError); ok {
+			reason, misc := exterrors.UnwrapDNSErr(err)
+			misc["remote_server"] = err.Addr
+			misc["io_op"] = err.Op
+			return &exterrors.SMTPError{
+				Code:         exterrors.SMTPCode(err, 450, 550),
+				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4}),
+				Message:      "DNS error",
+				TargetName:   "smtp_downstream",
+				Err:          err,
+				Reason:       reason,
+				Misc:         misc,
+			}
+
+		}
 		return &exterrors.SMTPError{
 			Code:         450,
 			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
 			Message:      "Network I/O error",
 			TargetName:   "remote",
+			Err:          err,
 			Misc: map[string]interface{}{
 				"remote_addr": err.Addr,
 				"io_op":       err.Op,
