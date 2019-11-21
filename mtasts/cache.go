@@ -164,7 +164,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 		records, err := c.Resolver.LookupTXT(context.Background(), "_mta-sts."+domain)
 		if err != nil {
 			if validCache {
-				if dnsErr, ok := err.(*net.DNSError); ok || !dnsErr.IsNotFound {
+				if dnsErr, ok := err.(*net.DNSError); ok && !dnsErr.IsNotFound {
 					reason, misc := exterrors.UnwrapDNSErr(err)
 					if reason != "" {
 						misc["reason"] = reason
@@ -176,7 +176,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 			}
 
 			if derr, ok := err.(*net.DNSError); ok && !derr.IsTemporary {
-				if dnsErr, ok := err.(*net.DNSError); ok || !dnsErr.IsNotFound {
+				if dnsErr, ok := err.(*net.DNSError); ok && !dnsErr.IsNotFound {
 					reason, misc := exterrors.UnwrapDNSErr(err)
 					if reason != "" {
 						misc["reason"] = reason
