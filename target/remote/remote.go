@@ -514,6 +514,7 @@ func (rd *remoteDelivery) Close() error {
 		rd.Log.Debugf("disconnected from %s", conn.serverName)
 		if err := conn.Quit(); err != nil {
 			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
+			conn.Close()
 		}
 	}
 	return nil
@@ -631,11 +632,16 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 
 	cl, err := smtp.NewClient(conn, address)
 	if err != nil {
+		if err := cl.Quit(); err != nil {
+			cl.Close()
+		}
 		return nil, err
 	}
 
 	if err := cl.Hello(rd.rt.hostname); err != nil {
-		cl.Quit()
+		if err := cl.Quit(); err != nil {
+			cl.Close()
+		}
 		return nil, err
 	}
 
@@ -644,7 +650,9 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 			cfg := rd.rt.tlsConfig.Clone()
 			cfg.ServerName = address
 			if err := cl.StartTLS(cfg); err != nil {
-				cl.Quit()
+				if err := cl.Quit(); err != nil {
+					cl.Close()
+				}
 				if !requireTLS {
 					rd.Log.Error("TLS error, falling back to plain-text connection", err, "mx", address)
 					return rd.connectToServer(address, false, false)
@@ -652,7 +660,9 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 				return nil, err
 			}
 		} else if requireTLS {
-			cl.Quit()
+			if err := cl.Quit(); err != nil {
+				cl.Close()
+			}
 			return nil, &exterrors.SMTPError{
 				Code:         523,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
