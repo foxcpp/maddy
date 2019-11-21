@@ -559,12 +559,18 @@ func (qd *queueDelivery) Abort() error {
 }
 
 func (qd *queueDelivery) Commit() error {
+	if qd.meta == nil {
+		panic("queue: double Commit")
+	}
+
 	qd.q.wheel.Add(time.Time{}, queueSlot{
 		ID:   qd.meta.MsgMeta.ID,
 		Meta: qd.meta,
 		Hdr:  &qd.header,
 		Body: qd.body,
 	})
+	qd.meta = nil
+	qd.body = nil
 	return nil
 }
 
