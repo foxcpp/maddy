@@ -35,6 +35,11 @@ func Run() int {
 	)
 	flag.Parse()
 
+	if len(flag.Args()) != 0 {
+		fmt.Println("usage:", os.Args[0], "[options]")
+		return 2
+	}
+
 	if *printVersion {
 		fmt.Println("maddy", BuildInfo())
 		return 0
