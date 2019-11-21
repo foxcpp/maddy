@@ -168,36 +168,11 @@ func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 func DoTestDeliveryMeta(t *testing.T, tgt module.DeliveryTarget, from string, to []string, msgMeta *module.MsgMetadata) string {
 	t.Helper()
 
-	IDRaw := sha1.Sum([]byte(t.Name()))
-	encodedID := hex.EncodeToString(IDRaw[:])
-
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
-	msgMeta.DontTraceSender = true
-	msgMeta.ID = encodedID
-	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(msgMeta, from)
+	id, err := DoTestDeliveryErrMeta(t, tgt, from, to, msgMeta)
 	if err != nil {
-		t.Fatalf("unexpected Start err: %v %+v", err, exterrors.Fields(err))
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	for _, rcpt := range to {
-		t.Log("-- delivery.AddRcpt", rcpt)
-		if err := delivery.AddRcpt(rcpt); err != nil {
-			t.Fatalf("unexpected AddRcpt err for %s: %v %+v", rcpt, err, exterrors.Fields(err))
-		}
-	}
-	t.Log("-- delivery.Body")
-	hdr := textproto.Header{}
-	hdr.Add("B", "2")
-	hdr.Add("A", "1")
-	if err := delivery.Body(hdr, body); err != nil {
-		t.Fatalf("unexpected Body err: %v %+v", err, exterrors.Fields(err))
-	}
-	t.Log("-- delivery.Commit")
-	if err := delivery.Commit(); err != nil {
-		t.Fatalf("unexpected Commit err: %v %+v", err, exterrors.Fields(err))
-	}
-
-	return encodedID
+	return id
 }
 
 func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.DeliveryTarget, from string, to []string) string {
@@ -207,19 +182,27 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	encodedID := hex.EncodeToString(IDRaw[:])
 
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
-	ctx := module.MsgMetadata{
+	msgMeta := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
 	}
 	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(&ctx, from)
+	delivery, err := tgt.Start(&msgMeta, from)
 	if err != nil {
-		t.Fatalf("unexpected Start err: %v %+v", err, exterrors.Fields(err))
+		t.Log("-- ... tgt.Start", from, err, exterrors.Fields(err))
+		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+		return encodedID
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
-			t.Fatalf("unexpected AddRcpt err for %s: %v %+v", rcpt, err, exterrors.Fields(err))
+			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
+			t.Log("-- delivery.Abort")
+			if err := delivery.Abort(); err != nil {
+				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
+			}
+			t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+			return encodedID
 		}
 	}
 	t.Log("-- delivery.BodyNonAtomic")
@@ -229,7 +212,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	delivery.(module.PartialDelivery).BodyNonAtomic(c, hdr, body)
 	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
-		t.Fatalf("unexpected Commit err: %v %+v", err, exterrors.Fields(err))
+		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
 	}
 
 	return encodedID
@@ -256,11 +239,13 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(msgMeta, from)
 	if err != nil {
+		t.Log("-- ... tgt.Start", from, err, exterrors.Fields(err))
 		return encodedID, err
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
 		if err := delivery.AddRcpt(rcpt); err != nil {
+			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
 			t.Log("-- delivery.Abort")
 			if err := delivery.Abort(); err != nil {
 				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
@@ -273,14 +258,16 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	if err := delivery.Body(hdr, body); err != nil {
+		t.Log("-- ... delivery.Body", err, exterrors.Fields(err))
 		t.Log("-- delivery.Abort")
 		if err := delivery.Abort(); err != nil {
-			t.Log("-- delivery.Abort:", err)
+			t.Log("-- ... delivery.Abort:", err, exterrors.Fields(err))
 		}
 		return encodedID, err
 	}
 	t.Log("-- delivery.Commit")
 	if err := delivery.Commit(); err != nil {
+		t.Log("-- ... delivery.Commit", err, exterrors.Fields(err))
 		return encodedID, err
 	}
 
