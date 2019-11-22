@@ -16,7 +16,7 @@ type wcOutput struct {
 func (w wcOutput) Write(stamp time.Time, debug bool, msg string) {
 	builder := strings.Builder{}
 	if w.timestamps {
-		builder.WriteString(stamp.Format("2006-01-02T15:04:05.000 "))
+		builder.WriteString(stamp.UTC().Format("2006-01-02T15:04:05.000Z "))
 	}
 	if debug {
 		builder.WriteString("[debug] ")
