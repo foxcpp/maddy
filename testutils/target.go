@@ -233,7 +233,7 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	msgMeta.DontTraceSender = true
 	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
@@ -298,7 +298,7 @@ func CheckMsg(t *testing.T, msg *Msg, sender string, rcpt []string) {
 func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string) {
 	t.Helper()
 
-	if msg.MsgMeta.ID != id {
+	if msg.MsgMeta.ID != id && id != "" {
 		t.Errorf("empty or wrong delivery context for passed message? %+v", msg.MsgMeta)
 	}
 	if msg.MailFrom != sender {
@@ -310,7 +310,7 @@ func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string)
 	if !reflect.DeepEqual(msg.RcptTo, rcpt) {
 		t.Errorf("wrong recipients, want %v, got %v", rcpt, msg.RcptTo)
 	}
-	if string(msg.Body) != "foobar\r\n" {
+	if string(msg.Body) != "foobar\n" {
 		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.Body))
 	}
 }

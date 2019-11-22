@@ -369,7 +369,7 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	if err := delivery.Body(textproto.Header{}, body); err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -472,7 +472,7 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	if err := delivery.Body(hdr, body); err != nil {
 		t.Fatal(err)
 	}
@@ -646,7 +646,7 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	if err := delivery.Body(hdr, body); err != nil {
 		t.Fatal(err)
 	}
@@ -700,7 +700,7 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	if err := delivery.Body(hdr, body); err == nil {
 		t.Fatal("expected an error, got none")
 	}
@@ -763,7 +763,7 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	err = delivery.Body(hdr, body)
 	testutils.CheckSMTPErr(t, err, 451, exterrors.EnhancedCode{4, 0, 0},
 		"Partial delivery failure, additional attempts may result in duplicates")
@@ -829,7 +829,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	c := multipleErrs{
 		errs: map[string]error{},
 	}
