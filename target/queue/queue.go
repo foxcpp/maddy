@@ -902,7 +902,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	}
 	defer func() {
 		if err != nil {
-			dl.Msg("failed to enqueue DSN", err, "dsn_id", dsnID)
+			dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
 			if err := dsnDelivery.Abort(); err != nil {
 				dl.Error("failed to abort DSN delivery", err, "dsn_id", dsnID)
 			}
