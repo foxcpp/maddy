@@ -49,6 +49,13 @@ func (s *Session) Reset() {
 		s.delivery = nil
 		s.log = s.endp.Log
 	}
+	s.endp.Log.DebugMsg("reset")
+
+	// go-smtp calls Reset after each delivery, so this will make sure
+	// s.msgMeta used will not be the same for all messages submitted during a
+	// session (we pass the pointer to msgMeta everywhere).
+	s.msgMeta = s.msgMeta.DeepCopy()
+
 	s.deliveryErr = nil
 	s.repeatedMailErrs = 0
 }
