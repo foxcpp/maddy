@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *Session) submissionPrepare(header textproto.Header) error {
+func (s *Session) submissionPrepare(header *textproto.Header) error {
 	s.msgMeta.DontTraceSender = true
 
 	if header.Get("Message-ID") == "" {
