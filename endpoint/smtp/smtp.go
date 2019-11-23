@@ -193,7 +193,6 @@ func (s *Session) Data(r io.Reader) error {
 		s.log.Error("DATA error", err)
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
-	s.msgMeta.BodyLength = len(buf.(buffer.MemoryBuffer).Slice)
 
 	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.serv.Domain, s.msgMeta.OriginalFrom)
 	if err != nil {

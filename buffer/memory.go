@@ -14,6 +14,10 @@ func (mb MemoryBuffer) Open() (io.ReadCloser, error) {
 	return NewBytesReader(mb.Slice), nil
 }
 
+func (mb MemoryBuffer) Len() int {
+	return len(mb.Slice)
+}
+
 func (mb MemoryBuffer) Remove() error {
 	return nil
 }

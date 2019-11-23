@@ -23,6 +23,12 @@ type Buffer interface {
 	// Open creates new Reader reading from the underlying storage.
 	Open() (io.ReadCloser, error)
 
+	// Len reports the length of the stored blob.
+	//
+	// Notably, it indicates the amount of bytes that can be read from the
+	// newly created Reader without hiting io.EOF.
+	Len() int
+
 	// Remove discards buffered body and releases all associated resources.
 	//
 	// Multiple Buffer objects may refer to the same underlying storage.

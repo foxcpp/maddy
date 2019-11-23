@@ -115,7 +115,7 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 
 	header = header.Copy()
 	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
-	return d.d.BodyParsed(header, d.msgMeta.BodyLength, body)
+	return d.d.BodyParsed(header, body.Len(), body)
 }
 
 func (d *delivery) Abort() error {

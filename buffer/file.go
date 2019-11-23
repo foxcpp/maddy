@@ -12,10 +12,30 @@ import (
 // FileBuffer implements Buffer interface using file system.
 type FileBuffer struct {
 	Path string
+
+	// LenHint is the size of the stored blob. It can
+	// be set to avoid the need to call os.Stat in the
+	// Len() method.
+	LenHint int
 }
 
 func (fb FileBuffer) Open() (io.ReadCloser, error) {
 	return os.Open(fb.Path)
+}
+
+func (fb FileBuffer) Len() int {
+	if fb.LenHint != 0 {
+		return fb.LenHint
+	}
+
+	info, err := os.Stat(fb.Path)
+	if err != nil {
+		// Any access to the file will probably fail too.  So we can't return a
+		// sensible value.
+		return 0
+	}
+
+	return int(info.Size())
 }
 
 func (fb FileBuffer) Remove() error {

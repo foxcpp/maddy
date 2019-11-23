@@ -80,10 +80,6 @@ type MsgMetadata struct {
 	// header. These fields are still written to the server log.
 	DontTraceSender bool
 
-	// Size of message body. It is updated by pipeline code after each step
-	// that changes body.
-	BodyLength int
-
 	// Quarantine is a message flag that is should be set if message is
 	// considered "suspicious" and should be put into "Junk" folder
 	// in the storage.

@@ -716,7 +716,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		return nil, err
 	}
 
-	return buffer.FileBuffer{Path: bodyPath}, nil
+	return buffer.FileBuffer{Path: bodyPath, LenHint: body.Len()}, nil
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
