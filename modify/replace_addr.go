@@ -139,7 +139,7 @@ func (r replaceAddr) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (r replaceAddr) RewriteBody(h textproto.Header, body buffer.Buffer) error {
+func (r replaceAddr) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 

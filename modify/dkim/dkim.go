@@ -194,7 +194,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (m *Modifier) fieldsToSign(h textproto.Header) []string {
+func (m *Modifier) fieldsToSign(h *textproto.Header) []string {
 	// Filter out duplicated fields from configs so they
 	// will not cause panic() in go-msgauth internals.
 	seen := make(map[string]struct{})
@@ -241,7 +241,7 @@ func (m *Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierS
 	}, nil
 }
 
-func (m *Modifier) shouldSign(msgId string, h textproto.Header, mailFrom string, authName string) (string, bool) {
+func (m *Modifier) shouldSign(msgId string, h *textproto.Header, mailFrom string, authName string) (string, bool) {
 	if _, off := m.senderMatch["off"]; off {
 		return "@" + m.domain, true
 	}
@@ -304,7 +304,7 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (s state) RewriteBody(h textproto.Header, body buffer.Buffer) error {
+func (s state) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
 	var authUser string
 	if s.meta.Conn != nil {
 		authUser = s.meta.Conn.AuthUser
@@ -331,7 +331,7 @@ func (s state) RewriteBody(h textproto.Header, body buffer.Buffer) error {
 	if err != nil {
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
-	if err := textproto.WriteHeader(signer, h); err != nil {
+	if err := textproto.WriteHeader(signer, *h); err != nil {
 		signer.Close()
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}

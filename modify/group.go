@@ -55,7 +55,7 @@ func (gs groupState) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (gs groupState) RewriteBody(h textproto.Header, body buffer.Buffer) error {
+func (gs groupState) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
 	for _, state := range gs.states {
 		if err := state.RewriteBody(h, body); err != nil {
 			return err

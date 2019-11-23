@@ -264,7 +264,7 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (state) RewriteBody(hdr textproto.Header, body buffer.Buffer) error {
+func (state) RewriteBody(hdr *textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 

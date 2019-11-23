@@ -26,7 +26,7 @@ func TestFieldsToSign(t *testing.T) {
 		oversignHeader: []string{"A", "B"},
 		signHeader:     []string{"C"},
 	}
-	fields := m.fieldsToSign(h)
+	fields := m.fieldsToSign(&h)
 	sort.Strings(fields)
 	expected := []string{"A", "A", "A", "B", "B", "C", "C"}
 
@@ -61,7 +61,7 @@ func TestShouldSign(t *testing.T) {
 			m.senderMatch[method] = struct{}{}
 		}
 
-		id, ok := m.shouldSign(strconv.Itoa(i), h, c.MAILFROM, c.AuthIdentity)
+		id, ok := m.shouldSign(strconv.Itoa(i), &h, c.MAILFROM, c.AuthIdentity)
 		if ok != c.ShouldSign {
 			t.Errorf("%d %+v: expected ShouldSign=%v, got %v", i, c, c.ShouldSign, ok)
 		}

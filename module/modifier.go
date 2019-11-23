@@ -53,7 +53,7 @@ type ModifierState interface {
 	//
 	// There is no way to modify the body and RewriteBody should avoid
 	// removing existing header fields and changing their values.
-	RewriteBody(h textproto.Header, body buffer.Buffer) error
+	RewriteBody(h *textproto.Header, body buffer.Buffer) error
 
 	// Close is called after the message processing ends, even if any of the
 	// Rewrite* functions return an error.

@@ -294,10 +294,10 @@ func (dd *msgpipelineDelivery) Body(header textproto.Header, body buffer.Buffer)
 
 	// Run modifiers after Authentication-Results addition to make
 	// sure signatures, etc will cover it.
-	if err := dd.globalModifiersState.RewriteBody(header, body); err != nil {
+	if err := dd.globalModifiersState.RewriteBody(&header, body); err != nil {
 		return err
 	}
-	if err := dd.sourceModifiersState.RewriteBody(header, body); err != nil {
+	if err := dd.sourceModifiersState.RewriteBody(&header, body); err != nil {
 		return err
 	}
 
@@ -351,11 +351,11 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header te
 
 	// Run modifiers after Authentication-Results addition to make
 	// sure signatures, etc will cover it.
-	if err := dd.globalModifiersState.RewriteBody(header, body); err != nil {
+	if err := dd.globalModifiersState.RewriteBody(&header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
-	if err := dd.sourceModifiersState.RewriteBody(header, body); err != nil {
+	if err := dd.sourceModifiersState.RewriteBody(&header, body); err != nil {
 		setStatusAll(err)
 		return
 	}

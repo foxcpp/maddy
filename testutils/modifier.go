@@ -78,7 +78,7 @@ func (ms modifierState) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (ms modifierState) RewriteBody(h textproto.Header, body buffer.Buffer) error {
+func (ms modifierState) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
 	if ms.m.BodyErr != nil {
 		return ms.m.BodyErr
 	}
