@@ -46,7 +46,7 @@ func TestSubmissionPrepare(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = session.(*Session).submissionPrepare(&hdr)
+		err = session.(*Session).submissionPrepare(&module.MsgMetadata{}, &hdr)
 		if expectedMap == nil {
 			if err == nil {
 				t.Error("Expected an error, got none")

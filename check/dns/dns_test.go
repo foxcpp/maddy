@@ -4,6 +4,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/check"
 	"github.com/foxcpp/maddy/future"
@@ -31,9 +32,13 @@ func TestRequireMatchingRDNS(t *testing.T) {
 				},
 			},
 			MsgMeta: &module.MsgMetadata{
-				SrcAddr:     &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
-				SrcHostname: srcHost,
-				SrcRDNSName: rdnsFut,
+				Conn: &module.ConnState{
+					ConnectionState: smtp.ConnectionState{
+						RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
+						Hostname:   srcHost,
+					},
+					RDNSName: rdnsFut,
+				},
 			},
 			Logger: testutils.Logger(t, "require_matching_rdns"),
 		})
@@ -68,7 +73,11 @@ func TestRequireMXRecord(t *testing.T) {
 				},
 			},
 			MsgMeta: &module.MsgMetadata{
-				SrcAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
+				Conn: &module.ConnState{
+					ConnectionState: smtp.ConnectionState{
+						RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
+					},
+				},
 			},
 			Logger: testutils.Logger(t, "require_mx_record"),
 		}, mailFrom)
@@ -110,8 +119,12 @@ func TestMatchingEHLO(t *testing.T) {
 				Zones: zones,
 			},
 			MsgMeta: &module.MsgMetadata{
-				SrcAddr:     &net.TCPAddr{IP: srcIP, Port: 55555},
-				SrcHostname: srcHost,
+				Conn: &module.ConnState{
+					ConnectionState: smtp.ConnectionState{
+						RemoteAddr: &net.TCPAddr{IP: srcIP, Port: 55555},
+						Hostname:   srcHost,
+					},
+				},
 			},
 			Logger: testutils.Logger(t, "require_matching_helo"),
 		})

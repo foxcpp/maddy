@@ -46,7 +46,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -729,11 +728,7 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 
 	metaCopy := *meta
 	metaCopy.MsgMeta = meta.MsgMeta.DeepCopy()
-	metaCopy.MsgMeta.AuthPassword = ""
-
-	if _, ok := metaCopy.MsgMeta.SrcAddr.(*net.TCPAddr); !ok {
-		meta.MsgMeta.SrcAddr = nil
-	}
+	metaCopy.MsgMeta.Conn = nil
 
 	if err := json.NewEncoder(file).Encode(metaCopy); err != nil {
 		return err
@@ -760,11 +755,12 @@ func (q *Queue) readMessageMeta(id string) (*QueueMetadata, error) {
 
 	meta := &QueueMetadata{}
 
-	// net.Addr can't be deserialized because we don't know concrete type. For
-	// this reason we assume that SrcAddr is TCPAddr, if it is not - we drop it
-	// during serialization (see updateMetadataOnDisk).
 	meta.MsgMeta = &module.MsgMetadata{}
-	meta.MsgMeta.SrcAddr = &net.TCPAddr{}
+
+	// There is a couple of problems we have to solve before we would be able to
+	// serialize ConnState.
+	// 1. future.Future can't be serialized.
+	// 2. net.Addr can't be deserialized because we don't know the concrete type.
 
 	if err := json.NewDecoder(file).Decode(meta); err != nil {
 		return nil, err
@@ -858,8 +854,8 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 		ArrivalDate:     meta.FirstAttempt,
 		LastAttemptDate: meta.LastAttempt,
 	}
-	if !meta.MsgMeta.DontTraceSender {
-		mtaInfo.ReceivedFromMTA = meta.MsgMeta.SrcHostname
+	if !meta.MsgMeta.DontTraceSender && meta.MsgMeta.Conn != nil {
+		mtaInfo.ReceivedFromMTA = meta.MsgMeta.Conn.Hostname
 	}
 
 	rcptInfo := make([]dsn.RecipientInfo, 0, len(meta.RcptErrs))
@@ -889,9 +885,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	dsnBody := buffer.MemoryBuffer{Slice: dsnBodyBlob.Bytes()}
 
 	dsnMeta := &module.MsgMetadata{
-		ID:          dsnID,
-		SrcProto:    "",
-		SrcHostname: q.hostname,
+		ID: dsnID,
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)
 

@@ -29,15 +29,21 @@ import (
 )
 
 type Session struct {
-	endp        *Endpoint
-	delivery    module.Delivery
-	deliveryErr error
-	msgMeta     *module.MsgMetadata
-	log         log.Logger
-	cancelRDNS  func()
+	endp *Endpoint
 
+	// Specific for this session.
+	cancelRDNS       func()
+	connState        module.ConnState
 	repeatedMailErrs int
 	loggedRcptErrors int
+
+	// Specific for the currently handled message.
+	mailFrom    string
+	msgMeta     *module.MsgMetadata
+	delivery    module.Delivery
+	deliveryErr error
+
+	log log.Logger
 }
 
 func (s *Session) Reset() {
@@ -45,59 +51,61 @@ func (s *Session) Reset() {
 		if err := s.delivery.Abort(); err != nil {
 			s.endp.Log.Error("delivery abort failed", err)
 		}
-		s.log.Msg("aborted")
+		s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
 		s.delivery = nil
-		s.log = s.endp.Log
+		s.msgMeta = nil
+		s.deliveryErr = nil
 	}
 	s.endp.Log.DebugMsg("reset")
+}
 
-	// go-smtp calls Reset after each delivery, so this will make sure
-	// s.msgMeta used will not be the same for all messages submitted during a
-	// session (we pass the pointer to msgMeta everywhere).
-	s.msgMeta = s.msgMeta.DeepCopy()
+func (s *Session) startDelivery(from string) (string, error) {
+	var err error
+	msgMeta := &module.MsgMetadata{
+		Conn: &s.connState,
+	}
 
-	s.deliveryErr = nil
-	s.repeatedMailErrs = 0
+	msgMeta.ID, err = msgpipeline.GenerateMsgID()
+	if err != nil {
+		return "", err
+	}
+	s.msgMeta = msgMeta
+	s.mailFrom = from
+	msgMeta.OriginalFrom = from
+
+	s.log.Msg("incoming message",
+		"src_host", msgMeta.Conn.Hostname,
+		"src_ip", msgMeta.Conn.RemoteAddr.String(),
+		"sender", msgMeta.OriginalFrom,
+		"msg_id", msgMeta.ID,
+	)
+
+	s.delivery, err = s.endp.pipeline.Start(msgMeta, from)
+	if err != nil {
+		return msgMeta.ID, err
+	}
+	return msgMeta.ID, nil
 }
 
 func (s *Session) Mail(from string) error {
-	var err error
-	s.msgMeta.ID, err = msgpipeline.GenerateMsgID()
-	if err != nil {
-		s.log.Msg("rand.Rand fail", "err", err)
-		return s.endp.wrapErr(s.msgMeta.ID, err)
-	}
-	s.msgMeta.OriginalFrom = from
-
-	if s.endp.resolver != nil && s.msgMeta.SrcAddr != nil {
-		rdnsCtx, cancelRDNS := context.WithCancel(context.TODO())
-		s.msgMeta.SrcRDNSName = future.New()
-		s.cancelRDNS = cancelRDNS
-		go s.fetchRDNSName(rdnsCtx)
-	}
-
 	if !s.endp.deferServerReject {
-		s.log = target.DeliveryLogger(s.log, s.msgMeta)
-		s.log.Msg("incoming message",
-			"src_host", s.msgMeta.SrcHostname,
-			"src_ip", s.msgMeta.SrcAddr.String(),
-			"sender", s.msgMeta.OriginalFrom,
-		)
-
-		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		msgID, err := s.startDelivery(from)
 		if err != nil {
-			s.log.Error("MAIL FROM error", err)
-			return s.endp.wrapErr(s.msgMeta.ID, err)
+			s.log.Error("MAIL FROM error", err, "msg_id", msgID)
+			return s.endp.wrapErr(msgID, err)
 		}
 	}
+
+	// Keep the MAIL FROM argument for deferred startDelivery.
+	s.mailFrom = from
 
 	return nil
 }
 
 func (s *Session) fetchRDNSName(ctx context.Context) {
-	tcpAddr, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
+	tcpAddr, ok := s.connState.RemoteAddr.(*net.TCPAddr)
 	if !ok {
-		s.msgMeta.SrcRDNSName.Set(nil)
+		s.connState.RDNSName.Set(nil)
 		return
 	}
 
@@ -105,35 +113,30 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		misc["reason"] = reason
-		s.log.Error("rDNS error", exterrors.WithFields(err, misc))
-		s.msgMeta.SrcRDNSName.Set(nil)
+		s.log.Error("rDNS error", exterrors.WithFields(err, misc), "src_ip", s.connState.RemoteAddr)
+		s.connState.RDNSName.Set(nil)
 		return
 	}
 
-	s.msgMeta.SrcRDNSName.Set(name)
+	s.connState.RDNSName.Set(name)
 }
 
 func (s *Session) Rcpt(to string) error {
+	// deferServerReject = true and this is the first RCPT TO command.
 	if s.delivery == nil {
-		s.log = target.DeliveryLogger(s.log, s.msgMeta)
-
-		if s.deliveryErr == nil {
-			s.log.Msg("incoming message",
-				"src_host", s.msgMeta.SrcHostname,
-				"src_ip", s.msgMeta.SrcAddr.String(),
-				"sender", s.msgMeta.OriginalFrom,
-			)
-		} else {
+		// If we already attempted to initialize the delivery -
+		// fail again.
+		if s.deliveryErr != nil {
 			s.repeatedMailErrs++
-			return s.endp.wrapErr(s.msgMeta.ID, s.deliveryErr)
+			// The deliveryErr is already wrapped.
+			return s.deliveryErr
 		}
 
-		var err error
-		s.delivery, err = s.endp.pipeline.Start(s.msgMeta, s.msgMeta.OriginalFrom)
+		msgID, err := s.startDelivery(s.mailFrom)
 		if err != nil {
-			s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to)
-			s.deliveryErr = err
-			return s.endp.wrapErr(s.msgMeta.ID, err)
+			s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
+			s.deliveryErr = s.endp.wrapErr(s.msgMeta.ID, err)
+			return s.deliveryErr
 		}
 	}
 
@@ -143,12 +146,12 @@ func (s *Session) Rcpt(to string) error {
 			s.log.Error("RCPT error", err, "rcpt", to)
 			s.loggedRcptErrors++
 			if s.loggedRcptErrors == s.endp.maxLoggedRcptErrors {
-				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.msgMeta.SrcAddr)
+				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.connState.RemoteAddr, "msg_id", s.msgMeta.ID)
 			}
 		}
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
-	s.log.Msg("RCPT ok", "rcpt", to)
+	s.endp.Log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
 	return nil
 }
 
@@ -159,15 +162,13 @@ func (s *Session) Logout() error {
 		}
 		s.log.Msg("aborted")
 		s.delivery = nil
+
+		if s.repeatedMailErrs > s.endp.maxLoggedRcptErrors {
+			s.log.Msg("MAIL FROM repeated error a lot of times, possible dictonary attack", "count", s.repeatedMailErrs, "src_ip", s.connState.RemoteAddr)
+		}
 	}
 	if s.cancelRDNS != nil {
 		s.cancelRDNS()
-	}
-	if s.repeatedMailErrs != 0 {
-		s.log.Msg("MAIL FROM error repeated a lot, possible dictonary attack", "count", s.repeatedMailErrs, "src_ip", s.msgMeta.SrcAddr)
-
-		// XXX: Workaround for go-smtp calling Logout twice.
-		s.repeatedMailErrs = 0
 	}
 	return nil
 }
@@ -176,13 +177,14 @@ func (s *Session) Data(r io.Reader) error {
 	bufr := bufio.NewReader(r)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
-		s.log.Error("DATA error", err)
+		s.log.Error("DATA error", err, s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	if s.endp.submission {
-		if err := s.submissionPrepare(&header); err != nil {
-			s.log.Error("DATA error", err)
+		// The MsgMetadata is passed by pointer all the way down.
+		if err := s.submissionPrepare(s.msgMeta, &header); err != nil {
+			s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 			return s.endp.wrapErr(s.msgMeta.ID, err)
 		}
 	}
@@ -190,28 +192,30 @@ func (s *Session) Data(r io.Reader) error {
 	// TODO: Disk buffering.
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
-		s.log.Error("DATA error", err)
+		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.serv.Domain, s.msgMeta.OriginalFrom)
 	if err != nil {
-		s.log.Error("DATA error", err)
+		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return err
 	}
 	header.Add("Received", received)
 
 	if err := s.delivery.Body(header, buf); err != nil {
-		s.log.Error("DATA error", err)
+		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
-		s.log.Error("DATA error", err)
+		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, err)
 	}
 
-	s.log.Msg("accepted")
+	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
 	s.delivery = nil
 
 	return nil
@@ -463,32 +467,36 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 }
 
 func (endp *Endpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
-	ctx := &module.MsgMetadata{
-		Anonymous:    anonymous,
-		AuthUser:     username,
-		AuthPassword: password,
-		SrcTLSState:  state.TLS,
-		SrcHostname:  state.Hostname,
-		SrcAddr:      state.RemoteAddr,
+	s := &Session{
+		endp: endp,
+		log:  endp.Log,
+		connState: module.ConnState{
+			ConnectionState: *state,
+			AuthUser:        username,
+			AuthPassword:    password,
+		},
 	}
 
 	if endp.serv.LMTP {
-		ctx.SrcProto = "LMTP"
+		s.connState.Proto = "LMTP"
 	} else {
 		// Check if TLS connection state struct is poplated.
 		// If it is - we are ssing TLS.
-		if state.TLS.Version != 0 {
-			ctx.SrcProto = "ESMTPS"
+		if state.TLS.HandshakeComplete {
+			s.connState.Proto = "ESMTPS"
 		} else {
-			ctx.SrcProto = "ESMTP"
+			s.connState.Proto = "ESMTP"
 		}
 	}
 
-	return &Session{
-		endp:    endp,
-		msgMeta: ctx,
-		log:     endp.Log,
+	if endp.resolver != nil {
+		rdnsCtx, cancelRDNS := context.WithCancel(context.TODO())
+		s.connState.RDNSName = future.New()
+		s.cancelRDNS = cancelRDNS
+		go s.fetchRDNSName(rdnsCtx)
 	}
+
+	return s
 }
 
 func (endp *Endpoint) Close() error {

@@ -305,7 +305,11 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 }
 
 func (s state) RewriteBody(h textproto.Header, body buffer.Buffer) error {
-	id, ok := s.m.shouldSign(s.meta.ID, h, s.meta.OriginalFrom, s.meta.AuthUser)
+	var authUser string
+	if s.meta.Conn != nil {
+		authUser = s.meta.Conn.AuthUser
+	}
+	id, ok := s.m.shouldSign(s.meta.ID, h, s.meta.OriginalFrom, authUser)
 	if !ok {
 		return nil
 	}

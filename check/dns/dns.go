@@ -12,12 +12,16 @@ import (
 )
 
 func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
-	if ctx.MsgMeta.SrcRDNSName == nil {
+	if ctx.MsgMeta.Conn == nil {
+		ctx.Logger.Msg("locally-generated message, skipping")
+		return module.CheckResult{}
+	}
+	if ctx.MsgMeta.Conn.RDNSName == nil {
 		ctx.Logger.Msg("rDNS lookup is disabled, skipping")
 		return module.CheckResult{}
 	}
 
-	rdnsName, ok := ctx.MsgMeta.SrcRDNSName.Get().(string)
+	rdnsName, ok := ctx.MsgMeta.Conn.RDNSName.Get().(string)
 	if !ok {
 		// There is no way to tell temporary failure from permanent one here
 		// so err on the side of caution.
@@ -31,7 +35,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 		}
 	}
 
-	srcDomain := strings.TrimSuffix(ctx.MsgMeta.SrcHostname, ".")
+	srcDomain := strings.TrimSuffix(ctx.MsgMeta.Conn.Hostname, ".")
 	rdnsName = strings.TrimSuffix(rdnsName, ".")
 
 	if strings.EqualFold(rdnsName, srcDomain) {
@@ -77,12 +81,6 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 		}
 	}
 
-	_, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
-	if !ok {
-		ctx.Logger.Println("non-TCP/IP source")
-		return module.CheckResult{}
-	}
-
 	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)
@@ -114,13 +112,18 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 }
 
 func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
-	tcpAddr, ok := ctx.MsgMeta.SrcAddr.(*net.TCPAddr)
+	if ctx.MsgMeta.Conn == nil {
+		ctx.Logger.Printf("locally-generated message, skipping")
+		return module.CheckResult{}
+	}
+
+	tcpAddr, ok := ctx.MsgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		ctx.Logger.Printf("non-TCP/IP source, skipped")
 		return module.CheckResult{}
 	}
 
-	ehlo := ctx.MsgMeta.SrcHostname
+	ehlo := ctx.MsgMeta.Conn.Hostname
 
 	if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
 		// IP in EHLO, checking against source IP directly.

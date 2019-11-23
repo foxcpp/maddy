@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 	"time"
@@ -14,19 +15,25 @@ func SanitizeForHeader(raw string) string {
 }
 
 func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostname, mailFrom string) (string, error) {
+	if msgMeta.Conn == nil {
+		return "", errors.New("can't generate Received for a locally generated message")
+	}
+
 	builder := strings.Builder{}
 
 	// Empirically guessed value that should be enough to fit
 	// entire value in most cases.
-	builder.Grow(256 + len(msgMeta.SrcHostname))
+	builder.Grow(256 + len(msgMeta.Conn.Hostname))
 
-	if !msgMeta.DontTraceSender && msgMeta.SrcHostname != "" {
+	if !msgMeta.DontTraceSender && (strings.Contains(msgMeta.Conn.Proto, "SMTP") ||
+		strings.Contains(msgMeta.Conn.Proto, "LMTP")) {
+
 		builder.WriteString("from ")
-		builder.WriteString(msgMeta.SrcHostname)
-		if tcpAddr, ok := msgMeta.SrcAddr.(*net.TCPAddr); ok {
+		builder.WriteString(msgMeta.Conn.Hostname)
+		if tcpAddr, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr); ok {
 			builder.WriteString(" (")
-			if msgMeta.SrcRDNSName != nil {
-				rdnsName, err := msgMeta.SrcRDNSName.GetContext(ctx)
+			if msgMeta.Conn.RDNSName != nil {
+				rdnsName, err := msgMeta.Conn.RDNSName.GetContext(ctx)
 				if err != nil {
 					return "", err
 				}
@@ -47,9 +54,9 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 	builder.WriteString(" (envelope-sender <")
 	builder.WriteString(SanitizeForHeader(mailFrom))
 	builder.WriteString(">)")
-	if msgMeta.SrcProto != "" {
+	if msgMeta.Conn.Proto != "" {
 		builder.WriteString(" with ")
-		builder.WriteString(msgMeta.SrcProto)
+		builder.WriteString(msgMeta.Conn.Proto)
 	}
 	builder.WriteString(" id ")
 	builder.WriteString(msgMeta.ID)

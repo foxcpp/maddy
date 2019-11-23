@@ -357,13 +357,18 @@ func (s *state) CheckConnection() module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	ip, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
+	if s.msgMeta.Conn == nil {
+		s.log.Msg("locally generated message, ignoring")
+		return module.CheckResult{}
+	}
+
+	ip, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		s.log.Msg("non-TCP/IP source")
 		return module.CheckResult{}
 	}
 
-	if err := s.bl.checkLists(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom); err != nil {
+	if err := s.bl.checkLists(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom); err != nil {
 		// TODO: Support per-list actions?
 		return s.bl.listedAction.Apply(module.CheckResult{
 			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"}),

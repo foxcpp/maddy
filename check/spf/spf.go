@@ -114,7 +114,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 	_, fromDomain, _ := address.Split(s.msgMeta.OriginalFrom)
 	spfAuth := &authres.SPFResult{
 		Value: authres.ResultNone,
-		Helo:  s.msgMeta.SrcHostname,
+		Helo:  s.msgMeta.Conn.Hostname,
 		From:  fromDomain,
 	}
 
@@ -233,14 +233,19 @@ func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 }
 
 func (s *state) CheckConnection() module.CheckResult {
-	ip, ok := s.msgMeta.SrcAddr.(*net.TCPAddr)
+	if s.msgMeta.Conn == nil {
+		s.log.Println("locally generated message, skipping")
+		return module.CheckResult{}
+	}
+
+	ip, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		s.log.Println("non-IP SrcAddr")
 		return module.CheckResult{}
 	}
 
 	if s.c.enforceEarly {
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
@@ -259,7 +264,7 @@ func (s *state) CheckConnection() module.CheckResult {
 			}
 		}()
 
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.SrcHostname, s.msgMeta.OriginalFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()

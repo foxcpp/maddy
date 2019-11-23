@@ -147,14 +147,18 @@ func (d *delivery) connect() error {
 	}
 
 	if d.u.saslFactory != nil {
-		saslClient, err := d.u.saslFactory(d.msgMeta.AuthUser, d.msgMeta.AuthPassword)
+		saslClient, err := d.u.saslFactory(d.msgMeta)
 		if err != nil {
-			d.client.Quit()
+			if err := d.client.Quit(); err != nil {
+				d.client.Close()
+			}
 			return err
 		}
 
 		if err := d.client.Auth(saslClient); err != nil {
-			d.client.Quit()
+			if err := d.client.Quit(); err != nil {
+				d.client.Close()
+			}
 			return err
 		}
 	}
@@ -274,7 +278,10 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 
 func (d *delivery) Abort() error {
 	d.body.Close()
-	return d.client.Close()
+	if err := d.client.Quit(); err != nil {
+		d.client.Close()
+	}
+	return nil
 }
 
 func (d *delivery) Commit() error {
@@ -294,7 +301,12 @@ func (d *delivery) Commit() error {
 		return d.wrapClientErr(err)
 	}
 
-	return d.wrapClientErr(wc.Close())
+	if err := wc.Close(); err != nil {
+		return d.wrapClientErr(err)
+	}
+
+	d.client.Quit()
+	return nil
 }
 
 func init() {

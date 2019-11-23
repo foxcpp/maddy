@@ -143,11 +143,11 @@ func TestSMTPDelivery(t *testing.T) {
 		t.Error("Wrong Received contents:", msg.Header.Get("Received"))
 	}
 
-	if msg.MsgMeta.SrcProto != "ESMTP" {
-		t.Error("Wrong SrcProto:", msg.MsgMeta.SrcProto)
+	if msg.MsgMeta.Conn.Proto != "ESMTP" {
+		t.Error("Wrong SrcProto:", msg.MsgMeta.Conn.Proto)
 	}
 
-	rdnsName, _ := msg.MsgMeta.SrcRDNSName.Get().(string)
+	rdnsName, _ := msg.MsgMeta.Conn.RDNSName.Get().(string)
 	if rdnsName != "mx.example.org" {
 		t.Error("Wrong rDNS name:", rdnsName)
 	}
@@ -183,7 +183,7 @@ func TestSMTPDelivery_rDNSError(t *testing.T) {
 	msg := tgt.Messages[0]
 	testutils.CheckMsgID(t, &msg, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, "")
 
-	rdnsName := msg.MsgMeta.SrcRDNSName.Get()
+	rdnsName := msg.MsgMeta.Conn.RDNSName.Get()
 	if rdnsName != nil {
 		t.Errorf("Wrong rDNS name: %#+v", rdnsName)
 	}
@@ -496,11 +496,11 @@ func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	msg := tgt.Messages[0]
 	msgID := testutils.CheckMsgID(t, &msg, "sender@example.org", []string{"rcpt@example.org"}, "")
 
-	if msg.MsgMeta.AuthUser != "user" {
-		t.Error("Wrong AuthUser:", msg.MsgMeta.AuthUser)
+	if msg.MsgMeta.Conn.AuthUser != "user" {
+		t.Error("Wrong AuthUser:", msg.MsgMeta.Conn.AuthUser)
 	}
-	if msg.MsgMeta.AuthPassword != "password" {
-		t.Error("Wrong AuthPassword:", msg.MsgMeta.AuthPassword)
+	if msg.MsgMeta.Conn.AuthPassword != "password" {
+		t.Error("Wrong AuthPassword:", msg.MsgMeta.Conn.AuthPassword)
 	}
 
 	receivedPrefix := ` by mx.example.com (envelope-sender <sender@example.org>) with ESMTP id ` + msgID

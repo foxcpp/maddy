@@ -4,9 +4,10 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/exterrors"
+	"github.com/foxcpp/maddy/module"
 )
 
-type saslClientFactory = func(downstreamUser, downstreamPass string) (sasl.Client, error)
+type saslClientFactory = func(msgMeta *module.MsgMetadata) (sasl.Client, error)
 
 // saslAuthDirective returns saslClientFactory function used to create sasl.Client.
 // for use in outbound connections.
@@ -26,8 +27,8 @@ func saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
 		if len(node.Args) > 1 {
 			return nil, m.MatchErr("no additional arguments required")
 		}
-		return func(downstreamUser, downstreamPass string) (sasl.Client, error) {
-			if downstreamUser == "" || downstreamPass == "" {
+		return func(msgMeta *module.MsgMetadata) (sasl.Client, error) {
+			if msgMeta.Conn == nil || msgMeta.Conn.AuthUser == "" || msgMeta.Conn.AuthPassword == "" {
 				return nil, &exterrors.SMTPError{
 					Code:         530,
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
@@ -37,20 +38,20 @@ func saslAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
 				}
 			}
 			// TODO: See if it is useful to support custom identity argument.
-			return sasl.NewPlainClient("", downstreamUser, downstreamPass), nil
+			return sasl.NewPlainClient("", msgMeta.Conn.AuthUser, msgMeta.Conn.AuthPassword), nil
 		}, nil
 	case "plain":
 		if len(node.Args) != 3 {
 			return nil, m.MatchErr("two additional arguments are required (username, password)")
 		}
-		return func(_, _ string) (sasl.Client, error) {
+		return func(*module.MsgMetadata) (sasl.Client, error) {
 			return sasl.NewPlainClient("", node.Args[1], node.Args[2]), nil
 		}, nil
 	case "external":
 		if len(node.Args) > 1 {
 			return nil, m.MatchErr("no additional arguments required")
 		}
-		return func(_, _ string) (sasl.Client, error) {
+		return func(*module.MsgMetadata) (sasl.Client, error) {
 			return sasl.NewExternalClient(""), nil
 		}, nil
 	default:

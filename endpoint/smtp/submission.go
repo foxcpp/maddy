@@ -8,6 +8,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/exterrors"
+	"github.com/foxcpp/maddy/module"
 	"github.com/google/uuid"
 )
 
@@ -23,8 +24,8 @@ var (
 	now = time.Now
 )
 
-func (s *Session) submissionPrepare(header *textproto.Header) error {
-	s.msgMeta.DontTraceSender = true
+func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textproto.Header) error {
+	msgMeta.DontTraceSender = true
 
 	if header.Get("Message-ID") == "" {
 		msgId, err := msgIDField()
