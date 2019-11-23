@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/module"
@@ -9,6 +10,7 @@ import (
 
 type Check struct {
 	InitErr   error
+	EarlyErr  error
 	ConnRes   module.CheckResult
 	SenderRes module.CheckResult
 	RcptRes   module.CheckResult
@@ -46,6 +48,10 @@ func (c *Check) InstanceName() string {
 		return c.InstName
 	}
 	return "test_check"
+}
+
+func (c *Check) CheckConnection(*smtp.ConnectionState) error {
+	return c.EarlyErr
 }
 
 type checkState struct {

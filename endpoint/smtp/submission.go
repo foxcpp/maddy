@@ -11,16 +11,28 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	msgIDField = func() (string, error) {
+		id, err := uuid.NewRandom()
+		if err != nil {
+			return "", err
+		}
+		return id.String(), nil
+	}
+
+	now = time.Now
+)
+
 func (s *Session) submissionPrepare(header *textproto.Header) error {
 	s.msgMeta.DontTraceSender = true
 
 	if header.Get("Message-ID") == "" {
-		msgId, err := uuid.NewRandom()
+		msgId, err := msgIDField()
 		if err != nil {
 			return errors.New("Message-ID generation failed")
 		}
 		s.log.Msg("adding missing Message-ID")
-		header.Set("Message-ID", "<"+msgId.String()+"@"+s.endp.serv.Domain+">")
+		header.Set("Message-ID", "<"+msgId+"@"+s.endp.serv.Domain+">")
 	}
 
 	if header.Get("From") == "" {
@@ -110,7 +122,7 @@ func (s *Session) submissionPrepare(header *textproto.Header) error {
 		}
 	} else {
 		s.log.Msg("adding missing Date header")
-		header.Set("Date", time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
+		header.Set("Date", now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 	}
 
 	return nil

@@ -18,7 +18,7 @@ require (
 	github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e
 	github.com/emersion/go-smtp v0.11.3-0.20190926161756-77d262d6f7b7
 	github.com/foxcpp/go-imap-sql v0.3.2-0.20191109135752-42bd4cfc6673
-	github.com/foxcpp/go-mockdns v0.0.0-20191116212937-0c6663a11ba3
+	github.com/foxcpp/go-mockdns v0.0.0-20191123143003-02edb10da1e3
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1
 	github.com/klauspost/compress v1.9.1 // indirect

@@ -487,3 +487,22 @@ func (dd *msgpipelineDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery
 	dd.deliveries[tgt] = delivery_
 	return delivery_, nil
 }
+
+// Mock returns a MsgPipeline that merely delivers messages to a specified target
+// and runs a set of checks.
+//
+// It is meant for use in tests for modules that embed a pipeline object.
+func Mock(tgt module.DeliveryTarget, globalChecks []module.Check) *MsgPipeline {
+	return &MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
+			globalChecks: globalChecks,
+			perSource:    map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{},
+				defaultRcpt: &rcptBlock{
+					targets: []module.DeliveryTarget{tgt},
+				},
+			},
+		},
+	}
+}

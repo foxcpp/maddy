@@ -295,7 +295,7 @@ func CheckMsg(t *testing.T, msg *Msg, sender string, rcpt []string) {
 	CheckMsgID(t, msg, sender, rcpt, encodedId)
 }
 
-func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string) {
+func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string) string {
 	t.Helper()
 
 	if msg.MsgMeta.ID != id && id != "" {
@@ -313,4 +313,6 @@ func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string)
 	if string(msg.Body) != "foobar\n" {
 		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.Body))
 	}
+
+	return msg.MsgMeta.ID
 }
