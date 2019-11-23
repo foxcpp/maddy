@@ -56,7 +56,7 @@ func (c *Check) InstanceName() string {
 
 func (c *Check) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &c.log.Debug)
-	cfg.Bool("enforce_early", true, true, &c.enforceEarly)
+	cfg.Bool("enforce_early", true, false, &c.enforceEarly)
 	cfg.Custom("none_action", false, false,
 		func() (interface{}, error) {
 			return check.FailAction{}, nil

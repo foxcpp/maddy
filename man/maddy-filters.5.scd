@@ -143,7 +143,7 @@ authorized to send messages for domain in MAIL FROM address.
 ```
 apply_spf {
     debug no
-    enforce_early yes
+    enforce_early no
     fail_action quarantine
     softfail_action quarantine
     permerr_action reject
@@ -161,9 +161,8 @@ policy failure if sender domain does have a DMARC record with 'quarantine' or
 'reject' policy. Instead it will rely on DMARC support to take necesary
 actions using SPF results as an input.
 
-However, enforce_early is yes by default since DMARC support in maddy
-is experimental and disabled by default. Disabling enforce_early without
-enabling DMARC support will make SPF policies no-op and is considered insecure.
+Disabling enforce_early without enabling DMARC support will make SPF policies
+no-op and is considered insecure.
 
 ## Configuration directives
 
@@ -173,11 +172,10 @@ enabling DMARC support will make SPF policies no-op and is considered insecure.
 Enable verbose logging for apply_spf.
 
 *Syntax*: enforce_early _boolean_ ++
-*Default*: yes
+*Default*: no
 
 Make policy decision on MAIL FROM stage (before the message body is received).
-This makes it impossible to apply DMARC override (see below). It recommended
-to leave the default value.
+This makes it impossible to apply DMARC override (see above).
 
 *Syntax*: none_action reject|qurantine|ignore ++
 *Default*: ignore
