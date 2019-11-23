@@ -1,14 +1,16 @@
-package maddy
+package module
 
 import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
-	"github.com/foxcpp/maddy/module"
 )
 
-// Dummy is a struct that implements AuthProvider, DeliveryTarget and Filter
+// Dummy is a struct that implements AuthProvider and DeliveryTarget
 // interfaces but does nothing. Useful for testing.
+//
+// It is always registered under the 'dummy' name and can be used in both tests
+// and the actual server code (but the latter is kinda pointless).
 type Dummy struct{ instName string }
 
 func (d *Dummy) CheckPlain(_, _ string) bool {
@@ -27,7 +29,7 @@ func (d *Dummy) Init(_ *config.Map) error {
 	return nil
 }
 
-func (d *Dummy) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (d *Dummy) Start(msgMeta *MsgMetadata, mailFrom string) (Delivery, error) {
 	return dummyDelivery{}, nil
 }
 
@@ -50,7 +52,7 @@ func (dd dummyDelivery) Commit() error {
 }
 
 func init() {
-	module.Register("dummy", func(_, instName string, _, _ []string) (module.Module, error) {
+	Register("dummy", func(_, instName string, _, _ []string) (Module, error) {
 		return &Dummy{instName: instName}, nil
 	})
 }
