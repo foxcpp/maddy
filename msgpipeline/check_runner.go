@@ -340,17 +340,18 @@ func (cr *checkRunner) applyDMARC() error {
 		return nil
 	}
 
-	result := maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult)
+	result := maddydmarc.EvaluateAlignment(dmarcData.fromDomain, dmarcData.record, cr.mergedRes.AuthResult)
 	cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result.Authres)
 
+	cr.log.DebugMsg("DMARC "+string(result.Authres.Value), "p", dmarcData.record.Policy,
+		"org_domain", dmarcData.orgDomain,
+		"from_domain", dmarcData.fromDomain,
+		"dkim_res", result.DKIMResult.Value,
+		"dkim_domain", result.DKIMResult.Domain,
+		"spf_res", result.SPFResult.Value,
+		"spf_from", result.SPFResult.From)
+
 	if result.Authres.Value == authres.ResultPass {
-		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy,
-			"org_domain", dmarcData.orgDomain,
-			"from_domain", dmarcData.fromDomain,
-			"dkim_res", result.DKIMResult.Value,
-			"dkim_domain", result.DKIMResult.Domain,
-			"spf_res", result.SPFResult.Value,
-			"spf_from", result.SPFResult.From)
 		return nil
 	}
 	if result.Authres.Value == authres.ResultNone {

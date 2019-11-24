@@ -63,7 +63,7 @@ type EvalResult struct {
 	DKIMAligned bool
 }
 
-func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) EvalResult {
+func EvaluateAlignment(fromDomain string, record *dmarc.Record, results []authres.Result) EvalResult {
 	var (
 		spfAligned   = false
 		spfResult    = authres.SPFResult{}
@@ -81,7 +81,7 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 			if dkimResult.Value == "" {
 				dkimResult = *dkimRes
 			}
-			if isAligned(orgDomain, dkimRes.Domain, record.DKIMAlignment) {
+			if isAligned(fromDomain, dkimRes.Domain, record.DKIMAlignment) {
 				dkimResult = *dkimRes
 				switch dkimRes.Value {
 				case authres.ResultPass:
@@ -95,9 +95,9 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 			spfResult = *spfRes
 			var aligned bool
 			if spfRes.From == "" {
-				aligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
+				aligned = isAligned(fromDomain, spfRes.Helo, record.SPFAlignment)
 			} else {
-				aligned = isAligned(orgDomain, spfRes.From, record.SPFAlignment)
+				aligned = isAligned(fromDomain, spfRes.From, record.SPFAlignment)
 			}
 			if aligned && spfRes.Value == authres.ResultPass {
 				spfAligned = true
@@ -116,7 +116,7 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultNone,
 			Reason: "Not enough information (required checks are disabled)",
-			From:   orgDomain,
+			From:   fromDomain,
 		}
 		return res
 	}
@@ -126,7 +126,7 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultTempError,
 			Reason: "DKIM authentication temp error",
-			From:   orgDomain,
+			From:   fromDomain,
 		}
 		return res
 	}
@@ -135,12 +135,12 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultTempError,
 			Reason: "SPF authentication temp error",
-			From:   orgDomain,
+			From:   fromDomain,
 		}
 		return res
 	}
 
-	res.Authres.From = orgDomain
+	res.Authres.From = fromDomain
 	if dkimAligned || spfAligned {
 		res.Authres.Value = authres.ResultPass
 	} else {
@@ -150,17 +150,21 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 	return res
 }
 
-func isAligned(orgDomain, authDomain string, mode dmarc.AlignmentMode) bool {
-	switch mode {
-	case dmarc.AlignmentStrict:
-		return strings.EqualFold(orgDomain, authDomain)
-	case dmarc.AlignmentRelaxed:
-		return strings.EqualFold(orgDomain, authDomain) ||
-			strings.HasSuffix(authDomain, "."+orgDomain)
+func isAligned(fromDomain, authDomain string, mode dmarc.AlignmentMode) bool {
+	if mode == dmarc.AlignmentStrict {
+		return strings.EqualFold(fromDomain, authDomain)
 	}
-	// Relaxed alignment by default.
-	return strings.EqualFold(orgDomain, authDomain) ||
-		strings.HasSuffix(authDomain, "."+orgDomain)
+
+	orgDomainFrom, err := publicsuffix.EffectiveTLDPlusOne(fromDomain)
+	if err != nil {
+		return false
+	}
+	authDomainFrom, err := publicsuffix.EffectiveTLDPlusOne(authDomain)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(orgDomainFrom, authDomainFrom)
 }
 
 func ExtractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
