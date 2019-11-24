@@ -27,6 +27,7 @@ type Check struct {
 	allowBodySubset bool
 	brokenSigAction check.FailAction
 	noSigAction     check.FailAction
+	failOpen        bool
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
@@ -45,6 +46,7 @@ func (c *Check) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &c.log.Debug)
 	cfg.StringList("required_fields", false, false, []string{"From", "Subject"}, &requiredFields)
 	cfg.Bool("allow_body_subset", false, false, &c.allowBodySubset)
+	cfg.Bool("fail_open", false, false, &c.failOpen)
 	cfg.Custom("broken_sig_action", false, false,
 		func() (interface{}, error) {
 			return check.FailAction{}, nil
@@ -163,6 +165,18 @@ func (d *dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) 
 				val = authres.ResultPermError
 			}
 			if dkim.IsTempFail(err) {
+				if !d.c.failOpen {
+					return module.CheckResult{
+						Reject: true,
+						Reason: &exterrors.SMTPError{
+							Code:         421,
+							EnhancedCode: exterrors.EnhancedCode{4, 7, 20},
+							Message:      "Temporary error during DKIM verification",
+							CheckName:    "verify_dkim",
+							Err:          err,
+						},
+					}
+				}
 				val = authres.ResultTempError
 			}
 

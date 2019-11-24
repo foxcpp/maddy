@@ -89,7 +89,8 @@ verify_dkim {
     required_fields From Subject
     allow_body_subset no
     no_sig_action ignore
-    broken_Sig_action ignore
+    broken_sig_action ignore
+	fail_open no
 }
 ```
 
@@ -134,6 +135,13 @@ Action to take when there are not valid signatures in a message.
 
 Note that DMARC policy of the sender domain can request more strict handling of
 broken DKIM signatures.
+
+*Syntax*: fail_open _boolean_ ++
+*Default*: no
+
+Whether to accept the message if a temporary error occurs during DKIM
+verification. Rejecting the message with a 4xx code will require the sender
+to resend it later in a hope that the problem will be resolved.
 
 # SPF policy enforcement module (apply_spf)
 
