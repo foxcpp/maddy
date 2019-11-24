@@ -20,8 +20,9 @@ func TestEvaluateAlignment(t *testing.T) {
 	}
 	test := func(i int, c tCase) {
 		out := EvaluateAlignment(c.orgDomain, c.record, c.results)
-		if out.Value != c.output {
-			t.Errorf("%d: Wrong eval result, want '%s', got '%s' (%s)", i, c.output, out.Value, out.Reason)
+		t.Logf("%d - %+v", i, out)
+		if out.Authres.Value != c.output {
+			t.Errorf("%d: Wrong eval result, want '%s', got '%s' (%+v)", i, c.output, out.Authres.Value, out)
 		}
 	}
 

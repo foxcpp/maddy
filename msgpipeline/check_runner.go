@@ -341,17 +341,23 @@ func (cr *checkRunner) applyDMARC() error {
 	}
 
 	result := maddydmarc.EvaluateAlignment(dmarcData.orgDomain, dmarcData.record, cr.mergedRes.AuthResult)
-	cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
+	cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result.Authres)
 
-	if result.Value == authres.ResultPass {
-		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy, "org_domain", dmarcData.orgDomain)
+	if result.Authres.Value == authres.ResultPass {
+		cr.log.DebugMsg("pass", "p", dmarcData.record.Policy,
+			"org_domain", dmarcData.orgDomain,
+			"from_domain", dmarcData.fromDomain,
+			"dkim_res", result.DKIMResult.Value,
+			"dkim_domain", result.DKIMResult.Domain,
+			"spf_res", result.SPFResult.Value,
+			"spf_from", result.SPFResult.From)
 		return nil
 	}
-	if result.Value == authres.ResultNone {
+	if result.Authres.Value == authres.ResultNone {
 		cr.log.Msg("none with exiting policy",
 			"p", dmarcData.record.Policy,
 			"org_domain",
-			dmarcData.orgDomain, "reason", result.Reason)
+			dmarcData.orgDomain, "reason", result.Authres.Reason)
 		return nil
 	}
 	// TODO: Report generation.
@@ -376,16 +382,20 @@ func (cr *checkRunner) applyDMARC() error {
 			Message:      "DMARC check failed",
 			CheckName:    "dmarc",
 			Misc: map[string]interface{}{
-				"reason":      result.Reason,
+				"reason":      result.Authres.Reason,
 				"from_domain": dmarcData.fromDomain,
 				"org_domain":  dmarcData.orgDomain,
+				"dkim_res":    result.DKIMResult.Value,
+				"dkim_domain": result.DKIMResult.Domain,
+				"spf_res":     result.SPFResult.Value,
+				"spf_from":    result.SPFResult.From,
 			},
 		}
 	case dmarc.PolicyQuarantine:
 		cr.msgMeta.Quarantine = true
 
 		// Mimick the message structure for regular checks.
-		cr.log.Msg("quarantined", "reason", result.Reason, "check", "dmarc",
+		cr.log.Msg("quarantined", "reason", result.Authres.Reason, "check", "dmarc",
 			"from_domain", dmarcData.fromDomain, "org_domain", dmarcData.orgDomain)
 	}
 	return nil

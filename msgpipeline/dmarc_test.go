@@ -115,6 +115,7 @@ func TestDMARC(t *testing.T) {
 				t.Errorf("expected message to be rejected")
 				return
 			}
+			t.Log(err, exterrors.Fields(err))
 			return
 		}
 		if err != nil {

@@ -55,19 +55,34 @@ func FetchRecord(r dns.Resolver, ctx context.Context, orgDomain, fromDomain stri
 	return dmarc.Parse(records[0])
 }
 
-func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) authres.DMARCResult {
+type EvalResult struct {
+	Authres     authres.DMARCResult
+	SPFResult   authres.SPFResult
+	SPFAligned  bool
+	DKIMResult  authres.DKIMResult
+	DKIMAligned bool
+}
+
+func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres.Result) EvalResult {
 	var (
 		spfAligned   = false
-		spfTempFail  = false
-		spfPresent   = false
+		spfResult    = authres.SPFResult{}
 		dkimAligned  = false
-		dkimTempFail = false
+		dkimResult   = authres.DKIMResult{}
 		dkimPresent  = false
+		dkimTempFail = false
 	)
 	for _, res := range results {
 		if dkimRes, ok := res.(*authres.DKIMResult); ok {
 			dkimPresent = true
+
+			// We want to return DKIM result for a signature provided by the orgDomain,
+			// in case there is none - return any (possibly misaligned) for reference.
+			if dkimResult.Value == "" {
+				dkimResult = *dkimRes
+			}
 			if isAligned(orgDomain, dkimRes.Domain, record.DKIMAlignment) {
+				dkimResult = *dkimRes
 				switch dkimRes.Value {
 				case authres.ResultPass:
 					dkimAligned = true
@@ -77,59 +92,62 @@ func EvaluateAlignment(orgDomain string, record *dmarc.Record, results []authres
 			}
 		}
 		if spfRes, ok := res.(*authres.SPFResult); ok {
-			spfPresent = true
+			spfResult = *spfRes
 			var aligned bool
 			if spfRes.From == "" {
 				aligned = isAligned(orgDomain, spfRes.Helo, record.SPFAlignment)
 			} else {
 				aligned = isAligned(orgDomain, spfRes.From, record.SPFAlignment)
 			}
-			if aligned {
-				switch spfRes.Value {
-				case authres.ResultPass:
-					spfAligned = true
-				case authres.ResultTempError:
-					spfTempFail = true
-				}
+			if aligned && spfRes.Value == authres.ResultPass {
+				spfAligned = true
 			}
 		}
 	}
 
-	if !spfPresent || !dkimPresent {
-		return authres.DMARCResult{
+	res := EvalResult{
+		SPFResult:   spfResult,
+		SPFAligned:  spfAligned,
+		DKIMResult:  dkimResult,
+		DKIMAligned: dkimAligned,
+	}
+
+	if !dkimPresent || spfResult.Value == "" {
+		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultNone,
 			Reason: "Not enough information (required checks are disabled)",
 			From:   orgDomain,
 		}
+		return res
 	}
 
 	if dkimTempFail && !dkimAligned && !spfAligned {
 		// We can't be sure whether it is aligned or not. Bail out.
-		return authres.DMARCResult{
+		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultTempError,
 			Reason: "DKIM authentication temp error",
 			From:   orgDomain,
 		}
+		return res
 	}
-	if !dkimAligned && spfTempFail {
+	if !dkimAligned && spfResult.Value == authres.ResultTempError {
 		// We can't be sure whether it is aligned or not. Bail out.
-		return authres.DMARCResult{
+		res.Authres = authres.DMARCResult{
 			Value:  authres.ResultTempError,
 			Reason: "SPF authentication temp error",
 			From:   orgDomain,
 		}
+		return res
 	}
 
+	res.Authres.From = orgDomain
 	if dkimAligned || spfAligned {
-		return authres.DMARCResult{
-			Value: authres.ResultPass,
-			From:  orgDomain,
-		}
+		res.Authres.Value = authres.ResultPass
+	} else {
+		res.Authres.Value = authres.ResultFail
+		res.Authres.Reason = "No aligned identifiers"
 	}
-	return authres.DMARCResult{
-		Value: authres.ResultFail,
-		From:  orgDomain,
-	}
+	return res
 }
 
 func isAligned(orgDomain, authDomain string, mode dmarc.AlignmentMode) bool {
