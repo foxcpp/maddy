@@ -85,9 +85,8 @@ func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 		msgMeta:            msgMeta,
 		log:                target.DeliveryLogger(d.Log, msgMeta),
 	}
-	dd.checkRunner = newCheckRunner(msgMeta, dd.log)
+	dd.checkRunner = newCheckRunner(msgMeta, dd.log, d.Resolver)
 	dd.checkRunner.doDMARC = d.doDMARC
-	dd.checkRunner.resolver = d.Resolver
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}

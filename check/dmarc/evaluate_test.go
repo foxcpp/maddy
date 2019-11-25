@@ -13,7 +13,7 @@ import (
 func TestEvaluateAlignment(t *testing.T) {
 	type tCase struct {
 		fromDomain string
-		record     *dmarc.Record
+		record     *Record
 		results    []authres.Result
 
 		output authres.ResultValue
@@ -29,13 +29,13 @@ func TestEvaluateAlignment(t *testing.T) {
 	cases := []tCase{
 		{ // 0
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 
 			output: authres.ResultNone,
 		},
 		{ // 1
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultFail,
@@ -51,7 +51,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 2
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -67,7 +67,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 3
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultFail,
@@ -83,7 +83,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 4
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -99,7 +99,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 5
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -115,7 +115,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 6
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment: dmarc.AlignmentStrict,
 			},
 			results: []authres.Result{
@@ -133,7 +133,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 7
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultFail,
@@ -149,7 +149,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 8
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPass,
@@ -165,7 +165,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 9
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -181,7 +181,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 10
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment: dmarc.AlignmentRelaxed,
 			},
 			results: []authres.Result{
@@ -199,7 +199,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 11
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment: dmarc.AlignmentStrict,
 			},
 			results: []authres.Result{
@@ -217,7 +217,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 12
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment:  dmarc.AlignmentStrict,
 				DKIMAlignment: dmarc.AlignmentStrict,
 			},
@@ -236,7 +236,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 13
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultFail,
@@ -264,7 +264,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 14
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -280,7 +280,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 15
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment: dmarc.AlignmentStrict,
 			},
 			results: []authres.Result{
@@ -298,7 +298,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 16
 			fromDomain: "example.com",
-			record: &dmarc.Record{
+			record: &Record{
 				SPFAlignment: dmarc.AlignmentStrict,
 			},
 			results: []authres.Result{
@@ -316,7 +316,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 17
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultTempError,
@@ -332,7 +332,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 18
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultTempError,
@@ -348,7 +348,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 19
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultTempError,
@@ -364,7 +364,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 20
 			fromDomain: "example.com",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
 					Value: authres.ResultPass,
@@ -380,7 +380,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 21
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPass,
@@ -400,7 +400,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 22
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultFail,
@@ -420,7 +420,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 23
 			fromDomain: "example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultNone,
@@ -436,7 +436,7 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 21
 			fromDomain: "sub.example.org",
-			record:     &dmarc.Record{},
+			record:     &Record{},
 			results: []authres.Result{
 				&authres.DKIMResult{
 					Value:  authres.ResultPass,
@@ -460,7 +460,6 @@ func TestExtractDomains(t *testing.T) {
 	type tCase struct {
 		hdr string
 
-		orgDomain  string
 		fromDomain string
 	}
 	test := func(i int, c tCase) {
@@ -469,32 +468,27 @@ func TestExtractDomains(t *testing.T) {
 			panic(err)
 		}
 
-		orgDomain, fromDomain, err := ExtractDomains(hdr)
-		if c.orgDomain == "" && err == nil {
-			t.Errorf("%d: expected failure, got orgDomain = %s, fromDomain = %s", i, orgDomain, fromDomain)
+		domain, err := ExtractFromDomain(hdr)
+		if c.fromDomain == "" && err == nil {
+			t.Errorf("%d: expected failure, got fromDomain = %s", i, domain)
 			return
 		}
-		if c.orgDomain != "" && err != nil {
+		if c.fromDomain != "" && err != nil {
 			t.Errorf("%d: unexpected error: %v", i, err)
 			return
 		}
-		if orgDomain != c.orgDomain {
-			t.Errorf("%d: want orgDomain = %v but got %s", i, c.orgDomain, orgDomain)
-		}
-		if fromDomain != c.fromDomain {
-			t.Errorf("%d: want fromDomain = %v but got %s", i, c.fromDomain, fromDomain)
+		if domain != c.fromDomain {
+			t.Errorf("%d: want fromDomain = %v but got %s", i, c.fromDomain, domain)
 		}
 	}
 
 	cases := []tCase{
 		{
 			hdr:        `From: <test@example.org>`,
-			orgDomain:  "example.org",
 			fromDomain: "example.org",
 		},
 		{
 			hdr:        `From: <test@foo.example.org>`,
-			orgDomain:  "example.org",
 			fromDomain: "foo.example.org",
 		},
 		{
@@ -512,9 +506,6 @@ From: <test@bar.example.org>`,
 		},
 		{
 			hdr: `From: foo`,
-		},
-		{
-			hdr: `From: <test@org>`,
 		},
 	}
 	for i, case_ := range cases {

@@ -208,15 +208,15 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 }
 
 func (s *state) relyOnDMARC(hdr textproto.Header) bool {
-	orgDomain, fromDomain, err := maddydmarc.ExtractDomains(hdr)
+	fromDomain, err := maddydmarc.ExtractFromDomain(hdr)
 	if err != nil {
 		s.log.Error("DMARC domains extract", err)
 		return false
 	}
 
-	record, err := maddydmarc.FetchRecord(net.DefaultResolver, context.Background(), orgDomain, fromDomain)
+	policyDomain, record, err := maddydmarc.FetchRecord(net.DefaultResolver, context.Background(), fromDomain)
 	if err != nil {
-		s.log.Error("DMARC fetch", err, "orgDomain", orgDomain, "fromDomain", fromDomain)
+		s.log.Error("DMARC fetch", err, "from_domain", fromDomain)
 		return false
 	}
 	if record == nil {
@@ -225,7 +225,7 @@ func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 
 	policy := record.Policy
 	// TODO: Is it ok to use EqualFold for subdomain check?
-	if !strings.EqualFold(orgDomain, fromDomain) && record.SubdomainPolicy != "" {
+	if !strings.EqualFold(policyDomain, fromDomain) && record.SubdomainPolicy != "" {
 		policy = record.SubdomainPolicy
 	}
 

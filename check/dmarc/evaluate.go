@@ -12,31 +12,42 @@ import (
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
 	"github.com/foxcpp/maddy/address"
-	"github.com/foxcpp/maddy/dns"
 	"golang.org/x/net/publicsuffix"
 )
 
-func FetchRecord(r dns.Resolver, ctx context.Context, orgDomain, fromDomain string) (*dmarc.Record, error) {
+// FetchRecord looks up the DMARC record relevant for the RFC5322.From domain.
+// It returns the record and the domain it was found with (may not be
+// equal to the RFC5322.From domain).
+func FetchRecord(r Resolver, ctx context.Context, fromDomain string) (policyDomain string, rec *Record, err error) {
+	policyDomain = fromDomain
+
 	// 1. Lookup using From Domain.
 	txts, err := r.LookupTXT(ctx, "_dmarc."+fromDomain)
 	if err != nil {
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok || !dnsErr.IsNotFound {
-			return nil, err
+			return "", nil, err
 		}
 	}
 	if len(txts) == 0 {
 		// No records or 'no such host', try orgDomain.
+		orgDomain, err := publicsuffix.EffectiveTLDPlusOne(fromDomain)
+		if err != nil {
+			return "", nil, err
+		}
+
+		policyDomain = orgDomain
+
 		txts, err = r.LookupTXT(ctx, "_dmarc."+orgDomain)
 		if err != nil {
 			dnsErr, ok := err.(*net.DNSError)
 			if !ok || !dnsErr.IsNotFound {
-				return nil, err
+				return "", nil, err
 			}
 		}
 		// Still nothing? Bail out.
 		if len(txts) == 0 {
-			return nil, nil
+			return "", nil, nil
 		}
 	}
 
@@ -49,21 +60,43 @@ func FetchRecord(r dns.Resolver, ctx context.Context, orgDomain, fromDomain stri
 	}
 	// Multiple records => no record.
 	if len(records) > 1 || len(records) == 0 {
-		return nil, nil
+		return "", nil, nil
 	}
 
-	return dmarc.Parse(records[0])
+	rec, err = dmarc.Parse(records[0])
+
+	return policyDomain, rec, err
 }
 
 type EvalResult struct {
-	Authres     authres.DMARCResult
-	SPFResult   authres.SPFResult
-	SPFAligned  bool
-	DKIMResult  authres.DKIMResult
+	// The Authentication-Results field generated as a result of the DMARC
+	// check.
+	Authres authres.DMARCResult
+
+	// The Authentication-Results field for SPF that was considered during
+	// alignment check. May be empty.
+	SPFResult authres.SPFResult
+
+	// Whether HELO or MAIL FROM match the RFC5322.From domain.
+	SPFAligned bool
+
+	// The Authentication-Results field for the DKIM signature that is aligned,
+	// if no signatures are aligned - this field contains the result for the
+	// first signature. May be empty.
+	DKIMResult authres.DKIMResult
+
+	// Whether there is a DKIM signature with the d= field matching the
+	// RFC5322.From domain.
 	DKIMAligned bool
 }
 
-func EvaluateAlignment(fromDomain string, record *dmarc.Record, results []authres.Result) EvalResult {
+// EvaluateAlignment checks whether identifiers authenticated by SPF and DKIM are in alignment
+// with the RFC5322.Domain.
+//
+// It returns EvalResult which contains the Authres field with the actual check result and
+// a bunch of other trace information that can be useful for troubleshooting
+// (and also report generation).
+func EvaluateAlignment(fromDomain string, record *Record, results []authres.Result) EvalResult {
 	var (
 		spfAligned   = false
 		spfResult    = authres.SPFResult{}
@@ -150,7 +183,7 @@ func EvaluateAlignment(fromDomain string, record *dmarc.Record, results []authre
 	return res
 }
 
-func isAligned(fromDomain, authDomain string, mode dmarc.AlignmentMode) bool {
+func isAligned(fromDomain, authDomain string, mode AlignmentMode) bool {
 	if mode == dmarc.AlignmentStrict {
 		return strings.EqualFold(fromDomain, authDomain)
 	}
@@ -167,39 +200,34 @@ func isAligned(fromDomain, authDomain string, mode dmarc.AlignmentMode) bool {
 	return strings.EqualFold(orgDomainFrom, authDomainFrom)
 }
 
-func ExtractDomains(hdr textproto.Header) (orgDomain string, fromDomain string, err error) {
+func ExtractFromDomain(hdr textproto.Header) (string, error) {
 	// TODO: Add textproto.Header.Count method.
 	var firstFrom string
 	for fields := hdr.FieldsByKey("From"); fields.Next(); {
 		if firstFrom == "" {
 			firstFrom = fields.Value()
 		} else {
-			return "", "", errors.New("multiple From header fields are not allowed")
+			return "", errors.New("dmarc: multiple From header fields are not allowed")
 		}
 	}
 	if firstFrom == "" {
-		return "", "", errors.New("missing From header field")
+		return "", errors.New("dmarc: missing From header field")
 	}
 
 	hdrFromList, err := mail.ParseAddressList(firstFrom)
 	if err != nil {
-		return "", "", fmt.Errorf("malformed From header field: %s", strings.TrimPrefix(err.Error(), "mail: "))
+		return "", fmt.Errorf("dmarc: malformed From header field: %s", strings.TrimPrefix(err.Error(), "mail: "))
 	}
 	if len(hdrFromList) > 1 {
-		return "", "", errors.New("multiple addresses in From field are not allowed")
+		return "", errors.New("dmarc: multiple addresses in From field are not allowed")
 	}
 	if len(hdrFromList) == 0 {
-		return "", "", errors.New("missing address in From field")
+		return "", errors.New("dmarc: missing address in From field")
 	}
 	_, domain, err := address.Split(hdrFromList[0].Address)
 	if err != nil {
-		return "", "", fmt.Errorf("malformed From header field: %w", err)
+		return "", fmt.Errorf("dmarc: malformed From header field: %w", err)
 	}
 
-	orgDomain, err = publicsuffix.EffectiveTLDPlusOne(domain)
-	if err != nil {
-		return "", "", err
-	}
-
-	return orgDomain, domain, nil
+	return domain, nil
 }

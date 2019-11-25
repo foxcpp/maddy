@@ -157,86 +157,6 @@ func TestDMARC(t *testing.T) {
 		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, false, false, authres.ResultPass)
 
-	// No SPF check run => DMARC 'none', no action taken
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=reject"},
-		},
-	}, "From: hello@example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-	}, false, false, authres.ResultNone)
-
-	// No DKIM check run => DMARC 'none', no action taken
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=reject"},
-		},
-	}, "From: hello@example.org\r\n\r\n", []authres.Result{
-		&authres.SPFResult{Value: authres.ResultPass, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultNone)
-
-	// Check org. domain and from domain, prefer from domain.
-	// https://tools.ietf.org/html/rfc7489#section-6.6.3
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=none"},
-		},
-	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultPass)
-	test(map[string]mockdns.Zone{
-		"_dmarc.sub.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=none"},
-		},
-	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultPass)
-	test(map[string]mockdns.Zone{
-		"_dmarc.sub.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=none"},
-		},
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"v=malformed"},
-		},
-	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultPass)
-
-	// Non-DMARC records are ignored.
-	// https://tools.ietf.org/html/rfc7489#section-6.6.3
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"ignore", "v=DMARC1; p=none"},
-		},
-	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultPass)
-
-	// Multiple policies => no policy.
-	// https://tools.ietf.org/html/rfc7489#section-6.6.3
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=reject", "v=DMARC1; p=none"},
-		},
-	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultNone)
-
-	// Malformed policy => no policy
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
-			TXT: []string{"v=aaaa"},
-		},
-	}, "From: hello@example.com\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultNone)
-
 	// Policy fetch error => DMARC 'permerror' but the message
 	// is accepted.
 	test(map[string]mockdns.Zone{
@@ -249,7 +169,7 @@ func TestDMARC(t *testing.T) {
 	}, false, false, authres.ResultPermError)
 
 	// Policy fetch error => DMARC 'temperror' but the message
-	// is accepted ("fail open")
+	// is rejected ("fail closed")
 	test(map[string]mockdns.Zone{
 		"_dmarc.example.com.": mockdns.Zone{
 			Err: &net.DNSError{
@@ -260,20 +180,7 @@ func TestDMARC(t *testing.T) {
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
 		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultTempError)
-
-	// Misaligned From vs DKIM => DMARC 'fail'.
-	// Side note: More comprehensive tests for alignment evaluation
-	// can be found in check/dmarc/evaluate_test.go. This test merely checks
-	// that the correct action is taken based on the policy.
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; p=none"},
-		},
-	}, "From: hello@example.com\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultFail)
+	}, true, false, authres.ResultTempError)
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to reject
 	test(map[string]mockdns.Zone{
@@ -284,17 +191,6 @@ func TestDMARC(t *testing.T) {
 		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
 		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, true, false, "")
-
-	// Misaligned From vs DKIM => DMARC 'fail'
-	// Subdomain policy requests no action, main domain policy says to reject.
-	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
-			TXT: []string{"v=DMARC1; sp=none; p=reject"},
-		},
-	}, "From: hello@sub.example.com\r\n\r\n", []authres.Result{
-		&authres.DKIMResult{Value: authres.ResultPass, Domain: "example.org"},
-		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
-	}, false, false, authres.ResultFail)
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to quarantine.
 	test(map[string]mockdns.Zone{

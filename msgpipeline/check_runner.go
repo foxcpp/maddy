@@ -1,18 +1,12 @@
 package msgpipeline
 
 import (
-	"context"
-	"errors"
-	"math/rand"
-	"runtime/debug"
-	"strings"
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/emersion/go-msgauth/dmarc"
 	"github.com/foxcpp/maddy/buffer"
-	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
+	"github.com/foxcpp/maddy/check/dmarc"
 	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
@@ -29,15 +23,9 @@ type checkRunner struct {
 	checkedRcptsPerCheck map[module.CheckState]map[string]struct{}
 	checkedRcptsLock     sync.Mutex
 
-	doDMARC     bool
 	resolver    dns.Resolver
-	dmarcPolicy chan struct {
-		orgDomain  string
-		fromDomain string
-		record     *dmarc.Record
-		err        error
-	}
-	dmarcPolicyCancel context.CancelFunc
+	doDMARC     bool
+	dmarcVerify *dmarc.Verifier
 
 	log log.Logger
 
@@ -46,18 +34,14 @@ type checkRunner struct {
 	mergedRes module.CheckResult
 }
 
-func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger) *checkRunner {
+func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger, r dns.Resolver) *checkRunner {
 	return &checkRunner{
 		msgMeta:              msgMeta,
 		checkedRcptsPerCheck: map[module.CheckState]map[string]struct{}{},
 		log:                  log,
-		dmarcPolicy: make(chan struct {
-			orgDomain  string
-			fromDomain string
-			record     *dmarc.Record
-			err        error
-		}, 1),
-		states: make(map[module.Check]module.CheckState),
+		resolver:             r,
+		dmarcVerify:          dmarc.NewVerifier(r),
+		states:               make(map[module.Check]module.CheckState),
 	}
 }
 
@@ -259,7 +243,7 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 	}
 
 	if cr.doDMARC {
-		cr.fetchDMARC(header)
+		cr.dmarcVerify.FetchRecord(header)
 	}
 
 	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
@@ -268,148 +252,40 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 	})
 }
 
-func (cr *checkRunner) fetchDMARC(header textproto.Header) {
-	orgDomain, fromDomain, err := maddydmarc.ExtractDomains(header)
-	if err != nil {
-		cr.dmarcPolicy <- struct {
-			orgDomain  string
-			fromDomain string
-			record     *dmarc.Record
-			err        error
-		}{
-			err: err,
-		}
-	}
-
-	var ctx context.Context
-	ctx, cr.dmarcPolicyCancel = context.WithCancel(context.Background())
-	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				stack := debug.Stack()
-				log.Printf("panic during DMARC fetch: %v\n%s", err, stack)
-				cr.dmarcPolicy <- struct {
-					orgDomain  string
-					fromDomain string
-					record     *dmarc.Record
-					err        error
-				}{
-					orgDomain:  "",
-					fromDomain: "",
-					record:     nil,
-					err:        exterrors.WithTemporary(errors.New("Internal server error"), true),
-				}
-			}
-		}()
-
-		record, err := maddydmarc.FetchRecord(cr.resolver, ctx, orgDomain, fromDomain)
-		cr.dmarcPolicy <- struct {
-			orgDomain  string
-			fromDomain string
-			record     *dmarc.Record
-			err        error
-		}{
-			orgDomain:  orgDomain,
-			fromDomain: fromDomain,
-			record:     record,
-			err:        err,
-		}
-	}()
-}
-
-func (cr *checkRunner) applyDMARC() error {
-	dmarcData := <-cr.dmarcPolicy
-	if dmarcData.err != nil {
-		result := authres.DMARCResult{
-			Value:  authres.ResultPermError,
-			Reason: dmarcData.err.Error(),
-			From:   dmarcData.orgDomain,
-		}
-		if exterrors.IsTemporary(dmarcData.err) {
-			result.Value = authres.ResultTempError
-		}
-		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
-		return nil
-	}
-	if dmarcData.record == nil {
-		result := authres.DMARCResult{
-			Value: authres.ResultNone,
-			From:  dmarcData.orgDomain,
-		}
-		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result)
-		return nil
-	}
-
-	result := maddydmarc.EvaluateAlignment(dmarcData.fromDomain, dmarcData.record, cr.mergedRes.AuthResult)
-	cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &result.Authres)
-
-	cr.log.DebugMsg("DMARC "+string(result.Authres.Value), "p", dmarcData.record.Policy,
-		"org_domain", dmarcData.orgDomain,
-		"from_domain", dmarcData.fromDomain,
-		"dkim_res", result.DKIMResult.Value,
-		"dkim_domain", result.DKIMResult.Domain,
-		"spf_res", result.SPFResult.Value,
-		"spf_from", result.SPFResult.From)
-
-	if result.Authres.Value == authres.ResultPass {
-		return nil
-	}
-	if result.Authres.Value == authres.ResultNone {
-		cr.log.Msg("none with exiting policy",
-			"p", dmarcData.record.Policy,
-			"org_domain",
-			dmarcData.orgDomain, "reason", result.Authres.Reason)
-		return nil
-	}
-	// TODO: Report generation.
-
-	if dmarcData.record.Percent != nil && rand.Int31n(100) > int32(*dmarcData.record.Percent) {
-		cr.log.Msg("DMARC not enforced due to pct",
-			"pct", *dmarcData.record.Percent, "p", dmarcData.record.Policy,
-			"org_domain", dmarcData.orgDomain, "from_domain", dmarcData.fromDomain)
-		return nil
-	}
-
-	policy := dmarcData.record.Policy
-	if !strings.EqualFold(dmarcData.orgDomain, dmarcData.fromDomain) && dmarcData.record.SubdomainPolicy != "" {
-		policy = dmarcData.record.SubdomainPolicy
-	}
-
-	switch policy {
-	case dmarc.PolicyReject:
-		return &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
-			Message:      "DMARC check failed",
-			CheckName:    "dmarc",
-			Misc: map[string]interface{}{
-				"reason":      result.Authres.Reason,
-				"from_domain": dmarcData.fromDomain,
-				"org_domain":  dmarcData.orgDomain,
-				"dkim_res":    result.DKIMResult.Value,
-				"dkim_domain": result.DKIMResult.Domain,
-				"spf_res":     result.SPFResult.Value,
-				"spf_from":    result.SPFResult.From,
-			},
-		}
-	case dmarc.PolicyQuarantine:
-		cr.msgMeta.Quarantine = true
-
-		// Mimick the message structure for regular checks.
-		cr.log.Msg("quarantined", "reason", result.Authres.Reason, "check", "dmarc",
-			"from_domain", dmarcData.fromDomain, "org_domain", dmarcData.orgDomain)
-	}
-	return nil
-}
-
 func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) error {
 	if cr.mergedRes.Quarantine {
 		cr.msgMeta.Quarantine = true
 	}
 
 	if cr.doDMARC {
-		if err := cr.applyDMARC(); err != nil {
-			return err
+		dmarcRes, policy := cr.dmarcVerify.Apply(cr.mergedRes.AuthResult)
+		cr.mergedRes.AuthResult = append(cr.mergedRes.AuthResult, &dmarcRes.Authres)
+		switch policy {
+		case dmarc.PolicyReject:
+			code := 550
+			enchCode := exterrors.EnhancedCode{5, 7, 1}
+			if dmarcRes.Authres.Value == authres.ResultTempError {
+				code = 450
+				enchCode[0] = 4
+			}
+			return &exterrors.SMTPError{
+				Code:         code,
+				EnhancedCode: enchCode,
+				Message:      "DMARC check failed",
+				CheckName:    "dmarc",
+				Misc: map[string]interface{}{
+					"reason":      dmarcRes.Authres.Reason,
+					"dkim_res":    dmarcRes.DKIMResult.Value,
+					"dkim_domain": dmarcRes.DKIMResult.Domain,
+					"spf_res":     dmarcRes.SPFResult.Value,
+					"spf_from":    dmarcRes.SPFResult.From,
+				},
+			}
+		case dmarc.PolicyQuarantine:
+			cr.msgMeta.Quarantine = true
+
+			// Mimick the message structure for regular checks.
+			cr.log.Msg("quarantined", "reason", dmarcRes.Authres.Reason, "check", "dmarc")
 		}
 	}
 
@@ -426,9 +302,7 @@ func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) e
 }
 
 func (cr *checkRunner) close() {
-	if cr.dmarcPolicyCancel != nil {
-		cr.dmarcPolicyCancel()
-	}
+	cr.dmarcVerify.Close()
 	for _, state := range cr.states {
 		state.Close()
 	}
