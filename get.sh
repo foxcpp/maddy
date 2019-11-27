@@ -24,7 +24,7 @@ if [ "$NO_RUN" == "" ]; then
     NO_RUN=0
 fi
 if [ "$HOSTNAME" == "" ]; then
-    HOSTNAME=$(hostname)
+    HOSTNAME=$(uname -n)
 fi
 
 export CGO_CFLAGS="-g -O2 -D_FORTIFY_SOURCE=2 $CFLAGS"
