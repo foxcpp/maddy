@@ -21,6 +21,7 @@ smtp tcp://0.0.0.0:25 {
     auth pam
     defer_sender_reject yes
     dmarc yes
+	ratelimit 0 0s
 
     # Example pipeline ocnfiguration.
     destination example.org {
@@ -79,6 +80,25 @@ I/O read timeout.
 *Default*: 1m
 
 I/O write timeout.
+
+*Syntex*: ratelimit _burst_ _interval_ ++
+*Default*: 20 1s (up to 20 messages per second)
+
+Restrict the inbound messages rate to at most _burst_ messages in _interval_.
+Specify both values to 0 to disable the limit.
+
+If the message waits for more than 5 seconds, it is rejected with code 451.
+
+*Syntax*: concurrency _max_ ++
+*Default*: 1000
+
+Restrict the amount of concurrent inbound deliveries to handle.
+Specify 0 to disable restriction.
+
+If the message waits for more than 5 seconds, it is rejected with code 451.
+
+Example: ratelimit 20 1s
+Limit to 20 messages per second.
 
 *Syntax*: max_message_size _size_ ++
 *Default*: 32M

@@ -22,6 +22,7 @@ import (
 	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/future"
+	"github.com/foxcpp/maddy/limiters"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/msgpipeline"
@@ -48,6 +49,7 @@ type Session struct {
 
 func (s *Session) Reset() {
 	if s.delivery != nil {
+		s.endp.semaphore.Release()
 		if err := s.delivery.Abort(); err != nil {
 			s.endp.Log.Error("delivery abort failed", err)
 		}
@@ -73,6 +75,15 @@ func (s *Session) startDelivery(from string) (string, error) {
 	s.mailFrom = from
 	msgMeta.OriginalFrom = from
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.endp.ratelimit.TakeContext(ctx); err != nil {
+		return "", err
+	}
+	if err := s.endp.semaphore.TakeContext(ctx); err != nil {
+		return "", err
+	}
+
 	s.log.Msg("incoming message",
 		"src_host", msgMeta.Conn.Hostname,
 		"src_ip", msgMeta.Conn.RemoteAddr.String(),
@@ -91,7 +102,9 @@ func (s *Session) Mail(from string) error {
 	if !s.endp.deferServerReject {
 		msgID, err := s.startDelivery(from)
 		if err != nil {
-			s.log.Error("MAIL FROM error", err, "msg_id", msgID)
+			if err != context.DeadlineExceeded {
+				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
+			}
 			return s.endp.wrapErr(msgID, err)
 		}
 	}
@@ -134,7 +147,9 @@ func (s *Session) Rcpt(to string) error {
 
 		msgID, err := s.startDelivery(s.mailFrom)
 		if err != nil {
-			s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
+			if err != context.DeadlineExceeded {
+				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
+			}
 			s.deliveryErr = s.endp.wrapErr(s.msgMeta.ID, err)
 			return s.deliveryErr
 		}
@@ -157,6 +172,7 @@ func (s *Session) Rcpt(to string) error {
 
 func (s *Session) Logout() error {
 	if s.delivery != nil {
+		s.endp.semaphore.Release()
 		if err := s.delivery.Abort(); err != nil {
 			s.endp.Log.Printf("failed to abort delivery: %v", err)
 		}
@@ -217,6 +233,7 @@ func (s *Session) Data(r io.Reader) error {
 
 	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
 	s.delivery = nil
+	s.endp.semaphore.Release()
 
 	return nil
 }
@@ -224,6 +241,14 @@ func (s *Session) Data(r io.Reader) error {
 func (endp *Endpoint) wrapErr(msgId string, err error) error {
 	if err == nil {
 		return nil
+	}
+
+	if err == context.DeadlineExceeded {
+		return &smtp.SMTPError{
+			Code:         451,
+			EnhancedCode: smtp.EnhancedCode{4, 4, 5},
+			Message:      "High load, try again later",
+		}
 	}
 
 	res := &smtp.SMTPError{
@@ -274,6 +299,8 @@ type Endpoint struct {
 	listeners []net.Listener
 	pipeline  *msgpipeline.MsgPipeline
 	resolver  dns.Resolver
+	ratelimit limiters.Rate
+	semaphore limiters.Semaphore
 
 	authAlwaysRequired  bool
 	submission          bool
@@ -373,6 +400,12 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
+	cfg.Custom("ratelimit", false, false, func() (interface{}, error) {
+		return limiters.NewRate(10, time.Second), nil
+	}, config.GlobalRateLimit, &endp.ratelimit)
+	cfg.Custom("concurrency", false, false, func() (interface{}, error) {
+		return limiters.NewSemaphore(1000), nil
+	}, config.ConcurrencyLimit, &endp.semaphore)
 	cfg.AllowUnknown()
 	unknown, err := cfg.Process()
 	if err != nil {
