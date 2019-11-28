@@ -66,9 +66,16 @@ func (ctx *parseContext) resolveImport(node *Node, name string, expansionDepth i
 	src, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, NodeErr(node, "unknown import: "+name)
+			src, err = os.Open(file + ".conf")
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil, NodeErr(node, "unknown import: "+name)
+				}
+				return nil, err
+			}
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 	nodes, snips, macros, err := readTree(src, file, expansionDepth+1)
 	if err != nil {
