@@ -6,6 +6,9 @@ fi
 if [ -z "$FAIL2BANDIR" ]; then
     FAIL2BANDIR=/etc/fail2ban
 fi
+if [ -z "$CONFDIR" ]; then
+    CONFDIR=/etc/maddy
+fi
 
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $script_dir
@@ -18,3 +21,6 @@ install -Dm 0644 -t "$FAIL2BANDIR/jail.d/" fail2ban/jail.d/*
 install -Dm 0644 -t "$FAIL2BANDIR/filter.d/" fail2ban/filter.d/*
 
 install -Dm 0644 -t "$PREFIX/lib/systemd/system/" systemd/maddy.service systemd/maddy@.service
+
+install -Dm 0644 -t "$CONFDIR/integration/" integration/rspamd.conf
+install -Dm 0755 -t "$PREFIX/bin/" scripts/maddy-rspamd-hook

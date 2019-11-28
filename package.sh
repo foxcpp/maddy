@@ -15,7 +15,7 @@ if [ "$pkgdir" = "" ]; then
     rm -rf "$pkgdir"
     mkdir "$pkgdir"
 fi
-export PREFIX="$pkgdir"/usr FAIL2BANDIR="$pkgdir"/etc/fail2ban CONFPATH="$pkgdir"/etc/maddy/maddy.conf NO_RUN=1 SUDO=fakeroot HOSTNAME=example.org
+export PREFIX="$pkgdir"/usr FAIL2BANDIR="$pkgdir"/etc/fail2ban CONFDIR="$pkgdir"/etc/maddy NO_RUN=1 SUDO=fakeroot HOSTNAME=example.org
 # shellcheck source=get.sh
 . "$script_dir"/get.sh
 

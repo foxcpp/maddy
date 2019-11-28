@@ -14,8 +14,8 @@ fi
 if [ "$SYSTEMDUNITS" == "" ]; then
     SYSTEMDUNITS=$PREFIX/lib/systemd
 fi
-if [ "$CONFPATH" == "" ]; then
-    CONFPATH=/etc/maddy/maddy.conf
+if [ "$CONFDIR" == "" ]; then
+    CONFDIR=/etc/maddy
 fi
 if [ "$SUDO" == "" ]; then
     SUDO=sudo
@@ -142,8 +142,8 @@ create_user() {
 }
 
 install_config() {
-    echo 'Using configuration path:' $CONFPATH
-    if ! [ -e "$CONFPATH" ]; then
+    echo 'Using configuration path:' $CONFDIR/maddy.conf
+    if ! [ -e "$CONFDIR/maddy.conf" ]; then
         echo 'Installing default configuration...' >&2
 
         install "$(source_dir)/maddy.conf" /tmp/maddy.conf
@@ -160,7 +160,7 @@ install_config() {
         sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" /tmp/maddy.conf
         sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" /tmp/maddy.conf
 
-        $SUDO install -Dm 0644 /tmp/maddy.conf "$CONFPATH"
+        $SUDO install -Dm 0644 /tmp/maddy.conf "$CONFDIR/maddy.conf"
         rm /tmp/maddy.conf
     else
         echo "Configuration already exists in /etc/maddy/maddy.conf, skipping defaults installation." >&2

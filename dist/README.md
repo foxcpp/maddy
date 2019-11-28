@@ -3,6 +3,14 @@
 **Disclaimer:** Most of the files here are maintained in a "best-effort" way.
 That is, they may break or become outdated from time to time. Caveat emptor.
 
+## integration + scripts
+
+These directories provide pre-made configuration snippets suitable for
+easy integration with external software.
+
+Usually, this is what you use when you put `import integration/something` in
+your config.
+
 ## systemd unit
 
 `maddy.service` launches using default config path (/etc/maddy/maddy.conf).
