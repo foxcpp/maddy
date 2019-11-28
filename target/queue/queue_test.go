@@ -772,6 +772,7 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
+		OriginalFrom:    "test3@example.org",
 		OriginalRcpts: map[string]string{
 			"test@example.org":  "test+public@example.com",
 			"test2@example.org": "test2+public@example.com",

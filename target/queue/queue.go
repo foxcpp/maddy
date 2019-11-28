@@ -832,7 +832,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	}
 
 	// Null return-path, used in DSNs.
-	if meta.From == "" {
+	if meta.MsgMeta.OriginalFrom == "" {
 		return
 	}
 
@@ -845,7 +845,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	dsnEnvelope := dsn.Envelope{
 		MsgID: "<" + dsnID + "@" + q.autogenMsgDomain + ">",
 		From:  "MAILER-DAEMON@" + q.autogenMsgDomain,
-		To:    meta.From,
+		To:    meta.MsgMeta.OriginalFrom,
 	}
 	mtaInfo := dsn.ReportingMTAInfo{
 		ReportingMTA:    q.hostname,

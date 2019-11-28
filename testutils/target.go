@@ -162,7 +162,9 @@ func (dtd *testTargetDelivery) Commit() error {
 }
 
 func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []string) string {
-	return DoTestDeliveryMeta(t, tgt, from, to, &module.MsgMetadata{})
+	return DoTestDeliveryMeta(t, tgt, from, to, &module.MsgMetadata{
+		OriginalFrom: from,
+	})
 }
 
 func DoTestDeliveryMeta(t *testing.T, tgt module.DeliveryTarget, from string, to []string, msgMeta *module.MsgMetadata) string {
@@ -185,6 +187,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	msgMeta := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
+		OriginalFrom:    from,
 	}
 	t.Log("-- tgt.Start", from)
 	delivery, err := tgt.Start(&msgMeta, from)
