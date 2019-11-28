@@ -12,6 +12,7 @@ import (
 	_ "github.com/foxcpp/maddy/auth/external"
 	_ "github.com/foxcpp/maddy/auth/pam"
 	_ "github.com/foxcpp/maddy/auth/shadow"
+	_ "github.com/foxcpp/maddy/check/command"
 	_ "github.com/foxcpp/maddy/check/dkim"
 	_ "github.com/foxcpp/maddy/check/dns"
 	_ "github.com/foxcpp/maddy/check/dnsbl"

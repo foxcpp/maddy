@@ -32,6 +32,11 @@ func Fields(err error) map[string]interface{} {
 		errFields, ok := err.(fieldsErr)
 		if ok {
 			for k, v := range errFields.Fields() {
+				// Outer errors override fields of the inner ones.
+				// Not the reverse.
+				if fields[k] != nil {
+					continue
+				}
 				fields[k] = v
 			}
 		}
