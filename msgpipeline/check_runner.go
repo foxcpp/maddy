@@ -178,11 +178,15 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 				data.setQuarantineErr.Do(func() {
 					data.quarantineErr = subCheckRes.Reason
 				})
-			}
-			if subCheckRes.Reject {
+			} else if subCheckRes.Reject {
 				data.setRejectErr.Do(func() {
 					data.rejectErr = subCheckRes.Reason
 				})
+			} else if subCheckRes.Reason != nil {
+				// 'action ignore' case. There is Reason, but action.Apply set
+				// both Reject and Quarantine to false. Log the reason for
+				// purposes of deployment testing.
+				cr.log.Error("no check action", subCheckRes.Reason)
 			}
 
 			data.wg.Done()
