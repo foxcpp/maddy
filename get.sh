@@ -110,7 +110,7 @@ install_dist() {
 
 install_man() {
     set +e
-    if ! comamnd -v scdoc &>/dev/null; then
+    if ! command -v scdoc &>/dev/null; then
         echo 'No scdoc utility found. Skipping man pages installation.' >&2
         set -e
         return
