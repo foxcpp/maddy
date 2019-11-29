@@ -15,7 +15,15 @@ if [ "$pkgdir" = "" ]; then
     rm -rf "$pkgdir"
     mkdir "$pkgdir"
 fi
-export PREFIX="$pkgdir"/usr FAIL2BANDIR="$pkgdir"/etc/fail2ban CONFDIR="$pkgdir"/etc/maddy NO_RUN=1 SUDO=fakeroot HOSTNAME=example.org
+
+if [ "$PREFIX" = "" ]; then
+    export PREFIX="/usr"
+fi
+if [ "$HOSTNAME" = "" ]; then
+    export HOSTNAME=example.org
+fi
+
+export DESTDIR="$pkgdir" NO_RUN=1 SUDO=fakeroot
 # shellcheck source=get.sh
 . "$script_dir"/get.sh
 

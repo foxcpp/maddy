@@ -2,6 +2,10 @@
 
 REQUIRED_GOVERSION=1.13.0
 
+# This will make sure the variable safe to use after 'set -u'
+# if it is not defined, the empty value is fine.
+DESTDIR=$DESTDIR
+
 if [ "$GOVERSION" == "" ]; then
     GOVERSION=1.13.4
 fi
@@ -85,7 +89,11 @@ download_and_compile() {
 
     export GO111MODULE=on
 
-    go get -trimpath -buildmode=pie -ldflags "-extldflags $LDFLAGS" github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
+    go get -trimpath -buildmode=pie \
+        -ldflags "-extldflags $LDFLAGS \
+            -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
+            -X \"github.com/foxcpp/maddy.ConfigDirectory=$CONFDIR\"" \
+        github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@$MADDYVERSION
 }
 
 source_dir() {
@@ -96,8 +104,8 @@ source_dir() {
 install_executables() {
     echo 'Installing maddy...' >&2
 
-    $SUDO mkdir -p "$PREFIX/bin"
-    $SUDO cp --remove-destination "$PWD/gopath/bin/maddy" "$PWD/gopath/bin/maddyctl" "$PREFIX/bin/"
+    $SUDO mkdir -p "$DESTDIR/$PREFIX/bin"
+    $SUDO cp --remove-destination "$PWD/gopath/bin/maddy" "$PWD/gopath/bin/maddyctl" "$DESTDIR/$PREFIX/bin/"
 }
 
 install_dist() {
@@ -105,7 +113,7 @@ install_dist() {
 
     $SUDO bash "$(source_dir)/dist/install.sh"
 
-    $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g" "$SYSTEMDUNITS/system/maddy.service" "$SYSTEMDUNITS/system/maddy@.service"
+    $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g" "$DESTDIR/$SYSTEMDUNITS/system/maddy.service" "$DESTDIR/$SYSTEMDUNITS/system/maddy@.service"
 }
 
 install_man() {
@@ -125,11 +133,11 @@ install_man() {
     echo 'Installing man pages...' >&2
     for f in "$(source_dir)"/man/*.1.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
-        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$PREFIX/share/man/man1/$(basename -s .scd "$f").gz"
+        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$DESTDIR/$PREFIX/share/man/man1/$(basename -s .scd "$f").gz"
     done
     for f in "$(source_dir)"/man/*.5.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
-        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$PREFIX/share/man/man5/$(basename -s .scd "$f").gz"
+        $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$DESTDIR/$PREFIX/share/man/man5/$(basename -s .scd "$f").gz"
     done
     rm /tmp/maddy-tmp.gz
 
@@ -143,7 +151,7 @@ create_user() {
 
 install_config() {
     echo 'Using configuration path:' $CONFDIR/maddy.conf
-    if ! [ -e "$CONFDIR/maddy.conf" ]; then
+    if ! [ -e "$DESTDIR/$CONFDIR/maddy.conf" ]; then
         echo 'Installing default configuration...' >&2
 
         install "$(source_dir)/maddy.conf" /tmp/maddy.conf
@@ -160,7 +168,7 @@ install_config() {
         sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" /tmp/maddy.conf
         sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" /tmp/maddy.conf
 
-        $SUDO install -Dm 0644 /tmp/maddy.conf "$CONFDIR/maddy.conf"
+        $SUDO install -Dm 0644 /tmp/maddy.conf "$DESTDIR/$CONFDIR/maddy.conf"
         rm /tmp/maddy.conf
     else
         echo "Configuration already exists in /etc/maddy/maddy.conf, skipping defaults installation." >&2
