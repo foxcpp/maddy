@@ -40,6 +40,7 @@ type Session struct {
 
 	// Specific for the currently handled message.
 	mailFrom    string
+	opts        smtp.MailOptions
 	msgMeta     *module.MsgMetadata
 	delivery    module.Delivery
 	deliveryErr error
@@ -49,22 +50,30 @@ type Session struct {
 
 func (s *Session) Reset() {
 	if s.delivery != nil {
-		s.endp.semaphore.Release()
-		if err := s.delivery.Abort(); err != nil {
-			s.endp.Log.Error("delivery abort failed", err)
-		}
-		s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
-		s.delivery = nil
-		s.msgMeta = nil
-		s.deliveryErr = nil
+		s.abort()
 	}
 	s.endp.Log.DebugMsg("reset")
 }
 
-func (s *Session) startDelivery(from string) (string, error) {
+func (s *Session) abort() {
+	s.endp.semaphore.Release()
+	if err := s.delivery.Abort(); err != nil {
+		s.endp.Log.Error("delivery abort failed", err)
+	}
+	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
+
+	s.mailFrom = ""
+	s.opts = smtp.MailOptions{}
+	s.msgMeta = nil
+	s.delivery = nil
+	s.deliveryErr = nil
+}
+
+func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, error) {
 	var err error
 	msgMeta := &module.MsgMetadata{
-		Conn: &s.connState,
+		Conn:     &s.connState,
+		SMTPOpts: opts,
 	}
 
 	msgMeta.ID, err = msgpipeline.GenerateMsgID()
@@ -98,9 +107,9 @@ func (s *Session) startDelivery(from string) (string, error) {
 	return msgMeta.ID, nil
 }
 
-func (s *Session) Mail(from string) error {
+func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 	if !s.endp.deferServerReject {
-		msgID, err := s.startDelivery(from)
+		msgID, err := s.startDelivery(from, opts)
 		if err != nil {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
@@ -111,6 +120,7 @@ func (s *Session) Mail(from string) error {
 
 	// Keep the MAIL FROM argument for deferred startDelivery.
 	s.mailFrom = from
+	s.opts = opts
 
 	return nil
 }
@@ -145,7 +155,7 @@ func (s *Session) Rcpt(to string) error {
 			return s.deliveryErr
 		}
 
-		msgID, err := s.startDelivery(s.mailFrom)
+		msgID, err := s.startDelivery(s.mailFrom, s.opts)
 		if err != nil {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
@@ -172,12 +182,7 @@ func (s *Session) Rcpt(to string) error {
 
 func (s *Session) Logout() error {
 	if s.delivery != nil {
-		s.endp.semaphore.Release()
-		if err := s.delivery.Abort(); err != nil {
-			s.endp.Log.Printf("failed to abort delivery: %v", err)
-		}
-		s.log.Msg("aborted")
-		s.delivery = nil
+		s.abort()
 
 		if s.repeatedMailErrs > s.endp.maxLoggedRcptErrors {
 			s.log.Msg("MAIL FROM repeated error a lot of times, possible dictonary attack", "count", s.repeatedMailErrs, "src_ip", s.connState.RemoteAddr)
@@ -458,7 +463,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		endp.listenersWg.Add(1)
 		addr := addr
 		go func() {
-			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+			if err := endp.serv.Serve(l); err != nil {
 				endp.Log.Printf("failed to serve %s: %s", addr, err)
 			}
 			endp.listenersWg.Done()
@@ -533,9 +538,6 @@ func (endp *Endpoint) newSession(anonymous bool, username, password string, stat
 }
 
 func (endp *Endpoint) Close() error {
-	for _, l := range endp.listeners {
-		l.Close()
-	}
 	endp.serv.Close()
 	endp.listenersWg.Wait()
 	return nil

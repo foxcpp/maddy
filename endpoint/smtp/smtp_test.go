@@ -93,7 +93,7 @@ func submitMsg(t *testing.T, cl *smtp.Client, from string, rcpts []string, msg s
 	// Error for this one is ignore because it fails if EHLO was already sent
 	// and submitMsg can happen multiple times.
 	cl.Hello("mx.example.org")
-	if err := cl.Mail(from); err != nil {
+	if err := cl.Mail(from, nil); err != nil {
 		return err
 	}
 	for _, rcpt := range rcpts {
@@ -207,7 +207,7 @@ func TestSMTPDelivery_EarlyCheck_Fail(t *testing.T) {
 	}
 	defer cl.Close()
 
-	err = cl.Mail("sender@example.org")
+	err = cl.Mail("sender@example.org", nil)
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -247,7 +247,7 @@ func TestSMTPDeliver_CheckError(t *testing.T) {
 	}
 	defer cl.Close()
 
-	err = cl.Mail("sender@example.org")
+	err = cl.Mail("sender@example.org", nil)
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -286,7 +286,7 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 	}
 	defer cl.Close()
 
-	err = cl.Mail("sender@example.org")
+	err = cl.Mail("sender@example.org", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +365,7 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	if err := cl.Hello("mx.example.org"); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Mail("sender@example.org"); err != nil {
+	if err := cl.Mail("sender@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Rcpt("test@example.com"); err != nil {
@@ -403,7 +403,7 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	if err := cl.Hello("mx.example.org"); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Mail("sender@example.org"); err != nil {
+	if err := cl.Mail("sender@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Rcpt("test@example.com"); err != nil {
@@ -431,7 +431,7 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 	}
 	defer cl.Close()
 
-	if err := cl.Mail("from-garbage@example.org"); err != nil {
+	if err := cl.Mail("from-garbage@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Rcpt("to-garbage@example.org"); err != nil {
@@ -466,7 +466,7 @@ func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 	}
 	defer cl.Close()
 
-	if err := cl.Mail("from-garbage@example.org"); err == nil {
+	if err := cl.Mail("from-garbage@example.org", nil); err == nil {
 		t.Fatal("Expected an error, got none")
 	}
 }

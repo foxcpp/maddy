@@ -570,7 +570,15 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		return nil, lastErr
 	}
 
-	if err := conn.Mail(rd.mailFrom); err != nil {
+	if err := conn.Mail(rd.mailFrom, &smtp.MailOptions{
+		// Future extensions may add additional fields that should not be
+		// copied blindly. So we copy only fields we know should be handled
+		// this way.
+
+		Size:       rd.msgMeta.SMTPOpts.Size,
+		RequireTLS: rd.msgMeta.SMTPOpts.RequireTLS,
+		UTF8:       rd.msgMeta.SMTPOpts.UTF8,
+	}); err != nil {
 		if err := conn.Quit(); err != nil {
 			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
 		}

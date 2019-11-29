@@ -112,7 +112,15 @@ func (u *Downstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	if err := d.connect(); err != nil {
 		return nil, err
 	}
-	if err := d.client.Mail(mailFrom); err != nil {
+	if err := d.client.Mail(mailFrom, &smtp.MailOptions{
+		// Future extensions may add additional fields that should not be
+		// copied blindly. So we copy only fields we know should be handled
+		// this way.
+
+		Size:       msgMeta.SMTPOpts.Size,
+		RequireTLS: msgMeta.SMTPOpts.RequireTLS,
+		UTF8:       msgMeta.SMTPOpts.UTF8,
+	}); err != nil {
 		d.client.Quit()
 		return nil, d.wrapClientErr(err)
 	}

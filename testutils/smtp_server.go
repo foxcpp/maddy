@@ -8,7 +8,6 @@ import (
 	"net"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 
 type SMTPMessage struct {
 	From     string
+	Opts     smtp.MailOptions
 	To       []string
 	Data     []byte
 	State    *smtp.ConnectionState
@@ -88,13 +88,14 @@ func (s *session) Logout() error {
 	return nil
 }
 
-func (s *session) Mail(from string) error {
+func (s *session) Mail(from string, opts smtp.MailOptions) error {
 	if s.backend.MailErr != nil {
 		return s.backend.MailErr
 	}
 
 	s.Reset()
 	s.msg.From = from
+	s.msg.Opts = opts
 	return nil
 }
 
@@ -150,9 +151,6 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 
 	go func() {
 		if err := s.Serve(l); err != nil {
-			if strings.Contains(err.Error(), "use of closed network connection") {
-				return
-			}
 			t.Error(err)
 		}
 	}()
@@ -247,9 +245,6 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 
 	go func() {
 		if err := s.Serve(l); err != nil {
-			if strings.Contains(err.Error(), "use of closed network connection") {
-				return
-			}
 			t.Error(err)
 		}
 	}()
@@ -305,9 +300,6 @@ func SMTPServerTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*t
 
 	go func() {
 		if err := s.Serve(l); err != nil {
-			if strings.Contains(err.Error(), "use of closed network connection") {
-				return
-			}
 			t.Error(err)
 		}
 	}()

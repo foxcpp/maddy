@@ -88,6 +88,14 @@ type MsgMetadata struct {
 	// which is usually unwanted.
 	OriginalRcpts map[string]string
 
+	// SMTPOpts contains the SMTP MAIL FROM command arguments, if the message
+	// was accepted over SMTP or SMTP-like protocol (such as LMTP).
+	//
+	// Note that the Size field should not be used as source of information about
+	// the body size. Especially since it counts the header too whereas
+	// Buffer.Len does not.
+	SMTPOpts smtp.MailOptions
+
 	// Conn contains the information about the underlying protocol connection
 	// that was used to accept this message. The referenced instance may be shared
 	// between multiple messages.
