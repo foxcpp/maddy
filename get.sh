@@ -113,7 +113,9 @@ install_dist() {
 
     $SUDO bash "$(source_dir)/dist/install.sh"
 
-    $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g" "$DESTDIR/$SYSTEMDUNITS/system/maddy.service" "$DESTDIR/$SYSTEMDUNITS/system/maddy@.service"
+    $SUDO sed -Ei "s!/usr/bin!$PREFIX/bin!g;\
+        s!/usr/lib/maddy!$PREFIX/lib/maddy!g;\
+        s!/etc/maddy!$CONFDIR!g" "$DESTDIR/$SYSTEMDUNITS/system/maddy.service" "$DESTDIR/$SYSTEMDUNITS/system/maddy@.service"
 }
 
 install_man() {
@@ -167,6 +169,7 @@ install_config() {
 
         sed -Ei "s/^\\$\\(primary_domain\) = .+$/$\(primary_domain\) = $DOMAIN/" /tmp/maddy.conf
         sed -Ei "s/^\\$\\(hostname\) = .+$/$\(hostname\) = $DOMAIN/" /tmp/maddy.conf
+        sed -Ei "s!/etc/maddy!$CONFDIR!g" /tmp/maddy.conf
 
         $SUDO install -Dm 0644 /tmp/maddy.conf "$DESTDIR/$CONFDIR/maddy.conf"
         rm /tmp/maddy.conf
