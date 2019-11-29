@@ -1,6 +1,10 @@
 #!/bin/sh
 
-out=$(rspamc -i "$1" --helo "$2" -F "$3")
+if [ "$4" != "" ]; then
+    out=$(rspamc -i "$1" --helo "$2" -F "$3" -u "$4")
+else
+    out=$(rspamc -i "$1" --helo "$2" -F "$3")
+fi
 action=$(echo "$out" | grep '^Action:' | cut -d " " -f 2-)
 score=$(echo "$out" | grep '^Score:' | cut -d " " -f 2)
 spam=$(echo "$out" | grep '^Spam:' | cut -d " " -f 2)
