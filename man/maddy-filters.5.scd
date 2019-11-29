@@ -576,9 +576,11 @@ not possible to specify multiple replacements for a single address).
 
 Matching is done case-insensitively. Name without '@' matches local-part with
 any domain. Replacements are not applied recursively.
+Rules for handling of quoted local-part are a bit tricky, see examples in the
+File format section below.
 
 Recipients are not deduplicated after expansion, so message may be delivered
-multiple times to a single recipient. However, used delivery target apply
+multiple times to a single recipient. However, used delivery target can apply
 such deduplication (sql does it).
 
 ```
@@ -620,6 +622,10 @@ cat: dog@example.com
 # Replaces cat@example.org to dog@example.org.
 # Takes preference over any-domain alias above.
 cat@example.org: dog@example.org
+
+# Crazy madness with quoted local-part.
+"a @ b"@example.org: "b @ a"@example.org
+"a @ b": "b @ a"
 
 # Postmaster alias is a special case, it should
 # always use a full address as a replacement.

@@ -255,7 +255,7 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 
 	replacement = aliases[strings.ToLower(mbox)]
 	if replacement != "" {
-		if strings.Contains(replacement, "@") {
+		if strings.Contains(replacement, "@") && !strings.HasPrefix(replacement, `"`) && !strings.HasSuffix(replacement, `"`) {
 			return replacement, nil
 		}
 		return replacement + "@" + domain, nil

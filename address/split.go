@@ -8,28 +8,45 @@ import (
 // Split splits a email address (as defined by RFC 5321 as a forward-path
 // token) into local part (mailbox) and domain.
 //
-// Note that definition of the forward-path token includes special postmater
-// address without the domain part. Split will return domain == "" in this
-// case.
+// Note that definition of the forward-path token includes the special
+// postmaster address without the domain part. Split will return domain == ""
+// in this case.
 //
-// Additionally, Split undoes escaping and quoting of local-part.
-// That is, for address `"test @ test"@example.org` it will return "test @test"
-// and "example.org".
+// Split does almost no sanity checks on the input and is intentionally naive.
+// If this is a concern, ValidMailbox and ValidDomain should be used on the
+// output.
 func Split(addr string) (mailbox, domain string, err error) {
 	if strings.EqualFold(addr, "postmaster") {
 		return addr, "", nil
 	}
 
+	indx := strings.LastIndexByte(addr, '@')
+	if indx == -1 {
+		return "", "", errors.New("address: missing at-sign")
+	}
+	mailbox = addr[:indx]
+	domain = addr[indx+1:]
+	if mailbox == "" {
+		return "", "", errors.New("address: empty local-part")
+	}
+	if domain == "" {
+		return "", "", errors.New("address: empty domain")
+	}
+	return
+}
+
+// UnquoteMbox undoes escaping and quoting of the local-part.  That is, for
+// local-part `"test\" @ test"` it will return `test" @test`.
+func UnquoteMbox(mbox string) (string, error) {
 	var (
 		quoted          bool
 		escaped         bool
 		terminatedQuote bool
 		mailboxB        strings.Builder
 	)
-mboxLoop:
-	for i, ch := range addr {
-		if terminatedQuote && ch != '@' {
-			return "", "", errors.New("address: closing quote should be right before at-sign")
+	for _, ch := range mbox {
+		if terminatedQuote {
+			return "", errors.New("address: closing quote should be right before at-sign")
 		}
 
 		switch ch {
@@ -44,18 +61,14 @@ mboxLoop:
 		case '\\':
 			if !escaped {
 				if !quoted {
-					return "", "", errors.New("address: escapes are allowed only in quoted strings")
+					return "", errors.New("address: escapes are allowed only in quoted strings")
 				}
 				escaped = true
 				continue
 			}
 		case '@':
-			if !escaped && !quoted {
-				domain = addr[i+1:]
-				if strings.Contains(domain, "@") {
-					return "", "", errors.New("address: multiple at-signs")
-				}
-				break mboxLoop
+			if !quoted {
+				return "", errors.New("address: extra at-sign in non-quoted local-part")
 			}
 		}
 
@@ -65,11 +78,8 @@ mboxLoop:
 	}
 
 	if mailboxB.Len() == 0 {
-		return "", "", errors.New("address: empty local part")
-	}
-	if domain == "" {
-		return "", "", errors.New("address: empty domain part")
+		return "", errors.New("address: empty local part")
 	}
 
-	return mailboxB.String(), domain, nil
+	return mailboxB.String(), nil
 }

@@ -45,6 +45,10 @@ func TestReadFile(t *testing.T) {
 	}
 
 	test("a: b", map[string]string{"a": "b"})
+	test("a@example.org: b@example.com", map[string]string{"a@example.org": "b@example.com"})
+	test(`"a @ a"@example.org: b@example.com`, map[string]string{`"a @ a"@example.org`: "b@example.com"})
+	test(`a@example.org: "b @ b"@example.com`, map[string]string{`a@example.org`: `"b @ b"@example.com`})
+	test(`"a @ a": "b @ b"`, map[string]string{`"a @ a"`: `"b @ b"`})
 	test("a: b, c", nil)
 	test(": b", nil)
 	test(":", nil)
@@ -94,6 +98,12 @@ func TestRewriteRcpt(t *testing.T) {
 	test("postmaster", "postmaster", nil)
 	test("test@example.com", "test@example.org",
 		map[string]string{"test@example.com": "test@example.org"})
+	test(`"\"test @ test\""@example.com`, "test@example.org",
+		map[string]string{`"\"test @ test\""@example.com`: "test@example.org"})
+	test(`test@example.com`, `"\"test @ test\""@example.org`,
+		map[string]string{`test@example.com`: `"\"test @ test\""@example.org`})
+	test(`"\"test @ test\""@example.com`, `"\"b @ b\""@example.com`,
+		map[string]string{`"\"test @ test\""`: `"\"b @ b\""`})
 	test("TeSt@eXAMple.com", "test@example.org",
 		map[string]string{"test@example.com": "test@example.org"})
 	test("test@example.com", "test2@example.com",

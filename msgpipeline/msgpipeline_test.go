@@ -465,7 +465,7 @@ func TestMsgPipeline_MalformedSource(t *testing.T) {
 	}
 
 	// Simple checks for violations that can make msgpipeline misbehave.
-	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@", "that@is@definiely@broken"} {
+	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@"} {
 		_, err := d.Start(&module.MsgMetadata{ID: "testing"}, addr)
 		if err == nil {
 			t.Errorf("%s is accepted as valid address", addr)

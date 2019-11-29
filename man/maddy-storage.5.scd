@@ -118,6 +118,12 @@ to be different accounts at the storage level.
 
 Typically used with 'auth_domain'.
 
+*Note*: when storage_perdomain is disabled, local-part quoting in addresses is
+undone. That is for a recipient "test test"@example.org the used account is
+test test (two 'test' words with a space in between). However, when
+storage_perdomain is on, no unquoting is done, since the account name is a
+complete RFC 5321 address and hence should be encoded.
+
 *Syntax*: auth_perdomain _boolean_ ++
 *Default*: global directive value
 

@@ -76,6 +76,17 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 				Err:          err,
 			}
 		}
+
+		accountName, err = address.UnquoteMbox(accountName)
+		if err != nil {
+			return &exterrors.SMTPError{
+				Code:         501,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
+				Message:      "Invalid recipient address",
+				TargetName:   "sql",
+				Err:          err,
+			}
+		}
 	}
 
 	accountName = strings.ToLower(accountName)
