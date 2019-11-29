@@ -668,7 +668,8 @@ command executable_name arg0 arg1 ... {
 ## Arguments
 
 The module arguments specify the command to run. If the first argument is not
-an absolute path, it is looked up in $PATH. Note that no additional handling
+an absolute path, it is looked up in the Libexec Directory (/usr/lib/maddy on
+Linux) and in $PATH (in that ordering). Note that no additional handling
 of arguments is done, especially, the command is executed directly, not via the
 system shell.
 
@@ -776,3 +777,7 @@ for the message.
 
 This directives specified the mapping from the command exit code _integer_ to
 the message pipeline action.
+
+Two codes are defined implicitly, exit code 1 causes the message to be rejected
+with a permanent error, exit code 2 causes the message to be quarantined. Both
+action can be overriden using the 'code' directive.

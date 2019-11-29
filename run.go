@@ -55,6 +55,8 @@ func Run() int {
 
 	initDebug()
 
+	os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
+
 	f, err := os.Open(*configPath)
 	if err != nil {
 		systemdStatusErr(err)
