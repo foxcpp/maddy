@@ -112,7 +112,7 @@ func TestRewriteRcpt(t *testing.T) {
 		map[string]string{"test": "test2@example.org"})
 	test("postmaster", "test2@example.org",
 		map[string]string{"postmaster": "test2@example.org"})
-	test("TeSt@examPLE.com", "test2@examPLE.com",
+	test("TeSt@examPLE.com", "test2@example.com",
 		map[string]string{"test": "test2"})
 	test("test@example.com", "test3@example.com",
 		map[string]string{

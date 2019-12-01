@@ -162,6 +162,22 @@ func (m *Modifier) Close() error {
 	return nil
 }
 
+func cleanReplacement(value string) (string, error) {
+	// "a@b", just local-part, simply case-fold.
+	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+		return strings.ToLower(value), nil
+	}
+
+	// whatever, just local-part, simply case-fold
+	if !strings.Contains(value, `@`) {
+		return strings.ToLower(value), nil
+	}
+
+	// whatever@whatever, complete address, apply case-folding, decode Punycode
+	// and normalize for domain.
+	return address.ForLookup(value)
+}
+
 func readFile(path string, out map[string]string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -191,7 +207,10 @@ func readFile(path string, out map[string]string) error {
 			return parseErr("invalid entry, missing colon")
 		}
 
-		fromAddr := strings.ToLower(strings.TrimSpace(parts[0]))
+		fromAddr, err := cleanReplacement(strings.TrimSpace(parts[0]))
+		if err != nil {
+			return parseErr("malformed address: " + err.Error())
+		}
 		if len(fromAddr) == 0 {
 			return parseErr("empty address before colon")
 		}
@@ -202,7 +221,11 @@ func readFile(path string, out map[string]string) error {
 		}
 
 		for i := range toAddrs {
-			toAddrs[i] = strings.ToLower(strings.TrimSpace(toAddrs[i]))
+			var err error
+			toAddrs[i], err = cleanReplacement(strings.TrimSpace(toAddrs[i]))
+			if err != nil {
+				return parseErr("malformed address: " + err.Error())
+			}
 		}
 
 		if fromAddr == "postmaster" && !strings.Contains(toAddrs[0], "@") {
@@ -237,7 +260,12 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 	aliases := s.m.aliases
 	s.m.aliasesLck.RUnlock()
 
-	replacement := aliases[strings.ToLower(rcptTo)]
+	normAddr, err := address.ForLookup(rcptTo)
+	if err != nil {
+		return rcptTo, fmt.Errorf("malformed address: %v", err)
+	}
+
+	replacement := aliases[normAddr]
 	if replacement != "" {
 		return replacement, nil
 	}
@@ -246,14 +274,16 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 
 	// Okay, then attempt to do rewriting using
 	// only mailbox.
-	mbox, domain, err := address.Split(rcptTo)
+	mbox, domain, err := address.Split(normAddr)
 	if err != nil {
 		// If we have malformed address here, something is really wrong, but let's
 		// ignore it silently then anyway.
 		return rcptTo, nil
 	}
 
-	replacement = aliases[strings.ToLower(mbox)]
+	// mbox is already normalized, since it is a part of address.ForLookup
+	// result.
+	replacement = aliases[mbox]
 	if replacement != "" {
 		if strings.Contains(replacement, "@") && !strings.HasPrefix(replacement, `"`) && !strings.HasSuffix(replacement, `"`) {
 			return replacement, nil
