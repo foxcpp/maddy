@@ -7,6 +7,7 @@ import (
 
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/check"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/module"
 )
@@ -38,7 +39,7 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 	srcDomain := strings.TrimSuffix(ctx.MsgMeta.Conn.Hostname, ".")
 	rdnsName = strings.TrimSuffix(rdnsName, ".")
 
-	if strings.EqualFold(rdnsName, srcDomain) {
+	if dns.Equal(rdnsName, srcDomain) {
 		ctx.Logger.Debugf("PTR record %s matches source domain, OK", rdnsName)
 		return module.CheckResult{}
 	}

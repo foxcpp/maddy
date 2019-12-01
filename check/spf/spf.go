@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"runtime/debug"
-	"strings"
 
 	"blitiri.com.ar/go/spf"
 	"github.com/emersion/go-message/textproto"
@@ -17,10 +16,12 @@ import (
 	"github.com/foxcpp/maddy/check"
 	maddydmarc "github.com/foxcpp/maddy/check/dmarc"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/idna"
 )
 
 const modName = "apply_spf"
@@ -225,11 +226,44 @@ func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 
 	policy := record.Policy
 	// TODO: Is it ok to use EqualFold for subdomain check?
-	if !strings.EqualFold(policyDomain, fromDomain) && record.SubdomainPolicy != "" {
+	if !dns.Equal(policyDomain, fromDomain) && record.SubdomainPolicy != "" {
 		policy = record.SubdomainPolicy
 	}
 
 	return policy != dmarc.PolicyNone
+}
+
+func prepareMailFrom(from string) (string, error) {
+	// INTERNATIONALIZATION: RFC 8616, Section 4
+	// Hostname is already in A-labels per SMTPUTF8 requirement.
+	// MAIL FROM domain should be converted to A-labels before doing
+	// anything.
+	fromMbox, fromDomain, err := address.Split(from)
+	if err != nil {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
+			Message:      "Malformed address",
+			CheckName:    "spf",
+		}
+	}
+	fromDomain, err = idna.ToASCII(fromDomain)
+	if err != nil {
+		return "", &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
+			Message:      "Malformed address",
+			CheckName:    "spf",
+		}
+	}
+
+	// %{s} and %{l} do not match anything if it is non-ASCII.
+	// Since spf lib does not seem to care, strip it.
+	if !address.IsASCII(fromMbox) {
+		fromMbox = ""
+	}
+
+	return fromMbox + "@" + fromDomain, nil
 }
 
 func (s *state) CheckConnection() module.CheckResult {
@@ -244,8 +278,16 @@ func (s *state) CheckConnection() module.CheckResult {
 		return module.CheckResult{}
 	}
 
+	mailFrom, err := prepareMailFrom(s.msgMeta.OriginalFrom)
+	if err != nil {
+		return module.CheckResult{
+			Reason: err,
+			Reject: true,
+		}
+	}
+
 	if s.c.enforceEarly {
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
@@ -264,7 +306,7 @@ func (s *state) CheckConnection() module.CheckResult {
 			}
 		}()
 
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()
