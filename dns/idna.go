@@ -1,0 +1,26 @@
+package dns
+
+import (
+	"strings"
+
+	"golang.org/x/net/idna"
+	"golang.org/x/text/unicode/norm"
+)
+
+func Clean(domain string) (string, error) {
+	uDomain, err := idna.ToUnicode(domain)
+	return strings.ToLower(norm.NFC.String(uDomain)), err
+}
+
+// SelectIDNA is a convenience function for encoding to/from Punycode.
+//
+// If ulabel is true, it returns U-label encoded domain in the Unicode NFC
+// form.
+// If ulabel is false, it returns A-label encoded domain.
+func SelectIDNA(ulabel bool, domain string) (string, error) {
+	if ulabel {
+		uDomain, err := idna.ToUnicode(domain)
+		return norm.NFC.String(uDomain), err
+	}
+	return idna.ToASCII(domain)
+}
