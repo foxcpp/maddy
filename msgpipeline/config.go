@@ -8,6 +8,7 @@ import (
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/modify"
 	"github.com/foxcpp/maddy/module"
@@ -62,6 +63,15 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			}
 
 			for _, rule := range node.Args {
+				if strings.Contains(rule, "@") {
+					rule, err = address.ForLookup(rule)
+				} else {
+					rule, err = dns.Clean(rule)
+				}
+				if err != nil {
+					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source match rule: %v: %v", rule, err)
+				}
+
 				if !validMatchRule(rule) {
 					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source routing rule: %v", rule)
 				}
@@ -155,6 +165,15 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 			}
 
 			for _, rule := range node.Args {
+				if strings.Contains(rule, "@") {
+					rule, err = address.ForLookup(rule)
+				} else {
+					rule, err = dns.Clean(rule)
+				}
+				if err != nil {
+					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v: %v", rule, err)
+				}
+
 				if !validMatchRule(rule) {
 					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v", rule)
 				}

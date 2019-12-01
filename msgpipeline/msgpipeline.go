@@ -2,7 +2,6 @@ package msgpipeline
 
 import (
 	"net"
-	"strings"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -154,16 +153,30 @@ func (dd *msgpipelineDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadat
 }
 
 func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
+	var cleanFrom = mailFrom
+	if mailFrom != "" {
+		var err error
+		cleanFrom, err = address.ForLookup(mailFrom)
+		if err != nil {
+			return sourceBlock{}, &exterrors.SMTPError{
+				Code:         501,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
+				Message:      "Unable to normalize the sender address",
+				Err:          err,
+			}
+		}
+	}
+
 	// First try to match against complete address.
-	srcBlock, ok := dd.d.perSource[strings.ToLower(mailFrom)]
+	srcBlock, ok := dd.d.perSource[cleanFrom]
 	if !ok {
 		// Then try domain-only.
-		_, domain, err := address.Split(mailFrom)
+		_, domain, err := address.Split(cleanFrom)
 		// mailFrom != "" is added as a special condition
 		// instead of extending address.Split because ""
 		// is not a valid RFC 282 address and only a special
 		// value for SMTP.
-		if err != nil && mailFrom != "" {
+		if err != nil && cleanFrom != "" {
 			return sourceBlock{}, &exterrors.SMTPError{
 				Code:         501,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
@@ -173,16 +186,17 @@ func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, er
 			}
 		}
 
-		srcBlock, ok = dd.d.perSource[strings.ToLower(domain)]
+		// domain is already case-folded and normalized by the message source.
+		srcBlock, ok = dd.d.perSource[domain]
 		if !ok {
 			// Fallback to the default source block.
 			srcBlock = dd.d.defaultSource
 			dd.log.Debugf("sender %s matched by default rule", mailFrom)
 		} else {
-			dd.log.Debugf("sender %s matched by domain rule '%s'", mailFrom, strings.ToLower(domain))
+			dd.log.Debugf("sender %s matched by domain rule '%s'", mailFrom, domain)
 		}
 	} else {
-		dd.log.Debugf("sender %s matched by address rule '%s'", mailFrom, strings.ToLower(mailFrom))
+		dd.log.Debugf("sender %s matched by address rule '%s'", mailFrom, cleanFrom)
 	}
 	return srcBlock, nil
 }
@@ -418,11 +432,21 @@ func (dd msgpipelineDelivery) Abort() error {
 }
 
 func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
+	cleanRcpt, err := address.ForLookup(rcptTo)
+	if err != nil {
+		return nil, &exterrors.SMTPError{
+			Code:         553,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Unable to normalize the recipient address",
+			Err:          err,
+		}
+	}
+
 	// First try to match against complete address.
-	rcptBlock, ok := dd.sourceBlock.perRcpt[strings.ToLower(rcptTo)]
+	rcptBlock, ok := dd.sourceBlock.perRcpt[cleanRcpt]
 	if !ok {
 		// Then try domain-only.
-		_, domain, err := address.Split(rcptTo)
+		_, domain, err := address.Split(cleanRcpt)
 		if err != nil {
 			return nil, &exterrors.SMTPError{
 				Code:         501,
@@ -433,16 +457,18 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 			}
 		}
 
-		rcptBlock, ok = dd.sourceBlock.perRcpt[strings.ToLower(domain)]
+		// domain is already case-folded and normalized because it is a part of
+		// cleanRcpt.
+		rcptBlock, ok = dd.sourceBlock.perRcpt[domain]
 		if !ok {
 			// Fallback to the default source block.
 			rcptBlock = dd.sourceBlock.defaultRcpt
-			dd.log.Debugf("recipient %s matched by default rule", rcptTo)
+			dd.log.Debugf("recipient %s matched by default rule (clean = %s)", rcptTo, cleanRcpt)
 		} else {
-			dd.log.Debugf("recipient %s matched by domain rule '%s'", rcptTo, strings.ToLower(domain))
+			dd.log.Debugf("recipient %s matched by domain rule '%s'", rcptTo, domain)
 		}
 	} else {
-		dd.log.Debugf("recipient %s matched by address rule '%s'", rcptTo, strings.ToLower(rcptTo))
+		dd.log.Debugf("recipient %s matched by address rule '%s'", rcptTo, cleanRcpt)
 	}
 	return rcptBlock, nil
 }

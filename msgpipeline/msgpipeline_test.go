@@ -426,6 +426,9 @@ func TestMsgPipeline_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 						targets: []module.DeliveryTarget{&target},
 					},
 				},
+				defaultRcpt: &rcptBlock{
+					rejectErr: errors.New("wtf"),
+				},
 			},
 		},
 		Log: testutils.Logger(t, "msgpipeline"),
@@ -440,6 +443,37 @@ func TestMsgPipeline_CaseInsensetiveMatch_Rcpt(t *testing.T) {
 	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"POSTMastER"})
 	testutils.CheckTestMessage(t, &target, 1, "sender@example.com", []string{"SenDeR@EXAMPLE.com"})
 	testutils.CheckTestMessage(t, &target, 2, "sender@example.com", []string{"sender@exAMPle.com"})
+}
+
+func TestMsgPipeline_UnicodeNFC_Rcpt(t *testing.T) {
+	target := testutils.Target{}
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"rcpt@é.example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"é.example.com": {
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+				defaultRcpt: &rcptBlock{
+					rejectErr: errors.New("wtf"),
+				},
+			},
+		},
+		Log: testutils.Logger(t, "msgpipeline"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})
+	if len(target.Messages) != 2 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 3, len(target.Messages))
+	}
+	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
+	testutils.CheckTestMessage(t, &target, 1, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})
 }
 
 func TestMsgPipeline_MalformedSource(t *testing.T) {
