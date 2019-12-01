@@ -877,7 +877,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 
 	var dsnBodyBlob bytes.Buffer
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
-	dsnHeader, err := dsn.GenerateDSN(dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
+	dsnHeader, err := dsn.GenerateDSN(meta.MsgMeta.SMTPOpts.UTF8, dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
 	if err != nil {
 		dl.Error("failed to generate fail DSN", err)
 		return
@@ -886,6 +886,9 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 
 	dsnMeta := &module.MsgMetadata{
 		ID: dsnID,
+		SMTPOpts: smtp.MailOptions{
+			UTF8: meta.MsgMeta.SMTPOpts.UTF8,
+		},
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)
 

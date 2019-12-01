@@ -12,6 +12,8 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/address"
+	"github.com/foxcpp/maddy/dns"
 )
 
 type ReportingMTAInfo struct {
@@ -31,7 +33,7 @@ type ReportingMTAInfo struct {
 	LastAttemptDate time.Time
 }
 
-func (info ReportingMTAInfo) WriteTo(w io.Writer) error {
+func (info ReportingMTAInfo) WriteTo(utf8 bool, w io.Writer) error {
 	// DSN format uses structure similar to MIME header, so we reuse
 	// MIME generator here.
 	h := textproto.Header{}
@@ -39,14 +41,34 @@ func (info ReportingMTAInfo) WriteTo(w io.Writer) error {
 	if info.ReportingMTA == "" {
 		return errors.New("dsn: Reporting-MTA field is mandatory")
 	}
-	h.Add("Reporting-MTA", "dns; "+info.ReportingMTA)
+
+	reportingMTA, err := dns.SelectIDNA(utf8, info.ReportingMTA)
+	if err != nil {
+		return fmt.Errorf("dsn: can not convert Reporting-MTA to a suitable representation: %w", err)
+	}
+
+	h.Add("Reporting-MTA", "dns; "+reportingMTA)
 
 	if info.ReceivedFromMTA != "" {
-		h.Add("Received-From-MTA", "dns; "+info.ReceivedFromMTA)
+		receivedFromMTA, err := dns.SelectIDNA(utf8, info.ReceivedFromMTA)
+		if err != nil {
+			return fmt.Errorf("dsn: can not convert Received-From-MTA to a suitable representation: %w", err)
+		}
+
+		h.Add("Received-From-MTA", "dns; "+receivedFromMTA)
 	}
 
 	if info.XSender != "" {
-		h.Add("X-Maddy-Sender", "rfc822; "+info.XSender)
+		sender, err := address.SelectIDNA(utf8, info.XSender)
+		if err != nil {
+			return fmt.Errorf("dsn: can not convert X-Maddy-Sender to a suitable representation: %w", err)
+		}
+
+		if utf8 {
+			h.Add("X-Maddy-Sender", "utf8; "+sender)
+		} else {
+			h.Add("X-Maddy-Sender", "rfc822; "+sender)
+		}
 	}
 	if info.XMessageID != "" {
 		h.Add("X-Maddy-MsgID", info.XMessageID)
@@ -83,7 +105,7 @@ type RecipientInfo struct {
 	DiagnosticCode error
 }
 
-func (info RecipientInfo) WriteTo(w io.Writer) error {
+func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	// DSN format uses structure similar to MIME header, so we reuse
 	// MIME generator here.
 	h := textproto.Header{}
@@ -91,7 +113,16 @@ func (info RecipientInfo) WriteTo(w io.Writer) error {
 	if info.FinalRecipient == "" {
 		return errors.New("dsn: Final-Recipient is required")
 	}
-	h.Add("Final-Recipient", "rfc822; "+info.FinalRecipient)
+	finalRcpt, err := address.SelectIDNA(utf8, info.FinalRecipient)
+	if err != nil {
+		return fmt.Errorf("dsn: can not convert Final-Recipient to a suitable representation: %w", err)
+	}
+	if utf8 {
+		h.Add("Final-Recipient", "utf8; "+finalRcpt)
+	} else {
+		h.Add("Final-Recipient", "rfc822; "+finalRcpt)
+	}
+
 	if info.Action == "" {
 		return errors.New("dsn: Action is required")
 	}
@@ -105,12 +136,20 @@ func (info RecipientInfo) WriteTo(w io.Writer) error {
 		h.Add("Diagnostic-Code", fmt.Sprintf("smtp; %d %d.%d.%d %s",
 			smtpErr.Code, smtpErr.EnhancedCode[0], smtpErr.EnhancedCode[1], smtpErr.EnhancedCode[2],
 			smtpErr.Message))
-	} else {
+	} else if utf8 {
+		// It might contain Unicode, so don't include it if we are not allowed to.
+		// ... I didn't bother implementing mangling logic to remove Unicode
+		// characters.
 		h.Add("Diagnostic-Code", "X-Maddy; "+info.DiagnosticCode.Error())
 	}
 
 	if info.RemoteMTA != "" {
-		h.Add("Remote-MTA", "dns; "+info.RemoteMTA)
+		remoteMTA, err := dns.SelectIDNA(utf8, info.RemoteMTA)
+		if err != nil {
+			return fmt.Errorf("dsn: can not convert Remote-MTA to a suitable representation: %w", err)
+		}
+
+		h.Add("Remote-MTA", "dns; "+remoteMTA)
 	}
 
 	return textproto.WriteHeader(w, h)
@@ -125,7 +164,7 @@ type Envelope struct {
 // GenerateDSN is a top-level function that should be used for generation of the DSNs.
 //
 // DSN header will be returned, body itself will be written to outWriter.
-func GenerateDSN(envelope Envelope, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo, failedHeader textproto.Header, outWriter io.Writer) (textproto.Header, error) {
+func GenerateDSN(utf8 bool, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo, failedHeader textproto.Header, outWriter io.Writer) (textproto.Header, error) {
 	partWriter := textproto.NewMultipartWriter(outWriter)
 
 	reportHeader := textproto.Header{}
@@ -144,17 +183,21 @@ func GenerateDSN(envelope Envelope, mtaInfo ReportingMTAInfo, rcptsInfo []Recipi
 	if err := writeHumanReadablePart(partWriter, envelope, mtaInfo, rcptsInfo); err != nil {
 		return textproto.Header{}, err
 	}
-	if err := writeMachineReadablePart(partWriter, mtaInfo, rcptsInfo); err != nil {
+	if err := writeMachineReadablePart(utf8, partWriter, mtaInfo, rcptsInfo); err != nil {
 		return textproto.Header{}, err
 	}
-	return reportHeader, writeHeader(partWriter, failedHeader)
+	return reportHeader, writeHeader(utf8, partWriter, failedHeader)
 
 }
 
-func writeHeader(w *textproto.MultipartWriter, header textproto.Header) error {
+func writeHeader(utf8 bool, w *textproto.MultipartWriter, header textproto.Header) error {
 	partHeader := textproto.Header{}
 	partHeader.Add("Content-Description", "Undelivered message header")
-	partHeader.Add("Content-Type", "message/rfc822-headers")
+	if utf8 {
+		partHeader.Add("Content-Type", "message/global-headers")
+	} else {
+		partHeader.Add("Content-Type", "message/rfc822-headers")
+	}
 	partHeader.Add("Content-Transfer-Encoding", "8bit")
 	headerWriter, err := w.CreatePart(partHeader)
 	if err != nil {
@@ -163,9 +206,13 @@ func writeHeader(w *textproto.MultipartWriter, header textproto.Header) error {
 	return textproto.WriteHeader(headerWriter, header)
 }
 
-func writeMachineReadablePart(w *textproto.MultipartWriter, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo) error {
+func writeMachineReadablePart(utf8 bool, w *textproto.MultipartWriter, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo) error {
 	machineHeader := textproto.Header{}
-	machineHeader.Add("Content-Type", "message/delivery-status")
+	if utf8 {
+		machineHeader.Add("Content-Type", "message/global-delivery-status")
+	} else {
+		machineHeader.Add("Content-Type", "message/delivery-status")
+	}
 	machineHeader.Add("Content-Description", "Delivery report")
 	machineWriter, err := w.CreatePart(machineHeader)
 	if err != nil {
@@ -173,12 +220,12 @@ func writeMachineReadablePart(w *textproto.MultipartWriter, mtaInfo ReportingMTA
 	}
 
 	// WriteTo will add an empty line after output.
-	if err := mtaInfo.WriteTo(machineWriter); err != nil {
+	if err := mtaInfo.WriteTo(utf8, machineWriter); err != nil {
 		return err
 	}
 
 	for _, rcpt := range rcptsInfo {
-		if err := rcpt.WriteTo(machineWriter); err != nil {
+		if err := rcpt.WriteTo(utf8, machineWriter); err != nil {
 			return err
 		}
 	}
@@ -204,7 +251,7 @@ Last delivery attempt: {{.LastAttemptDate}}
 func writeHumanReadablePart(w *textproto.MultipartWriter, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo) error {
 	humanHeader := textproto.Header{}
 	humanHeader.Add("Content-Transfer-Encoding", "8bit")
-	humanHeader.Add("Content-Type", "text/plain; encoding=utf-8")
+	humanHeader.Add("Content-Type", `text/plain; charset="utf-8"`)
 	humanHeader.Add("Content-Description", "Notification")
 	humanWriter, err := w.CreatePart(humanHeader)
 	if err != nil {
@@ -219,7 +266,7 @@ func writeHumanReadablePart(w *textproto.MultipartWriter, envelope Envelope, mta
 	}
 
 	for _, rcpt := range rcptsInfo {
-		if _, err := fmt.Fprintf(humanWriter, "Delivery to %s (%s) failed with error: %v\n", rcpt.FinalRecipient, rcpt.RemoteMTA, rcpt.DiagnosticCode); err != nil {
+		if _, err := fmt.Fprintf(humanWriter, "Delivery to %s failed with error: %v\n", rcpt.FinalRecipient, rcpt.DiagnosticCode); err != nil {
 			return err
 		}
 	}
