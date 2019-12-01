@@ -43,6 +43,7 @@ func TestShouldSign(t *testing.T) {
 		AuthIdentity string
 		MAILFROM     string
 		From         string
+		EAI          bool
 
 		ShouldSign bool
 		ExpectedId string
@@ -61,7 +62,7 @@ func TestShouldSign(t *testing.T) {
 			m.senderMatch[method] = struct{}{}
 		}
 
-		id, ok := m.shouldSign(strconv.Itoa(i), &h, c.MAILFROM, c.AuthIdentity)
+		id, ok := m.shouldSign(c.EAI, strconv.Itoa(i), &h, c.MAILFROM, c.AuthIdentity)
 		if ok != c.ShouldSign {
 			t.Errorf("%d %+v: expected ShouldSign=%v, got %v", i, c, c.ShouldSign, ok)
 		}
@@ -79,6 +80,25 @@ func TestShouldSign(t *testing.T) {
 
 			ShouldSign: true,
 			ExpectedId: "@example.org",
+		},
+		{
+			MatchMethods: []string{"off"},
+
+			KeyDomain: "ñaca.com",
+			From:      "foo@ñaca.com",
+
+			ShouldSign: true,
+			ExpectedId: "@xn--aca-6ma.com",
+		},
+		{
+			MatchMethods: []string{"off"},
+
+			KeyDomain: "ñaca.com",
+			From:      "foo@ñaca.com",
+			EAI:       true,
+
+			ShouldSign: true,
+			ExpectedId: "@ñaca.com",
 		},
 		{
 			MatchMethods: []string{"envelope"},
@@ -107,6 +127,48 @@ func TestShouldSign(t *testing.T) {
 
 			ShouldSign: true,
 			ExpectedId: "foo@example.org",
+		},
+		{
+			MatchMethods: []string{"envelope"},
+
+			KeyDomain: "ñaca.com",
+			From:      "foo@ñaca.com",
+			MAILFROM:  "foo@ñaca.com",
+
+			ShouldSign: true,
+			ExpectedId: "foo@xn--aca-6ma.com",
+		},
+		{
+			MatchMethods: []string{"envelope"},
+
+			KeyDomain: "example.com",
+			From:      "ñ@example.com",
+			MAILFROM:  "ñ@example.com",
+
+			ShouldSign: true,
+			ExpectedId: "@example.com",
+		},
+		{
+			MatchMethods: []string{"envelope"},
+
+			KeyDomain: "example.com",
+			From:      "ñ@example.com",
+			MAILFROM:  "ñ@example.com",
+			EAI:       true,
+
+			ShouldSign: true,
+			ExpectedId: "ñ@example.com",
+		},
+		{
+			MatchMethods: []string{"envelope"},
+
+			KeyDomain: "ñaca.com",
+			From:      "foo@ñaca.com",
+			MAILFROM:  "foo@ñaca.com",
+			EAI:       true,
+
+			ShouldSign: true,
+			ExpectedId: "foo@ñaca.com",
 		},
 		{
 			MatchMethods: []string{"envelope", "auth"},

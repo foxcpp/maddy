@@ -14,10 +14,13 @@ import (
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/idna"
+	"golang.org/x/text/unicode/norm"
 )
 
 const Day = 86400 * time.Second
@@ -241,8 +244,18 @@ func (m *Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierS
 	}, nil
 }
 
-func (m *Modifier) shouldSign(msgId string, h *textproto.Header, mailFrom string, authName string) (string, bool) {
+func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailFrom string, authName string) (string, bool) {
 	if _, off := m.senderMatch["off"]; off {
+		if !eai {
+			aDomain, err := idna.ToASCII(m.domain)
+			if err != nil {
+				m.log.Msg("not signing, can not convert key domain domain into A-labels",
+					"from_addr", m.domain, "msg_id", msgId)
+				return "", false
+			}
+
+			return "@" + aDomain, true
+		}
 		return "@" + m.domain, true
 	}
 
@@ -269,28 +282,47 @@ func (m *Modifier) shouldSign(msgId string, h *textproto.Header, mailFrom string
 		return "", false
 	}
 
-	if !strings.EqualFold(fromDomain, m.domain) {
+	if !dns.Equal(fromDomain, m.domain) {
 		m.log.Msg("not signing, From domain is not key domain",
 			"from_domain", fromDomain, "key_domain", m.domain, "msg_id", msgId)
 		return "", false
 	}
 
-	if _, do := m.senderMatch["envelope"]; do && !strings.EqualFold(fromAddr, mailFrom) {
+	if _, do := m.senderMatch["envelope"]; do && !address.Equal(fromAddr, mailFrom) {
 		m.log.Msg("not signing, From address is not envelope address",
 			"from_addr", fromAddr, "envelope", mailFrom, "msg_id", msgId)
 		return "", false
 	}
 
 	if _, do := m.senderMatch["auth"]; do {
-		compareWith := fromUser
+		compareWith := norm.NFC.String(fromUser)
+		authName := norm.NFC.String(authName)
 		if strings.Contains(authName, "@") {
-			compareWith = fromAddr
+			compareWith, err = address.ForLookup(fromAddr)
+			return "", false
 		}
 		if !strings.EqualFold(compareWith, authName) {
 			m.log.Msg("not signing, From address is not authenticated identity",
 				"from_addr", fromAddr, "auth_id", authName, "msg_id", msgId)
 			return "", false
 		}
+	}
+
+	// Don't include non-ASCII in the identifier if message is
+	// non-EAI.
+	if !eai {
+		aDomain, err := idna.ToASCII(fromDomain)
+		if err != nil {
+			m.log.Msg("not signing, can not convert From domain into A-labels",
+				"from_addr", fromAddr, "msg_id", msgId)
+			return "", false
+		}
+
+		if !address.IsASCII(fromUser) {
+			return "@" + aDomain, true
+		}
+
+		return fromUser + "@" + aDomain, true
 	}
 
 	return fromAddr, true
@@ -309,14 +341,33 @@ func (s state) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
 	if s.meta.Conn != nil {
 		authUser = s.meta.Conn.AuthUser
 	}
-	id, ok := s.m.shouldSign(s.meta.ID, h, s.meta.OriginalFrom, authUser)
+
+	id, ok := s.m.shouldSign(s.meta.SMTPOpts.UTF8, s.meta.ID, h, s.meta.OriginalFrom, authUser)
 	if !ok {
 		return nil
 	}
 
+	domain := s.m.domain
+	selector := s.m.selector
+
+	// If the message is non-EAI, we are not alloed to use domains in U-labels,
+	// attempt to convert.
+	if !s.meta.SMTPOpts.UTF8 {
+		var err error
+		domain, err = idna.ToASCII(s.m.domain)
+		if err != nil {
+			return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		}
+
+		selector, err = idna.ToASCII(s.m.selector)
+		if err != nil {
+			return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		}
+	}
+
 	opts := dkim.SignOptions{
-		Domain:                 s.m.domain,
-		Selector:               s.m.selector,
+		Domain:                 domain,
+		Selector:               selector,
 		Identifier:             id,
 		Signer:                 s.m.signer,
 		Hash:                   s.m.hash,
