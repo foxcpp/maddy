@@ -10,17 +10,20 @@ package smtp_downstream
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/exterrors"
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/idna"
 )
 
 type Downstream struct {
@@ -68,6 +71,13 @@ func (u *Downstream) Init(cfg *config.Map) error {
 		return err
 	}
 
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
+	var err error
+	u.hostname, err = idna.ToASCII(u.hostname)
+	if err != nil {
+		return fmt.Errorf("smtp_downstream: cannot represent the hostname as an A-label name: %w", err)
+	}
+
 	u.targetsArg = append(u.targetsArg, targetsArg...)
 	for _, tgt := range u.targetsArg {
 		endp, err := config.ParseEndpoint(tgt)
@@ -112,16 +122,47 @@ func (u *Downstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module
 	if err := d.connect(); err != nil {
 		return nil, err
 	}
-	if err := d.client.Mail(mailFrom, &smtp.MailOptions{
+
+	// INTERNATIONALIZATION: Use SMTPUTF8 is possible, attempt to convert addresses otherwise.
+	opts := &smtp.MailOptions{
 		// Future extensions may add additional fields that should not be
 		// copied blindly. So we copy only fields we know should be handled
 		// this way.
 
 		Size:       msgMeta.SMTPOpts.Size,
 		RequireTLS: msgMeta.SMTPOpts.RequireTLS,
-		UTF8:       msgMeta.SMTPOpts.UTF8,
-	}); err != nil {
-		d.client.Quit()
+	}
+
+	// There is no way we can accept a message with non-ASCII addresses without SMTPUTF8
+	// this is enforced by endpoint/smtp.
+	if msgMeta.SMTPOpts.UTF8 {
+		if ok, _ := d.client.Extension("SMTPUTF8"); ok {
+			opts.UTF8 = true
+		} else {
+			var err error
+			mailFrom, err = address.ToASCII(mailFrom)
+			if err != nil {
+				if err := d.client.Quit(); err != nil {
+					d.log.Error("QUIT error", d.wrapClientErr(err))
+				}
+				return nil, &exterrors.SMTPError{
+					Code:         550,
+					EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+					Message:      "Downstream does not support SMTPUTF8, can not convert sender address",
+					TargetName:   "smtp_downstream",
+					Misc: map[string]interface{}{
+						"downstream_server": d.downstreamAddr,
+					},
+					Err: err,
+				}
+			}
+		}
+	}
+
+	if err := d.client.Mail(mailFrom, opts); err != nil {
+		if err := d.client.Quit(); err != nil {
+			d.log.Error("QUIT error", d.wrapClientErr(err))
+		}
 		return nil, d.wrapClientErr(err)
 	}
 	return d, nil
@@ -193,6 +234,7 @@ func (d *delivery) attemptConnect(endp config.Endpoint, attemptStartTLS bool) (*
 		return nil, err
 	}
 
+	// INTERNATIONALIZATION: hostname is converted to A-label in Init.
 	if err := cl.Hello(d.u.hostname); err != nil {
 		cl.Close()
 		return nil, err
@@ -270,6 +312,24 @@ func (d *delivery) wrapClientErrAddr(err error, addr string) error {
 }
 
 func (d *delivery) AddRcpt(rcptTo string) error {
+	// If necessary, the extension flag is enabled in Start.
+	if ok, _ := d.client.Extension("SMTPUTF8"); !address.IsASCII(rcptTo) && !ok {
+		var err error
+		rcptTo, err = address.ToASCII(rcptTo)
+		if err != nil {
+			return &exterrors.SMTPError{
+				Code:         553,
+				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+				Message:      "Downstream does not support SMTPUTF8, can not convert recipient address",
+				TargetName:   "smtp_downstream",
+				Misc: map[string]interface{}{
+					"downstream_server": d.downstreamAddr,
+				},
+				Err: err,
+			}
+		}
+	}
+
 	return d.wrapClientErr(d.client.Rcpt(rcptTo))
 }
 
@@ -285,7 +345,9 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 }
 
 func (d *delivery) Abort() error {
-	d.body.Close()
+	if d.body != nil {
+		d.body.Close()
+	}
 	if err := d.client.Quit(); err != nil {
 		d.client.Close()
 	}

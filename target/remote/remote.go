@@ -30,6 +30,7 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/mtasts"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/idna"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -97,6 +98,13 @@ func (rt *Target) Init(cfg *config.Map) error {
 	}, config.TLSClientBlock, &rt.tlsConfig)
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
+	var err error
+	rt.hostname, err = idna.ToASCII(rt.hostname)
+	if err != nil {
+		return fmt.Errorf("remote: cannot represent the hostname as an A-label name: %w", err)
 	}
 
 	if err := rt.initMXAuth(mxAuth); err != nil {
@@ -278,6 +286,23 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 	conn, err := rd.connectionForDomain(domain)
 	if err != nil {
 		return rd.wrapClientErr(err, domain)
+	}
+
+	// If necessary, the extension flag is enabled in connectionForDomain.
+	if ok, _ := conn.Extension("SMTPUTF8"); !address.IsASCII(to) && !ok {
+		to, err = address.ToASCII(to)
+		if err != nil {
+			return &exterrors.SMTPError{
+				Code:         553,
+				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+				Message:      "Remote MX does not support SMTPUTF8, can not convert recipient address",
+				TargetName:   "remote",
+				Misc: map[string]interface{}{
+					"remote_mx": conn.serverName,
+				},
+				Err: err,
+			}
+		}
 	}
 
 	if err := conn.Rcpt(to); err != nil {
@@ -570,15 +595,44 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		return nil, lastErr
 	}
 
-	if err := conn.Mail(rd.mailFrom, &smtp.MailOptions{
+	// INTERNATIONALIZATION: Use SMTPUTF8 is possible, attempt to convert addresses otherwise.
+	opts := &smtp.MailOptions{
 		// Future extensions may add additional fields that should not be
 		// copied blindly. So we copy only fields we know should be handled
 		// this way.
 
 		Size:       rd.msgMeta.SMTPOpts.Size,
 		RequireTLS: rd.msgMeta.SMTPOpts.RequireTLS,
-		UTF8:       rd.msgMeta.SMTPOpts.UTF8,
-	}); err != nil {
+	}
+
+	mailFrom := rd.mailFrom
+
+	// There is no way we can accept a message with non-ASCII addresses without SMTPUTF8
+	// this is enforced by endpoint/smtp.
+	if rd.msgMeta.SMTPOpts.UTF8 {
+		if ok, _ := conn.Extension("SMTPUTF8"); ok {
+			opts.UTF8 = true
+		} else {
+			mailFrom, err = address.ToASCII(mailFrom)
+			if err != nil {
+				if err := conn.Quit(); err != nil {
+					rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
+				}
+				return nil, &exterrors.SMTPError{
+					Code:         550,
+					EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+					Message:      "Remote MX does not support SMTPUTF8, can not convert sender address",
+					TargetName:   "remote",
+					Misc: map[string]interface{}{
+						"remote_mx": conn.serverName,
+					},
+					Err: err,
+				}
+			}
+		}
+	}
+
+	if err := conn.Mail(mailFrom, opts); err != nil {
 		if err := conn.Quit(); err != nil {
 			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
 		}
@@ -646,6 +700,7 @@ func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS
 		return nil, err
 	}
 
+	// INTERNATIONALIZATION: hostname is converted to A-label in Init.
 	if err := cl.Hello(rd.rt.hostname); err != nil {
 		if err := cl.Quit(); err != nil {
 			cl.Close()
@@ -733,7 +788,7 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (authMXs, nonAuthMXs []
 		authenticated := false
 
 		// This is exactly the domain we wanted to want to send a message to.
-		if strings.EqualFold(mx.Host, domain) {
+		if dns.Equal(mx.Host, domain) {
 			authenticated = true
 		}
 
