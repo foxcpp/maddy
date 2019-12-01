@@ -336,6 +336,11 @@ func CheckSMTPConnLeak(t *testing.T, srv *smtp.Server) {
 	t.Fatal("Non-closed connections present after test completion")
 }
 
+func WaitForConnsClose(t *testing.T, srv *smtp.Server) {
+	t.Helper()
+	CheckSMTPConnLeak(t, srv)
+}
+
 // FailOnConn fails the test if attempt is made to connect the
 // specified endpoint.
 func FailOnConn(t *testing.T, addr string) net.Listener {

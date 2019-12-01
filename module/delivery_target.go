@@ -9,23 +9,30 @@ import (
 // (typically persistent) or other kind of component that can be used as a
 // final destination for the message.
 type DeliveryTarget interface {
+	// Start starts the delivery of a new message.
+	//
+	// The domain part of the MAIL FROM address is assumed to be U-labels with
+	// NFC normalization and case-folding applied. The message source should
+	// ensure that by calling address.CleanDomain if necessary.
 	Start(msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
 }
 
 type Delivery interface {
 	// AddRcpt adds the target address for the message.
 	//
-	// Implementation should assume that no case-folding or
-	// deduplication was done by caller code. Its implementation
-	// responsibility to do so if it is necessary. It is not recommended
-	// to reject duplicated recipients, however. They should be silently
-	// ignored.
+	// The domain part of the address is assumed to be U-labels with NFC normalization
+	// and case-folding applied. The message source should ensure that by
+	// calling address.CleanDomain if necessary.
 	//
-	// Implementation should do as much checks as possible
-	// here and reject recipients that can't be used.
-	// Note: MsgMetadata object passed to Start contains
-	// BodyLength field. If it is non-zero, it can be used
-	// to check storage quota for the user before Body.
+	// Implementation should assume that no case-folding or deduplication was
+	// done by caller code. Its implementation responsibility to do so if it is
+	// necessary. It is not recommended to reject duplicated recipients,
+	// however. They should be silently ignored.
+	//
+	// Implementation should do as much checks as possible here and reject
+	// recipients that can't be used.  Note: MsgMetadata object passed to Start
+	// contains BodyLength field. If it is non-zero, it can be used to check
+	// storage quota for the user before Body.
 	AddRcpt(rcptTo string) error
 
 	// Body sets the body and header contents for the message.

@@ -88,12 +88,16 @@ func testEndpoint(t *testing.T, modName string, auth module.AuthProvider, tgt mo
 }
 
 func submitMsg(t *testing.T, cl *smtp.Client, from string, rcpts []string, msg string) error {
+	return submitMsgOpts(t, cl, from, rcpts, nil, msg)
+}
+
+func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, opts *smtp.MailOptions, msg string) error {
 	t.Helper()
 
 	// Error for this one is ignore because it fails if EHLO was already sent
 	// and submitMsg can happen multiple times.
 	cl.Hello("mx.example.org")
-	if err := cl.Mail(from, nil); err != nil {
+	if err := cl.Mail(from, opts); err != nil {
 		return err
 	}
 	for _, rcpt := range rcpts {
@@ -297,14 +301,15 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 		}
 		smtpErr, ok := err.(*smtp.SMTPError)
 		if !ok {
-			t.Fatal("Non-SMTPError returned")
+			t.Error("Non-SMTPError returned")
+			return
 		}
 
 		if smtpErr.Code != 523 {
-			t.Fatal("Wrong SMTP code:", smtpErr.Code)
+			t.Error("Wrong SMTP code:", smtpErr.Code)
 		}
 		if !strings.HasPrefix(smtpErr.Message, "Hey") {
-			t.Fatal("Wrong SMTP message:", smtpErr.Message)
+			t.Error("Wrong SMTP message:", smtpErr.Message)
 		}
 	}
 

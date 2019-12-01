@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/foxcpp/maddy/address"
+	"github.com/foxcpp/maddy/dns"
 	"github.com/foxcpp/maddy/module"
 )
 
@@ -22,14 +24,19 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 	builder := strings.Builder{}
 
 	// Empirically guessed value that should be enough to fit
-	// entire value in most cases.
+	// the entire value in most cases.
 	builder.Grow(256 + len(msgMeta.Conn.Hostname))
 
 	if !msgMeta.DontTraceSender && (strings.Contains(msgMeta.Conn.Proto, "SMTP") ||
 		strings.Contains(msgMeta.Conn.Proto, "LMTP")) {
 
-		builder.WriteString("from ")
-		builder.WriteString(msgMeta.Conn.Hostname)
+		// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
+		hostname, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, msgMeta.Conn.Hostname)
+		if err == nil {
+			builder.WriteString("from ")
+			builder.WriteString(hostname)
+		}
+
 		if tcpAddr, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr); ok {
 			builder.WriteString(" (")
 			if msgMeta.Conn.RDNSName != nil {
@@ -38,8 +45,12 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 					return "", err
 				}
 				if rdnsName != nil && rdnsName.(string) != "" {
-					builder.WriteString(rdnsName.(string))
-					builder.WriteRune(' ')
+					// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
+					encoded, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, rdnsName.(string))
+					if err == nil {
+						builder.WriteString(encoded)
+						builder.WriteRune(' ')
+					}
 				}
 
 			}
@@ -49,13 +60,25 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 		}
 	}
 
-	builder.WriteString(" by ")
-	builder.WriteString(SanitizeForHeader(ourHostname))
-	builder.WriteString(" (envelope-sender <")
-	builder.WriteString(SanitizeForHeader(mailFrom))
-	builder.WriteString(">)")
+	ourHostname, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, ourHostname)
+	if err == nil {
+		builder.WriteString(" by ")
+		builder.WriteString(SanitizeForHeader(ourHostname))
+	}
+
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
+	mailFrom, err = address.SelectIDNA(msgMeta.SMTPOpts.UTF8, mailFrom)
+	if err == nil {
+		builder.WriteString(" (envelope-sender <")
+		builder.WriteString(SanitizeForHeader(mailFrom))
+		builder.WriteString(">)")
+	}
+
 	if msgMeta.Conn.Proto != "" {
 		builder.WriteString(" with ")
+		if msgMeta.SMTPOpts.UTF8 {
+			builder.WriteString("UTF8")
+		}
 		builder.WriteString(msgMeta.Conn.Proto)
 	}
 	builder.WriteString(" id ")

@@ -16,6 +16,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	modconfig "github.com/foxcpp/maddy/config/module"
@@ -27,6 +28,7 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/msgpipeline"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/net/idna"
 )
 
 type Session struct {
@@ -76,13 +78,33 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 		SMTPOpts: opts,
 	}
 
+	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
+	// used.
+	for _, ch := range from {
+		if ch > 128 && !opts.UTF8 {
+			return "", &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+				Message:      "SMTPUTF8 is required for non-ASCII senders",
+			}
+		}
+	}
+
+	// Decode punycode, normalize to NFC and case-fold address.
+	cleanFrom, err := address.CleanDomain(from)
+	if err != nil {
+		return "", &exterrors.SMTPError{
+			Code:         553,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
+			Message:      "Unable to normalize the sender address",
+		}
+	}
+
 	msgMeta.ID, err = msgpipeline.GenerateMsgID()
 	if err != nil {
 		return "", err
 	}
-	s.msgMeta = msgMeta
-	s.mailFrom = from
-	msgMeta.OriginalFrom = from
+	msgMeta.OriginalFrom = cleanFrom
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -96,14 +118,19 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 	s.log.Msg("incoming message",
 		"src_host", msgMeta.Conn.Hostname,
 		"src_ip", msgMeta.Conn.RemoteAddr.String(),
-		"sender", msgMeta.OriginalFrom,
+		"sender", from,
 		"msg_id", msgMeta.ID,
 	)
 
-	s.delivery, err = s.endp.pipeline.Start(msgMeta, from)
+	delivery, err := s.endp.pipeline.Start(msgMeta, cleanFrom)
 	if err != nil {
 		return msgMeta.ID, err
 	}
+
+	s.msgMeta = msgMeta
+	s.mailFrom = cleanFrom
+	s.delivery = delivery
+
 	return msgMeta.ID, nil
 }
 
@@ -114,7 +141,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
 			}
-			return s.endp.wrapErr(msgID, err)
+			return s.endp.wrapErr(msgID, !opts.UTF8, err)
 		}
 	}
 
@@ -160,13 +187,12 @@ func (s *Session) Rcpt(to string) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
 			}
-			s.deliveryErr = s.endp.wrapErr(s.msgMeta.ID, err)
+			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, err)
 			return s.deliveryErr
 		}
 	}
 
-	err := s.delivery.AddRcpt(to)
-	if err != nil {
+	if err := s.rcpt(to); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
 			s.log.Error("RCPT error", err, "rcpt", to)
 			s.loggedRcptErrors++
@@ -174,10 +200,32 @@ func (s *Session) Rcpt(to string) error {
 				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.connState.RemoteAddr, "msg_id", s.msgMeta.ID)
 			}
 		}
-		return s.endp.wrapErr(s.msgMeta.ID, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 	s.endp.Log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
 	return nil
+}
+
+func (s *Session) rcpt(to string) error {
+	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
+	// used.
+	if !address.IsASCII(to) && !s.opts.UTF8 {
+		return &exterrors.SMTPError{
+			Code:         553,
+			EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+			Message:      "SMTPUTF8 is required for non-ASCII recipients",
+		}
+	}
+	cleanTo, err := address.CleanDomain(to)
+	if err != nil {
+		return &exterrors.SMTPError{
+			Code:         501,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
+			Message:      "Unable to normalize the recipient address",
+		}
+	}
+
+	return s.delivery.AddRcpt(cleanTo)
 }
 
 func (s *Session) Logout() error {
@@ -199,14 +247,14 @@ func (s *Session) Data(r io.Reader) error {
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		s.log.Error("DATA error", err, s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
 	if s.endp.submission {
 		// The MsgMetadata is passed by pointer all the way down.
 		if err := s.submissionPrepare(s.msgMeta, &header); err != nil {
 			s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-			return s.endp.wrapErr(s.msgMeta.ID, err)
+			return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 		}
 	}
 
@@ -214,10 +262,10 @@ func (s *Session) Data(r io.Reader) error {
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
-	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.serv.Domain, s.msgMeta.OriginalFrom)
+	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.hostname, s.msgMeta.OriginalFrom)
 	if err != nil {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return err
@@ -226,12 +274,12 @@ func (s *Session) Data(r io.Reader) error {
 
 	if err := s.delivery.Body(header, buf); err != nil {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
 	if err := s.delivery.Commit(); err != nil {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
@@ -243,7 +291,7 @@ func (s *Session) Data(r io.Reader) error {
 	return nil
 }
 
-func (endp *Endpoint) wrapErr(msgId string, err error) error {
+func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -293,10 +341,26 @@ func (endp *Endpoint) wrapErr(msgId string, err error) error {
 	if msgId != "" {
 		res.Message += " (msg ID = " + msgId + ")"
 	}
+
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.4.1.
+	if mangleUTF8 {
+		b := strings.Builder{}
+		b.Grow(len(res.Message))
+		for _, ch := range res.Message {
+			if ch > 128 {
+				b.WriteRune('?')
+			} else {
+				b.WriteRune(ch)
+			}
+		}
+		res.Message = b.String()
+	}
+
 	return res
 }
 
 type Endpoint struct {
+	hostname  string
 	Auth      module.AuthProvider
 	serv      *smtp.Server
 	name      string
@@ -341,6 +405,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
 	endp.serv.ErrorLog = endp.Log
+	endp.serv.EnableSMTPUTF8 = true
 	if err := endp.setConfig(cfg); err != nil {
 		return err
 	}
@@ -394,7 +459,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	)
 
 	cfg.Custom("auth", false, false, nil, modconfig.AuthDirective, &endp.Auth)
-	cfg.String("hostname", true, true, "", &endp.serv.Domain)
+	cfg.String("hostname", true, true, "", &endp.hostname)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
@@ -431,6 +496,12 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		if endp.Auth == nil {
 			return fmt.Errorf("%s: auth. provider must be set for submission endpoint", endp.name)
 		}
+	}
+
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
+	endp.serv.Domain, err = idna.ToASCII(endp.hostname)
+	if err != nil {
+		return fmt.Errorf("%s: can not represent the hostname as an A-label name: %w", endp.name, err)
 	}
 
 	if ioDebug {
@@ -480,7 +551,7 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
-		return nil, endp.wrapErr("", err)
+		return nil, endp.wrapErr("", true, err)
 	}
 
 	if !endp.Auth.CheckPlain(username, password) {
@@ -498,7 +569,7 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
-		return nil, endp.wrapErr("", err)
+		return nil, endp.wrapErr("", true, err)
 	}
 
 	return endp.newSession(true, "", "", state), nil
