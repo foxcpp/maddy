@@ -182,56 +182,86 @@ mx: *.example.org`,
 func TestPolicyMatch(t *testing.T) {
 	cases := []struct {
 		mx          string
-		validMxs    []string
+		validMXs    []string
 		shouldMatch bool
 	}{
 		{
 			mx:          "example.org.",
-			validMxs:    []string{"example.org"},
+			validMXs:    []string{"example.org"},
 			shouldMatch: true,
 		},
 		{
 			mx:          "example.org",
-			validMxs:    []string{"example.org"},
+			validMXs:    []string{"example.org"},
 			shouldMatch: true,
 		},
 		{
 			mx:          "mx0.example.org",
-			validMxs:    []string{"special.example.org", "*.example.org"},
+			validMXs:    []string{"special.example.org", "*.example.org"},
 			shouldMatch: true,
 		},
 		{
 			mx:          "special.example.org",
-			validMxs:    []string{"special.example.org", "*.example.org"},
+			validMXs:    []string{"special.example.org", "*.example.org"},
 			shouldMatch: true,
 		},
 		{
 			mx:          "mx0.special.example.org",
-			validMxs:    []string{"special.example.org", "*.example.org"},
+			validMXs:    []string{"special.example.org", "*.example.org"},
 			shouldMatch: false,
 		},
 		{
 			mx:          "mx0.special.example.org",
-			validMxs:    []string{"*.special.example.org", "*.example.org"},
+			validMXs:    []string{"*.special.example.org", "*.example.org"},
 			shouldMatch: true,
 		},
 		{
 			mx:          "unrelated.org",
-			validMxs:    []string{"*.example.org"},
+			validMXs:    []string{"*.example.org"},
+			shouldMatch: false,
+		},
+		{
+			mx:          "ñaca.com",
+			validMXs:    []string{"ñaca.com"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "Ñaca.com",
+			validMXs:    []string{"ñaca.com"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "ñaca.com",
+			validMXs:    []string{"Ñaca.com"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "x.ñaca.com",
+			validMXs:    []string{"x.xn--aca-6ma.com"},
+			shouldMatch: true,
+		},
+		{
+			mx:          "x.naca.com",
+			validMXs:    []string{"x.xn--aca-6ma.com"},
+			shouldMatch: false,
+		},
+		{
+			mx:          "example.org",
+			validMXs:    []string{"xn-9999999999a.org"},
 			shouldMatch: false,
 		},
 	}
 
 	for _, c := range cases {
-		t.Run(fmt.Sprintln(c.mx, c.validMxs), func(t *testing.T) {
-			p := Policy{MX: c.validMxs}
+		t.Run(fmt.Sprintln(c.mx, c.validMXs), func(t *testing.T) {
+			p := Policy{MX: c.validMXs}
 
 			matched := p.Match(c.mx)
 			if c.shouldMatch && !matched {
-				t.Error(c.mx, "didn't matched", c.validMxs, "but it should")
+				t.Error(c.mx, "didn't match", c.validMXs, "but it should")
 			}
 			if !c.shouldMatch && matched {
-				t.Error(c.mx, "matched", c.validMxs, "but it shouldn't")
+				t.Error(c.mx, "matched", c.validMXs, "but it shouldn't")
 			}
 		})
 	}

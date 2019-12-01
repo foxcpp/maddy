@@ -8,6 +8,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/foxcpp/maddy/dns"
 )
 
 type MalformedDNSRecordError struct {
@@ -141,17 +143,28 @@ func readPolicy(contents io.Reader) (*Policy, error) {
 }
 
 func (p Policy) Match(mx string) bool {
-	mx = strings.TrimSuffix(mx, ".")
+	normMX, err := dns.ForLookup(mx)
+	if err != nil {
+		return false
+	}
 
-	for _, mxRecord := range p.MX {
-		if strings.HasPrefix(mxRecord, "*.") {
-			if mx[strings.Index(mx, "."):] == mxRecord[1:] {
+	for _, pattern := range p.MX {
+		normPattern, err := dns.ForLookup(pattern)
+		if err != nil {
+			continue
+		}
+
+		// Direct comparison is valid since both values are prepared using
+		// dns.ForLookup.
+
+		if strings.HasPrefix(normPattern, "*.") {
+			if normMX[strings.Index(mx, "."):] == normPattern[1:] {
 				return true
 			}
 			continue
 		}
 
-		if mxRecord == mx {
+		if normMX == normPattern {
 			return true
 		}
 	}
