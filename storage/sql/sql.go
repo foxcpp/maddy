@@ -27,6 +27,7 @@ import (
 	"github.com/foxcpp/maddy/log"
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/target"
+	"golang.org/x/text/secure/precis"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -268,13 +269,33 @@ func prepareUsername(username string) (string, error) {
 		return "", fmt.Errorf("sql: username prepare: %w", err)
 	}
 
-	// TODO: Unicode normalization and other shenanigans.
+	// PRECIS is not included in the regular address.ForLookup since it reduces
+	// the range of valid addresses to a subset of actually valid values.
+	// PRECIS is a matter of our own local policy, not a general rule for all
+	// email addresses.
+
+	// Side note: For used profiles, there is no practical difference between
+	// CompareKey and String.
+	mbox, err = precis.UsernameCaseMapped.CompareKey(username)
+	if err != nil {
+		return "", fmt.Errorf("sql: username prepare: %w", err)
+	}
+
+	domain, err = dns.ForLookup(domain)
+	if err != nil {
+		return "", fmt.Errorf("sql: username prepare: %w", err)
+	}
 
 	return mbox + "@" + domain, nil
 }
 
 func (store *Storage) CheckPlain(username, password string) bool {
 	accountName, err := prepareUsername(username)
+	if err != nil {
+		return false
+	}
+
+	password, err = precis.OpaqueString.CompareKey(password)
 	if err != nil {
 		return false
 	}
