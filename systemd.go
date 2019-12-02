@@ -45,10 +45,15 @@ func setScmPassCred(sock *net.UnixConn) error {
 	if err != nil {
 		return err
 	}
+
+	var sockoptErr error
 	if err := sConn.Control(func(fd uintptr) {
-		syscall.SetsockoptByte(int(fd), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1)
+		sockoptErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1)
 	}); err != nil {
 		return err
+	}
+	if sockoptErr != nil {
+		return sockoptErr
 	}
 	return nil
 }
@@ -64,7 +69,7 @@ func systemdStatus(status SDStatus, desc string) {
 	defer sock.Close()
 
 	if err := setScmPassCred(sock); err != nil {
-		log.Println("failed to set SCM_PASSCRED on the socket for communication with systemd:", err)
+		log.Println("systemd: failed to set SCM_PASSCRED on the socket:", err)
 	}
 
 	if desc != "" {
