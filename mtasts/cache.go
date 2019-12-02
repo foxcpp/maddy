@@ -78,6 +78,8 @@ func IsNoPolicy(err error) bool {
 var ErrIgnorePolicy = errors.New("mtasts: policy ignored due to errors")
 
 // Get reads policy from cache or tries to fetch it from Policy Host.
+//
+// The domain is assumed to be normalized, as done by dns.ForLookup.
 func (c *Cache) Get(domain string) (*Policy, error) {
 	_, p, err := c.fetch(false, time.Now(), domain)
 	return p, err
