@@ -115,12 +115,22 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 		return "", err
 	}
 
-	s.log.Msg("incoming message",
-		"src_host", msgMeta.Conn.Hostname,
-		"src_ip", msgMeta.Conn.RemoteAddr.String(),
-		"sender", from,
-		"msg_id", msgMeta.ID,
-	)
+	if s.connState.AuthUser != "" {
+		s.log.Msg("incoming message",
+			"src_host", msgMeta.Conn.Hostname,
+			"src_ip", msgMeta.Conn.RemoteAddr.String(),
+			"sender", from,
+			"msg_id", msgMeta.ID,
+			"username", s.connState.AuthUser,
+		)
+	} else {
+		s.log.Msg("incoming message",
+			"src_host", msgMeta.Conn.Hostname,
+			"src_ip", msgMeta.Conn.RemoteAddr.String(),
+			"sender", from,
+			"msg_id", msgMeta.ID,
+		)
+	}
 
 	delivery, err := s.endp.pipeline.Start(msgMeta, cleanFrom)
 	if err != nil {
