@@ -20,7 +20,6 @@ import (
 	"github.com/emersion/go-message/textproto"
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/address"
-	"github.com/foxcpp/maddy/auth"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/dns"
@@ -38,10 +37,7 @@ type Storage struct {
 	instName string
 	Log      log.Logger
 
-	storagePerDomain bool
-	authPerDomain    bool
-	authDomains      []string
-	junkMbox         string
+	junkMbox string
 
 	inlineDriver string
 	inlineDsn    []string
@@ -59,33 +55,14 @@ type delivery struct {
 }
 
 func (d *delivery) AddRcpt(rcptTo string) error {
-	var accountName string
-	// Side note: <postmaster> address will be always accepted
-	// and delivered to "postmaster" account for both cases.
-	if d.store.storagePerDomain {
-		accountName = rcptTo
-	} else {
-		var err error
-		accountName, _, err = address.Split(rcptTo)
-		if err != nil {
-			return &exterrors.SMTPError{
-				Code:         501,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
-				Message:      "Invalid recipient address",
-				TargetName:   "sql",
-				Err:          err,
-			}
-		}
-
-		accountName, err = address.UnquoteMbox(accountName)
-		if err != nil {
-			return &exterrors.SMTPError{
-				Code:         501,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 3},
-				Message:      "Invalid recipient address",
-				TargetName:   "sql",
-				Err:          err,
-			}
+	accountName, err := prepareUsername(rcptTo)
+	if err != nil {
+		return &exterrors.SMTPError{
+			Code:         501,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
+			Message:      "User does not exist",
+			TargetName:   "sql",
+			Err:          err,
 		}
 	}
 
@@ -98,14 +75,14 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 	// go-imap-sql does certain optimizations to store the message
 	// with small amount of per-recipient data in a efficient way.
 	userHeader := textproto.Header{}
-	userHeader.Add("Delivered-To", rcptTo)
+	userHeader.Add("Delivered-To", accountName)
 
-	if err := d.d.AddRcpt(strings.ToLower(accountName), userHeader); err != nil {
+	if err := d.d.AddRcpt(accountName, userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
 			return &exterrors.SMTPError{
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-				Message:      "User doesn't exist",
+				Message:      "User does not exist",
 				TargetName:   "sql",
 				Err:          err,
 			}
@@ -199,9 +176,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.StringList("compression", false, false, []string{"off"}, &compression)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
-	cfg.Bool("storage_perdomain", false, false, &store.storagePerDomain)
-	cfg.Bool("auth_perdomain", false, false, &store.authPerDomain)
-	cfg.StringList("auth_domains", true, false, nil, &store.authDomains)
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
 	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
@@ -219,10 +193,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 
 	opts.Log = &store.Log
-
-	if store.authPerDomain && store.authDomains == nil {
-		return errors.New("sql: auth_domains must be set if auth_perdomain is used")
-	}
 
 	if appendlimitVal == -1 {
 		opts.MaxMsgBytes = nil
@@ -292,9 +262,20 @@ func (store *Storage) EnableChildrenExt() bool {
 	return store.Back.EnableChildrenExt()
 }
 
+func prepareUsername(username string) (string, error) {
+	mbox, domain, err := address.Split(username)
+	if err != nil {
+		return "", fmt.Errorf("sql: username prepare: %w", err)
+	}
+
+	// TODO: Unicode normalization and other shenanigans.
+
+	return mbox + "@" + domain, nil
+}
+
 func (store *Storage) CheckPlain(username, password string) bool {
-	accountName, ok := auth.CheckDomainAuth(username, store.authPerDomain, store.authDomains)
-	if !ok {
+	accountName, err := prepareUsername(username)
+	if err != nil {
 		return false
 	}
 
@@ -302,15 +283,9 @@ func (store *Storage) CheckPlain(username, password string) bool {
 }
 
 func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
-	var accountName string
-	if store.storagePerDomain {
-		if !strings.Contains(username, "@") {
-			return nil, errors.New("GetOrCreateUser: username@domain required")
-		}
-		accountName = username
-	} else {
-		parts := strings.Split(username, "@")
-		accountName = parts[0]
+	accountName, err := prepareUsername(username)
+	if err != nil {
+		return nil, backend.ErrInvalidCredentials
 	}
 
 	return store.Back.GetOrCreateUser(accountName)

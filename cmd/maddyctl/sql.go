@@ -1,7 +1,6 @@
 package main
 
 import (
-	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/config"
 	"github.com/foxcpp/maddy/storage/sql"
 
@@ -9,11 +8,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func sqlFromCfgBlock(root, node *config.Node) (*imapsql.Backend, error) {
+func sqlFromCfgBlock(root, node *config.Node) (*sql.Storage, error) {
 	// Global variables relevant for sql module.
 	globals := config.NewMap(nil, root)
-	globals.Bool("auth_perdomain", false, false, nil)
-	globals.StringList("auth_domains", false, false, nil, nil)
+	// None now...
 	globals.AllowUnknown()
 	_, err := globals.Process()
 	if err != nil {
@@ -33,5 +31,5 @@ func sqlFromCfgBlock(root, node *config.Node) (*imapsql.Backend, error) {
 		return nil, err
 	}
 
-	return mod.(*sql.Storage).Back, nil
+	return mod.(*sql.Storage), nil
 }

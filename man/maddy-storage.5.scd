@@ -28,6 +28,12 @@ Supported RDBMS:
 Can be used as a storage backend (for IMAP), authentication backend (IMAP &
 SMTP) or delivery target (SMTP).
 
+Account names are required to have the form of a email address and are
+case-insensitive. UTF-8 names are supported with restrictions defined in the
+PRECIS UsernameCaseMapped profile.
+
+The database can be managed using the maddyctl utility.
+
 ## Arguments
 
 Specify the driver and DSN.
@@ -108,38 +114,3 @@ of cache size in KiB.
 
 SQLite-specific performance tuning option. Amount of milliseconds to wait
 before giving up on DB lock.
-
-*Syntax*: storage_perdomain _boolean_ ++
-*Default*: no
-
-Don't remove domain part of username when accessing the underlying storage and
-require it to be present. Can be used if you want user@domain1 and user@domain2
-to be different accounts at the storage level.
-
-Typically used with 'auth_domain'.
-
-*Note*: when storage_perdomain is disabled, local-part quoting in addresses is
-undone. That is for a recipient "test test"@example.org the used account is
-test test (two 'test' words with a space in between). However, when
-storage_perdomain is on, no unquoting is done, since the account name is a
-complete RFC 5321 address and hence should be encoded.
-
-*Syntax*: auth_perdomain _boolean_ ++
-*Default*: global directive value
-
-Don't remove domain part of username when authenticating and require it to be
-present. Can be used if you want user@domain1 and user@domain2 to be different
-accounts.
-
-*Syntax*: auth_domains _domains..._ ++
-*Default*: not specified
-
-Domains that should be allowed in username during authentication.
-
-For example, if 'auth_domains' is set to "domain1 domain2", then
-username, username@domain1 and username@domain2 will be accepted as valid login
-name in addition to just username.
-
-If used without 'auth_perdomain', domain part will be removed from login before
-check with underlying auth. mechanism. If 'auth_perdomain' is set, then
-auth_domains must be also set and domain part WILL NOT be removed before check.

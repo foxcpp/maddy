@@ -33,10 +33,6 @@ func findBlockInCfg(path, cfgBlock string) (root, block *config.Node, err error)
 	}
 
 	for _, node := range nodes {
-		if node.Name != "sql" {
-			continue
-		}
-
 		if len(node.Args) == 0 && cfgBlock == node.Name {
 			return &config.Node{Children: nodes}, &node, nil
 		}
