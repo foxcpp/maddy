@@ -88,6 +88,10 @@ func (u *Downstream) Init(cfg *config.Map) error {
 		u.endpoints = append(u.endpoints, endp)
 	}
 
+	if len(u.endpoints) == 0 {
+		return fmt.Errorf("smtp_downstream: at least one target endpoint is required")
+	}
+
 	return nil
 }
 
