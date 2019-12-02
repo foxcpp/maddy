@@ -94,9 +94,9 @@ func submitMsg(t *testing.T, cl *smtp.Client, from string, rcpts []string, msg s
 func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, opts *smtp.MailOptions, msg string) error {
 	t.Helper()
 
-	// Error for this one is ignore because it fails if EHLO was already sent
+	// Error for this one is ignored because it fails if EHLO was already sent
 	// and submitMsg can happen multiple times.
-	cl.Hello("mx.example.org")
+	_ = cl.Hello("mx.example.org")
 	if err := cl.Mail(from, opts); err != nil {
 		return err
 	}

@@ -333,7 +333,7 @@ func (s *state) CheckBody(hdr textproto.Header, body buffer.Buffer) module.Check
 	cmdName, cmdArgs := s.expandCommand("")
 
 	var buf bytes.Buffer
-	textproto.WriteHeader(&buf, hdr)
+	_ = textproto.WriteHeader(&buf, hdr)
 	bR, err := body.Open()
 	if err != nil {
 		return module.CheckResult{

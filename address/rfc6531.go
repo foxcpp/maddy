@@ -36,6 +36,9 @@ func ToASCII(addr string) (string, error) {
 // ToUnicode converts the domain part of the email address to the U-label form.
 func ToUnicode(addr string) (string, error) {
 	mbox, domain, err := Split(addr)
+	if err != nil {
+		return norm.NFC.String(addr), err
+	}
 
 	uDomain, err := idna.ToUnicode(domain)
 	if err != nil {

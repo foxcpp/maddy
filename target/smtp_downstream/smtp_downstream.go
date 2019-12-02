@@ -379,7 +379,9 @@ func (d *delivery) Commit() error {
 		return d.wrapClientErr(err)
 	}
 
-	d.client.Quit()
+	if err := d.client.Quit(); err != nil {
+		d.log.Error("QUIT error", d.wrapClientErr(err))
+	}
 	return nil
 }
 

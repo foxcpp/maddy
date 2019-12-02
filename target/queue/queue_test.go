@@ -382,7 +382,7 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 
 	// tester1 is failed permanently, should not be retried.
 	// tester2 is failed temporary, should be retried.
-	msg = readMsgChanTimeout(t, dt.aborted, 5*time.Second)
+	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
 
 	// Third attempt... tester2 delivered.
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)

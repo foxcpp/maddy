@@ -298,8 +298,7 @@ func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailF
 		compareWith := norm.NFC.String(fromUser)
 		authName := norm.NFC.String(authName)
 		if strings.Contains(authName, "@") {
-			compareWith, err = address.ForLookup(fromAddr)
-			return "", false
+			compareWith, _ = address.ForLookup(fromAddr)
 		}
 		if !strings.EqualFold(compareWith, authName) {
 			m.log.Msg("not signing, From address is not authenticated identity",
