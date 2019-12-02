@@ -158,7 +158,12 @@ func (p Policy) Match(mx string) bool {
 		// dns.ForLookup.
 
 		if strings.HasPrefix(normPattern, "*.") {
-			if normMX[strings.Index(mx, "."):] == normPattern[1:] {
+			firstDot := strings.Index(mx, ".")
+			if firstDot == -1 {
+				continue
+			}
+
+			if normMX[firstDot:] == normPattern[1:] {
 				return true
 			}
 			continue

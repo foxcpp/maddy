@@ -201,6 +201,11 @@ func TestPolicyMatch(t *testing.T) {
 			shouldMatch: true,
 		},
 		{
+			mx:          "without-dots",
+			validMXs:    []string{"*.example.org"},
+			shouldMatch: false,
+		},
+		{
 			mx:          "special.example.org",
 			validMXs:    []string{"special.example.org", "*.example.org"},
 			shouldMatch: true,
