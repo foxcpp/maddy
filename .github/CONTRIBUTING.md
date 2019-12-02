@@ -26,7 +26,7 @@ See SECURITY.md for information on how to report vulnerabilities.
 2. Tell us that you are willing to work on an issue.
 3. Fork the repo. Create a new branch, write your code. Open a PR.
 
-Ask for advise if you are not sure. We don't bite.
+Ask for advice if you are not sure. We don't bite.
 
 maddy design summary and some recommendations are provided in
 [HACKING.md](../HACKING.md) file.
