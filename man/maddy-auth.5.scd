@@ -31,8 +31,8 @@ happened. Additional information should be written to stderr.
 ```
 extauth {
     helper /usr/bin/ldap-helper
-    auth_perdomain no
-    auth_domains example.org
+    perdomain no
+    domains example.org
 }
 ```
 
@@ -42,25 +42,25 @@ extauth {
 
 Location of the helper binary. *Required.*
 
-*Syntax*: auth_perdomain _boolean_ ++
-*Default*: global directive value
+*Syntax*: perdomain _boolean_ ++
+*Default*: no
 
 Don't remove domain part of username when authenticating and require it to be
 present. Can be used if you want user@domain1 and user@domain2 to be different
 accounts.
 
-*Syntax*: auth_domains _domains..._ ++
+*Syntax*: domains _domains..._ ++
 *Default*: not specified
 
 Domains that should be allowed in username during authentication.
 
-For example, if 'auth_domains' is set to "domain1 domain2", then
+For example, if 'domains' is set to "domain1 domain2", then
 username, username@domain1 and username@domain2 will be accepted as valid login
 name in addition to just username.
 
-If used without 'auth_perdomain', domain part will be removed from login before
-check with underlying auth. mechanism. If 'auth_perdomain' is set, then
-auth_domains must be also set and domain part WILL NOT be removed before check.
+If used without 'perdomain', domain part will be removed from login before
+check with underlying auth. mechanism. If 'perdomain' is set, then
+domains must be also set and domain part WILL NOT be removed before check.
 
 # PAM module (pam)
 
@@ -108,7 +108,7 @@ chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 
 # Shadow database authentication module (shadow)
 
-Implements authentication by reading /etc/shadow. Alternatively it can be 
+Implements authentication by reading /etc/shadow. Alternatively it can be
 configured to use helper binary like extauth does.
 
 ```
@@ -130,11 +130,11 @@ reporting a bug.
 *Default*: no
 
 Use LibexecDirectory/maddy-shadow-helper instead of directly reading /etc/shadow.
-You need to use that if maddy is running as an unprivileged user 
+You need to use that if maddy is running as an unprivileged user
 privileges (e.g. when using system accounts).
 
-You need to make maddy-shadow-helper binary setuid, see 
-cmd/maddy-shadow-helper/README.md in source tree for details. 
+You need to make maddy-shadow-helper binary setuid, see
+cmd/maddy-shadow-helper/README.md in source tree for details.
 
 TL;DR (assuming you have maddy group):
 ```

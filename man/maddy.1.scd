@@ -222,35 +222,6 @@ logrotate daemon. Send SIGUSR1 to maddy process to make it reopen log files.
 Enable verbose logging for all modules. You don't need that unless you are
 reporting a bug.
 
-*Syntax*: storage_perdomain _boolean_ ++
-*Default*: no
-
-Don't remove domain part of username when accessing the underlying storage and
-require it to be present. Can be used if you want user@domain1 and user@domain2
-to be different accounts at the storage level.
-
-Typically used with 'auth_domain'.
-
-*Syntax*: auth_perdomain _boolean_ ++
-*Default*: no
-
-Don't remove domain part of username when authenticating and require it to be
-present. Can be used if you want user@domain1 and user@domain2 to be different
-accounts.
-
-*Syntax* auth_domains _domains..._ ++
-*Default*: not specified
-
-Domains that should be allowed in username during authentication.
-
-For example, if 'auth_domains' is set to "domain1 domain2", then
-username, username@domain1 and username@domain2 will be accepted as valid login
-name in addition to just username.
-
-If used without 'auth_perdomain', domain part will be removed from login before
-check with underlying auth. mechanism. If 'auth_perdomain' is set, then
-auth_domains must be also set and domain part WILL NOT be removed before check.
-
 # Authors
 
 Maintained by Max Mazurov <fox.cpp@disroot.org>. Project includes contributions
