@@ -175,7 +175,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		})
 	case spf.TempError:
 		spfAuth.Value = authres.ResultTempError
-		return s.c.softfailAction.Apply(module.CheckResult{
+		return s.c.temperrAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:         451,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
@@ -186,7 +186,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		})
 	case spf.PermError:
 		spfAuth.Value = authres.ResultPermError
-		return s.c.softfailAction.Apply(module.CheckResult{
+		return s.c.permerrAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
