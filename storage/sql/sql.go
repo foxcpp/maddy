@@ -276,7 +276,7 @@ func prepareUsername(username string) (string, error) {
 
 	// Side note: For used profiles, there is no practical difference between
 	// CompareKey and String.
-	mbox, err = precis.UsernameCaseMapped.CompareKey(username)
+	mbox, err = precis.UsernameCaseMapped.CompareKey(mbox)
 	if err != nil {
 		return "", fmt.Errorf("sql: username prepare: %w", err)
 	}
