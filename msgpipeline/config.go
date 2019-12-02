@@ -76,6 +76,10 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source routing rule: %v", rule)
 				}
 
+				if _, ok := cfg.perSource[rule]; ok {
+					return msgpipelineCfg{}, config.NodeErr(&node, "duplicate source routing rule: %v", rule)
+				}
+
 				cfg.perSource[rule] = srcBlock
 			}
 		case "default_source":
@@ -176,6 +180,10 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 
 				if !validMatchRule(rule) {
 					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v", rule)
+				}
+
+				if _, ok := src.perRcpt[rule]; ok {
+					return sourceBlock{}, config.NodeErr(&node, "duplicate destination match rule: %v", rule)
 				}
 
 				src.perRcpt[rule] = rcptBlock
