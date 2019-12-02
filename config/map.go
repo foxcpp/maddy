@@ -85,7 +85,7 @@ func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []stri
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare a block here")
 		}
-		if len(node.Args) != 1 {
+		if len(node.Args) == 0 {
 			return nil, m.MatchErr("expected at least one argument")
 		}
 
