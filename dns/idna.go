@@ -1,16 +1,9 @@
 package dns
 
 import (
-	"strings"
-
 	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )
-
-func Clean(domain string) (string, error) {
-	uDomain, err := idna.ToUnicode(domain)
-	return strings.ToLower(norm.NFC.String(uDomain)), err
-}
 
 // SelectIDNA is a convenience function for encoding to/from Punycode.
 //

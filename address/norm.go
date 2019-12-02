@@ -4,6 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/foxcpp/maddy/dns"
 	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )
@@ -21,11 +22,10 @@ func ForLookup(addr string) (string, error) {
 	}
 
 	if domain != "" {
-		domain, err = idna.ToUnicode(domain)
+		domain, err = dns.ForLookup(domain)
 		if err != nil {
 			return strings.ToLower(addr), err
 		}
-		domain = strings.ToLower(norm.NFC.String(domain))
 	}
 
 	mbox = strings.ToLower(norm.NFC.String(mbox))

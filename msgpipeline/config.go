@@ -66,7 +66,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				if strings.Contains(rule, "@") {
 					rule, err = address.ForLookup(rule)
 				} else {
-					rule, err = dns.Clean(rule)
+					rule, err = dns.ForLookup(rule)
 				}
 				if err != nil {
 					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source match rule: %v: %v", rule, err)
@@ -168,7 +168,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 				if strings.Contains(rule, "@") {
 					rule, err = address.ForLookup(rule)
 				} else {
-					rule, err = dns.Clean(rule)
+					rule, err = dns.ForLookup(rule)
 				}
 				if err != nil {
 					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v: %v", rule, err)
