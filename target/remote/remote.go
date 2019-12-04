@@ -457,8 +457,12 @@ func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) er
 		errs: make(map[string]error),
 	}
 	rd.BodyNonAtomic(&merr, header, buffer)
+
 	for _, v := range merr.errs {
 		if v != nil {
+			if len(merr.errs) == 1 {
+				return v
+			}
 			return &merr
 		}
 	}
