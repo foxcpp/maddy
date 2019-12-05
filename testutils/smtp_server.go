@@ -51,6 +51,8 @@ func (be *SMTPBackend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session
 }
 
 func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) {
+	t.Helper()
+
 	if len(be.Messages) <= indx {
 		t.Errorf("Expected at least %d messages in mailbox, got %d", indx+1, len(be.Messages))
 		return

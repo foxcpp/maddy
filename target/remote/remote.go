@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/address"
 	"github.com/foxcpp/maddy/buffer"
 	"github.com/foxcpp/maddy/config"
@@ -30,6 +28,7 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/mtasts"
 	"github.com/foxcpp/maddy/target"
+	"github.com/foxcpp/maddy/target/smtpconn"
 	"golang.org/x/net/idna"
 	"golang.org/x/net/publicsuffix"
 )
@@ -41,7 +40,13 @@ const (
 	AuthCommonDomain = "common_domain"
 )
 
-var addressSuffix = ":25"
+var smtpPort = "25"
+
+func moduleError(err error) error {
+	return exterrors.WithFields(err, map[string]interface{}{
+		"target": "remote",
+	})
+}
 
 type Target struct {
 	name          string
@@ -169,12 +174,6 @@ func (rt *Target) InstanceName() string {
 	return rt.name
 }
 
-type remoteConnection struct {
-	recipients []string
-	serverName string
-	*smtp.Client
-}
-
 type remoteDelivery struct {
 	rt       *Target
 	mailFrom string
@@ -182,7 +181,7 @@ type remoteDelivery struct {
 	Log      log.Logger
 
 	recipients  []string
-	connections map[string]*remoteConnection
+	connections map[string]*smtpconn.C
 }
 
 func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
@@ -191,62 +190,8 @@ func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.De
 		mailFrom:    mailFrom,
 		msgMeta:     msgMeta,
 		Log:         target.DeliveryLogger(rt.Log, msgMeta),
-		connections: map[string]*remoteConnection{},
+		connections: map[string]*smtpconn.C{},
 	}, nil
-}
-
-func (rd *remoteDelivery) wrapClientErr(err error, serverName string) error {
-	if err == nil {
-		return nil
-	}
-
-	switch err := err.(type) {
-	case *exterrors.SMTPError:
-		return err
-	case *smtp.SMTPError:
-		return &exterrors.SMTPError{
-			Code:         err.Code,
-			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
-			Message:      serverName + " said: " + err.Message,
-			TargetName:   "remote",
-			Misc: map[string]interface{}{
-				"mx": serverName,
-			},
-			Err: err,
-		}
-	case *net.OpError:
-		if _, ok := err.Err.(*net.DNSError); ok {
-			reason, misc := exterrors.UnwrapDNSErr(err)
-			misc["remote_server"] = err.Addr
-			misc["io_op"] = err.Op
-			return &exterrors.SMTPError{
-				Code:         exterrors.SMTPCode(err, 450, 550),
-				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4}),
-				Message:      "DNS error",
-				TargetName:   "smtp_downstream",
-				Err:          err,
-				Reason:       reason,
-				Misc:         misc,
-			}
-
-		}
-		return &exterrors.SMTPError{
-			Code:         450,
-			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
-			Message:      "Network I/O error",
-			TargetName:   "remote",
-			Err:          err,
-			Misc: map[string]interface{}{
-				"remote_addr": err.Addr,
-				"io_op":       err.Op,
-			},
-		}
-	default:
-		return exterrors.WithFields(err, map[string]interface{}{
-			"mx":     serverName,
-			"target": "remote",
-		})
-	}
 }
 
 func (rd *remoteDelivery) AddRcpt(to string) error {
@@ -282,35 +227,16 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 		}
 	}
 
-	// serverName (MX serv. address) is very useful for tracing purposes and should be logged on all related errors.
 	conn, err := rd.connectionForDomain(domain)
 	if err != nil {
-		return rd.wrapClientErr(err, domain)
-	}
-
-	// If necessary, the extension flag is enabled in connectionForDomain.
-	if ok, _ := conn.Extension("SMTPUTF8"); !address.IsASCII(to) && !ok {
-		to, err = address.ToASCII(to)
-		if err != nil {
-			return &exterrors.SMTPError{
-				Code:         553,
-				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-				Message:      "Remote MX does not support SMTPUTF8, can not convert recipient address",
-				TargetName:   "remote",
-				Misc: map[string]interface{}{
-					"remote_mx": conn.serverName,
-				},
-				Err: err,
-			}
-		}
+		return err
 	}
 
 	if err := conn.Rcpt(to); err != nil {
-		return rd.wrapClientErr(err, conn.serverName)
+		return moduleError(err)
 	}
 
 	rd.recipients = append(rd.recipients, to)
-	conn.recipients = append(conn.recipients, to)
 	return nil
 }
 
@@ -489,39 +415,20 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			setErr := func(err error) {
-				err = rd.wrapClientErr(err, conn.serverName)
-				for _, rcpt := range conn.recipients {
-					c.SetStatus(rcpt, err)
-				}
-			}
 
-			bodyW, err := conn.Data()
-			if err != nil {
-				setErr(err)
-				return
-			}
 			bodyR, err := b.Open()
 			if err != nil {
-				setErr(err)
+				for _, rcpt := range conn.Rcpts() {
+					c.SetStatus(rcpt, err)
+				}
 				return
 			}
 			defer bodyR.Close()
-			if err = textproto.WriteHeader(bodyW, header); err != nil {
-				setErr(err)
-				return
-			}
-			if _, err = io.Copy(bodyW, bodyR); err != nil {
-				setErr(err)
-				return
-			}
 
-			if err := bodyW.Close(); err != nil {
-				setErr(err)
-				return
+			err = conn.Data(header, bodyR)
+			for _, rcpt := range conn.Rcpts() {
+				c.SetStatus(rcpt, err)
 			}
-
-			setErr(nil)
 		}()
 	}
 
@@ -540,16 +447,13 @@ func (rd *remoteDelivery) Commit() error {
 
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
-		rd.Log.Debugf("disconnected from %s", conn.serverName)
-		if err := conn.Quit(); err != nil {
-			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
-			conn.Close()
-		}
+		rd.Log.Debugf("disconnected from %s", conn.ServerName())
+		conn.Close()
 	}
 	return nil
 }
 
-func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection, error) {
+func (rd *remoteDelivery) connectionForDomain(domain string) (*smtpconn.C, error) {
 	domain = strings.ToLower(domain)
 
 	if c, ok := rd.connections[domain]; ok {
@@ -565,28 +469,40 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 		rd.Log.Msg("TLS not enforced", "domain", domain)
 	}
 
-	var lastErr error
-	conn := &remoteConnection{}
+	var (
+		lastErr error
+		conn    = smtpconn.New()
+	)
+
+	conn.Dialer = rd.rt.dialer
+	conn.RequireTLS = rd.rt.requireTLS
+	conn.AttemptTLS = true
+	conn.TLSConfig = rd.rt.tlsConfig
+	conn.Log = rd.Log
+	conn.Hostname = rd.rt.hostname
+	conn.AddrInSMTPMsg = true
 
 	addrs := append(make([]string, 0, len(authMXs)+len(nonAuthMXs)), authMXs...)
 	addrs = append(addrs, nonAuthMXs...)
 	rd.Log.DebugMsg("considering", "mxs", addrs)
 	for i, addr := range addrs {
-		conn.serverName = addr
-
-		conn.Client, err = rd.connectToServer(addr, requireTLS, true)
+		err = conn.Connect(config.Endpoint{
+			Scheme: "tcp",
+			Host:   addr,
+			Port:   smtpPort,
+		})
 		if err != nil {
 			if len(addrs) != 1 {
-				rd.Log.Error("connect error", err, "mx", addr, "domain", domain)
+				rd.Log.Error("connect error", err, "remote_server", addr, "domain", domain)
 			}
-			lastErr = rd.wrapClientErr(err, conn.serverName)
+			lastErr = err
 			continue
 		}
 		if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled && i >= len(authMXs) {
-			rd.Log.Msg("using non-authenticated MX", "mx", addr, "domain", domain)
+			rd.Log.Msg("using non-authenticated MX", "remote_server", addr, "domain", domain)
 		}
 	}
-	if conn.Client == nil {
+	if conn.Client() == nil {
 		if lastErr == nil {
 			return nil, &exterrors.SMTPError{
 				Code:         550,
@@ -596,56 +512,17 @@ func (rd *remoteDelivery) connectionForDomain(domain string) (*remoteConnection,
 			}
 
 		}
-		return nil, lastErr
+		return nil, moduleError(lastErr)
 	}
 
-	// INTERNATIONALIZATION: Use SMTPUTF8 is possible, attempt to convert addresses otherwise.
-	opts := &smtp.MailOptions{
-		// Future extensions may add additional fields that should not be
-		// copied blindly. So we copy only fields we know should be handled
-		// this way.
+	rd.Log.DebugMsg("connected", "remote_server", conn.ServerName())
 
-		Size:       rd.msgMeta.SMTPOpts.Size,
-		RequireTLS: rd.msgMeta.SMTPOpts.RequireTLS,
+	if err := conn.Mail(rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
+		conn.Close()
+		return nil, moduleError(err)
 	}
 
-	mailFrom := rd.mailFrom
-
-	// There is no way we can accept a message with non-ASCII addresses without SMTPUTF8
-	// this is enforced by endpoint/smtp.
-	if rd.msgMeta.SMTPOpts.UTF8 {
-		if ok, _ := conn.Extension("SMTPUTF8"); ok {
-			opts.UTF8 = true
-		} else {
-			mailFrom, err = address.ToASCII(mailFrom)
-			if err != nil {
-				if err := conn.Quit(); err != nil {
-					rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
-				}
-				return nil, &exterrors.SMTPError{
-					Code:         550,
-					EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-					Message:      "Remote MX does not support SMTPUTF8, can not convert sender address",
-					TargetName:   "remote",
-					Misc: map[string]interface{}{
-						"remote_mx": conn.serverName,
-					},
-					Err: err,
-				}
-			}
-		}
-	}
-
-	if err := conn.Mail(mailFrom, opts); err != nil {
-		if err := conn.Quit(); err != nil {
-			rd.Log.Error("QUIT error", rd.wrapClientErr(err, conn.serverName))
-		}
-		return nil, rd.wrapClientErr(err, conn.serverName)
-	}
-
-	rd.Log.DebugMsg("connected", "mx", conn.serverName)
 	rd.connections[domain] = conn
-
 	return conn, nil
 }
 
@@ -688,58 +565,6 @@ func (rt *Target) stsCacheUpdater() {
 			return
 		}
 	}
-}
-
-func (rd *remoteDelivery) connectToServer(address string, requireTLS, attemptTLS bool) (*smtp.Client, error) {
-	conn, err := rd.rt.dialer("tcp", address+addressSuffix)
-	if err != nil {
-		return nil, err
-	}
-
-	cl, err := smtp.NewClient(conn, address)
-	if err != nil {
-		if err := cl.Quit(); err != nil {
-			cl.Close()
-		}
-		return nil, err
-	}
-
-	// INTERNATIONALIZATION: hostname is converted to A-label in Init.
-	if err := cl.Hello(rd.rt.hostname); err != nil {
-		if err := cl.Quit(); err != nil {
-			cl.Close()
-		}
-		return nil, err
-	}
-
-	if attemptTLS {
-		if tlsOk, _ := cl.Extension("STARTTLS"); tlsOk {
-			cfg := rd.rt.tlsConfig.Clone()
-			cfg.ServerName = address
-			if err := cl.StartTLS(cfg); err != nil {
-				if err := cl.Quit(); err != nil {
-					cl.Close()
-				}
-				if !requireTLS {
-					rd.Log.Error("TLS error, falling back to plain-text connection", err, "mx", address)
-					return rd.connectToServer(address, false, false)
-				}
-				return nil, err
-			}
-		} else if requireTLS {
-			if err := cl.Quit(); err != nil {
-				cl.Close()
-			}
-			return nil, &exterrors.SMTPError{
-				Code:         523,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 10},
-				Message:      "TLS is required but unsupported by the used MX",
-				TargetName:   "remote",
-			}
-		}
-	}
-
-	return cl, nil
 }
 
 func (rd *remoteDelivery) lookupAndFilter(domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
