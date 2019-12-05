@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/foxcpp/maddy"
-	"github.com/foxcpp/maddy/config"
-	"github.com/foxcpp/maddy/config/parser"
+	"github.com/foxcpp/maddy/internal/config"
+	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 )
 
 func findBlockInCfg(path, cfgBlock string) (root, block *config.Node, err error) {

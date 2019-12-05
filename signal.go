@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/internal/log"
 )
 
 // handleSignals function creates and listens on OS signals channel.

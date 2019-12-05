@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/foxcpp/maddy/log"
+	"github.com/foxcpp/maddy/internal/log"
 )
 
 func handleSignals() os.Signal {

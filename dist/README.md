@@ -1,4 +1,5 @@
-# Distribution files for maddy
+Distribution files for maddy
+------------------------------
 
 **Disclaimer:** Most of the files here are maintained in a "best-effort" way.
 That is, they may break or become outdated from time to time. Caveat emptor.

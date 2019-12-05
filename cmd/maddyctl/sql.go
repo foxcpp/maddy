@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/foxcpp/maddy/config"
-	"github.com/foxcpp/maddy/storage/sql"
+	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/storage/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"

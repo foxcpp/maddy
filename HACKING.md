@@ -63,8 +63,8 @@ initialization path, so they are always initialized directly.
 
 ## Error handling
 
-Familarize yourself with the github.com/foxcpp/maddy/exterrors package and
-make sure you have the following for returned errors.
+Familarize yourself with the github.com/foxcpp/maddy/internal/exterrors package
+and make sure you have the following for returned errors:
 - SMTP status information (smtp\_code, smtp\_enchcode, smtp\_msg fields)
   - SMTP message text should contain a generic description of the error
     condition without any details to prevent accidental disclosure of the
@@ -101,9 +101,9 @@ bugs will not bring the whole server down.
 "Check" is a module that inspects the message and flags it as spam or rejects
 it altogether based on some condition.
 
-The skeleton for the stateful check module can be found in check/skeleton.go.
-Throw it into a file in `check/check_name` directory and start ~~breaking~~
-extending it.
+The skeleton for the stateful check module can be found in
+internal/check/skeleton.go.  Throw it into a file in
+`internal/check/check_name` directory and start ~~breaking~~ extending it.
 
 If you don't need any per-message state, you can use StatelessCheck wrapper.
 See check/dns directory for a working example.
