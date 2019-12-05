@@ -817,5 +817,5 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 }
 
 func init() {
-	testutils.DontRecover = true
+	dontRecover = true
 }

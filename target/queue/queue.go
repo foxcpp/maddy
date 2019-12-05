@@ -65,7 +65,6 @@ import (
 	"github.com/foxcpp/maddy/module"
 	"github.com/foxcpp/maddy/msgpipeline"
 	"github.com/foxcpp/maddy/target"
-	"github.com/foxcpp/maddy/testutils"
 )
 
 // partialError describes state of partially successful message delivery.
@@ -103,6 +102,10 @@ func (pe *partialError) SetStatus(rcptTo string, err error) {
 func (pe partialError) Error() string {
 	return fmt.Sprintf("delivery failed for some recipients (permanently: %v, temporary: %v): %v", pe.Failed, pe.TemporaryFailed, pe.Errs)
 }
+
+// dontRecover controls the behavior of panic handlers, if it is set to true -
+// they are disabled and so tests will panic to avoid masking bugs.
+var dontRecover = false
 
 type Queue struct {
 	name             string
@@ -280,7 +283,7 @@ func (q *Queue) dispatch(value TimeSlot) {
 			<-q.deliverySemaphore
 			q.deliveryWg.Done()
 
-			if testutils.DontRecover {
+			if dontRecover {
 				return
 			}
 
