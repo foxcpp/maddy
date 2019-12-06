@@ -13,7 +13,7 @@ tasks:
       cd maddy
       go test ./... -cover -race
   - build-man-pages: |
-      cd maddy/man
+      cd maddy/docs/man
       scdoc < maddy.1.scd > /dev/null
       scdoc < maddy-auth.5.scd > /dev/null
       scdoc < maddy-config.5.scd > /dev/null

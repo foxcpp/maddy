@@ -32,6 +32,7 @@ performance
 List of supported cipher suites, in preference order. Not used with TLS 1.3.
 
 Valid values:
+
 - RSA-WITH-RC4128-SHA
 - RSA-WITH-3DES-EDE-CBC-SHA
 - RSA-WITH-AES128-CBC-SHA

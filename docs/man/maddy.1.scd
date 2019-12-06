@@ -1,7 +1,6 @@
 maddy(1) "maddy mail server" "maddy reference documentation"
 
 ; TITLE Introduction
-; NO_TOC
 
 # Name
 
