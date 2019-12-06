@@ -19,76 +19,30 @@ func replaceAddrFromArgs(t *testing.T, modName, from, to string) *replaceAddr {
 }
 
 func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, string) (string, error)) {
-	t.Run("plain string", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, "test@example.org", "test2@example.org")
-		val, err := rewriter(r, "test@example.org")
+	test := func(from, to string, input, expectedOutput string) {
+		t.Helper()
+
+		r := replaceAddrFromArgs(t, modName, from, to)
+		output, err := rewriter(r, input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if val != "test2@example.org" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
+		if output != expectedOutput {
+			t.Fatalf("wrong result: %s != %s", output, expectedOutput)
 		}
-	})
-	t.Run("plain string (case insensitive)", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, "test@EXAmple.org", "test2@example.org")
-		val, err := rewriter(r, "teST@exaMPLe.oRg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "test2@example.org" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
-	t.Run("regexp", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, `/test@example\.org/`, "test2@example.org")
-		val, err := rewriter(r, "test@example.org")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "test2@example.org" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
-	t.Run("regexp (case insensitive)", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, `/test@EXAmple\.org/`, "test2@example.org")
-		val, err := rewriter(r, "teST@exaMPLe.oRg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "test2@example.org" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
-	t.Run("regexp (incomplete match)", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, `/example/`, "test2@example.org")
-		val, err := rewriter(r, "teST@exaMPLe.oRg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "teST@exaMPLe.oRg" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
-	t.Run("regexp (result expansion)", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, `/(.+)@example\.org/`, "$1@example.com")
-		val, err := rewriter(r, "test@example.org")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "test@example.com" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
-	t.Run("regexp (result expansion preserves case)", func(t *testing.T) {
-		r := replaceAddrFromArgs(t, modName, `/(.+)@example\.org/`, "$1@example.com")
-		val, err := rewriter(r, "teST@example.org")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if val != "teST@example.com" {
-			t.Fatalf("wrong result: %s != %s", val, "test2@example.org")
-		}
-	})
+	}
+
+	test("test@example.org", "test2@example.org", "test@example.org", "test2@example.org")
+	test("test@EXAmple.org", "test2@example.org", "teST@exaMPLe.org", "test2@example.org")
+	test(`/test@example\.org/`, "test2@example.org", "test@example.org", "test2@example.org")
+	test(`/test@EXAmple\.org/`, "test2@example.org", "teST@exaMPLe.org", "test2@example.org")
+	test(`/example/`, "test2@example.org", "teST@exaMPLe.org", "teST@exaMPLe.org")
+	test(`/(.+)@example\.org/`, "$1@example.com", "test@example.org", "test@example.com")
+	test(`/(.+)@example\.org/`, "$1@example.com", "teST@example.org", "teST@example.com")
+	test(`/(.+)@example\.org/`, "$1@example.com", "teST@example.org", "teST@example.com")
+	test("rcpt@\u00E9.example.com", "rcpt@foo.example.com", "rcpt@E\u0301.example.com", "rcpt@foo.example.com")
+	test(`/rcpt@é\.example\.com/`, "rcpt@foo.example.com", "rcpt@E\u0301.example.com", "rcpt@foo.example.com")
+	test("rcpt@E\u0301.example.com", "rcpt@foo.example.com", "rcpt@\u00E9.example.com", "rcpt@foo.example.com")
 }
 
 func TestReplaceAddr_RewriteSender(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/module"
@@ -149,13 +150,19 @@ func (r replaceAddr) Close() error {
 
 func (r replaceAddr) rewrite(val string) (string, error) {
 	if r.fromRegex == nil {
-		if strings.EqualFold(r.fromString, val) {
+		if address.Equal(r.fromString, val) {
 			return r.to, nil
 		}
 		return val, nil
 	}
 
-	indx := r.fromRegex.FindStringSubmatchIndex(val)
+	normVal, err := address.ForLookup(val)
+	if err != nil {
+		// Ouch. Should not happen at this point.
+		return val, err
+	}
+
+	indx := r.fromRegex.FindStringSubmatchIndex(normVal)
 	if indx == nil {
 		return val, nil
 	}

@@ -119,6 +119,14 @@ func TestRewriteRcpt(t *testing.T) {
 			"test@example.com": "test3@example.com",
 			"test":             "test2",
 		})
+	test("rcpt@E\u0301.example.com", "rcpt@foo.example.com",
+		map[string]string{
+			"rcpt@\u00E9.example.com": "rcpt@foo.example.com",
+		})
+	test("E\u0301@foo.example.com", "rcpt@foo.example.com",
+		map[string]string{
+			"\u00E9@foo.example.com": "rcpt@foo.example.com",
+		})
 
 	// This case merely documents current behavior, I am not sure
 	// whether this is the right behavior or it should hard-fail
