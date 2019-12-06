@@ -8,3 +8,7 @@ trim_trailing_whitespace = true
 [*.{scd,go}]
 indent_style = tab
 indent_size = 4
+
+[*.yml]
+indent_style = tab
+indent_size = 2

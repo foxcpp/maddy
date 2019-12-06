@@ -1,0 +1,29 @@
+site_name: maddy documentation
+
+repo_url: https://github.com/foxcpp/maddy
+
+theme: readthedocs
+
+markdown_extensions:
+  - codehilite:
+      guess_lang: false
+
+nav:
+  - README.md
+  - Tutorials:
+    - tutorials/setting-up.md
+    - tutorials/manual-installation.md
+  - get.sh.md
+  - Manual pages:
+    - man/_generated_maddy.1.md
+    - man/_generated_maddy-auth.5.md
+    - man/_generated_maddy-config.5.md
+    - man/_generated_maddy-filters.5.md
+    - man/_generated_maddy-imap.5.md
+    - man/_generated_maddy-smtp.5.md
+    - man/_generated_maddy-storage.5.md
+    - man/_generated_maddy-targets.5.md
+    - man/_generated_maddy-tls.5.md
+  - Internals:
+    - internals/quirks.md
+    - internals/sqlite.md

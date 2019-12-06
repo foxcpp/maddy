@@ -2,7 +2,7 @@
 Description=maddy mail server
 Documentation=man:maddy(1)
 Documentation=man:maddy.conf(5)
-Documentation=https://github.com/foxcpp/maddy/wiki
+Documentation=https://foxcpp.dev/maddy/
 After=network.target
 
 [Service]

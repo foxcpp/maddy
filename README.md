@@ -5,30 +5,31 @@
 Simple, fast, secure all-in-one mail server.
 
 **⚠️ Disclaimer: maddy is in development, many planned features are
-missing, bugs are waiting to eat your messages and incompatible 
+missing, bugs are waiting to eat your messages and incompatible
 changes happen from time to time**
 
 ## Features
 
-* Comprehensive & secure
+- Comprehensive & secure
   - IMAP4rev1 & SMTP server in one binary
   - [DKIM][dkim] signing and verification
   - [SPF][spf] policy enforcement
   - [DMARC][dmarc] policy enforcement
   - [MTA-STS][mtasts] policy enforcement
-* Simple to configure
+- Simple to configure
   - Two steps (excluding messing with DNS) to get your own
     _secure_ mail server running
   - Virtual users > system users
-* Fast
+- Fast
   - Optimized for concurrency
   - Single process model allows more efficient implementation
-* Useful
-  - [Subaddressing][subaddr] support 
+- Useful
+  - [Subaddressing][subaddr] support
   - [DNSBL][dnsbl] checking support
   - Messages compression (LZ4, Zstd)
- 
+
 Planned:
+
 - [Backscatter][backscatter] filtering (BATV) (#106)
 - Address aliases (#82, #18)
 - Zero-configuration full-text search (foxcpp/go-imap-sql#21)
@@ -40,19 +41,14 @@ Planned:
 ## Installation & configuration
 
 Detailed explaination of what you need to do to get it running can be found
-[here][setup-tutorial]. 
+[here][setup-tutorial].
 
 ## Documentation
 
-Reference documentation is maintained as a set of man pages
-in the [scdoc](https://git.sr.ht/~sircmpwn/scdoc) format.
-Rendered pages can be browsed [here](https://foxcpp.dev/maddy-reference).
+The full documentation is published [here](https://foxcpp.dev/maddy/)
 
-Tutorials and misc articles can be found on
-the [project wiki](https://github.com/foxcpp/maddy/wiki).
-
-Examples of more advanced configurations with explainations can be 
-found in the [examples](examples/) directory.
+Examples of more advanced configurations with explainations can be found in the
+[examples](examples/) directory in the source repository.
 
 ## Community
 
@@ -79,4 +75,4 @@ The code is under MIT license. See [LICENSE](LICENSE) for more information.
 [dnsbl]: https://en.wikipedia.org/wiki/DNSBL
 [backscatter]: https://en.wikipedia.org/wiki/Backscatter_(e-mail)
 
-[setup-tutorial]: https://github.com/foxcpp/maddy/wiki/Tutorial:-Setting-up-a-mail-server-with-maddy
+[setup-tutorial]: https://foxcpp.dev/maddy/tutorial/setting-up/

@@ -1,5 +1,8 @@
 [Unit]
 Description=maddy mail server (using %i.conf)
+Documentation=man:maddy(1)
+Documentation=man:maddy.conf(5)
+Documentation=https://foxcpp.dev/maddy/
 After=network.target
 
 [Service]
