@@ -55,6 +55,10 @@ func CleanDomain(addr string) (string, error) {
 	}
 	uDomain = strings.ToLower(norm.NFC.String(uDomain))
 
+	if domain == "" {
+		return mbox, nil
+	}
+
 	return mbox + "@" + uDomain, nil
 }
 

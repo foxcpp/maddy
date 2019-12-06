@@ -19,15 +19,19 @@ func ToASCII(addr string) (string, error) {
 		return addr, err
 	}
 
-	aDomain, err := idna.ToASCII(domain)
-	if err != nil {
-		return addr, err
-	}
-
 	for _, ch := range mbox {
 		if ch > 128 {
 			return addr, ErrUnicodeMailbox
 		}
+	}
+
+	if domain == "" {
+		return mbox, nil
+	}
+
+	aDomain, err := idna.ToASCII(domain)
+	if err != nil {
+		return addr, err
 	}
 
 	return mbox + "@" + aDomain, nil
@@ -38,6 +42,10 @@ func ToUnicode(addr string) (string, error) {
 	mbox, domain, err := Split(addr)
 	if err != nil {
 		return norm.NFC.String(addr), err
+	}
+
+	if domain == "" {
+		return mbox, nil
 	}
 
 	uDomain, err := idna.ToUnicode(domain)
