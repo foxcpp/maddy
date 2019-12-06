@@ -46,12 +46,12 @@ func ForLookup(addr string) (string, error) {
 func CleanDomain(addr string) (string, error) {
 	mbox, domain, err := Split(addr)
 	if err != nil {
-		return strings.ToLower(addr), err
+		return addr, err
 	}
 
 	uDomain, err := idna.ToUnicode(domain)
 	if err != nil {
-		return strings.ToLower(addr), err
+		return addr, err
 	}
 	uDomain = strings.ToLower(norm.NFC.String(uDomain))
 
