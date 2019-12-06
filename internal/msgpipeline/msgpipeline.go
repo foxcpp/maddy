@@ -247,31 +247,43 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	dd.log.Debugln("per-source rcpt modifiers:", to, "=>", newTo)
 	to = newTo
 
+	wrapErr := func(err error) error {
+		return exterrors.WithFields(err, map[string]interface{}{
+			"effective_rcpt": to,
+		})
+	}
+
 	rcptBlock, err := dd.rcptBlockForAddr(to)
 	if err != nil {
-		return err
+		return wrapErr(err)
 	}
 
 	if rcptBlock.rejectErr != nil {
-		return rcptBlock.rejectErr
+		return wrapErr(rcptBlock.rejectErr)
 	}
 
 	if err := dd.checkRunner.checkRcpt(rcptBlock.checks, to); err != nil {
-		return err
+		return wrapErr(err)
 	}
 
 	rcptModifiersState, err := dd.getRcptModifiers(rcptBlock, to)
 	if err != nil {
-		return err
+		return wrapErr(err)
 	}
 
 	newTo, err = rcptModifiersState.RewriteRcpt(to)
 	if err != nil {
 		rcptModifiersState.Close()
-		return err
+		return wrapErr(err)
 	}
 	dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
 	to = newTo
+
+	wrapErr = func(err error) error {
+		return exterrors.WithFields(err, map[string]interface{}{
+			"effective_rcpt": to,
+		})
+	}
 
 	if originalTo != to {
 		dd.msgMeta.OriginalRcpts[to] = originalTo
@@ -280,11 +292,11 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	for _, tgt := range rcptBlock.targets {
 		delivery, err := dd.getDelivery(tgt)
 		if err != nil {
-			return err
+			return wrapErr(err)
 		}
 
 		if err := delivery.AddRcpt(to); err != nil {
-			return err
+			return wrapErr(err)
 		}
 		delivery.recipients = append(delivery.recipients, originalTo)
 	}
