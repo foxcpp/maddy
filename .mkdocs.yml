@@ -13,6 +13,7 @@ nav:
   - Tutorials:
     - tutorials/setting-up.md
     - tutorials/manual-installation.md
+    - tutorials/alias-to-remote.md
   - get.sh.md
   - Manual pages:
     - man/_generated_maddy.1.md
