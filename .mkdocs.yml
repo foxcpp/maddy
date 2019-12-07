@@ -14,7 +14,7 @@ nav:
     - tutorials/setting-up.md
     - tutorials/manual-installation.md
     - tutorials/alias-to-remote.md
-  - get.sh.md
+  - get.sh-script.md
   - Manual pages:
     - man/_generated_maddy.1.md
     - man/_generated_maddy-auth.5.md
