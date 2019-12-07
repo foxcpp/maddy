@@ -252,44 +252,89 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) Data(r io.Reader) error {
+func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
 	bufr := bufio.NewReader(r)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
-		s.log.Error("DATA error", err, s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return textproto.Header{}, nil, err
 	}
 
 	if s.endp.submission {
 		// The MsgMetadata is passed by pointer all the way down.
 		if err := s.submissionPrepare(s.msgMeta, &header); err != nil {
-			s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-			return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+			return textproto.Header{}, nil, err
 		}
 	}
 
 	// TODO: Disk buffering.
 	buf, err := buffer.BufferInMemory(bufr)
 	if err != nil {
-		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return textproto.Header{}, nil, err
 	}
 
 	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.hostname, s.msgMeta.OriginalFrom)
 	if err != nil {
-		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return err
+		return textproto.Header{}, nil, err
 	}
 	header.Add("Received", received)
 
-	if err := s.delivery.Body(header, buf); err != nil {
+	return header, buf, nil
+}
+
+func (s *Session) Data(r io.Reader) error {
+	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
+	header, buf, err := s.prepareBody(r)
+	if err != nil {
+		return wrapErr(err)
+	}
+
+	if err := s.delivery.Body(header, buf); err != nil {
+		return wrapErr(err)
+	}
+
 	if err := s.delivery.Commit(); err != nil {
+		return wrapErr(err)
+	}
+
+	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
+	s.delivery = nil
+	s.endp.semaphore.Release()
+
+	return nil
+}
+
+type statusWrapper struct {
+	sc smtp.StatusCollector
+	s  *Session
+}
+
+func (sw statusWrapper) SetStatus(rcpt string, err error) {
+	sw.sc.SetStatus(rcpt, sw.s.endp.wrapErr(sw.s.msgMeta.ID, !sw.s.opts.UTF8, err))
+}
+
+func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
+	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+	}
+
+	header, buf, err := s.prepareBody(r)
+	if err != nil {
+		return wrapErr(err)
+	}
+
+	s.delivery.(module.PartialDelivery).BodyNonAtomic(statusWrapper{sc, s}, header, buf)
+
+	// We can't really tell whether it is failed completely or succeeded
+	// so always commit. Should be harmless, anyway.
+	if err := s.delivery.Commit(); err != nil {
+		return wrapErr(err)
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
@@ -415,6 +460,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
 	endp.serv.ErrorLog = endp.Log
+	endp.serv.LMTP = endp.lmtp
 	endp.serv.EnableSMTPUTF8 = true
 	if err := endp.setConfig(cfg); err != nil {
 		return err
