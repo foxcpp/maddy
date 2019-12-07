@@ -68,6 +68,7 @@ func (v *Verifier) FetchRecord(header textproto.Header) {
 		v.fetchCh <- verifyData{
 			recordErr: err,
 		}
+		return
 	}
 
 	var ctx context.Context

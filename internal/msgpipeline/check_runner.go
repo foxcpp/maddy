@@ -23,9 +23,10 @@ type checkRunner struct {
 	checkedRcptsPerCheck map[module.CheckState]map[string]struct{}
 	checkedRcptsLock     sync.Mutex
 
-	resolver    dns.Resolver
-	doDMARC     bool
-	dmarcVerify *dmarc.Verifier
+	resolver      dns.Resolver
+	doDMARC       bool
+	didDMARCFetch bool
+	dmarcVerify   *dmarc.Verifier
 
 	log log.Logger
 
@@ -246,8 +247,9 @@ func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header,
 		return err
 	}
 
-	if cr.doDMARC {
+	if cr.doDMARC && !cr.didDMARCFetch {
 		cr.dmarcVerify.FetchRecord(header)
+		cr.didDMARCFetch = true
 	}
 
 	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
