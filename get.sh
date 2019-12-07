@@ -133,11 +133,11 @@ install_man() {
     set -e
 
     echo 'Installing man pages...' >&2
-    for f in "$(source_dir)"/man/*.1.scd; do
+    for f in "$(source_dir)"/docs/man/*.1.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
         $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$DESTDIR/$PREFIX/share/man/man1/$(basename -s .scd "$f").gz"
     done
-    for f in "$(source_dir)"/man/*.5.scd; do
+    for f in "$(source_dir)"/docs/man/*.5.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
         $SUDO install -Dm 0644 /tmp/maddy-tmp.gz "$DESTDIR/$PREFIX/share/man/man5/$(basename -s .scd "$f").gz"
     done
