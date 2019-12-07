@@ -25,13 +25,13 @@ import (
 // The C object represents the SMTP connection and is a wrapper around
 // go-smtp.Client with additional maddy-specific logic.
 //
-// Currently, the C object represents one session and can not be reused.
+// Currently, the C object represents one session and cannot be reused.
 type C struct {
 	// Dialer to use to estabilish new network connections. Set to net.Dial by
 	// New.
 	Dialer func(network, addr string) (net.Conn, error)
 
-	// Fail if the connection can not use TLS.
+	// Fail if the connection cannot use TLS.
 	RequireTLS bool
 
 	// Use TLS if available.
@@ -233,7 +233,7 @@ func (c *C) Mail(from string, opts smtp.MailOptions) error {
 				return &exterrors.SMTPError{
 					Code:         550,
 					EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-					Message:      "SMTPUTF8 is unsupported, can not convert sender address",
+					Message:      "SMTPUTF8 is unsupported, cannot convert sender address",
 					Misc: map[string]interface{}{
 						"remote_server": c.serverName,
 					},
@@ -266,7 +266,7 @@ func (c *C) Client() *smtp.Client {
 
 // Rcpt sends the RCPT TO command to the remote server.
 //
-// If the address is non-ASCII and can not be converted to ASCII and the remote
+// If the address is non-ASCII and cannot be converted to ASCII and the remote
 // server does not support SMTPUTF8, error will be returned.
 func (c *C) Rcpt(to string) error {
 	// If necessary, the extension flag is enabled in Start.
@@ -277,7 +277,7 @@ func (c *C) Rcpt(to string) error {
 			return &exterrors.SMTPError{
 				Code:         553,
 				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-				Message:      "SMTPUTF8 is unsupported, can not convert recipient address",
+				Message:      "SMTPUTF8 is unsupported, cannot convert recipient address",
 				Misc: map[string]interface{}{
 					"remote_server": c.serverName,
 				},

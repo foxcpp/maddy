@@ -31,7 +31,7 @@ func (errPanic) Error() string {
 // Verifier is the structure that wraps all state necessary to verify a
 // single message using DMARC checks.
 //
-// It can not be reused.
+// It cannot be reused.
 type Verifier struct {
 	fetchCh     chan verifyData
 	fetchCancel context.CancelFunc

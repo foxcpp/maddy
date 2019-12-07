@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrUnicodeMailbox = errors.New("address: can not convert the Unicode local-part to the ACE form")
+	ErrUnicodeMailbox = errors.New("address: cannot convert the Unicode local-part to the ACE form")
 )
 
 // ToASCII converts the domain part of the email address to the A-label form and

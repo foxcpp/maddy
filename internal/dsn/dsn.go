@@ -44,7 +44,7 @@ func (info ReportingMTAInfo) WriteTo(utf8 bool, w io.Writer) error {
 
 	reportingMTA, err := dns.SelectIDNA(utf8, info.ReportingMTA)
 	if err != nil {
-		return fmt.Errorf("dsn: can not convert Reporting-MTA to a suitable representation: %w", err)
+		return fmt.Errorf("dsn: cannot convert Reporting-MTA to a suitable representation: %w", err)
 	}
 
 	h.Add("Reporting-MTA", "dns; "+reportingMTA)
@@ -52,7 +52,7 @@ func (info ReportingMTAInfo) WriteTo(utf8 bool, w io.Writer) error {
 	if info.ReceivedFromMTA != "" {
 		receivedFromMTA, err := dns.SelectIDNA(utf8, info.ReceivedFromMTA)
 		if err != nil {
-			return fmt.Errorf("dsn: can not convert Received-From-MTA to a suitable representation: %w", err)
+			return fmt.Errorf("dsn: cannot convert Received-From-MTA to a suitable representation: %w", err)
 		}
 
 		h.Add("Received-From-MTA", "dns; "+receivedFromMTA)
@@ -61,7 +61,7 @@ func (info ReportingMTAInfo) WriteTo(utf8 bool, w io.Writer) error {
 	if info.XSender != "" {
 		sender, err := address.SelectIDNA(utf8, info.XSender)
 		if err != nil {
-			return fmt.Errorf("dsn: can not convert X-Maddy-Sender to a suitable representation: %w", err)
+			return fmt.Errorf("dsn: cannot convert X-Maddy-Sender to a suitable representation: %w", err)
 		}
 
 		if utf8 {
@@ -115,7 +115,7 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	}
 	finalRcpt, err := address.SelectIDNA(utf8, info.FinalRecipient)
 	if err != nil {
-		return fmt.Errorf("dsn: can not convert Final-Recipient to a suitable representation: %w", err)
+		return fmt.Errorf("dsn: cannot convert Final-Recipient to a suitable representation: %w", err)
 	}
 	if utf8 {
 		h.Add("Final-Recipient", "utf8; "+finalRcpt)
@@ -146,7 +146,7 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	if info.RemoteMTA != "" {
 		remoteMTA, err := dns.SelectIDNA(utf8, info.RemoteMTA)
 		if err != nil {
-			return fmt.Errorf("dsn: can not convert Remote-MTA to a suitable representation: %w", err)
+			return fmt.Errorf("dsn: cannot convert Remote-MTA to a suitable representation: %w", err)
 		}
 
 		h.Add("Remote-MTA", "dns; "+remoteMTA)

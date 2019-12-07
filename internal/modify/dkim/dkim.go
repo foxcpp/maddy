@@ -249,7 +249,7 @@ func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailF
 		if !eai {
 			aDomain, err := idna.ToASCII(m.domain)
 			if err != nil {
-				m.log.Msg("not signing, can not convert key domain domain into A-labels",
+				m.log.Msg("not signing, cannot convert key domain domain into A-labels",
 					"from_addr", m.domain, "msg_id", msgId)
 				return "", false
 			}
@@ -312,7 +312,7 @@ func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailF
 	if !eai {
 		aDomain, err := idna.ToASCII(fromDomain)
 		if err != nil {
-			m.log.Msg("not signing, can not convert From domain into A-labels",
+			m.log.Msg("not signing, cannot convert From domain into A-labels",
 				"from_addr", fromAddr, "msg_id", msgId)
 			return "", false
 		}

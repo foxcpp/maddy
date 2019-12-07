@@ -557,7 +557,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
 	endp.serv.Domain, err = idna.ToASCII(endp.hostname)
 	if err != nil {
-		return fmt.Errorf("%s: can not represent the hostname as an A-label name: %w", endp.name, err)
+		return fmt.Errorf("%s: cannot represent the hostname as an A-label name: %w", endp.name, err)
 	}
 
 	if ioDebug {

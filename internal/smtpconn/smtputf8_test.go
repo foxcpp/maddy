@@ -111,7 +111,7 @@ func TestSMTPUTF8_Sender_UTF8_Reject(t *testing.T) {
 	err := doTestDelivery(t, c, "тест@example.org", []string{"test@example.invalid"},
 		smtp.MailOptions{UTF8: true})
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 6, 7},
-		"SMTPUTF8 is unsupported, can not convert sender address")
+		"SMTPUTF8 is unsupported, cannot convert sender address")
 }
 
 func TestSMTPUTF8_Rcpt_UTF8_Reject(t *testing.T) {
@@ -133,7 +133,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Reject(t *testing.T) {
 
 	err := doTestDelivery(t, c, "test@example.org", []string{"тест@example.invalid"}, smtp.MailOptions{UTF8: true})
 	testutils.CheckSMTPErr(t, err, 553, exterrors.EnhancedCode{5, 6, 7},
-		"SMTPUTF8 is unsupported, can not convert recipient address")
+		"SMTPUTF8 is unsupported, cannot convert recipient address")
 }
 
 func TestSMTPUTF8_Sender_UTF8_Domain(t *testing.T) {
