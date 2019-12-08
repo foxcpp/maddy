@@ -52,7 +52,7 @@ func NewDNSBL(_, instName string, _, inlineArgs []string) (module.Module, error)
 		instName:  instName,
 		inlineBls: inlineArgs,
 
-		resolver: net.DefaultResolver,
+		resolver: dns.DefaultResolver(),
 		log:      log.Logger{Name: "dnsbl"},
 	}, nil
 }

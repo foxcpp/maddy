@@ -215,7 +215,7 @@ func (s *state) relyOnDMARC(hdr textproto.Header) bool {
 		return false
 	}
 
-	policyDomain, record, err := maddydmarc.FetchRecord(net.DefaultResolver, context.Background(), fromDomain)
+	policyDomain, record, err := maddydmarc.FetchRecord(dns.DefaultResolver(), context.Background(), fromDomain)
 	if err != nil {
 		s.log.Error("DMARC fetch", err, "from_domain", fromDomain)
 		return false

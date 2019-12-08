@@ -79,9 +79,9 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	}
 	return &Target{
 		name:        instName,
-		resolver:    net.DefaultResolver,
+		resolver:    dns.DefaultResolver(),
 		dialer:      net.Dial,
-		mtastsCache: mtasts.Cache{Resolver: net.DefaultResolver},
+		mtastsCache: mtasts.Cache{Resolver: dns.DefaultResolver()},
 		Log:         log.Logger{Name: "remote"},
 
 		stsCacheUpdateDone: make(chan struct{}),

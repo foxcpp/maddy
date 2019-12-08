@@ -174,6 +174,16 @@ func NewExtResolver() (*ExtResolver, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if overrideServ != "" && overrideServ != "system-default" {
+		host, port, err := net.SplitHostPort(overrideServ)
+		if err != nil {
+			panic(err)
+		}
+		cfg.Servers = []string{host}
+		cfg.Port = port
+	}
+
 	cl := new(dns.Client)
 	cl.Dialer = &net.Dialer{
 		Timeout: time.Duration(cfg.Timeout) * time.Second,

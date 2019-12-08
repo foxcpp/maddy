@@ -80,9 +80,10 @@ var (
 	// only for purposes of modification using -X linker flag.
 	DefaultLibexecDirectory = "/usr/lib/maddy"
 
-	profileEndpoint   = flag.String("debug.pprof", "", "enable live profiler HTTP endpoint and listen on the specified endpoint")
-	blockProfileRate  = flag.Int("debug.blockprofrate", 0, "set blocking profile rate")
-	mutexProfileFract = flag.Int("debug.mutexproffract", 0, "set mutex profile fraction)")
+	enableDebugFlags  = false
+	profileEndpoint   *string
+	blockProfileRate  *int
+	mutexProfileFract *int
 )
 
 func BuildInfo() string {
@@ -107,6 +108,13 @@ func Run() int {
 		logTargets   = flag.String("log", "stderr", "default logging target(s)")
 		printVersion = flag.Bool("v", false, "print version and exit")
 	)
+
+	if enableDebugFlags {
+		profileEndpoint = flag.String("debug.pprof", "", "enable live profiler HTTP endpoint and listen on the specified address")
+		blockProfileRate = flag.Int("debug.blockprofrate", 0, "set blocking profile rate")
+		mutexProfileFract = flag.Int("debug.mutexproffract", 0, "set mutex profile fraction")
+	}
+
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
@@ -156,6 +164,10 @@ func Run() int {
 }
 
 func initDebug() {
+	if !enableDebugFlags {
+		return
+	}
+
 	if *profileEndpoint != "" {
 		go func() {
 			log.Println("listening on", "http://"+*profileEndpoint, "for profiler requests")

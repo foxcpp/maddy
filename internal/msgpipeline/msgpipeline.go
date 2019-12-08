@@ -1,8 +1,6 @@
 package msgpipeline
 
 import (
-	"net"
-
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/address"
@@ -50,7 +48,7 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	parsedCfg, err := parseMsgPipelineRootCfg(globals, cfg)
 	return &MsgPipeline{
 		msgpipelineCfg: parsedCfg,
-		Resolver:       net.DefaultResolver,
+		Resolver:       dns.DefaultResolver(),
 	}, err
 }
 

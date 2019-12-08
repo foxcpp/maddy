@@ -2,7 +2,6 @@ package check
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
@@ -152,7 +151,7 @@ func RegisterStatelessCheck(name string, defaultFailAction FailAction, connCheck
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,
-			resolver: net.DefaultResolver,
+			resolver: dns.DefaultResolver(),
 			logger:   log.Logger{Name: modName},
 
 			defaultFailAction: defaultFailAction,

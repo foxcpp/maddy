@@ -2,7 +2,7 @@
 // lookups.
 //
 // Currently, there is only Resolver interface which is implemented
-// by net.DefaultResolver. In the future, DNSSEC-enabled stub resolver
+// by dns.DefaultResolver(). In the future, DNSSEC-enabled stub resolver
 // implementation will be added here.
 package dns
 
@@ -14,7 +14,7 @@ import (
 
 // Resolver is an interface that describes DNS-related methods used by maddy.
 //
-// It is implemented by net.DefaultResolver. Methods behave the same way.
+// It is implemented by dns.DefaultResolver(). Methods behave the same way.
 type Resolver interface {
 	LookupAddr(ctx context.Context, addr string) (names []string, err error)
 	LookupHost(ctx context.Context, host string) (addrs []string, err error)
@@ -32,4 +32,12 @@ func LookupAddr(ctx context.Context, r Resolver, ip net.IP) (string, error) {
 		return "", err
 	}
 	return strings.TrimRight(names[0], "."), nil
+}
+
+func DefaultResolver() Resolver {
+	if overrideServ != "" && overrideServ != "system-default" {
+		override(overrideServ)
+	}
+
+	return net.DefaultResolver
 }

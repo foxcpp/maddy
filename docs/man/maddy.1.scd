@@ -41,10 +41,6 @@ emptor.*
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.
 
-*-debug.pprof, -debug.blockprofrate, -debug.mutexproffract*
-	These options are meant for use by developers and are not interesting for
-	end users.
-
 # Modules
 
 maddy is built of many small components called "modules". Each module does one

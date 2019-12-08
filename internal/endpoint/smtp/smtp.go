@@ -451,7 +451,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 		addrs:      addrs,
 		submission: modName == "submission",
 		lmtp:       modName == "lmtp",
-		resolver:   net.DefaultResolver,
+		resolver:   dns.DefaultResolver(),
 		Log:        log.Logger{Name: modName},
 	}
 	return endp, nil

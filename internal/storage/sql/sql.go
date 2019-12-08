@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -145,7 +144,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	store := &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "sql"},
-		resolver: net.DefaultResolver,
+		resolver: dns.DefaultResolver(),
 	}
 	if len(inlineArgs) != 0 {
 		if len(inlineArgs) == 1 {
