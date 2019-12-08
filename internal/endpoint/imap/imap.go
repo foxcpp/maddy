@@ -24,6 +24,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 
 type Endpoint struct {
@@ -73,6 +74,12 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
 	}
 
+	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
+		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
+			endp.Log.Error("failed to initialize updates pipe", err)
+		}
+	}
+
 	// Call Updates once at start, some storage backends initialize update
 	// channel lazily and may not generate updates at all unless it is called.
 	if endp.updater.Updates() == nil {
@@ -105,6 +112,14 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
+	if err := endp.setupListeners(addresses); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error

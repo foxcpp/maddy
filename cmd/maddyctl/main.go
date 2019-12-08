@@ -8,6 +8,7 @@ import (
 
 	"github.com/emersion/go-imap/backend"
 	"github.com/foxcpp/maddy"
+	"github.com/foxcpp/maddy/internal/updatepipe"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -580,12 +581,26 @@ func openStorage(ctx *cli.Context) (Storage, error) {
 		return nil, err
 	}
 
+	var store Storage
 	switch node.Name {
 	case "sql":
-		return sqlFromCfgBlock(root, node)
+		store, err = sqlFromCfgBlock(root, node)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("Error: Storage backend is not supported by maddyctl")
 	}
+
+	if updStore, ok := store.(updatepipe.Backend); ok {
+		if err := updStore.EnableUpdatePipe(updatepipe.ModePush); err != nil && !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "Failed to initialize update pipe, do not remove messages from mailboxes open by clients: %v\n", err)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "No update pipe support, do not remove messages from mailboxes open by clients\n")
+	}
+
+	return store, nil
 }
 
 func openUserDB(ctx *cli.Context) (UserDB, error) {

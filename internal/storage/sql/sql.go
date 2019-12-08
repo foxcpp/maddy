@@ -8,10 +8,13 @@
 package sql
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/target"
+	"github.com/foxcpp/maddy/internal/updatepipe"
 	"golang.org/x/text/secure/precis"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -40,10 +44,14 @@ type Storage struct {
 
 	junkMbox string
 
-	inlineDriver string
-	inlineDsn    []string
+	driver string
+	dsn    []string
 
 	resolver dns.Resolver
+
+	updates     <-chan backend.Update
+	updPipe     updatepipe.P
+	updPushStop chan struct{}
 }
 
 type delivery struct {
@@ -144,8 +152,8 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 			return nil, errors.New("sql: expected at least 2 arguments")
 		}
 
-		store.inlineDriver = inlineArgs[0]
-		store.inlineDsn = inlineArgs[1:]
+		store.driver = inlineArgs[0]
+		store.dsn = inlineArgs[1:]
 	}
 	return store, nil
 }
@@ -164,8 +172,8 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// configured).
 		LazyUpdatesInit: true,
 	}
-	cfg.String("driver", false, false, store.inlineDriver, &driver)
-	cfg.StringList("dsn", false, false, store.inlineDsn, &dsn)
+	cfg.String("driver", false, false, store.driver, &driver)
+	cfg.StringList("dsn", false, false, store.dsn, &dsn)
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "messages", nil
 	}, func(m *config.Map, node *config.Node) (interface{}, error) {
@@ -244,6 +252,63 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	store.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
 
+	store.driver = driver
+	store.dsn = dsn
+
+	return nil
+}
+
+func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
+	if store.updPipe != nil {
+		return nil
+	}
+	if store.updates != nil {
+		panic("sql: EnableUpdatePipe called after Updates")
+	}
+
+	upds := store.Back.Updates()
+
+	switch store.driver {
+	case "sqlite3":
+		dbId := sha256.Sum256([]byte(strings.Join(store.dsn, " ")))
+		store.updPipe = &updatepipe.UnixSockPipe{
+			SockPath: filepath.Join(
+				config.RuntimeDirectory,
+				fmt.Sprintf("sql-%s.sock", hex.EncodeToString(dbId[:]))),
+			Log: log.Logger{Name: "sql/updpipe", Debug: store.Log.Debug},
+		}
+	default:
+		return errors.New("sql: driver does not have an update pipe implementation")
+	}
+
+	wrapped := make(chan backend.Update, cap(upds)*2)
+
+	if mode == updatepipe.ModeReplicate {
+		if err := store.updPipe.Listen(wrapped); err != nil {
+			return err
+		}
+	}
+
+	if err := store.updPipe.InitPush(); err != nil {
+		return err
+	}
+
+	store.updPushStop = make(chan struct{})
+	go func() {
+		for u := range upds {
+			if err := store.updPipe.Push(u); err != nil {
+				store.Log.Error("IMAP update pipe push failed", err)
+			}
+
+			if mode != updatepipe.ModePush {
+				wrapped <- u
+			}
+		}
+		close(wrapped)
+		store.updPushStop <- struct{}{}
+	}()
+
+	store.updates = wrapped
 	return nil
 }
 
@@ -256,7 +321,12 @@ func (store *Storage) CreateMessageLimit() *uint32 {
 }
 
 func (store *Storage) Updates() <-chan backend.Update {
-	return store.Back.Updates()
+	if store.updates != nil {
+		return store.updates
+	}
+
+	store.updates = store.Back.Updates()
+	return store.updates
 }
 
 func (store *Storage) EnableChildrenExt() bool {
@@ -313,7 +383,23 @@ func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
 }
 
 func (store *Storage) Close() error {
-	return store.Back.Close()
+	// Closes update channel. 'updates replicate' goroutine stops (see
+	// EnableUpdatePipe).
+	store.Back.Close()
+
+	// Close UpdatePipe, stops generation of new updates.
+	if store.updPipe != nil {
+		store.updPipe.Close()
+	}
+
+	// Wait for 'updates replicate' goroutine to actually stop so we will send
+	// all updates before shuting down (this is especially important for
+	// maddyctl).
+	if store.updPushStop != nil {
+		<-store.updPushStop
+	}
+
+	return nil
 }
 
 func init() {

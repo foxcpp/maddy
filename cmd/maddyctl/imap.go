@@ -233,7 +233,6 @@ func msgsRemove(be Storage, ctx *cli.Context) error {
 	}
 
 	if !ctx.Bool("yes") {
-		fmt.Fprintf(os.Stderr, "Currently, it is unsafe to remove messages from mailboxes used by connected clients, continue?")
 		if !clitools.Confirmation("Are you sure you want to delete these messages?", false) {
 			return errors.New("Cancelled")
 		}
