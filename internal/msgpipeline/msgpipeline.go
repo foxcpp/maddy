@@ -1,6 +1,8 @@
 package msgpipeline
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/address"
@@ -52,7 +54,7 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	}, err
 }
 
-func (d *MsgPipeline) RunEarlyChecks(state *smtp.ConnectionState) error {
+func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *smtp.ConnectionState) error {
 	// TODO: See if there is some point in parallelization of this
 	// function.
 	for _, check := range d.globalChecks {
@@ -61,7 +63,7 @@ func (d *MsgPipeline) RunEarlyChecks(state *smtp.ConnectionState) error {
 			continue
 		}
 
-		if err := earlyCheck.CheckConnection(state); err != nil {
+		if err := earlyCheck.CheckConnection(ctx, state); err != nil {
 			return err
 		}
 	}
@@ -74,7 +76,7 @@ func (d *MsgPipeline) RunEarlyChecks(state *smtp.ConnectionState) error {
 // Returned module.Delivery implements PartialDelivery. If underlying target doesn't
 // support it, msgpipeline will copy the returned error for all recipients handled
 // by target.
-func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (d *MsgPipeline) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := msgpipelineDelivery{
 		d:                  d,
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
@@ -89,7 +91,7 @@ func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 		msgMeta.OriginalRcpts = map[string]string{}
 	}
 
-	if err := dd.start(msgMeta, mailFrom); err != nil {
+	if err := dd.start(ctx, msgMeta, mailFrom); err != nil {
 		dd.close()
 		return nil, err
 	}
@@ -97,14 +99,14 @@ func (d *MsgPipeline) Start(msgMeta *module.MsgMetadata, mailFrom string) (modul
 	return &dd, nil
 }
 
-func (dd *msgpipelineDelivery) start(msgMeta *module.MsgMetadata, mailFrom string) error {
+func (dd *msgpipelineDelivery) start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) error {
 	var err error
 
-	if err := dd.checkRunner.checkConnSender(dd.d.globalChecks, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(ctx, dd.d.globalChecks, mailFrom); err != nil {
 		return err
 	}
 
-	if mailFrom, err = dd.initRunGlobalModifiers(msgMeta, mailFrom); err != nil {
+	if mailFrom, err = dd.initRunGlobalModifiers(ctx, msgMeta, mailFrom); err != nil {
 		return err
 	}
 
@@ -118,15 +120,15 @@ func (dd *msgpipelineDelivery) start(msgMeta *module.MsgMetadata, mailFrom strin
 	}
 	dd.sourceBlock = sourceBlock
 
-	if err := dd.checkRunner.checkConnSender(sourceBlock.checks, mailFrom); err != nil {
+	if err := dd.checkRunner.checkConnSender(ctx, sourceBlock.checks, mailFrom); err != nil {
 		return err
 	}
 
-	sourceModifiersState, err := sourceBlock.modifiers.ModStateForMsg(msgMeta)
+	sourceModifiersState, err := sourceBlock.modifiers.ModStateForMsg(ctx, msgMeta)
 	if err != nil {
 		return err
 	}
-	mailFrom, err = sourceModifiersState.RewriteSender(mailFrom)
+	mailFrom, err = sourceModifiersState.RewriteSender(ctx, mailFrom)
 	if err != nil {
 		return err
 	}
@@ -136,12 +138,12 @@ func (dd *msgpipelineDelivery) start(msgMeta *module.MsgMetadata, mailFrom strin
 	return nil
 }
 
-func (dd *msgpipelineDelivery) initRunGlobalModifiers(msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
-	globalModifiersState, err := dd.d.globalModifiers.ModStateForMsg(msgMeta)
+func (dd *msgpipelineDelivery) initRunGlobalModifiers(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (string, error) {
+	globalModifiersState, err := dd.d.globalModifiers.ModStateForMsg(ctx, msgMeta)
 	if err != nil {
 		return "", err
 	}
-	mailFrom, err = globalModifiersState.RewriteSender(mailFrom)
+	mailFrom, err = globalModifiersState.RewriteSender(ctx, mailFrom)
 	if err != nil {
 		globalModifiersState.Close()
 		return "", err
@@ -222,23 +224,23 @@ type msgpipelineDelivery struct {
 	checkRunner *checkRunner
 }
 
-func (dd *msgpipelineDelivery) AddRcpt(to string) error {
-	if err := dd.checkRunner.checkRcpt(dd.d.globalChecks, to); err != nil {
+func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
+	if err := dd.checkRunner.checkRcpt(ctx, dd.d.globalChecks, to); err != nil {
 		return err
 	}
-	if err := dd.checkRunner.checkRcpt(dd.sourceBlock.checks, to); err != nil {
+	if err := dd.checkRunner.checkRcpt(ctx, dd.sourceBlock.checks, to); err != nil {
 		return err
 	}
 
 	originalTo := to
 
-	newTo, err := dd.globalModifiersState.RewriteRcpt(to)
+	newTo, err := dd.globalModifiersState.RewriteRcpt(ctx, to)
 	if err != nil {
 		return err
 	}
 	dd.log.Debugln("global rcpt modifiers:", to, "=>", newTo)
 	to = newTo
-	newTo, err = dd.sourceModifiersState.RewriteRcpt(to)
+	newTo, err = dd.sourceModifiersState.RewriteRcpt(ctx, to)
 	if err != nil {
 		return err
 	}
@@ -260,16 +262,16 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 		return wrapErr(rcptBlock.rejectErr)
 	}
 
-	if err := dd.checkRunner.checkRcpt(rcptBlock.checks, to); err != nil {
+	if err := dd.checkRunner.checkRcpt(ctx, rcptBlock.checks, to); err != nil {
 		return wrapErr(err)
 	}
 
-	rcptModifiersState, err := dd.getRcptModifiers(rcptBlock, to)
+	rcptModifiersState, err := dd.getRcptModifiers(ctx, rcptBlock, to)
 	if err != nil {
 		return wrapErr(err)
 	}
 
-	newTo, err = rcptModifiersState.RewriteRcpt(to)
+	newTo, err = rcptModifiersState.RewriteRcpt(ctx, to)
 	if err != nil {
 		rcptModifiersState.Close()
 		return wrapErr(err)
@@ -288,12 +290,12 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	}
 
 	for _, tgt := range rcptBlock.targets {
-		delivery, err := dd.getDelivery(tgt)
+		delivery, err := dd.getDelivery(ctx, tgt)
 		if err != nil {
 			return wrapErr(err)
 		}
 
-		if err := delivery.AddRcpt(to); err != nil {
+		if err := delivery.AddRcpt(ctx, to); err != nil {
 			return wrapErr(err)
 		}
 		delivery.recipients = append(delivery.recipients, originalTo)
@@ -302,11 +304,11 @@ func (dd *msgpipelineDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dd *msgpipelineDelivery) Body(header textproto.Header, body buffer.Buffer) error {
-	if err := dd.checkRunner.checkBody(dd.d.globalChecks, header, body); err != nil {
+func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
+	if err := dd.checkRunner.checkBody(ctx, dd.d.globalChecks, header, body); err != nil {
 		return err
 	}
-	if err := dd.checkRunner.checkBody(dd.sourceBlock.checks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(ctx, dd.sourceBlock.checks, header, body); err != nil {
 		return err
 	}
 	// TODO: Decide whether per-recipient body checks should be executed.
@@ -317,15 +319,15 @@ func (dd *msgpipelineDelivery) Body(header textproto.Header, body buffer.Buffer)
 
 	// Run modifiers after Authentication-Results addition to make
 	// sure signatures, etc will cover it.
-	if err := dd.globalModifiersState.RewriteBody(&header, body); err != nil {
+	if err := dd.globalModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		return err
 	}
-	if err := dd.sourceModifiersState.RewriteBody(&header, body); err != nil {
+	if err := dd.sourceModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		return err
 	}
 
 	for _, delivery := range dd.deliveries {
-		if err := delivery.Body(header, body); err != nil {
+		if err := delivery.Body(ctx, header, body); err != nil {
 			return err
 		}
 		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
@@ -354,7 +356,7 @@ func (sc statusCollector) SetStatus(rcptTo string, err error) {
 	sc.wrapped.SetStatus(rcptTo, err)
 }
 
-func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+func (dd *msgpipelineDelivery) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	setStatusAll := func(err error) {
 		for _, delivery := range dd.deliveries {
 			for _, rcpt := range delivery.recipients {
@@ -363,22 +365,22 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header te
 		}
 	}
 
-	if err := dd.checkRunner.checkBody(dd.d.globalChecks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(ctx, dd.d.globalChecks, header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
-	if err := dd.checkRunner.checkBody(dd.sourceBlock.checks, header, body); err != nil {
+	if err := dd.checkRunner.checkBody(ctx, dd.sourceBlock.checks, header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
 
 	// Run modifiers after Authentication-Results addition to make
 	// sure signatures, etc will cover it.
-	if err := dd.globalModifiersState.RewriteBody(&header, body); err != nil {
+	if err := dd.globalModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
-	if err := dd.sourceModifiersState.RewriteBody(&header, body); err != nil {
+	if err := dd.sourceModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		setStatusAll(err)
 		return
 	}
@@ -386,14 +388,14 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header te
 	for _, delivery := range dd.deliveries {
 		partDelivery, ok := delivery.Delivery.(module.PartialDelivery)
 		if ok {
-			partDelivery.BodyNonAtomic(statusCollector{
+			partDelivery.BodyNonAtomic(ctx, statusCollector{
 				originalRcpts: dd.msgMeta.OriginalRcpts,
 				wrapped:       c,
 			}, header, body)
 			continue
 		}
 
-		if err := delivery.Body(header, body); err != nil {
+		if err := delivery.Body(ctx, header, body); err != nil {
 			for _, rcpt := range delivery.recipients {
 				c.SetStatus(rcpt, err)
 			}
@@ -401,11 +403,11 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(c module.StatusCollector, header te
 	}
 }
 
-func (dd msgpipelineDelivery) Commit() error {
+func (dd msgpipelineDelivery) Commit(ctx context.Context) error {
 	dd.close()
 
 	for _, delivery := range dd.deliveries {
-		if err := delivery.Commit(); err != nil {
+		if err := delivery.Commit(ctx); err != nil {
 			// No point in Committing remaining deliveries, everything is broken already.
 			return err
 		}
@@ -427,12 +429,12 @@ func (dd *msgpipelineDelivery) close() {
 	}
 }
 
-func (dd msgpipelineDelivery) Abort() error {
+func (dd msgpipelineDelivery) Abort(ctx context.Context) error {
 	dd.close()
 
 	var lastErr error
 	for _, delivery := range dd.deliveries {
-		if err := delivery.Abort(); err != nil {
+		if err := delivery.Abort(ctx); err != nil {
 			dd.log.Debugf("delivery.Abort failure, Delivery object = %T: %v", delivery, err)
 			lastErr = err
 			// Continue anyway and try to Abort all remaining delivery objects.
@@ -483,18 +485,18 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 	return rcptBlock, nil
 }
 
-func (dd *msgpipelineDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
+func (dd *msgpipelineDelivery) getRcptModifiers(ctx context.Context, rcptBlock *rcptBlock, rcptTo string) (module.ModifierState, error) {
 	rcptModifiersState, ok := dd.rcptModifiersState[rcptBlock]
 	if ok {
 		return rcptModifiersState, nil
 	}
 
-	rcptModifiersState, err := rcptBlock.modifiers.ModStateForMsg(dd.msgMeta)
+	rcptModifiersState, err := rcptBlock.modifiers.ModStateForMsg(ctx, dd.msgMeta)
 	if err != nil {
 		return nil, err
 	}
 
-	newSender, err := rcptModifiersState.RewriteSender(dd.sourceAddr)
+	newSender, err := rcptModifiersState.RewriteSender(ctx, dd.sourceAddr)
 	if err == nil && newSender != dd.sourceAddr {
 		dd.log.Msg("Per-recipient modifier changed sender address. This is not supported and will "+
 			"be ignored.", "rcpt", rcptTo, "originalFrom", dd.sourceAddr, "modifiedFrom", newSender)
@@ -504,13 +506,13 @@ func (dd *msgpipelineDelivery) getRcptModifiers(rcptBlock *rcptBlock, rcptTo str
 	return rcptModifiersState, nil
 }
 
-func (dd *msgpipelineDelivery) getDelivery(tgt module.DeliveryTarget) (*delivery, error) {
+func (dd *msgpipelineDelivery) getDelivery(ctx context.Context, tgt module.DeliveryTarget) (*delivery, error) {
 	delivery_, ok := dd.deliveries[tgt]
 	if ok {
 		return delivery_, nil
 	}
 
-	deliveryObj, err := tgt.Start(dd.msgMeta, dd.sourceAddr)
+	deliveryObj, err := tgt.Start(ctx, dd.msgMeta, dd.sourceAddr)
 	if err != nil {
 		dd.log.Debugf("tgt.Start(%s) failure, target = %s: %v", dd.sourceAddr, objectName(tgt), err)
 		return nil, err

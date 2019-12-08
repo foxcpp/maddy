@@ -1,6 +1,8 @@
 package modify
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/module"
@@ -17,10 +19,10 @@ type (
 	}
 )
 
-func (g Group) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (g Group) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	gs := groupState{}
 	for _, modifier := range g.Modifiers {
-		state, err := modifier.ModStateForMsg(msgMeta)
+		state, err := modifier.ModStateForMsg(ctx, msgMeta)
 		if err != nil {
 			// Free state objects we initialized already.
 			for _, state := range gs.states {
@@ -33,10 +35,10 @@ func (g Group) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState
 	return gs, nil
 }
 
-func (gs groupState) RewriteSender(mailFrom string) (string, error) {
+func (gs groupState) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
 	var err error
 	for _, state := range gs.states {
-		mailFrom, err = state.RewriteSender(mailFrom)
+		mailFrom, err = state.RewriteSender(ctx, mailFrom)
 		if err != nil {
 			return "", err
 		}
@@ -44,10 +46,10 @@ func (gs groupState) RewriteSender(mailFrom string) (string, error) {
 	return mailFrom, nil
 }
 
-func (gs groupState) RewriteRcpt(rcptTo string) (string, error) {
+func (gs groupState) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	var err error
 	for _, state := range gs.states {
-		rcptTo, err = state.RewriteRcpt(rcptTo)
+		rcptTo, err = state.RewriteRcpt(ctx, rcptTo)
 		if err != nil {
 			return "", err
 		}
@@ -55,9 +57,9 @@ func (gs groupState) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (gs groupState) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
+func (gs groupState) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
 	for _, state := range gs.states {
-		if err := state.RewriteBody(h, body); err != nil {
+		if err := state.RewriteBody(ctx, h, body); err != nil {
 			return err
 		}
 	}

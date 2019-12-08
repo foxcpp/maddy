@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 )
@@ -14,7 +16,7 @@ type DeliveryTarget interface {
 	// The domain part of the MAIL FROM address is assumed to be U-labels with
 	// NFC normalization and case-folding applied. The message source should
 	// ensure that by calling address.CleanDomain if necessary.
-	Start(msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
+	Start(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
 }
 
 type Delivery interface {
@@ -33,7 +35,7 @@ type Delivery interface {
 	// recipients that can't be used.  Note: MsgMetadata object passed to Start
 	// contains BodyLength field. If it is non-zero, it can be used to check
 	// storage quota for the user before Body.
-	AddRcpt(rcptTo string) error
+	AddRcpt(ctx context.Context, rcptTo string) error
 
 	// Body sets the body and header contents for the message.
 	// If this method fails, message is assumed to be undeliverable
@@ -53,17 +55,17 @@ type Delivery interface {
 	// Calling Body creates a file in tmp/ directory.
 	// Commit moves the created file to new/ directory.
 	// Abort removes the created file.
-	Body(header textproto.Header, body buffer.Buffer) error
+	Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error
 
 	// Abort cancels message delivery.
 	//
 	// All changes made to the underlying storage should be aborted at this
 	// point, if possible.
-	Abort() error
+	Abort(ctx context.Context) error
 
 	// Commit completes message delivery.
 	//
 	// It generally should never fail, since failures here jeopardize
 	// atomicity of the delivery if multiple targets are used.
-	Commit() error
+	Commit(ctx context.Context) error
 }

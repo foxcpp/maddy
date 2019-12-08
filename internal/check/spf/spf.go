@@ -102,7 +102,7 @@ type state struct {
 	log      log.Logger
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &state{
 		c:        c,
 		msgMeta:  msgMeta,
@@ -208,14 +208,14 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 	}
 }
 
-func (s *state) relyOnDMARC(hdr textproto.Header) bool {
+func (s *state) relyOnDMARC(ctx context.Context, hdr textproto.Header) bool {
 	fromDomain, err := maddydmarc.ExtractFromDomain(hdr)
 	if err != nil {
 		s.log.Error("DMARC domains extract", err)
 		return false
 	}
 
-	policyDomain, record, err := maddydmarc.FetchRecord(dns.DefaultResolver(), context.Background(), fromDomain)
+	policyDomain, record, err := maddydmarc.FetchRecord(ctx, dns.DefaultResolver(), fromDomain)
 	if err != nil {
 		s.log.Error("DMARC fetch", err, "from_domain", fromDomain)
 		return false
@@ -266,7 +266,7 @@ func prepareMailFrom(from string) (string, error) {
 	return fromMbox + "@" + fromDomain, nil
 }
 
-func (s *state) CheckConnection() module.CheckResult {
+func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.msgMeta.Conn == nil {
 		s.log.Println("locally generated message, skipping")
 		return module.CheckResult{}
@@ -314,15 +314,15 @@ func (s *state) CheckConnection() module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckSender(mailFrom string) module.CheckResult {
+func (s *state) CheckSender(ctx context.Context, mailFrom string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckRcpt(rcptTo string) module.CheckResult {
+func (s *state) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.enforceEarly {
 		// Already applied in CheckConnection.
 		return module.CheckResult{}
@@ -341,7 +341,7 @@ func (s *state) CheckBody(header textproto.Header, body buffer.Buffer) module.Ch
 			),
 		}
 	}
-	if s.relyOnDMARC(header) {
+	if s.relyOnDMARC(ctx, header) {
 		if res.res != spf.Pass || res.err != nil {
 			s.log.Printf("deferring action due to a DMARC policy")
 		} else {

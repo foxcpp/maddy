@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 )
@@ -34,5 +36,5 @@ type PartialDelivery interface {
 	//
 	// This interface is preferred by the LMTP endpoint and queue implementation
 	// to ensure correct handling of partial failures.
-	BodyNonAtomic(c StatusCollector, header textproto.Header, body buffer.Buffer)
+	BodyNonAtomic(ctx context.Context, c StatusCollector, header textproto.Header, body buffer.Buffer)
 }

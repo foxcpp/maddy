@@ -1,6 +1,7 @@
 package modify
 
 import (
+	"context"
 	"testing"
 
 	"github.com/foxcpp/maddy/internal/config"
@@ -18,12 +19,12 @@ func replaceAddrFromArgs(t *testing.T, modName, from, to string) *replaceAddr {
 	return r.(*replaceAddr)
 }
 
-func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, string) (string, error)) {
+func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, context.Context, string) (string, error)) {
 	test := func(from, to string, input, expectedOutput string) {
 		t.Helper()
 
 		r := replaceAddrFromArgs(t, modName, from, to)
-		output, err := rewriter(r, input)
+		output, err := rewriter(r, context.Background(), input)
 		if err != nil {
 			t.Fatal(err)
 		}

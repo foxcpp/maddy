@@ -1,6 +1,7 @@
 package msgpipeline
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -252,12 +253,12 @@ func TestMsgPipeline_PerSourceReject(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
 
-	_, err := d.Start(&module.MsgMetadata{ID: "testing"}, "sender2@example.com")
+	_, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.com")
 	if err == nil {
 		t.Error("expected error for delivery.Start, got nil")
 	}
 
-	_, err = d.Start(&module.MsgMetadata{ID: "testing"}, "sender2@example.org")
+	_, err = d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.org")
 	if err == nil {
 		t.Error("expected error for delivery.Start, got nil")
 	}
@@ -285,26 +286,26 @@ func TestMsgPipeline_PerRcptReject(t *testing.T) {
 		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
-	delivery, err := d.Start(&module.MsgMetadata{ID: "testing"}, "sender@example.com")
+	delivery, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender@example.com")
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	defer func() {
-		if err := delivery.Abort(); err != nil {
+		if err := delivery.Abort(context.Background()); err != nil {
 			t.Fatalf("unexpected Abort err: %v", err)
 		}
 	}()
 
-	if err := delivery.AddRcpt("rcpt2@example.com"); err == nil {
+	if err := delivery.AddRcpt(context.Background(), "rcpt2@example.com"); err == nil {
 		t.Fatalf("expected error for delivery.AddRcpt(rcpt2@example.com), got nil")
 	}
-	if err := delivery.AddRcpt("rcpt1@example.com"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "rcpt1@example.com"); err != nil {
 		t.Fatalf("unexpected AddRcpt err for %s: %v", "rcpt1@example.com", err)
 	}
-	if err := delivery.Body(textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("foobar")}); err != nil {
+	if err := delivery.Body(context.Background(), textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("foobar")}); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		t.Fatalf("unexpected Commit err: %v", err)
 	}
 }
@@ -500,7 +501,7 @@ func TestMsgPipeline_MalformedSource(t *testing.T) {
 
 	// Simple checks for violations that can make msgpipeline misbehave.
 	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@"} {
-		_, err := d.Start(&module.MsgMetadata{ID: "testing"}, addr)
+		_, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, addr)
 		if err == nil {
 			t.Errorf("%s is accepted as valid address", addr)
 		}

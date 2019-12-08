@@ -18,7 +18,7 @@ import (
 // FetchRecord looks up the DMARC record relevant for the RFC5322.From domain.
 // It returns the record and the domain it was found with (may not be
 // equal to the RFC5322.From domain).
-func FetchRecord(r Resolver, ctx context.Context, fromDomain string) (policyDomain string, rec *Record, err error) {
+func FetchRecord(ctx context.Context, r Resolver, fromDomain string) (policyDomain string, rec *Record, err error) {
 	policyDomain = fromDomain
 
 	// 1. Lookup using From Domain.

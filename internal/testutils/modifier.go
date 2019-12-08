@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
@@ -38,7 +40,7 @@ type modifierState struct {
 	m *Modifier
 }
 
-func (m Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (m Modifier) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	if m.InitErr != nil {
 		return nil, m.InitErr
 	}
@@ -47,7 +49,7 @@ func (m Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierSt
 	return modifierState{&m}, nil
 }
 
-func (ms modifierState) RewriteSender(mailFrom string) (string, error) {
+func (ms modifierState) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
 	if ms.m.MailFromErr != nil {
 		return "", ms.m.MailFromErr
 	}
@@ -62,7 +64,7 @@ func (ms modifierState) RewriteSender(mailFrom string) (string, error) {
 	return mailFrom, nil
 }
 
-func (ms modifierState) RewriteRcpt(rcptTo string) (string, error) {
+func (ms modifierState) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	if ms.m.RcptToErr != nil {
 		return "", ms.m.RcptToErr
 	}
@@ -78,7 +80,7 @@ func (ms modifierState) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (ms modifierState) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
+func (ms modifierState) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
 	if ms.m.BodyErr != nil {
 		return ms.m.BodyErr
 	}

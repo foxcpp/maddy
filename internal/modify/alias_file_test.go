@@ -1,6 +1,7 @@
 package modify
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -84,7 +85,7 @@ func TestRewriteRcpt(t *testing.T) {
 			aliases: aliases,
 		}}
 
-		actual, err := s.RewriteRcpt(addr)
+		actual, err := s.RewriteRcpt(context.Background(), addr)
 		if err != nil {
 			t.Fatal(err)
 		}

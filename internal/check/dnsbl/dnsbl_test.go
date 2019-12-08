@@ -1,6 +1,7 @@
 package dnsbl
 
 import (
+	"context"
 	"net"
 	"reflect"
 	"testing"
@@ -15,7 +16,7 @@ func TestCheckList(t *testing.T) {
 			resolver: &mockdns.Resolver{Zones: zones},
 			log:      testutils.Logger(t, "dnsbl"),
 		}
-		err := mod.checkList(cfg, ip, ehlo, mailFrom)
+		err := mod.checkList(context.Background(), cfg, ip, ehlo, mailFrom)
 		if !reflect.DeepEqual(err, expectedErr) {
 			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
 		}
@@ -107,7 +108,7 @@ func TestCheckLists(t *testing.T) {
 			resolver: &mockdns.Resolver{Zones: zones},
 			log:      testutils.Logger(t, "dnsbl"),
 		}
-		err := mod.checkLists(ip, ehlo, mailFrom)
+		err := mod.checkLists(context.Background(), ip, ehlo, mailFrom)
 		if !reflect.DeepEqual(err, expectedErr) {
 			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
 		}

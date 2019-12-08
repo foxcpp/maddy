@@ -1,6 +1,7 @@
 package modify
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -122,25 +123,25 @@ func (r replaceAddr) InstanceName() string {
 	return r.instName
 }
 
-func (r replaceAddr) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (r replaceAddr) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	return r, nil
 }
 
-func (r replaceAddr) RewriteSender(mailFrom string) (string, error) {
+func (r replaceAddr) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
 	if r.replaceSender {
 		return r.rewrite(mailFrom)
 	}
 	return mailFrom, nil
 }
 
-func (r replaceAddr) RewriteRcpt(rcptTo string) (string, error) {
+func (r replaceAddr) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	if r.replaceRcpt {
 		return r.rewrite(rcptTo)
 	}
 	return rcptTo, nil
 }
 
-func (r replaceAddr) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
+func (r replaceAddr) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 

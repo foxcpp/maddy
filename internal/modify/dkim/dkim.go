@@ -1,6 +1,7 @@
 package dkim
 
 import (
+	"context"
 	"crypto"
 	"errors"
 	"io"
@@ -236,7 +237,7 @@ type state struct {
 	log  log.Logger
 }
 
-func (m *Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (m *Modifier) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	return state{
 		m:    m,
 		meta: msgMeta,
@@ -327,15 +328,15 @@ func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailF
 	return fromAddr, true
 }
 
-func (s state) RewriteSender(mailFrom string) (string, error) {
+func (s state) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
 	return mailFrom, nil
 }
 
-func (s state) RewriteRcpt(rcptTo string) (string, error) {
+func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (s state) RewriteBody(h *textproto.Header, body buffer.Buffer) error {
+func (s state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
 	var authUser string
 	if s.meta.Conn != nil {
 		authUser = s.meta.Conn.AuthUser

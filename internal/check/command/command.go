@@ -3,6 +3,7 @@ package command
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -126,7 +127,7 @@ type state struct {
 	rcpts    []string
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &state{
 		c:       c,
 		msgMeta: msgMeta,
@@ -294,7 +295,7 @@ func (s *state) errorRes(err error, res module.CheckResult, cmdLine string) modu
 	return action.Apply(res)
 }
 
-func (s *state) CheckConnection() module.CheckResult {
+func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.c.stage != StageConnection {
 		return module.CheckResult{}
 	}
@@ -303,7 +304,7 @@ func (s *state) CheckConnection() module.CheckResult {
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
-func (s *state) CheckSender(addr string) module.CheckResult {
+func (s *state) CheckSender(ctx context.Context, addr string) module.CheckResult {
 	s.mailFrom = addr
 
 	if s.c.stage != StageSender {
@@ -314,7 +315,7 @@ func (s *state) CheckSender(addr string) module.CheckResult {
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
-func (s *state) CheckRcpt(addr string) module.CheckResult {
+func (s *state) CheckRcpt(ctx context.Context, addr string) module.CheckResult {
 	s.rcpts = append(s.rcpts, addr)
 
 	if s.c.stage != StageRcpt {
@@ -325,7 +326,7 @@ func (s *state) CheckRcpt(addr string) module.CheckResult {
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
-func (s *state) CheckBody(hdr textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.stage != StageBody {
 		return module.CheckResult{}
 	}

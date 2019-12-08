@@ -32,10 +32,10 @@ func (le ListedErr) Error() string {
 	return le.Identity + " is listed in the used DNSBL"
 }
 
-func checkDomain(resolver dns.Resolver, cfg List, domain string) error {
+func checkDomain(ctx context.Context, resolver dns.Resolver, cfg List, domain string) error {
 	query := domain + "." + cfg.Zone
 
-	addrs, err := resolver.LookupHost(context.Background(), query)
+	addrs, err := resolver.LookupHost(ctx, query)
 	if err != nil {
 		if dnsErr, ok := err.(*net.DNSError); ok && dnsErr.IsNotFound {
 			return nil
@@ -70,7 +70,7 @@ func checkDomain(resolver dns.Resolver, cfg List, domain string) error {
 	}
 }
 
-func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
+func checkIP(ctx context.Context, resolver dns.Resolver, cfg List, ip net.IP) error {
 	ipv6 := true
 	if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4
@@ -86,7 +86,7 @@ func checkIP(resolver dns.Resolver, cfg List, ip net.IP) error {
 
 	query := queryString(ip) + "." + cfg.Zone
 
-	addrs, err := resolver.LookupIPAddr(context.Background(), query)
+	addrs, err := resolver.LookupIPAddr(ctx, query)
 	if err != nil {
 		if dnsErr, ok := err.(*net.DNSError); ok && dnsErr.IsNotFound {
 			return nil
@@ -117,7 +117,7 @@ addrsLoop:
 	}
 
 	// Attempt to extract explanation string.
-	txts, err := resolver.LookupTXT(context.Background(), query)
+	txts, err := resolver.LookupTXT(ctx, query)
 	if err != nil || len(txts) == 0 {
 		// Not significant, include addresses as reason. Usually they are
 		// mapped to some predefined 'reasons' by BL.

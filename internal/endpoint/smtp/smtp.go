@@ -35,12 +35,17 @@ type Session struct {
 	endp *Endpoint
 
 	// Specific for this session.
+	// sessionCtx is not used for cancellation or timeouts, only for tracing.
+	sessionCtx       context.Context
 	cancelRDNS       func()
 	connState        module.ConnState
 	repeatedMailErrs int
 	loggedRcptErrors int
 
 	// Specific for the currently handled message.
+	// msgCtx is not used for cancellation or timeouts, only for tracing.
+	// It is the subcontext of sessionCtx.
+	msgCtx      context.Context
 	mailFrom    string
 	opts        smtp.MailOptions
 	msgMeta     *module.MsgMetadata
@@ -52,14 +57,14 @@ type Session struct {
 
 func (s *Session) Reset() {
 	if s.delivery != nil {
-		s.abort()
+		s.abort(s.msgCtx)
 	}
 	s.endp.Log.DebugMsg("reset")
 }
 
-func (s *Session) abort() {
+func (s *Session) abort(ctx context.Context) {
 	s.endp.semaphore.Release()
-	if err := s.delivery.Abort(); err != nil {
+	if err := s.delivery.Abort(ctx); err != nil {
 		s.endp.Log.Error("delivery abort failed", err)
 	}
 	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
@@ -69,9 +74,10 @@ func (s *Session) abort() {
 	s.msgMeta = nil
 	s.delivery = nil
 	s.deliveryErr = nil
+	s.msgCtx = nil
 }
 
-func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, error) {
+func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.MailOptions) (string, error) {
 	var err error
 	msgMeta := &module.MsgMetadata{
 		Conn:     &s.connState,
@@ -106,12 +112,12 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 	}
 	msgMeta.OriginalFrom = cleanFrom
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	limitersCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if err := s.endp.ratelimit.TakeContext(ctx); err != nil {
+	if err := s.endp.ratelimit.TakeContext(limitersCtx); err != nil {
 		return "", err
 	}
-	if err := s.endp.semaphore.TakeContext(ctx); err != nil {
+	if err := s.endp.semaphore.TakeContext(limitersCtx); err != nil {
 		return "", err
 	}
 
@@ -132,7 +138,7 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 		)
 	}
 
-	delivery, err := s.endp.pipeline.Start(msgMeta, cleanFrom)
+	delivery, err := s.endp.pipeline.Start(ctx, msgMeta, cleanFrom)
 	if err != nil {
 		return msgMeta.ID, err
 	}
@@ -140,13 +146,15 @@ func (s *Session) startDelivery(from string, opts smtp.MailOptions) (string, err
 	s.msgMeta = msgMeta
 	s.mailFrom = cleanFrom
 	s.delivery = delivery
+	s.msgCtx = s.sessionCtx // TODO: Trace annotations.
 
 	return msgMeta.ID, nil
 }
 
 func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 	if !s.endp.deferServerReject {
-		msgID, err := s.startDelivery(from, opts)
+		// Will initialize s.msgCtx.
+		msgID, err := s.startDelivery(s.sessionCtx, from, opts)
 		if err != nil {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
@@ -192,7 +200,8 @@ func (s *Session) Rcpt(to string) error {
 			return s.deliveryErr
 		}
 
-		msgID, err := s.startDelivery(s.mailFrom, s.opts)
+		// It will initialize s.msgCtx.
+		msgID, err := s.startDelivery(s.sessionCtx, s.mailFrom, s.opts)
 		if err != nil {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
@@ -202,7 +211,9 @@ func (s *Session) Rcpt(to string) error {
 		}
 	}
 
-	if err := s.rcpt(to); err != nil {
+	rcptCtx := s.msgCtx
+
+	if err := s.rcpt(rcptCtx, to); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
 			s.log.Error("RCPT error", err, "rcpt", to)
 			s.loggedRcptErrors++
@@ -216,7 +227,7 @@ func (s *Session) Rcpt(to string) error {
 	return nil
 }
 
-func (s *Session) rcpt(to string) error {
+func (s *Session) rcpt(ctx context.Context, to string) error {
 	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
 	// used.
 	if !address.IsASCII(to) && !s.opts.UTF8 {
@@ -235,12 +246,12 @@ func (s *Session) rcpt(to string) error {
 		}
 	}
 
-	return s.delivery.AddRcpt(cleanTo)
+	return s.delivery.AddRcpt(ctx, cleanTo)
 }
 
 func (s *Session) Logout() error {
 	if s.delivery != nil {
-		s.abort()
+		s.abort(s.msgCtx)
 
 		if s.repeatedMailErrs > s.endp.maxLoggedRcptErrors {
 			s.log.Msg("MAIL FROM repeated error a lot of times, possible dictonary attack", "count", s.repeatedMailErrs, "src_ip", s.connState.RemoteAddr)
@@ -252,7 +263,7 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
+func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Header, buffer.Buffer, error) {
 	bufr := bufio.NewReader(r)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
@@ -272,7 +283,7 @@ func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, err
 		return textproto.Header{}, nil, err
 	}
 
-	received, err := target.GenerateReceived(context.TODO(), s.msgMeta, s.endp.hostname, s.msgMeta.OriginalFrom)
+	received, err := target.GenerateReceived(ctx, s.msgMeta, s.endp.hostname, s.msgMeta.OriginalFrom)
 	if err != nil {
 		return textproto.Header{}, nil, err
 	}
@@ -282,21 +293,23 @@ func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, err
 }
 
 func (s *Session) Data(r io.Reader) error {
+	bodyCtx := s.msgCtx
+
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
-	header, buf, err := s.prepareBody(r)
+	header, buf, err := s.prepareBody(bodyCtx, r)
 	if err != nil {
 		return wrapErr(err)
 	}
 
-	if err := s.delivery.Body(header, buf); err != nil {
+	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
 		return wrapErr(err)
 	}
 
-	if err := s.delivery.Commit(); err != nil {
+	if err := s.delivery.Commit(bodyCtx); err != nil {
 		return wrapErr(err)
 	}
 
@@ -319,21 +332,23 @@ func (sw statusWrapper) SetStatus(rcpt string, err error) {
 }
 
 func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
+	bodyCtx := s.msgCtx
+
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
 	}
 
-	header, buf, err := s.prepareBody(r)
+	header, buf, err := s.prepareBody(bodyCtx, r)
 	if err != nil {
 		return wrapErr(err)
 	}
 
-	s.delivery.(module.PartialDelivery).BodyNonAtomic(statusWrapper{sc, s}, header, buf)
+	s.delivery.(module.PartialDelivery).BodyNonAtomic(bodyCtx, statusWrapper{sc, s}, header, buf)
 
 	// We can't really tell whether it is failed completely or succeeded
 	// so always commit. Should be harmless, anyway.
-	if err := s.delivery.Commit(); err != nil {
+	if err := s.delivery.Commit(bodyCtx); err != nil {
 		return wrapErr(err)
 	}
 
@@ -606,7 +621,7 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 	}
 
 	// Executed before authentication and session initialization.
-	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
+	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
 		return nil, endp.wrapErr("", true, err)
 	}
 
@@ -624,7 +639,7 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 	}
 
 	// Executed before authentication and session initialization.
-	if err := endp.pipeline.RunEarlyChecks(state); err != nil {
+	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
 		return nil, endp.wrapErr("", true, err)
 	}
 
@@ -640,6 +655,7 @@ func (endp *Endpoint) newSession(anonymous bool, username, password string, stat
 			AuthUser:        username,
 			AuthPassword:    password,
 		},
+		sessionCtx: context.Background(),
 	}
 
 	if endp.serv.LMTP {

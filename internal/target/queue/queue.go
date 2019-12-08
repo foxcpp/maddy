@@ -40,6 +40,7 @@ package queue
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -437,7 +438,10 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	msgMeta.ID = msgMeta.ID + "-" + strconv.Itoa(meta.TriesCount+1)
 	dl.Debugf("using message ID = %s", msgMeta.ID)
 
-	delivery, err := q.Target.Start(msgMeta, meta.From)
+	// TODO: Trace annotations?
+	msgCtx := context.Background()
+
+	delivery, err := q.Target.Start(msgCtx, msgMeta, meta.From)
 	if err != nil {
 		dl.Debugf("target.Start failed: %v", err)
 		perr.Failed = append(perr.Failed, meta.To...)
@@ -450,7 +454,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
-		if err := delivery.AddRcpt(rcpt); err != nil {
+		if err := delivery.AddRcpt(msgCtx, rcpt); err != nil {
 			if exterrors.IsTemporaryOrUnspec(err) {
 				perr.TemporaryFailed = append(perr.TemporaryFailed, rcpt)
 			} else {
@@ -466,7 +470,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 
 	if len(acceptedRcpts) == 0 {
 		dl.Debugf("delivery.Abort (no accepted receipients)")
-		if err := delivery.Abort(); err != nil {
+		if err := delivery.Abort(msgCtx); err != nil {
 			dl.Error("delivery.Abort failed", err)
 		}
 		return perr
@@ -486,9 +490,9 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	partDelivery, ok := delivery.(module.PartialDelivery)
 	if ok {
 		dl.Debugf("using delivery.BodyNonAtomic")
-		partDelivery.BodyNonAtomic(&perr, header, body)
+		partDelivery.BodyNonAtomic(msgCtx, &perr, header, body)
 	} else {
-		if err := delivery.Body(header, body); err != nil {
+		if err := delivery.Body(msgCtx, header, body); err != nil {
 			dl.Debugf("delivery.Body failed: %v", err)
 			expandToPartialErr(err)
 		}
@@ -504,13 +508,13 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	if allFailed {
 		// No recipients succeeded.
 		dl.Debugf("delivery.Abort (all recipients failed)")
-		if err := delivery.Abort(); err != nil {
+		if err := delivery.Abort(msgCtx); err != nil {
 			dl.Msg("delivery.Abort failed", err)
 		}
 		return perr
 	}
 
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(msgCtx); err != nil {
 		dl.Debugf("delivery.Commit failed: %v", err)
 		expandToPartialErr(err)
 	}
@@ -527,12 +531,12 @@ type queueDelivery struct {
 	body   buffer.Buffer
 }
 
-func (qd *queueDelivery) AddRcpt(rcptTo string) error {
+func (qd *queueDelivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	qd.meta.To = append(qd.meta.To, rcptTo)
 	return nil
 }
 
-func (qd *queueDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (qd *queueDelivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	// Body buffer initially passed to us may not be valid after "delivery" to queue completes.
 	// storeNewMessage returns a new buffer object created from message blob stored on disk.
 	storedBody, err := qd.q.storeNewMessage(qd.meta, header, body)
@@ -545,14 +549,14 @@ func (qd *queueDelivery) Body(header textproto.Header, body buffer.Buffer) error
 	return nil
 }
 
-func (qd *queueDelivery) Abort() error {
+func (qd *queueDelivery) Abort(ctx context.Context) error {
 	if qd.body != nil {
 		qd.q.removeFromDisk(qd.meta.MsgMeta)
 	}
 	return nil
 }
 
-func (qd *queueDelivery) Commit() error {
+func (qd *queueDelivery) Commit(ctx context.Context) error {
 	if qd.meta == nil {
 		panic("queue: double Commit")
 	}
@@ -568,7 +572,7 @@ func (qd *queueDelivery) Commit() error {
 	return nil
 }
 
-func (q *Queue) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (q *Queue) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	meta := &QueueMetadata{
 		MsgMeta:      msgMeta,
 		From:         mailFrom,
@@ -895,7 +899,10 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)
 
-	dsnDelivery, err := q.dsnPipeline.Start(dsnMeta, "")
+	// TODO: Trace annotations?
+	msgCtx := context.Background()
+
+	dsnDelivery, err := q.dsnPipeline.Start(msgCtx, dsnMeta, "")
 	if err != nil {
 		dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
 		return
@@ -903,19 +910,19 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header) {
 	defer func() {
 		if err != nil {
 			dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
-			if err := dsnDelivery.Abort(); err != nil {
+			if err := dsnDelivery.Abort(msgCtx); err != nil {
 				dl.Error("failed to abort DSN delivery", err, "dsn_id", dsnID)
 			}
 		}
 	}()
 
-	if err = dsnDelivery.AddRcpt(meta.From); err != nil {
+	if err = dsnDelivery.AddRcpt(msgCtx, meta.From); err != nil {
 		return
 	}
-	if err = dsnDelivery.Body(dsnHeader, dsnBody); err != nil {
+	if err = dsnDelivery.Body(msgCtx, dsnHeader, dsnBody); err != nil {
 		return
 	}
-	if err = dsnDelivery.Commit(); err != nil {
+	if err = dsnDelivery.Commit(msgCtx); err != nil {
 		return
 	}
 }

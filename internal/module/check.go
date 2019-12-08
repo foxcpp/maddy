@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-smtp"
@@ -17,7 +19,7 @@ type Check interface {
 	// This is used to deduplicate Check* calls, the easiest way to achieve
 	// this is to have CheckState as a pointer to some struct, all pointers
 	// are hashable.
-	CheckStateForMsg(msgMeta *MsgMetadata) (CheckState, error)
+	CheckStateForMsg(ctx context.Context, msgMeta *MsgMetadata) (CheckState, error)
 }
 
 // EarlyCheck is an optional module interface that can be implemented
@@ -30,7 +32,7 @@ type Check interface {
 // advanced handling is available (such as 'quarantine' action and headers
 // prepending).
 type EarlyCheck interface {
-	CheckConnection(*smtp.ConnectionState) error
+	CheckConnection(ctx context.Context, state *smtp.ConnectionState) error
 }
 
 type CheckState interface {
@@ -38,22 +40,22 @@ type CheckState interface {
 	//
 	// Result may be cached for the whole client connection so this function
 	// may not be called sometimes.
-	CheckConnection() CheckResult
+	CheckConnection(ctx context.Context) CheckResult
 
 	// CheckSender is executed once when client sends the message sender
 	// information (e.g. on the MAIL FROM command).
-	CheckSender(mailFrom string) CheckResult
+	CheckSender(ctx context.Context, mailFrom string) CheckResult
 
 	// CheckRcpt is executed for each recipient when its address is received
 	// from the client (e.g. on the RCPT TO command).
-	CheckRcpt(rcptTo string) CheckResult
+	CheckRcpt(ctx context.Context, rcptTo string) CheckResult
 
 	// CheckBody is executed once after the message body is received and
 	// buffered in memory or on disk.
 	//
 	// Check code should use passed mutex when working with the message header.
 	// Body can be read without locking it since it is read-only.
-	CheckBody(header textproto.Header, body buffer.Buffer) CheckResult
+	CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) CheckResult
 
 	// Close is called after the message processing ends, even if any of the
 	// Check* functions return an error.

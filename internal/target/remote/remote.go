@@ -184,7 +184,7 @@ type remoteDelivery struct {
 	connections map[string]*smtpconn.C
 }
 
-func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &remoteDelivery{
 		rt:          rt,
 		mailFrom:    mailFrom,
@@ -194,7 +194,7 @@ func (rt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.De
 	}, nil
 }
 
-func (rd *remoteDelivery) AddRcpt(to string) error {
+func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
 	if rd.msgMeta.Quarantine {
 		return &exterrors.SMTPError{
 			Code:         550,
@@ -227,7 +227,7 @@ func (rd *remoteDelivery) AddRcpt(to string) error {
 		}
 	}
 
-	conn, err := rd.connectionForDomain(domain)
+	conn, err := rd.connectionForDomain(ctx, domain)
 	if err != nil {
 		return err
 	}
@@ -378,11 +378,11 @@ func (m *multipleErrs) SetStatus(rcptTo string, err error) {
 	m.errs[rcptTo] = err
 }
 
-func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) error {
+func (rd *remoteDelivery) Body(ctx context.Context, header textproto.Header, buffer buffer.Buffer) error {
 	merr := multipleErrs{
 		errs: make(map[string]error),
 	}
-	rd.BodyNonAtomic(&merr, header, buffer)
+	rd.BodyNonAtomic(ctx, &merr, header, buffer)
 
 	for _, v := range merr.errs {
 		if v != nil {
@@ -395,7 +395,7 @@ func (rd *remoteDelivery) Body(header textproto.Header, buffer buffer.Buffer) er
 	return nil
 }
 
-func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textproto.Header, b buffer.Buffer) {
+func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, b buffer.Buffer) {
 	if rd.msgMeta.Quarantine {
 		for _, rcpt := range rd.recipients {
 			c.SetStatus(rcpt, &exterrors.SMTPError{
@@ -435,11 +435,11 @@ func (rd *remoteDelivery) BodyNonAtomic(c module.StatusCollector, header textpro
 	wg.Wait()
 }
 
-func (rd *remoteDelivery) Abort() error {
+func (rd *remoteDelivery) Abort(ctx context.Context) error {
 	return rd.Close()
 }
 
-func (rd *remoteDelivery) Commit() error {
+func (rd *remoteDelivery) Commit(ctx context.Context) error {
 	// It is not possible to implement it atomically, so users of remoteDelivery have to
 	// take care of partial failures.
 	return rd.Close()
@@ -453,14 +453,14 @@ func (rd *remoteDelivery) Close() error {
 	return nil
 }
 
-func (rd *remoteDelivery) connectionForDomain(domain string) (*smtpconn.C, error) {
+func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string) (*smtpconn.C, error) {
 	domain = strings.ToLower(domain)
 
 	if c, ok := rd.connections[domain]; ok {
 		return c, nil
 	}
 
-	authMXs, nonAuthMXs, requireTLS, err := rd.lookupAndFilter(domain)
+	authMXs, nonAuthMXs, requireTLS, err := rd.lookupAndFilter(ctx, domain)
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +567,7 @@ func (rt *Target) stsCacheUpdater() {
 	}
 }
 
-func (rd *remoteDelivery) lookupAndFilter(domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
+func (rd *remoteDelivery) lookupAndFilter(ctx context.Context, domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
 	var policy *mtasts.Policy
 	if _, use := rd.rt.mxAuth[AuthMTASTS]; use {
 		policy, err = rd.rt.getSTSPolicy(domain)
@@ -584,7 +584,7 @@ func (rd *remoteDelivery) lookupAndFilter(domain string) (authMXs, nonAuthMXs []
 		}
 	}
 
-	dnssecOk, mxs, err := rd.lookupMX(domain)
+	dnssecOk, mxs, err := rd.lookupMX(ctx, domain)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -674,7 +674,7 @@ func commonDomainCheck(domain string, mx string) bool {
 	return domainPart == mxPart
 }
 
-func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net.MX, err error) {
+func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk bool, records []*net.MX, err error) {
 	if _, use := rd.rt.mxAuth[AuthDNSSEC]; use {
 		if rd.rt.extResolver == nil {
 			return false, nil, errors.New("remote: can't do DNSSEC verification without security-aware resolver")
@@ -698,7 +698,7 @@ func (rd *remoteDelivery) lookupMX(domain string) (dnssecOk bool, records []*net
 		return ad, records, nil
 	}
 
-	records, err = rd.rt.resolver.LookupMX(context.Background(), domain)
+	records, err = rd.rt.resolver.LookupMX(ctx, domain)
 	if err != nil {
 		code := 554
 		enchCode := exterrors.EnhancedCode{5, 4, 4}

@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -67,7 +68,7 @@ type testTargetDeliveryPartial struct {
 	testTargetDelivery
 }
 
-func (dt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (dt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	if dt.PartialBodyErr != nil {
 		return &testTargetDeliveryPartial{
 			testTargetDelivery: testTargetDelivery{
@@ -82,7 +83,7 @@ func (dt *Target) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.De
 	}, dt.StartErr
 }
 
-func (dtd *testTargetDelivery) AddRcpt(to string) error {
+func (dtd *testTargetDelivery) AddRcpt(ctx context.Context, to string) error {
 	if dtd.tgt.RcptErr != nil {
 		if err := dtd.tgt.RcptErr[to]; err != nil {
 			return err
@@ -93,7 +94,7 @@ func (dtd *testTargetDelivery) AddRcpt(to string) error {
 	return nil
 }
 
-func (dtd *testTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, header textproto.Header, buf buffer.Buffer) {
+func (dtd *testTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, buf buffer.Buffer) {
 	if dtd.tgt.PartialBodyErr != nil {
 		for rcpt, err := range dtd.tgt.PartialBodyErr {
 			c.SetStatus(rcpt, err)
@@ -120,7 +121,7 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, he
 	}
 }
 
-func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) error {
+func (dtd *testTargetDelivery) Body(ctx context.Context, header textproto.Header, buf buffer.Buffer) error {
 	if dtd.tgt.PartialBodyErr != nil {
 		return errors.New("partial failure occurred, no additional information available")
 	}
@@ -146,11 +147,11 @@ func (dtd *testTargetDelivery) Body(header textproto.Header, buf buffer.Buffer) 
 	return err
 }
 
-func (dtd *testTargetDelivery) Abort() error {
+func (dtd *testTargetDelivery) Abort(ctx context.Context) error {
 	return dtd.tgt.AbortErr
 }
 
-func (dtd *testTargetDelivery) Commit() error {
+func (dtd *testTargetDelivery) Commit(ctx context.Context) error {
 	if dtd.tgt.CommitErr != nil {
 		return dtd.tgt.CommitErr
 	}
@@ -183,6 +184,8 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
+	testCtx := context.Background()
+
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	msgMeta := module.MsgMetadata{
 		DontTraceSender: true,
@@ -190,7 +193,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 		OriginalFrom:    from,
 	}
 	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(&msgMeta, from)
+	delivery, err := tgt.Start(testCtx, &msgMeta, from)
 	if err != nil {
 		t.Log("-- ... tgt.Start", from, err, exterrors.Fields(err))
 		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
@@ -198,10 +201,10 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
-		if err := delivery.AddRcpt(rcpt); err != nil {
+		if err := delivery.AddRcpt(testCtx, rcpt); err != nil {
 			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
 			t.Log("-- delivery.Abort")
-			if err := delivery.Abort(); err != nil {
+			if err := delivery.Abort(testCtx); err != nil {
 				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
 			}
 			t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
@@ -212,9 +215,9 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	delivery.(module.PartialDelivery).BodyNonAtomic(c, hdr, body)
+	delivery.(module.PartialDelivery).BodyNonAtomic(testCtx, c, hdr, body)
 	t.Log("-- delivery.Commit")
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(testCtx); err != nil {
 		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
 	}
 
@@ -235,22 +238,23 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
+	testCtx := context.Background()
 
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
 	msgMeta.DontTraceSender = true
 	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
-	delivery, err := tgt.Start(msgMeta, from)
+	delivery, err := tgt.Start(testCtx, msgMeta, from)
 	if err != nil {
 		t.Log("-- ... tgt.Start", from, err, exterrors.Fields(err))
 		return encodedID, err
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
-		if err := delivery.AddRcpt(rcpt); err != nil {
+		if err := delivery.AddRcpt(testCtx, rcpt); err != nil {
 			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
 			t.Log("-- delivery.Abort")
-			if err := delivery.Abort(); err != nil {
+			if err := delivery.Abort(testCtx); err != nil {
 				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
 			}
 			return encodedID, err
@@ -260,16 +264,16 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	if err := delivery.Body(hdr, body); err != nil {
+	if err := delivery.Body(testCtx, hdr, body); err != nil {
 		t.Log("-- ... delivery.Body", err, exterrors.Fields(err))
 		t.Log("-- delivery.Abort")
-		if err := delivery.Abort(); err != nil {
+		if err := delivery.Abort(testCtx); err != nil {
 			t.Log("-- ... delivery.Abort:", err, exterrors.Fields(err))
 		}
 		return encodedID, err
 	}
 	t.Log("-- delivery.Commit")
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(testCtx); err != nil {
 		t.Log("-- ... delivery.Commit", err, exterrors.Fields(err))
 		return encodedID, err
 	}

@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"math/rand"
@@ -166,16 +167,16 @@ func TestRemoteDelivery_Abort(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -203,17 +204,17 @@ func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
 	// Currently it does nothing, probably it should fail.
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -247,15 +248,15 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -280,16 +281,16 @@ func TestRemoteDelivery_NoMX(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err == nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err == nil {
 		t.Fatal("Expected an error, got none")
 	}
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -317,15 +318,15 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	testutils.CheckSMTPErr(t, err, 556, exterrors.EnhancedCode{5, 1, 10}, "Domain does not accept email (null MX)")
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -355,12 +356,12 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 
 	meta := module.MsgMetadata{ID: "test..."}
 
-	delivery, err := tgt.Start(&meta, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &meta, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -370,11 +371,11 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
-	if err := delivery.Body(textproto.Header{}, body); err == nil {
+	if err := delivery.Body(context.Background(), textproto.Header{}, body); err == nil {
 		t.Fatal("Expected an error, got none")
 	}
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -408,18 +409,18 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
-	err = delivery.AddRcpt("test2@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test2@example.invalid")
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -455,17 +456,17 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
 
 	// It should be possible to, however, add another recipient and continue
 	// delivery as if nothing happened.
-	if err := delivery.AddRcpt("test2@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test2@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -473,11 +474,11 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
-	if err := delivery.Body(hdr, body); err != nil {
+	if err := delivery.Body(context.Background(), hdr, body); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -627,19 +628,19 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
 
 	// It should be possible to, however, add another recipient and continue
 	// delivery as if nothing happened.
-	if err := delivery.AddRcpt("test@example2.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example2.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -647,11 +648,11 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
-	if err := delivery.Body(hdr, body); err != nil {
+	if err := delivery.Body(context.Background(), hdr, body); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -687,12 +688,12 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = delivery.AddRcpt("test@example.invalid")
+	err = delivery.AddRcpt(context.Background(), "test@example.invalid")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,11 +702,11 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
-	if err := delivery.Body(hdr, body); err == nil {
+	if err := delivery.Body(context.Background(), hdr, body); err == nil {
 		t.Fatal("expected an error, got none")
 	}
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -748,15 +749,15 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
-	if err := delivery.AddRcpt("test@example2.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example2.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -764,11 +765,11 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
-	err = delivery.Body(hdr, body)
+	err = delivery.Body(context.Background(), hdr, body)
 	testutils.CheckSMTPErr(t, err, 451, exterrors.EnhancedCode{4, 0, 0},
 		"Partial delivery failure, additional attempts may result in duplicates")
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -811,18 +812,18 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	delivery, err := tgt.Start(&module.MsgMetadata{ID: "test..."}, "test@example.com")
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := delivery.AddRcpt("test@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
-	if err := delivery.AddRcpt("test2@example.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test2@example.invalid"); err != nil {
 		t.Fatal(err)
 	}
-	if err := delivery.AddRcpt("test@example2.invalid"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "test@example2.invalid"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -833,7 +834,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	c := multipleErrs{
 		errs: map[string]error{},
 	}
-	delivery.(module.PartialDelivery).BodyNonAtomic(&c, hdr, body)
+	delivery.(module.PartialDelivery).BodyNonAtomic(context.Background(), &c, hdr, body)
 
 	testutils.CheckSMTPErr(t, c.errs["test@example.invalid"],
 		550, exterrors.EnhancedCode{5, 1, 2}, "mx.example.invalid. said: Hey")
@@ -843,7 +844,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		t.Errorf("Unexpected error for non-failing connection: %v", err)
 	}
 
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }

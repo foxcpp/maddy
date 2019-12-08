@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"context"
 	"net"
 	"strings"
 
@@ -82,7 +81,7 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 		}
 	}
 
-	srcMx, err := ctx.Resolver.LookupMX(context.Background(), domain)
+	srcMx, err := ctx.Resolver.LookupMX(ctx, domain)
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
@@ -158,7 +157,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	srcIPs, err := ctx.Resolver.LookupIPAddr(context.Background(), ehlo)
+	srcIPs, err := ctx.Resolver.LookupIPAddr(ctx, ehlo)
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{

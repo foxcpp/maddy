@@ -62,7 +62,7 @@ func (v *Verifier) Close() error {
 // performed asynchronously to improve performance.
 //
 // If panic occurs in the lookup goroutine - call to Apply will panic.
-func (v *Verifier) FetchRecord(header textproto.Header) {
+func (v *Verifier) FetchRecord(ctx context.Context, header textproto.Header) {
 	fromDomain, err := ExtractFromDomain(header)
 	if err != nil {
 		v.fetchCh <- verifyData{
@@ -71,8 +71,7 @@ func (v *Verifier) FetchRecord(header textproto.Header) {
 		return
 	}
 
-	var ctx context.Context
-	ctx, v.fetchCancel = context.WithCancel(context.Background())
+	ctx, v.fetchCancel = context.WithCancel(ctx)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -82,7 +81,7 @@ func (v *Verifier) FetchRecord(header textproto.Header) {
 			}
 		}()
 
-		policyDomain, record, err := FetchRecord(v.resolver, ctx, fromDomain)
+		policyDomain, record, err := FetchRecord(ctx, v.resolver, fromDomain)
 		v.fetchCh <- verifyData{
 			policyDomain: policyDomain,
 			fromDomain:   fromDomain,

@@ -8,6 +8,7 @@
 package sql
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -62,7 +63,7 @@ type delivery struct {
 	addedRcpts map[string]struct{}
 }
 
-func (d *delivery) AddRcpt(rcptTo string) error {
+func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	accountName, err := prepareUsername(rcptTo)
 	if err != nil {
 		return &exterrors.SMTPError{
@@ -102,7 +103,7 @@ func (d *delivery) AddRcpt(rcptTo string) error {
 	return nil
 }
 
-func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
 			return err
@@ -114,15 +115,15 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 	return d.d.BodyParsed(header, body.Len(), body)
 }
 
-func (d *delivery) Abort() error {
+func (d *delivery) Abort(ctx context.Context) error {
 	return d.d.Abort()
 }
 
-func (d *delivery) Commit() error {
+func (d *delivery) Commit(ctx context.Context) error {
 	return d.d.Commit()
 }
 
-func (store *Storage) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	return &delivery{
 		store:      store,
 		msgMeta:    msgMeta,

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -92,7 +93,7 @@ type unreliableTargetDeliveryPartial struct {
 	*unreliableTargetDelivery
 }
 
-func (utd *unreliableTargetDelivery) AddRcpt(rcptTo string) error {
+func (utd *unreliableTargetDelivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	if len(utd.ut.rcptFailures) > utd.ut.passedMessages {
 		rcptErrs := utd.ut.rcptFailures[utd.ut.passedMessages]
 		if err := rcptErrs[rcptTo]; err != nil {
@@ -104,7 +105,7 @@ func (utd *unreliableTargetDelivery) AddRcpt(rcptTo string) error {
 	return nil
 }
 
-func (utd *unreliableTargetDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (utd *unreliableTargetDelivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	if utd.ut.bodyFailuresPartial != nil {
 		return errors.New("partial failure occurred, no additional information available")
 	}
@@ -119,7 +120,7 @@ func (utd *unreliableTargetDelivery) Body(header textproto.Header, body buffer.B
 	return nil
 }
 
-func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	r, _ := body.Open()
 	utd.msg.Body, _ = ioutil.ReadAll(r)
 
@@ -130,7 +131,7 @@ func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(c module.StatusCollect
 	}
 }
 
-func (utd *unreliableTargetDelivery) Abort() error {
+func (utd *unreliableTargetDelivery) Abort(ctx context.Context) error {
 	utd.ut.passedMessages++
 	if utd.ut.aborted != nil {
 		utd.ut.aborted <- utd.msg
@@ -138,7 +139,7 @@ func (utd *unreliableTargetDelivery) Abort() error {
 	return nil
 }
 
-func (utd *unreliableTargetDelivery) Commit() error {
+func (utd *unreliableTargetDelivery) Commit(ctx context.Context) error {
 	utd.ut.passedMessages++
 	if utd.ut.committed != nil {
 		utd.ut.committed <- utd.msg
@@ -146,7 +147,7 @@ func (utd *unreliableTargetDelivery) Commit() error {
 	return nil
 }
 
-func (ut *unreliableTarget) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (ut *unreliableTarget) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	if ut.bodyFailuresPartial != nil {
 		return &unreliableTargetDeliveryPartial{
 			&unreliableTargetDelivery{
@@ -599,19 +600,19 @@ func TestQueueDelivery_AbortNoDangling(t *testing.T) {
 		DontTraceSender: true,
 		ID:              encodedID,
 	}
-	delivery, err := q.Start(&ctx, "test3@example.org")
+	delivery, err := q.Start(context.Background(), &ctx, "test3@example.org")
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
-	if err := delivery.Body(textproto.Header{}, body); err != nil {
+	if err := delivery.Body(context.Background(), textproto.Header{}, body); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
-	if err := delivery.Abort(); err != nil {
+	if err := delivery.Abort(context.Background()); err != nil {
 		t.Fatalf("unexpected Abort err: %v", err)
 	}
 
@@ -779,19 +780,19 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 		},
 		ID: encodedID,
 	}
-	delivery, err := q.Start(&ctx, "test3@example.org")
+	delivery, err := q.Start(context.Background(), &ctx, "test3@example.org")
 	if err != nil {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
-	if err := delivery.Body(textproto.Header{}, body); err != nil {
+	if err := delivery.Body(context.Background(), textproto.Header{}, body); err != nil {
 		t.Fatalf("unexpected Body err: %v", err)
 	}
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		t.Fatalf("unexpected Commit err: %v", err)
 	}
 

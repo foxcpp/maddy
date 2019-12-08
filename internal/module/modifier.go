@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 )
@@ -24,7 +26,7 @@ import (
 type Modifier interface {
 	// ModStateForMsg initializes modifier "internal" state
 	// required for processing of the message.
-	ModStateForMsg(msgMeta *MsgMetadata) (ModifierState, error)
+	ModStateForMsg(ctx context.Context, msgMeta *MsgMetadata) (ModifierState, error)
 }
 
 type ModifierState interface {
@@ -38,7 +40,7 @@ type ModifierState interface {
 	//
 	// Also note that MsgMeta.OriginalFrom will still contain the original value
 	// for purposes of tracing. It should not be modified by this method.
-	RewriteSender(mailFrom string) (string, error)
+	RewriteSender(ctx context.Context, mailFrom string) (string, error)
 
 	// RewriteRcpt replaces RCPT TO value.
 	// If no changed are required, this method returns its argument, otherwise
@@ -46,14 +48,14 @@ type ModifierState interface {
 	//
 	// MsgPipeline will take of populating MsgMeta.OriginalRcpts. RewriteRcpt
 	// doesn't do it.
-	RewriteRcpt(rcptTo string) (string, error)
+	RewriteRcpt(ctx context.Context, rcptTo string) (string, error)
 
 	// RewriteBody modifies passed Header argument and may optionally
 	// inspect the passed body buffer to make a decision on new header field values.
 	//
 	// There is no way to modify the body and RewriteBody should avoid
 	// removing existing header fields and changing their values.
-	RewriteBody(h *textproto.Header, body buffer.Buffer) error
+	RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error
 
 	// Close is called after the message processing ends, even if any of the
 	// Rewrite* functions return an error.

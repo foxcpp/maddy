@@ -2,6 +2,7 @@ package modify
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -245,15 +246,15 @@ type state struct {
 	m *Modifier
 }
 
-func (m *Modifier) ModStateForMsg(msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (m *Modifier) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	return state{m: m}, nil
 }
 
-func (state) RewriteSender(from string) (string, error) {
+func (state) RewriteSender(ctx context.Context, from string) (string, error) {
 	return from, nil
 }
 
-func (s state) RewriteRcpt(rcptTo string) (string, error) {
+func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	// The existing map is never modified, instead it is replaced with a new
 	// one if reload is performed.
 	s.m.aliasesLck.RLock()
@@ -294,7 +295,7 @@ func (s state) RewriteRcpt(rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (state) RewriteBody(hdr *textproto.Header, body buffer.Buffer) error {
+func (state) RewriteBody(ctx context.Context, hdr *textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 

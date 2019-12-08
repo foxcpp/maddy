@@ -1,6 +1,7 @@
 package dnsbl
 
 import (
+	"context"
 	"errors"
 	"net"
 	"strings"
@@ -165,7 +166,7 @@ func (bl *DNSBL) testList(listCfg List) {
 
 	// 1. IPv4-based DNSxLs MUST contain an entry for 127.0.0.2 for testing purposes.
 	if listCfg.ClientIPv4 {
-		err := checkIP(bl.resolver, listCfg, net.IPv4(127, 0, 0, 2))
+		err := checkIP(context.Background(), bl.resolver, listCfg, net.IPv4(127, 0, 0, 2))
 		if err == nil {
 			bl.log.Msg("List does not contain a test record for 127.0.0.2", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
@@ -174,7 +175,7 @@ func (bl *DNSBL) testList(listCfg List) {
 		}
 
 		// 2. IPv4-based DNSxLs MUST NOT contain an entry for 127.0.0.1.
-		err = checkIP(bl.resolver, listCfg, net.IPv4(127, 0, 0, 1))
+		err = checkIP(context.Background(), bl.resolver, listCfg, net.IPv4(127, 0, 0, 1))
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
@@ -189,7 +190,7 @@ func (bl *DNSBL) testList(listCfg List) {
 		// 1. IPv6-based DNSxLs MUST contain an entry for ::FFFF:7F00:2
 		mustIP := net.ParseIP("::FFFF:7F00:2")
 
-		err := checkIP(bl.resolver, listCfg, mustIP)
+		err := checkIP(context.Background(), bl.resolver, listCfg, mustIP)
 		if err == nil {
 			bl.log.Msg("List does not contain a test record for ::FFFF:7F00:2", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
@@ -199,7 +200,7 @@ func (bl *DNSBL) testList(listCfg List) {
 
 		// 2. IPv4-based DNSxLs MUST NOT contain an entry for 127.0.0.1.
 		mustNotIP := net.ParseIP("::FFFF:7F00:1")
-		err = checkIP(bl.resolver, listCfg, mustNotIP)
+		err = checkIP(context.Background(), bl.resolver, listCfg, mustNotIP)
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
@@ -213,7 +214,7 @@ func (bl *DNSBL) testList(listCfg List) {
 	if listCfg.EHLO || listCfg.MAILFROM {
 		// Domain-name-based DNSxLs MUST contain an entry for the reserved
 		// domain name "TEST".
-		err := checkDomain(bl.resolver, listCfg, "test")
+		err := checkDomain(context.Background(), bl.resolver, listCfg, "test")
 		if err == nil {
 			bl.log.Msg("List does not contain a test record for 'test' TLD", "list", listCfg.Zone)
 		} else if _, ok := err.(ListedErr); !ok {
@@ -223,7 +224,7 @@ func (bl *DNSBL) testList(listCfg List) {
 
 		// ... and MUST NOT contain an entry for the reserved domain name
 		// "INVALID".
-		err = checkDomain(bl.resolver, listCfg, "invalid")
+		err = checkDomain(context.Background(), bl.resolver, listCfg, "invalid")
 		if err != nil {
 			_, ok := err.(ListedErr)
 			if !ok {
@@ -235,9 +236,9 @@ func (bl *DNSBL) testList(listCfg List) {
 	}
 }
 
-func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
+func (bl *DNSBL) checkList(ctx context.Context, list List, ip net.IP, ehlo, mailFrom string) error {
 	if list.ClientIPv4 || list.ClientIPv6 {
-		if err := checkIP(bl.resolver, list, ip); err != nil {
+		if err := checkIP(ctx, bl.resolver, list, ip); err != nil {
 			return err
 		}
 	}
@@ -248,7 +249,7 @@ func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
 			return nil
 		}
 
-		if err := checkDomain(bl.resolver, list, ehlo); err != nil {
+		if err := checkDomain(ctx, bl.resolver, list, ehlo); err != nil {
 			return err
 		}
 	}
@@ -266,7 +267,7 @@ func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
 			return nil
 		}
 
-		if err := checkDomain(bl.resolver, list, domain); err != nil {
+		if err := checkDomain(ctx, bl.resolver, list, domain); err != nil {
 			return err
 		}
 	}
@@ -274,13 +275,13 @@ func (bl *DNSBL) checkList(list List, ip net.IP, ehlo, mailFrom string) error {
 	return nil
 }
 
-func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
+func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom string) error {
 	eg := errgroup.Group{}
 
 	for _, list := range bl.bls {
 		list := list
 		eg.Go(func() error {
-			return bl.checkList(list, ip, ehlo, mailFrom)
+			return bl.checkList(ctx, list, ip, ehlo, mailFrom)
 		})
 	}
 
@@ -301,7 +302,7 @@ func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
 	for _, list := range bl.wls {
 		list := list
 		eg.Go(func() error {
-			return bl.checkList(list, ip, ehlo, mailFrom)
+			return bl.checkList(ctx, list, ip, ehlo, mailFrom)
 		})
 	}
 
@@ -317,7 +318,7 @@ func (bl *DNSBL) checkLists(ip net.IP, ehlo, mailFrom string) error {
 }
 
 // CheckConnection implements module.EarlyCheck.
-func (bl *DNSBL) CheckConnection(state *smtp.ConnectionState) error {
+func (bl *DNSBL) CheckConnection(ctx context.Context, state *smtp.ConnectionState) error {
 	if !bl.checkEarly {
 		return nil
 	}
@@ -330,7 +331,7 @@ func (bl *DNSBL) CheckConnection(state *smtp.ConnectionState) error {
 		return nil
 	}
 
-	if err := bl.checkLists(ip.IP, state.Hostname, ""); err != nil {
+	if err := bl.checkLists(ctx, ip.IP, state.Hostname, ""); err != nil {
 		return exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"})
 	}
 
@@ -343,7 +344,7 @@ type state struct {
 	log     log.Logger
 }
 
-func (bl *DNSBL) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (bl *DNSBL) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &state{
 		bl:      bl,
 		msgMeta: msgMeta,
@@ -351,7 +352,7 @@ func (bl *DNSBL) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckStat
 	}, nil
 }
 
-func (s *state) CheckConnection() module.CheckResult {
+func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.bl.checkEarly {
 		// Already checked before.
 		return module.CheckResult{}
@@ -368,7 +369,7 @@ func (s *state) CheckConnection() module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	if err := s.bl.checkLists(ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom); err != nil {
+	if err := s.bl.checkLists(ctx, ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom); err != nil {
 		// TODO: Support per-list actions?
 		return s.bl.listedAction.Apply(module.CheckResult{
 			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"}),
@@ -380,15 +381,15 @@ func (s *state) CheckConnection() module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (*state) CheckSender(string) module.CheckResult {
+func (*state) CheckSender(context.Context, string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (*state) CheckRcpt(string) module.CheckResult {
+func (*state) CheckRcpt(context.Context, string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (*state) CheckBody(textproto.Header, buffer.Buffer) module.CheckResult {
+func (*state) CheckBody(context.Context, textproto.Header, buffer.Buffer) module.CheckResult {
 	return module.CheckResult{}
 }
 

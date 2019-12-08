@@ -2,6 +2,7 @@ package dkim
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	nettextproto "net/textproto"
@@ -82,19 +83,19 @@ type dkimCheckState struct {
 	log     log.Logger
 }
 
-func (d *dkimCheckState) CheckConnection() module.CheckResult {
+func (d *dkimCheckState) CheckConnection(ctx context.Context) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (d *dkimCheckState) CheckSender(mailFrom string) module.CheckResult {
+func (d *dkimCheckState) CheckSender(ctx context.Context, mailFrom string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (d *dkimCheckState) CheckRcpt(rcptTo string) module.CheckResult {
+func (d *dkimCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (d *dkimCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if !header.Has("DKIM-Signature") {
 		if d.c.noSigAction.Reject || d.c.noSigAction.Quarantine {
 			d.log.Printf("no signatures present")
@@ -236,7 +237,7 @@ func (d *dkimCheckState) Close() error {
 	return nil
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &dkimCheckState{
 		c:       c,
 		msgMeta: msgMeta,

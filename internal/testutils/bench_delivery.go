@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"io/ioutil"
@@ -92,10 +93,12 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, recipientTemplates []string) {
 	meta, header, body := RandomMsg(b)
 
+	benchCtx := context.Background()
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		delivery, err := target.Start(&meta, sender)
+		delivery, err := target.Start(benchCtx, &meta, sender)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -103,16 +106,16 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 		for i, rcptTemplate := range recipientTemplates {
 			rcpt := strings.Replace(rcptTemplate, "X", strconv.Itoa(i), -1)
 
-			if err := delivery.AddRcpt(rcpt); err != nil {
+			if err := delivery.AddRcpt(benchCtx, rcpt); err != nil {
 				b.Fatal(err)
 			}
 		}
 
-		if err := delivery.Body(header, body); err != nil {
+		if err := delivery.Body(benchCtx, header, body); err != nil {
 			b.Fatal(err)
 		}
 
-		if err := delivery.Commit(); err != nil {
+		if err := delivery.Commit(benchCtx); err != nil {
 			b.Fatal(err)
 		}
 	}

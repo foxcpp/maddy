@@ -1,6 +1,7 @@
 package dnsbl
 
 import (
+	"context"
 	"net"
 	"reflect"
 	"testing"
@@ -32,7 +33,7 @@ func TestCheckDomain(t *testing.T) {
 	test := func(zones map[string]mockdns.Zone, cfg List, domain string, expectedErr error) {
 		t.Helper()
 		resolver := mockdns.Resolver{Zones: zones}
-		err := checkDomain(&resolver, cfg, domain)
+		err := checkDomain(context.Background(), &resolver, cfg, domain)
 		if !reflect.DeepEqual(err, expectedErr) {
 			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
 		}
@@ -101,7 +102,7 @@ func TestCheckIP(t *testing.T) {
 	test := func(zones map[string]mockdns.Zone, cfg List, ip net.IP, expectedErr error) {
 		t.Helper()
 		resolver := mockdns.Resolver{Zones: zones}
-		err := checkIP(&resolver, cfg, ip)
+		err := checkIP(context.Background(), &resolver, cfg, ip)
 		if !reflect.DeepEqual(err, expectedErr) {
 			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
 		}

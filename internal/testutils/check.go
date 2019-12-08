@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/buffer"
@@ -26,7 +28,7 @@ type Check struct {
 	InstName string
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	if c.InitErr != nil {
 		return nil, c.InitErr
 	}
@@ -50,7 +52,7 @@ func (c *Check) InstanceName() string {
 	return "test_check"
 }
 
-func (c *Check) CheckConnection(*smtp.ConnectionState) error {
+func (c *Check) CheckConnection(ctx context.Context, state *smtp.ConnectionState) error {
 	return c.EarlyErr
 }
 
@@ -59,22 +61,22 @@ type checkState struct {
 	check   *Check
 }
 
-func (cs *checkState) CheckConnection() module.CheckResult {
+func (cs *checkState) CheckConnection(ctx context.Context) module.CheckResult {
 	cs.check.ConnCalls++
 	return cs.check.ConnRes
 }
 
-func (cs *checkState) CheckSender(from string) module.CheckResult {
+func (cs *checkState) CheckSender(ctx context.Context, from string) module.CheckResult {
 	cs.check.SenderCalls++
 	return cs.check.SenderRes
 }
 
-func (cs *checkState) CheckRcpt(to string) module.CheckResult {
+func (cs *checkState) CheckRcpt(ctx context.Context, to string) module.CheckResult {
 	cs.check.RcptCalls++
 	return cs.check.RcptRes
 }
 
-func (cs *checkState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (cs *checkState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
 	cs.check.BodyCalls++
 	return cs.check.BodyRes
 }

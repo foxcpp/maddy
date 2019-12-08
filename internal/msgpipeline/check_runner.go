@@ -1,6 +1,7 @@
 package msgpipeline
 
 import (
+	"context"
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
@@ -46,7 +47,7 @@ func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger, r dns.Resolver)
 	}
 }
 
-func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, error) {
+func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) ([]module.CheckState, error) {
 	states := make([]module.CheckState, 0, len(checks))
 	newStates := make([]module.CheckState, 0, len(checks))
 	newStatesMap := make(map[module.Check]module.CheckState, len(checks))
@@ -64,7 +65,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 		}
 
 		cr.log.Debugf("initializing state for %v (%p)", objectName(check), check)
-		state, err := check.CheckStateForMsg(cr.msgMeta)
+		state, err := check.CheckStateForMsg(ctx, cr.msgMeta)
 		if err != nil {
 			closeStates()
 			return nil, err
@@ -85,7 +86,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 	// checks in parallel.
 	if cr.mailFrom != "" {
 		err := cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
-			res := s.CheckConnection()
+			res := s.CheckConnection(ctx)
 			return res
 		})
 		if err != nil {
@@ -93,7 +94,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 			return nil, err
 		}
 		err = cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
-			res := s.CheckSender(cr.mailFrom)
+			res := s.CheckSender(ctx, cr.mailFrom)
 			return res
 		})
 		if err != nil {
@@ -119,7 +120,7 @@ func (cr *checkRunner) checkStates(checks []module.Check) ([]module.CheckState, 
 				cr.checkedRcptsPerCheck[s][rcpt] = struct{}{}
 				cr.checkedRcptsLock.Unlock()
 
-				res := s.CheckRcpt(rcpt)
+				res := s.CheckRcpt(ctx, rcpt)
 				return res
 			})
 			if err != nil {
@@ -207,16 +208,16 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 	return nil
 }
 
-func (cr *checkRunner) checkConnSender(checks []module.Check, mailFrom string) error {
+func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Check, mailFrom string) error {
 	cr.mailFrom = mailFrom
 
 	// checkStates will run CheckConnection and CheckSender.
-	_, err := cr.checkStates(checks)
+	_, err := cr.checkStates(ctx, checks)
 	return err
 }
 
-func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
-	states, err := cr.checkStates(checks)
+func (cr *checkRunner) checkRcpt(ctx context.Context, checks []module.Check, rcptTo string) error {
+	states, err := cr.checkStates(ctx, checks)
 	if err != nil {
 		return err
 	}
@@ -233,7 +234,7 @@ func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
 		cr.checkedRcptsPerCheck[s][rcptTo] = struct{}{}
 		cr.checkedRcptsLock.Unlock()
 
-		res := s.CheckRcpt(rcptTo)
+		res := s.CheckRcpt(ctx, rcptTo)
 		return res
 	})
 
@@ -241,19 +242,19 @@ func (cr *checkRunner) checkRcpt(checks []module.Check, rcptTo string) error {
 	return err
 }
 
-func (cr *checkRunner) checkBody(checks []module.Check, header textproto.Header, body buffer.Buffer) error {
-	states, err := cr.checkStates(checks)
+func (cr *checkRunner) checkBody(ctx context.Context, checks []module.Check, header textproto.Header, body buffer.Buffer) error {
+	states, err := cr.checkStates(ctx, checks)
 	if err != nil {
 		return err
 	}
 
 	if cr.doDMARC && !cr.didDMARCFetch {
-		cr.dmarcVerify.FetchRecord(header)
+		cr.dmarcVerify.FetchRecord(ctx, header)
 		cr.didDMARCFetch = true
 	}
 
 	return cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
-		res := s.CheckBody(header, body)
+		res := s.CheckBody(ctx, header, body)
 		return res
 	})
 }

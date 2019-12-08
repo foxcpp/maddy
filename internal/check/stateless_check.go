@@ -1,6 +1,7 @@
 package check
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/emersion/go-message/textproto"
@@ -14,6 +15,10 @@ import (
 
 type (
 	StatelessCheckContext struct {
+		// Embedded context.Context value, used for tracing, cancellation and
+		// timeouts.
+		context.Context
+
 		// Resolver that should be used by the check for DNS queries.
 		Resolver dns.Resolver
 
@@ -52,7 +57,7 @@ type statelessCheckState struct {
 	msgMeta *module.MsgMetadata
 }
 
-func (s *statelessCheckState) CheckConnection() module.CheckResult {
+func (s *statelessCheckState) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.c.connCheck == nil {
 		return module.CheckResult{}
 	}
@@ -65,7 +70,7 @@ func (s *statelessCheckState) CheckConnection() module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s *statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
+func (s *statelessCheckState) CheckSender(ctx context.Context, mailFrom string) module.CheckResult {
 	if s.c.senderCheck == nil {
 		return module.CheckResult{}
 	}
@@ -78,7 +83,7 @@ func (s *statelessCheckState) CheckSender(mailFrom string) module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s *statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
+func (s *statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult {
 	if s.c.rcptCheck == nil {
 		return module.CheckResult{}
 	}
@@ -91,7 +96,7 @@ func (s *statelessCheckState) CheckRcpt(rcptTo string) module.CheckResult {
 	return s.c.failAction.Apply(originalRes)
 }
 
-func (s *statelessCheckState) CheckBody(header textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s *statelessCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
 	if s.c.bodyCheck == nil {
 		return module.CheckResult{}
 	}
@@ -108,10 +113,10 @@ func (s *statelessCheckState) Close() error {
 	return nil
 }
 
-func (c *statelessCheck) CheckStateForMsg(ctx *module.MsgMetadata) (module.CheckState, error) {
+func (c *statelessCheck) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &statelessCheckState{
 		c:       c,
-		msgMeta: ctx,
+		msgMeta: msgMeta,
 	}, nil
 }
 

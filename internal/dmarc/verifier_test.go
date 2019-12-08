@@ -2,6 +2,7 @@ package dmarc
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"net"
 	"strings"
@@ -22,7 +23,7 @@ func TestDMARC(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		v.FetchRecord(hdrParsed)
+		v.FetchRecord(context.Background(), hdrParsed)
 		evalRes, policy := v.Apply(authres)
 
 		if policy != policyApplied {

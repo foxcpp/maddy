@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
@@ -29,25 +31,25 @@ func (d *Dummy) Init(_ *config.Map) error {
 	return nil
 }
 
-func (d *Dummy) Start(msgMeta *MsgMetadata, mailFrom string) (Delivery, error) {
+func (d *Dummy) Start(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error) {
 	return dummyDelivery{}, nil
 }
 
 type dummyDelivery struct{}
 
-func (dd dummyDelivery) AddRcpt(to string) error {
+func (dd dummyDelivery) AddRcpt(ctx context.Context, to string) error {
 	return nil
 }
 
-func (dd dummyDelivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (dd dummyDelivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 
-func (dd dummyDelivery) Abort() error {
+func (dd dummyDelivery) Abort(ctx context.Context) error {
 	return nil
 }
 
-func (dd dummyDelivery) Commit() error {
+func (dd dummyDelivery) Commit(ctx context.Context) error {
 	return nil
 }
 

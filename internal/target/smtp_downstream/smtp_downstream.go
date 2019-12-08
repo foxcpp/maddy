@@ -9,6 +9,7 @@
 package smtp_downstream
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -124,7 +125,7 @@ type delivery struct {
 	conn *smtpconn.C
 }
 
-func (u *Downstream) Start(msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	d := &delivery{
 		u:        u,
 		log:      target.DeliveryLogger(u.log, msgMeta),
@@ -189,11 +190,11 @@ func (d *delivery) connect() error {
 	return nil
 }
 
-func (d *delivery) AddRcpt(rcptTo string) error {
+func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	return moduleError(d.conn.Rcpt(rcptTo))
 }
 
-func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
+func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	r, err := body.Open()
 	if err != nil {
 		return exterrors.WithFields(err, map[string]interface{}{"target": "smtp_downstream"})
@@ -204,7 +205,7 @@ func (d *delivery) Body(header textproto.Header, body buffer.Buffer) error {
 	return nil
 }
 
-func (d *delivery) Abort() error {
+func (d *delivery) Abort(ctx context.Context) error {
 	if d.body != nil {
 		d.body.Close()
 	}
@@ -212,7 +213,7 @@ func (d *delivery) Abort() error {
 	return nil
 }
 
-func (d *delivery) Commit() error {
+func (d *delivery) Commit(ctx context.Context) error {
 	defer d.conn.Close()
 	defer d.body.Close()
 

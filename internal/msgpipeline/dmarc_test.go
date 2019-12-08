@@ -2,6 +2,7 @@ package msgpipeline
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -35,25 +36,25 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 		panic(err)
 	}
 
-	delivery, err := tgt.Start(&ctx, from)
+	delivery, err := tgt.Start(context.Background(), &ctx, from)
 	if err != nil {
 		return encodedID, err
 	}
 	for _, rcpt := range to {
-		if err := delivery.AddRcpt(rcpt); err != nil {
-			if err := delivery.Abort(); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
+			if err := delivery.Abort(context.Background()); err != nil {
 				t.Log("delivery.Abort:", err)
 			}
 			return encodedID, err
 		}
 	}
-	if err := delivery.Body(hdrParsed, body); err != nil {
-		if err := delivery.Abort(); err != nil {
+	if err := delivery.Body(context.Background(), hdrParsed, body); err != nil {
+		if err := delivery.Abort(context.Background()); err != nil {
 			t.Log("delivery.Abort:", err)
 		}
 		return encodedID, err
 	}
-	if err := delivery.Commit(); err != nil {
+	if err := delivery.Commit(context.Background()); err != nil {
 		return encodedID, err
 	}
 
