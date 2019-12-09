@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"strconv"
 	"strings"
 
@@ -63,7 +64,13 @@ type delivery struct {
 	addedRcpts map[string]struct{}
 }
 
+func (d *delivery) String() string {
+	return d.store.Name() + ":" + d.store.InstanceName()
+}
+
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
+	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
+
 	accountName, err := prepareUsername(rcptTo)
 	if err != nil {
 		return &exterrors.SMTPError{
@@ -104,6 +111,8 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 }
 
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
+	defer trace.StartRegion(ctx, "sql/Body").End()
+
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
 			return err
@@ -116,14 +125,20 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
+	defer trace.StartRegion(ctx, "sql/Abort").End()
+
 	return d.d.Abort()
 }
 
 func (d *delivery) Commit(ctx context.Context) error {
+	defer trace.StartRegion(ctx, "sql/Commit").End()
+
 	return d.d.Commit()
 }
 
 func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	defer trace.StartRegion(ctx, "sql/Start").End()
+
 	return &delivery{
 		store:      store,
 		msgMeta:    msgMeta,
@@ -360,6 +375,9 @@ func prepareUsername(username string) (string, error) {
 }
 
 func (store *Storage) CheckPlain(username, password string) bool {
+	// TODO: Pass session context there.
+	defer trace.StartRegion(context.Background(), "sql/CheckPlain").End()
+
 	accountName, err := prepareUsername(username)
 	if err != nil {
 		return false

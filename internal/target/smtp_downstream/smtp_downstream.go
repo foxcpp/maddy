@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/trace"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
@@ -126,24 +127,26 @@ type delivery struct {
 }
 
 func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	defer trace.StartRegion(ctx, "smtp_downstream/Start").End()
+
 	d := &delivery{
 		u:        u,
 		log:      target.DeliveryLogger(u.log, msgMeta),
 		msgMeta:  msgMeta,
 		mailFrom: mailFrom,
 	}
-	if err := d.connect(); err != nil {
+	if err := d.connect(ctx); err != nil {
 		return nil, err
 	}
 
-	if err := d.conn.Mail(mailFrom, msgMeta.SMTPOpts); err != nil {
+	if err := d.conn.Mail(ctx, mailFrom, msgMeta.SMTPOpts); err != nil {
 		d.conn.Close()
 		return nil, err
 	}
 	return d, nil
 }
 
-func (d *delivery) connect() error {
+func (d *delivery) connect(ctx context.Context) error {
 	// TODO: Review possibility of connection pooling here.
 	var lastErr error
 
@@ -156,7 +159,7 @@ func (d *delivery) connect() error {
 	conn.AddrInSMTPMsg = false
 
 	for _, endp := range d.u.endpoints {
-		err := conn.Connect(endp)
+		err := conn.Connect(ctx, endp)
 		if err == nil {
 			d.log.DebugMsg("connected", "downstream_server", conn.ServerName())
 			lastErr = nil
@@ -191,7 +194,7 @@ func (d *delivery) connect() error {
 }
 
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
-	return moduleError(d.conn.Rcpt(rcptTo))
+	return moduleError(d.conn.Rcpt(ctx, rcptTo))
 }
 
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
@@ -217,7 +220,7 @@ func (d *delivery) Commit(ctx context.Context) error {
 	defer d.conn.Close()
 	defer d.body.Close()
 
-	return moduleError(d.conn.Data(d.hdr, d.body))
+	return moduleError(d.conn.Data(ctx, d.hdr, d.body))
 }
 
 func init() {

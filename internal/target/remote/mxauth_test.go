@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"errors"
 	"net"
 	"strconv"
@@ -33,7 +34,7 @@ func TestRemoteDelivery_AuthMX_Fail(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		Log:           testutils.Logger(t, "remote"),
@@ -63,12 +64,12 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		tlsConfig:     clientCfg,
 		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
-		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 			if domain != "example.invalid" {
 				return nil, errors.New("Wrong domain in lookup")
 			}
@@ -114,12 +115,12 @@ func TestRemoteDelivery_AuthMX_PreferAuth(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		tlsConfig:     clientCfg,
 		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
-		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 			if domain != "example.invalid" {
 				return nil, errors.New("Wrong domain in lookup")
 			}
@@ -166,12 +167,12 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		tlsConfig:     clientCfg,
 		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
-		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 			if domain != "example.invalid" {
 				return nil, errors.New("Wrong domain in lookup")
 			}
@@ -208,11 +209,11 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
-		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 			if domain != "example.invalid" {
 				return nil, errors.New("Wrong domain in lookup")
 			}
@@ -251,11 +252,11 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
-		mtastsGet: func(domain string) (*mtasts.Policy, error) {
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 			if domain != "example.invalid" {
 				return nil, errors.New("Wrong domain in lookup")
 			}
@@ -290,7 +291,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthCommonDomain: {}},
@@ -321,7 +322,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain_Fail(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthCommonDomain: {}},
@@ -354,7 +355,7 @@ func TestRemoteDelivery_AuthMX_CommonDomain_NotETLDp1(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   nil,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthCommonDomain: {}},
@@ -405,7 +406,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   extResolver,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},
@@ -452,7 +453,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &mockdns.Resolver{Zones: zones},
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   extResolver,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},
@@ -506,7 +507,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &resolver,
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   extResolver,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},
@@ -556,7 +557,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
 		name:          "remote",
 		hostname:      "mx.example.com",
 		resolver:      &resolver,
-		dialer:        resolver.Dial,
+		dialer:        resolver.DialContext,
 		extResolver:   extResolver,
 		requireMXAuth: true,
 		mxAuth:        map[string]struct{}{AuthDNSSEC: {}},

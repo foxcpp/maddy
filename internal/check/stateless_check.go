@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"runtime/trace"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
@@ -57,12 +58,18 @@ type statelessCheckState struct {
 	msgMeta *module.MsgMetadata
 }
 
+func (s *statelessCheckState) String() string {
+	return s.c.modName + ":" + s.c.instName
+}
+
 func (s *statelessCheckState) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.c.connCheck == nil {
 		return module.CheckResult{}
 	}
+	defer trace.StartRegion(ctx, s.c.modName+"/CheckConnection").End()
 
 	originalRes := s.c.connCheck(StatelessCheckContext{
+		Context:  ctx,
 		Resolver: s.c.resolver,
 		MsgMeta:  s.msgMeta,
 		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
@@ -74,8 +81,10 @@ func (s *statelessCheckState) CheckSender(ctx context.Context, mailFrom string) 
 	if s.c.senderCheck == nil {
 		return module.CheckResult{}
 	}
+	defer trace.StartRegion(ctx, s.c.modName+"/CheckSender").End()
 
 	originalRes := s.c.senderCheck(StatelessCheckContext{
+		Context:  ctx,
 		Resolver: s.c.resolver,
 		MsgMeta:  s.msgMeta,
 		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
@@ -87,8 +96,10 @@ func (s *statelessCheckState) CheckRcpt(ctx context.Context, rcptTo string) modu
 	if s.c.rcptCheck == nil {
 		return module.CheckResult{}
 	}
+	defer trace.StartRegion(ctx, s.c.modName+"/CheckRcpt").End()
 
 	originalRes := s.c.rcptCheck(StatelessCheckContext{
+		Context:  ctx,
 		Resolver: s.c.resolver,
 		MsgMeta:  s.msgMeta,
 		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),
@@ -100,8 +111,10 @@ func (s *statelessCheckState) CheckBody(ctx context.Context, header textproto.He
 	if s.c.bodyCheck == nil {
 		return module.CheckResult{}
 	}
+	defer trace.StartRegion(ctx, s.c.modName+"/CheckBody").End()
 
 	originalRes := s.c.bodyCheck(StatelessCheckContext{
+		Context:  ctx,
 		Resolver: s.c.resolver,
 		MsgMeta:  s.msgMeta,
 		Logger:   target.DeliveryLogger(s.c.logger, s.msgMeta),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"runtime/trace"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -80,6 +81,8 @@ func (v *Verifier) FetchRecord(ctx context.Context, header textproto.Header) {
 				}
 			}
 		}()
+
+		defer trace.StartRegion(ctx, "DMARC/FetchRecord").End()
 
 		policyDomain, record, err := FetchRecord(ctx, v.resolver, fromDomain)
 		v.fetchCh <- verifyData{

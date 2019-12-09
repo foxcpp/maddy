@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"runtime/trace"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -323,6 +324,8 @@ func (bl *DNSBL) CheckConnection(ctx context.Context, state *smtp.ConnectionStat
 		return nil
 	}
 
+	defer trace.StartRegion(ctx, "dnsbl/CheckConnection (Early)").End()
+
 	ip, ok := state.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		bl.log.Msg("non-TCP/IP source",
@@ -357,6 +360,8 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		// Already checked before.
 		return module.CheckResult{}
 	}
+
+	defer trace.StartRegion(ctx, "dnsbl/CheckConnection").End()
 
 	if s.msgMeta.Conn == nil {
 		s.log.Msg("locally generated message, ignoring")

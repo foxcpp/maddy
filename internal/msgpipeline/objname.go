@@ -11,15 +11,17 @@ import (
 func objectName(x interface{}) string {
 	mod, ok := x.(module.Module)
 	if ok {
-		if mod.InstanceName() == "" {
-			return mod.Name()
-		}
-		return mod.InstanceName()
+		return mod.Name() + ":" + mod.InstanceName()
 	}
 
 	_, pipeline := x.(*MsgPipeline)
 	if pipeline {
 		return "reroute"
+	}
+
+	str, ok := x.(fmt.Stringer)
+	if ok {
+		return str.String()
 	}
 
 	return fmt.Sprintf("%T", x)

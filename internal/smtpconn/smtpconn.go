@@ -10,9 +10,11 @@
 package smtpconn
 
 import (
+	"context"
 	"crypto/tls"
 	"io"
 	"net"
+	"runtime/trace"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -27,9 +29,9 @@ import (
 //
 // Currently, the C object represents one session and cannot be reused.
 type C struct {
-	// Dialer to use to estabilish new network connections. Set to net.Dial by
-	// New.
-	Dialer func(network, addr string) (net.Conn, error)
+	// Dialer to use to estabilish new network connections. Set to net.Dialer
+	// DialContext by New.
+	Dialer func(ctx context.Context, network, addr string) (net.Conn, error)
 
 	// Fail if the connection cannot use TLS.
 	RequireTLS bool
@@ -60,7 +62,7 @@ type C struct {
 // with resonable default values.
 func New() *C {
 	return &C{
-		Dialer:    net.Dial,
+		Dialer:    (&net.Dialer{}).DialContext,
 		TLSConfig: &tls.Config{},
 		Hostname:  "localhost.localdomain",
 	}
@@ -122,9 +124,11 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 }
 
 // Connect actually estabilishes the network connection with the remote host.
-func (c *C) Connect(endp config.Endpoint) error {
+func (c *C) Connect(ctx context.Context, endp config.Endpoint) error {
+	defer trace.StartRegion(ctx, "smtpconn/Connect+TLS").End()
+
 	// TODO: Helper function to try multiple endpoints?
-	cl, err := c.attemptConnect(endp, c.AttemptTLS)
+	cl, err := c.attemptConnect(ctx, endp, c.AttemptTLS)
 	if err != nil {
 		return c.wrapClientErr(err, endp.Host)
 	}
@@ -134,9 +138,9 @@ func (c *C) Connect(endp config.Endpoint) error {
 	return nil
 }
 
-func (c *C) attemptConnect(endp config.Endpoint, attemptTLS bool) (*smtp.Client, error) {
+func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, attemptTLS bool) (*smtp.Client, error) {
 	var conn net.Conn
-	conn, err := c.Dialer(endp.Network(), endp.Address())
+	conn, err := c.Dialer(ctx, endp.Network(), endp.Address())
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +201,7 @@ func (c *C) attemptConnect(endp config.Endpoint, attemptTLS bool) (*smtp.Client,
 		// Re-attempt without STARTTLS. It is not possible to reuse connection
 		// since it is probably in a bad state.
 		c.Log.Error("TLS error, falling back to plain-text connection", err, "remote_server", endp.Host+endp.Port)
-		return c.attemptConnect(endp, false)
+		return c.attemptConnect(ctx, endp, false)
 	}
 
 	return cl, nil
@@ -209,7 +213,9 @@ func (c *C) attemptConnect(endp config.Endpoint, attemptTLS bool) (*smtp.Client,
 // SMTPUTF8 is forwarded if supported by the remote server, if it is not
 // supported - attempt will be done to convert addresses to the ASCII form, if
 // this is not possible, the corresponding method (Mail or Rcpt) will fail.
-func (c *C) Mail(from string, opts smtp.MailOptions) error {
+func (c *C) Mail(ctx context.Context, from string, opts smtp.MailOptions) error {
+	defer trace.StartRegion(ctx, "smtpconn/MAIL FROM").End()
+
 	outOpts := smtp.MailOptions{
 		// Future extensions may add additional fields that should not be
 		// copied blindly. So we copy only fields we know should be handled
@@ -268,7 +274,9 @@ func (c *C) Client() *smtp.Client {
 //
 // If the address is non-ASCII and cannot be converted to ASCII and the remote
 // server does not support SMTPUTF8, error will be returned.
-func (c *C) Rcpt(to string) error {
+func (c *C) Rcpt(ctx context.Context, to string) error {
+	defer trace.StartRegion(ctx, "smtpconn/RCPT TO").End()
+
 	// If necessary, the extension flag is enabled in Start.
 	if ok, _ := c.cl.Extension("SMTPUTF8"); !address.IsASCII(to) && !ok {
 		var err error
@@ -300,7 +308,9 @@ func (c *C) Rcpt(to string) error {
 //
 // If the Data command fails, the connection may be in a unclean state (e.g. in
 // the middle of message data stream). It is not safe to continue using it.
-func (c *C) Data(hdr textproto.Header, body io.Reader) error {
+func (c *C) Data(ctx context.Context, hdr textproto.Header, body io.Reader) error {
+	defer trace.StartRegion(ctx, "smtpconn/DATA").End()
+
 	wc, err := c.cl.Data()
 	if err != nil {
 		return c.wrapClientErr(err, c.serverName)

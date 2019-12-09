@@ -1,6 +1,7 @@
 package mtasts
 
 import (
+	"context"
 	"errors"
 	"os"
 	"reflect"
@@ -37,7 +38,7 @@ func TestCacheGet(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -57,7 +58,7 @@ func TestCacheGet_Error_DNS(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	_, err := c.Get("example.org")
+	_, err := c.Get(context.Background(), "example.org")
 	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestCacheGet_Error_HTTPS(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	_, err := c.Get("example.org")
+	_, err := c.Get(context.Background(), "example.org")
 	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestCacheGet_Cached(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -115,7 +116,7 @@ func TestCacheGet_Cached(t *testing.T) {
 	// calling downloadPolicy.
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -146,7 +147,7 @@ func TestCacheGet_Expired(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -160,7 +161,7 @@ func TestCacheGet_Expired(t *testing.T) {
 	expectedPolicy.MX = []string{"b"}
 	c.downloadPolicy = mockDownloadPolicy(expectedPolicy, nil)
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -190,7 +191,7 @@ func TestCacheGet_IDChange(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -206,7 +207,7 @@ func TestCacheGet_IDChange(t *testing.T) {
 	expectedPolicy.MX = []string{"b"}
 	c.downloadPolicy = mockDownloadPolicy(expectedPolicy, nil)
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -236,7 +237,7 @@ func TestCacheGet_DNSDisappear(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -251,7 +252,7 @@ func TestCacheGet_DNSDisappear(t *testing.T) {
 	resolver.Zones = nil
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -281,7 +282,7 @@ func TestCacheGet_HTTPGet_ErrNoPolicy(t *testing.T) {
 	// >(for any reason), and there is no valid (non-expired) previously
 	// >cached policy, senders MUST continue with delivery as though the
 	// >domain has not implemented MTA-STS.
-	_, err := c.Get("example.org")
+	_, err := c.Get(context.Background(), "example.org")
 	if err != ErrIgnorePolicy {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -308,7 +309,7 @@ func TestCacheGet_IDChange_Error(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -325,7 +326,7 @@ func TestCacheGet_IDChange_Error(t *testing.T) {
 	}
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -357,7 +358,7 @@ func TestCacheGet_IDChange_Expired_Error(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -376,7 +377,7 @@ func TestCacheGet_IDChange_Expired_Error(t *testing.T) {
 	}
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err == nil {
 		t.Fatalf("expected error, got policy %v", policy)
 	}
@@ -405,7 +406,7 @@ func TestCacheRefresh(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -427,7 +428,7 @@ func TestCacheRefresh(t *testing.T) {
 	c.downloadPolicy = mockDownloadPolicy(nil, errors.New("broken"))
 
 	// It should return the new record from cache.
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -459,7 +460,7 @@ func TestCacheRefresh_Error(t *testing.T) {
 	}
 	defer os.RemoveAll(c.Location)
 
-	policy, err := c.Get("example.org")
+	policy, err := c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}
@@ -477,7 +478,7 @@ func TestCacheRefresh_Error(t *testing.T) {
 	}
 
 	// It should return the old record from cache.
-	policy, err = c.Get("example.org")
+	policy, err = c.Get(context.Background(), "example.org")
 	if err != nil {
 		t.Fatalf("policy get: %v", err)
 	}

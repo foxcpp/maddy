@@ -44,7 +44,7 @@ func TestRemoteDelivery_EHLO_ALabel(t *testing.T) {
 
 	tgt := mod.(*Target)
 	tgt.resolver = &mockdns.Resolver{Zones: zones}
-	tgt.dialer = resolver.Dial
+	tgt.dialer = resolver.DialContext
 	tgt.extResolver = nil
 	tgt.Log = testutils.Logger(t, "remote")
 

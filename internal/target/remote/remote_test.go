@@ -42,7 +42,7 @@ func TestRemoteDelivery(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -74,7 +74,7 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &resolver,
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -100,7 +100,7 @@ func TestRemoteDelivery_FallbackMX(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    resolver,
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -127,7 +127,7 @@ func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    resolver,
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -162,7 +162,7 @@ func TestRemoteDelivery_Abort(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -199,7 +199,7 @@ func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -243,7 +243,7 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -276,7 +276,7 @@ func TestRemoteDelivery_NoMX(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    resolver,
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -313,7 +313,7 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -349,7 +349,7 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -404,7 +404,7 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -451,7 +451,7 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -509,7 +509,7 @@ func TestRemoteDelivery_DownMX(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -539,7 +539,7 @@ func TestRemoteDelivery_AllMXDown(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -577,7 +577,7 @@ func TestRemoteDelivery_Split(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -623,7 +623,7 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -683,7 +683,7 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -744,7 +744,7 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -807,7 +807,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		Log:         testutils.Logger(t, "remote"),
 	}
@@ -867,7 +867,7 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		tlsConfig:   &tls.Config{},
 		Log:         testutils.Logger(t, "remote"),
@@ -895,7 +895,7 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		requireTLS:  true,
 		Log:         testutils.Logger(t, "remote"),
@@ -925,7 +925,7 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		requireTLS:  true,
 		tlsConfig:   clientCfg,
@@ -954,7 +954,7 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.Dial,
+		dialer:      resolver.DialContext,
 		extResolver: nil,
 		tlsConfig:   &tls.Config{},
 		requireTLS:  true,

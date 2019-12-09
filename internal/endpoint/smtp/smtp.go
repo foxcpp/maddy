@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/trace"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,7 @@ type Session struct {
 	// msgCtx is not used for cancellation or timeouts, only for tracing.
 	// It is the subcontext of sessionCtx.
 	msgCtx      context.Context
+	msgTask     *trace.Task
 	mailFrom    string
 	opts        smtp.MailOptions
 	msgMeta     *module.MsgMetadata
@@ -75,6 +77,7 @@ func (s *Session) abort(ctx context.Context) {
 	s.delivery = nil
 	s.deliveryErr = nil
 	s.msgCtx = nil
+	s.msgTask.End()
 }
 
 func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.MailOptions) (string, error) {
@@ -138,15 +141,20 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		)
 	}
 
-	delivery, err := s.endp.pipeline.Start(ctx, msgMeta, cleanFrom)
+	s.msgCtx, s.msgTask = trace.NewTask(ctx, "Incoming Message")
+	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
+	defer mailTask.End()
+
+	delivery, err := s.endp.pipeline.Start(mailCtx, msgMeta, cleanFrom)
 	if err != nil {
+		s.msgCtx = nil
+		s.msgTask.End()
 		return msgMeta.ID, err
 	}
 
 	s.msgMeta = msgMeta
 	s.mailFrom = cleanFrom
 	s.delivery = delivery
-	s.msgCtx = s.sessionCtx // TODO: Trace annotations.
 
 	return msgMeta.ID, nil
 }
@@ -171,6 +179,8 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 }
 
 func (s *Session) fetchRDNSName(ctx context.Context) {
+	defer trace.StartRegion(ctx, "rDNS fetch").End()
+
 	tcpAddr, ok := s.connState.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		s.connState.RDNSName.Set(nil)
@@ -211,7 +221,8 @@ func (s *Session) Rcpt(to string) error {
 		}
 	}
 
-	rcptCtx := s.msgCtx
+	rcptCtx, rcptTask := trace.NewTask(s.msgCtx, "RCPT TO")
+	defer rcptTask.End()
 
 	if err := s.rcpt(rcptCtx, to); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
@@ -293,7 +304,8 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 }
 
 func (s *Session) Data(r io.Reader) error {
-	bodyCtx := s.msgCtx
+	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
+	defer bodyTask.End()
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
@@ -317,6 +329,9 @@ func (s *Session) Data(r io.Reader) error {
 
 	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
 	s.delivery = nil
+	s.msgCtx = nil
+	s.msgTask.End()
+	s.msgTask = nil
 	s.endp.semaphore.Release()
 
 	return nil
@@ -332,7 +347,8 @@ func (sw statusWrapper) SetStatus(rcpt string, err error) {
 }
 
 func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
-	bodyCtx := s.msgCtx
+	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
+	defer bodyTask.End()
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
@@ -356,6 +372,9 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 
 	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
 	s.delivery = nil
+	s.msgCtx = nil
+	s.msgTask.End()
+	s.msgTask = nil
 	s.endp.semaphore.Release()
 
 	return nil
@@ -671,7 +690,7 @@ func (endp *Endpoint) newSession(anonymous bool, username, password string, stat
 	}
 
 	if endp.resolver != nil {
-		rdnsCtx, cancelRDNS := context.WithCancel(context.TODO())
+		rdnsCtx, cancelRDNS := context.WithCancel(s.sessionCtx)
 		s.connState.RDNSName = future.New()
 		s.cancelRDNS = cancelRDNS
 		go s.fetchRDNSName(rdnsCtx)

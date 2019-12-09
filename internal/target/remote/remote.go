@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"sort"
 	"strings"
 	"sync"
@@ -57,12 +58,12 @@ type Target struct {
 	mxAuth        map[string]struct{}
 
 	resolver    dns.Resolver
-	dialer      func(network, addr string) (net.Conn, error)
+	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
 	// This is the callback that is usually mtastsCache.Get,
 	// but replaced by tests to mock mtasts.Cache.
-	mtastsGet func(domain string) (*mtasts.Policy, error)
+	mtastsGet func(ctx context.Context, domain string) (*mtasts.Policy, error)
 
 	mtastsCache        mtasts.Cache
 	stsCacheUpdateTick *time.Ticker
@@ -80,7 +81,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	return &Target{
 		name:        instName,
 		resolver:    dns.DefaultResolver(),
-		dialer:      net.Dial,
+		dialer:      (&net.Dialer{}).DialContext,
 		mtastsCache: mtasts.Cache{Resolver: dns.DefaultResolver()},
 		Log:         log.Logger{Name: "remote"},
 
@@ -195,6 +196,8 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 }
 
 func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
+	defer trace.StartRegion(ctx, "remote/AddRcpt").End()
+
 	if rd.msgMeta.Quarantine {
 		return &exterrors.SMTPError{
 			Code:         550,
@@ -232,7 +235,7 @@ func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
 		return err
 	}
 
-	if err := conn.Rcpt(to); err != nil {
+	if err := conn.Rcpt(ctx, to); err != nil {
 		return moduleError(err)
 	}
 
@@ -379,6 +382,8 @@ func (m *multipleErrs) SetStatus(rcptTo string, err error) {
 }
 
 func (rd *remoteDelivery) Body(ctx context.Context, header textproto.Header, buffer buffer.Buffer) error {
+	defer trace.StartRegion(ctx, "remote/Body").End()
+
 	merr := multipleErrs{
 		errs: make(map[string]error),
 	}
@@ -396,6 +401,8 @@ func (rd *remoteDelivery) Body(ctx context.Context, header textproto.Header, buf
 }
 
 func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, b buffer.Buffer) {
+	defer trace.StartRegion(ctx, "remote/BodyNonAtomic").End()
+
 	if rd.msgMeta.Quarantine {
 		for _, rcpt := range rd.recipients {
 			c.SetStatus(rcpt, &exterrors.SMTPError{
@@ -425,7 +432,7 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 			}
 			defer bodyR.Close()
 
-			err = conn.Data(header, bodyR)
+			err = conn.Data(ctx, header, bodyR)
 			for _, rcpt := range conn.Rcpts() {
 				c.SetStatus(rcpt, err)
 			}
@@ -486,7 +493,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	addrs = append(addrs, nonAuthMXs...)
 	rd.Log.DebugMsg("considering", "mxs", addrs)
 	for i, addr := range addrs {
-		err = conn.Connect(config.Endpoint{
+		err = conn.Connect(ctx, config.Endpoint{
 			Scheme: "tcp",
 			Host:   addr,
 			Port:   smtpPort,
@@ -517,7 +524,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 
 	rd.Log.DebugMsg("connected", "remote_server", conn.ServerName())
 
-	if err := conn.Mail(rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
+	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
 		conn.Close()
 		return nil, moduleError(err)
 	}
@@ -526,8 +533,8 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	return conn, nil
 }
 
-func (rt *Target) getSTSPolicy(domain string) (*mtasts.Policy, error) {
-	stsPolicy, err := rt.mtastsGet(domain)
+func (rt *Target) getSTSPolicy(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	stsPolicy, err := rt.mtastsGet(ctx, domain)
 	if err != nil && !mtasts.IsNoPolicy(err) {
 		return nil, &exterrors.SMTPError{
 			Code:         exterrors.SMTPCode(err, 450, 554),
@@ -568,9 +575,11 @@ func (rt *Target) stsCacheUpdater() {
 }
 
 func (rd *remoteDelivery) lookupAndFilter(ctx context.Context, domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
+	defer trace.StartRegion(ctx, "remote/LookupAndFilterMX").End()
+
 	var policy *mtasts.Policy
 	if _, use := rd.rt.mxAuth[AuthMTASTS]; use {
-		policy, err = rd.rt.getSTSPolicy(domain)
+		policy, err = rd.rt.getSTSPolicy(ctx, domain)
 		if err != nil {
 			return nil, nil, false, err
 		}

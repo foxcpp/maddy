@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	nettextproto "net/textproto"
+	"runtime/trace"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -96,6 +97,8 @@ func (d *dkimCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.Ch
 }
 
 func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
+	defer trace.StartRegion(ctx, "verify_dkim/CheckBody").End()
+
 	if !header.Has("DKIM-Signature") {
 		if d.c.noSigAction.Reject || d.c.noSigAction.Quarantine {
 			d.log.Printf("no signatures present")

@@ -1,6 +1,7 @@
 package smtpconn
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -14,11 +15,11 @@ import (
 func doTestDelivery(t *testing.T, conn *C, from string, to []string, opts smtp.MailOptions) error {
 	t.Helper()
 
-	if err := conn.Mail(from, opts); err != nil {
+	if err := conn.Mail(context.Background(), from, opts); err != nil {
 		return err
 	}
 	for _, rcpt := range to {
-		if err := conn.Rcpt(rcpt); err != nil {
+		if err := conn.Rcpt(context.Background(), rcpt); err != nil {
 			return err
 		}
 	}
@@ -26,7 +27,7 @@ func doTestDelivery(t *testing.T, conn *C, from string, to []string, opts smtp.M
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	if err := conn.Data(hdr, strings.NewReader("foobar\n")); err != nil {
+	if err := conn.Data(context.Background(), hdr, strings.NewReader("foobar\n")); err != nil {
 		return err
 	}
 
@@ -41,7 +42,7 @@ func TestSMTPUTF8_Sender_UTF8_Punycode(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -70,7 +71,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Punycode(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -99,7 +100,7 @@ func TestSMTPUTF8_Sender_UTF8_Reject(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -122,7 +123,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Reject(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -144,7 +145,7 @@ func TestSMTPUTF8_Sender_UTF8_Domain(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -172,7 +173,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Domain(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -201,7 +202,7 @@ func TestSMTPUTF8_Sender_UTF8_Username(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
@@ -230,7 +231,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Username(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(config.Endpoint{
+	if err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,

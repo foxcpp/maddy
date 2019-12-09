@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"runtime/debug"
+	"runtime/trace"
 
 	"blitiri.com.ar/go/spf"
 	"github.com/emersion/go-message/textproto"
@@ -267,6 +268,8 @@ func prepareMailFrom(from string) (string, error) {
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
+	defer trace.StartRegion(ctx, "apply_spf/CheckConnection").End()
+
 	if s.msgMeta.Conn == nil {
 		s.log.Println("locally generated message, skipping")
 		return module.CheckResult{}
@@ -306,6 +309,8 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 			}
 		}()
 
+		defer trace.StartRegion(ctx, "apply_spf/CheckConnection (Async)").End()
+
 		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
@@ -327,6 +332,8 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 		// Already applied in CheckConnection.
 		return module.CheckResult{}
 	}
+
+	defer trace.StartRegion(ctx, "apply_spf/CheckBody").End()
 
 	res, ok := <-s.spfFetch
 	if !ok {

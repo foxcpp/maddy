@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/mail"
 	"path/filepath"
+	"runtime/trace"
 	"strings"
 	"time"
 
@@ -337,6 +338,8 @@ func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 }
 
 func (s state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
+	defer trace.StartRegion(ctx, "sign_dkim/RewriteBody").End()
+
 	var authUser string
 	if s.meta.Conn != nil {
 		authUser = s.meta.Conn.AuthUser

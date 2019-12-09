@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"time"
 
 	"github.com/foxcpp/maddy/internal/exterrors"
@@ -23,10 +24,14 @@ var httpClient = &http.Client{
 	Timeout: time.Minute,
 }
 
-func downloadPolicy(domain string) (*Policy, error) {
+func downloadPolicy(ctx context.Context, domain string) (*Policy, error) {
 	// TODO: Consult OCSP/CRL to detect revoked certificates?
 
-	resp, err := httpClient.Get("https://mta-sts." + domain + "/.well-known/mta-sts.txt")
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://mta-sts."+domain+"/.well-known/mta-sts.txt", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +85,8 @@ var ErrIgnorePolicy = errors.New("mtasts: policy ignored due to errors")
 // Get reads policy from cache or tries to fetch it from Policy Host.
 //
 // The domain is assumed to be normalized, as done by dns.ForLookup.
-func (c *Cache) Get(domain string) (*Policy, error) {
-	_, p, err := c.fetch(false, time.Now(), domain)
+func (c *Cache) Get(ctx context.Context, domain string) (*Policy, error) {
+	_, p, err := c.fetch(ctx, false, time.Now(), domain)
 	return p, err
 }
 
@@ -118,6 +123,9 @@ func (c *Cache) load(domain string) (id string, fetchTime time.Time, p *Policy, 
 }
 
 func (c *Cache) Refresh() error {
+	refreshCtx, refreshTask := trace.NewTask(context.Background(), "mtasts.Cache/Refresh")
+	defer refreshTask.End()
+
 	dir, err := ioutil.ReadDir(c.Location)
 	if err != nil {
 		return err
@@ -132,7 +140,7 @@ func (c *Cache) Refresh() error {
 		// Since otherwise we are going to have expired policy for another 6 hours,
 		// which makes it useless.
 		// See https://tools.ietf.org/html/rfc8461#section-10.2.
-		cacheHit, _, err := c.fetch(true, time.Now().Add(6*time.Hour), ent.Name())
+		cacheHit, _, err := c.fetch(refreshCtx, false, time.Now().Add(6*time.Hour), ent.Name())
 		if err != nil && err != ErrIgnorePolicy {
 			c.Logger.Error("policy update error", err, "domain", ent.Name())
 		}
@@ -147,7 +155,9 @@ func (c *Cache) Refresh() error {
 	return nil
 }
 
-func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bool, p *Policy, err error) {
+func (c *Cache) fetch(ctx context.Context, ignoreDns bool, now time.Time, domain string) (cacheHit bool, p *Policy, err error) {
+	defer trace.StartRegion(ctx, "mtasts.Cache/fetch").End()
+
 	validCache := true
 	cachedId, fetchTime, cachedPolicy, err := c.load(domain)
 	if err != nil {
@@ -163,7 +173,7 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 
 	var dnsId string
 	if !ignoreDns {
-		records, err := c.Resolver.LookupTXT(context.Background(), "_mta-sts."+domain)
+		records, err := c.Resolver.LookupTXT(ctx, "_mta-sts."+domain)
 		if err != nil {
 			if validCache {
 				if dnsErr, ok := err.(*net.DNSError); ok && !dnsErr.IsNotFound {
@@ -218,11 +228,15 @@ func (c *Cache) fetch(ignoreDns bool, now time.Time, domain string) (cacheHit bo
 	}
 
 	if !validCache || dnsId != cachedId {
-		download := downloadPolicy
+		var (
+			policy *Policy
+			err    error
+		)
 		if c.downloadPolicy != nil {
-			download = c.downloadPolicy
+			policy, err = c.downloadPolicy(domain)
+		} else {
+			policy, err = downloadPolicy(ctx, domain)
 		}
-		policy, err := download(domain)
 		if err != nil {
 			if validCache {
 				c.Logger.Error("failed to fetch new policy, using cache", err, "domain", domain)
