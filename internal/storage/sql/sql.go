@@ -9,7 +9,7 @@ package sql
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -285,7 +285,7 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 
 	switch store.driver {
 	case "sqlite3":
-		dbId := sha256.Sum256([]byte(strings.Join(store.dsn, " ")))
+		dbId := sha1.Sum([]byte(strings.Join(store.dsn, " ")))
 		store.updPipe = &updatepipe.UnixSockPipe{
 			SockPath: filepath.Join(
 				config.RuntimeDirectory,
