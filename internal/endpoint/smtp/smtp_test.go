@@ -151,8 +151,8 @@ func TestSMTPDelivery(t *testing.T) {
 		t.Error("Wrong SrcProto:", msg.MsgMeta.Conn.Proto)
 	}
 
-	rdnsName, _ := msg.MsgMeta.Conn.RDNSName.Get().(string)
-	if rdnsName != "mx.example.org" {
+	rdnsName, _ := msg.MsgMeta.Conn.RDNSName.Get()
+	if rdnsName, _ := rdnsName.(string); rdnsName != "mx.example.org" {
 		t.Error("Wrong rDNS name:", rdnsName)
 	}
 }
@@ -164,9 +164,10 @@ func TestSMTPDelivery_rDNSError(t *testing.T) {
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
 		Err: &net.DNSError{
-			Name:   "1.0.0.127.in-addr.arpa.",
-			Server: "127.0.0.1:53",
-			Err:    "bad",
+			Name:       "1.0.0.127.in-addr.arpa.",
+			Server:     "127.0.0.1:53",
+			Err:        "bad",
+			IsNotFound: false,
 		},
 	}
 
@@ -187,9 +188,9 @@ func TestSMTPDelivery_rDNSError(t *testing.T) {
 	msg := tgt.Messages[0]
 	testutils.CheckMsgID(t, &msg, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, "")
 
-	rdnsName := msg.MsgMeta.Conn.RDNSName.Get()
-	if rdnsName != nil {
-		t.Errorf("Wrong rDNS name: %#+v", rdnsName)
+	rdnsName, err := msg.MsgMeta.Conn.RDNSName.Get()
+	if rdnsName != nil || err == nil {
+		t.Errorf("Wrong rDNS result: %#+v (%v)", rdnsName, err)
 	}
 }
 

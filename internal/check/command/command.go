@@ -165,11 +165,14 @@ func (s *state) expandCommand(address string) (string, []string) {
 				if s.msgMeta.Conn == nil {
 					return ""
 				}
-				val, _ := s.msgMeta.Conn.RDNSName.Get().(string)
-				if val == "" {
+				valI, err := s.msgMeta.Conn.RDNSName.Get()
+				if err != nil {
 					return ""
 				}
-				return ""
+				if valI == nil {
+					return ""
+				}
+				return valI.(string)
 			case "{msg_id}":
 				return s.msgMeta.ID
 			case "{sender}":

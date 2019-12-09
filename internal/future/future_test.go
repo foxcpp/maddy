@@ -2,6 +2,7 @@ package future
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -9,10 +10,13 @@ import (
 func TestFuture_SetBeforeGet(t *testing.T) {
 	f := New()
 
-	f.Set(1)
-	val := f.Get().(int)
+	f.Set(1, errors.New("1"))
+	val, err := f.Get()
+	if err.Error() != "1" {
+		t.Error("Wrong error:", err)
+	}
 
-	if val != 1 {
+	if val, _ := val.(int); val != 1 {
 		t.Fatal("wrong val received from Get")
 	}
 }
@@ -22,18 +26,25 @@ func TestFuture_Wait(t *testing.T) {
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)
-		f.Set(1)
+		f.Set(1, errors.New("1"))
 	}()
 
-	val := f.Get().(int)
-	if val != 1 {
+	val, err := f.Get()
+	if val, _ := val.(int); val != 1 {
 		t.Fatal("wrong val received from Get")
 	}
+	if err.Error() != "1" {
+		t.Error("Wrong error:", err)
+	}
 
-	val = f.Get().(int)
-	if val != 1 {
+	val, err = f.Get()
+	if val, _ := val.(int); val != 1 {
 		t.Fatal("wrong val received from Get on second try")
 	}
+	if err.Error() != "1" {
+		t.Error("Wrong error:", err)
+	}
+
 }
 
 func TestFuture_WaitCtx(t *testing.T) {

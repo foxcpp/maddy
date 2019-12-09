@@ -17,10 +17,10 @@ func TestRequireMatchingRDNS(t *testing.T) {
 		rdnsFut := future.New()
 		var ptr []string
 		if rdns != "" {
-			rdnsFut.Set(rdns)
+			rdnsFut.Set(rdns, nil)
 			ptr = []string{rdns}
 		} else {
-			rdnsFut.Set(nil)
+			rdnsFut.Set(nil, nil)
 		}
 
 		res := requireMatchingRDNS(check.StatelessCheckContext{

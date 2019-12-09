@@ -21,19 +21,33 @@ func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	rdnsName, ok := ctx.MsgMeta.Conn.RDNSName.Get().(string)
-	if !ok {
-		// There is no way to tell temporary failure from permanent one here
-		// so err on the side of caution.
+	rdnsNameI, err := ctx.MsgMeta.Conn.RDNSName.Get()
+	if err != nil {
+		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
-				Code:         450,
-				EnhancedCode: exterrors.EnhancedCode{4, 7, 25},
+				Code:         exterrors.SMTPCode(err, 450, 550),
+				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 25}),
 				Message:      "DNS error during policy check",
 				CheckName:    "require_matching_rdns",
+				Err:          err,
+				Reason:       reason,
+				Misc:         misc,
 			},
 		}
 	}
+	if rdnsNameI == nil {
+		return module.CheckResult{
+			Reason: &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 25},
+				Message:      "No PTR record found",
+				CheckName:    "require_matching_rdns",
+				Err:          err,
+			},
+		}
+	}
+	rdnsName := rdnsNameI.(string)
 
 	srcDomain := strings.TrimSuffix(ctx.MsgMeta.Conn.Hostname, ".")
 	rdnsName = strings.TrimSuffix(rdnsName, ".")

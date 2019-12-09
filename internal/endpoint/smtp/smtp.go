@@ -183,20 +183,26 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 
 	tcpAddr, ok := s.connState.RemoteAddr.(*net.TCPAddr)
 	if !ok {
-		s.connState.RDNSName.Set(nil)
+		s.connState.RDNSName.Set(nil, nil)
 		return
 	}
 
 	name, err := dns.LookupAddr(ctx, s.endp.resolver, tcpAddr.IP)
 	if err != nil {
+		dnsErr, ok := err.(*net.DNSError)
+		if ok && dnsErr.IsNotFound {
+			s.connState.RDNSName.Set(nil, nil)
+			return
+		}
+
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		misc["reason"] = reason
 		s.log.Error("rDNS error", exterrors.WithFields(err, misc), "src_ip", s.connState.RemoteAddr)
-		s.connState.RDNSName.Set(nil)
+		s.connState.RDNSName.Set(nil, err)
 		return
 	}
 
-	s.connState.RDNSName.Set(name)
+	s.connState.RDNSName.Set(name, nil)
 }
 
 func (s *Session) Rcpt(to string) error {
