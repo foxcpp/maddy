@@ -33,14 +33,8 @@ type C struct {
 	// DialContext by New.
 	Dialer func(ctx context.Context, network, addr string) (net.Conn, error)
 
-	// Fail if the connection cannot use TLS.
-	RequireTLS bool
-
-	// Use TLS if available.
-	AttemptTLS bool
-
 	// Hostname to sent in the EHLO/HELO command. Set to
-	// 'localhost.localdomain' by New.
+	// 'localhost.localdomain' by New. Expected to be encoded in ACE form.
 	Hostname string
 
 	// tls.Config to use. Can be nil if no special changes are required.
@@ -74,6 +68,8 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 	}
 
 	switch err := err.(type) {
+	case TLSError:
+		return err
 	case *exterrors.SMTPError:
 		return err
 	case *smtp.SMTPError:
@@ -124,25 +120,40 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 }
 
 // Connect actually estabilishes the network connection with the remote host.
-func (c *C) Connect(ctx context.Context, endp config.Endpoint) error {
-	defer trace.StartRegion(ctx, "smtpconn/Connect+TLS").End()
-
+func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool) (didTLS bool, err error) {
 	// TODO: Helper function to try multiple endpoints?
-	cl, err := c.attemptConnect(ctx, endp, c.AttemptTLS)
+	didTLS, cl, err := c.attemptConnect(ctx, endp, starttls)
 	if err != nil {
-		return c.wrapClientErr(err, endp.Host)
+		return false, c.wrapClientErr(err, endp.Host)
 	}
 
 	c.serverName = endp.Host
 	c.cl = cl
-	return nil
+	return didTLS, nil
 }
 
-func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, attemptTLS bool) (*smtp.Client, error) {
+// TLSError is returned by Connect to indicate the error during STARTTLS
+// command execution.
+//
+// If the endpoint uses Implicit TLS, TLS errors are threated as connection
+// errors and thus are not returned as TLSError.
+type TLSError struct {
+	Err error
+}
+
+func (err TLSError) Error() string {
+	return "smtpconn: " + err.Err.Error()
+}
+
+func (err TLSError) Unwrap() error {
+	return err.Err
+}
+
+func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls bool) (didTLS bool, cl *smtp.Client, err error) {
 	var conn net.Conn
-	conn, err := c.Dialer(ctx, endp.Network(), endp.Address())
+	conn, err = c.Dialer(ctx, endp.Network(), endp.Address())
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 
 	if endp.IsTLS() {
@@ -151,36 +162,24 @@ func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, attemptTLS
 		conn = tls.Client(conn, cfg)
 	}
 
-	cl, err := smtp.NewClient(conn, endp.Host)
+	cl, err = smtp.NewClient(conn, endp.Host)
 	if err != nil {
 		conn.Close()
-		return nil, err
+		return false, nil, err
 	}
 
-	// INTERNATIONALIZATION: hostname is alredy expected to be in A-labels.
+	// i18n: hostname is already expected to be in A-labels form.
 	if err := cl.Hello(c.Hostname); err != nil {
 		cl.Close()
-		return nil, err
+		return false, nil, err
 	}
 
-	if endp.IsTLS() || !attemptTLS {
-		return cl, nil
+	if endp.IsTLS() || !starttls {
+		return endp.IsTLS(), cl, nil
 	}
 
 	if ok, _ := cl.Extension("STARTTLS"); !ok {
-		if c.RequireTLS {
-			if err := cl.Quit(); err != nil {
-				c.Log.Error("QUIT error", c.wrapClientErr(err, endp.Host))
-			}
-
-			return nil, &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
-				Message:      "STARTTLS is required but not supported by the remote server",
-			}
-		}
-
-		return cl, nil
+		return false, cl, nil
 	}
 
 	cfg := c.TLSConfig.Clone()
@@ -194,17 +193,10 @@ func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, attemptTLS
 			cl.Close()
 		}
 
-		if c.RequireTLS {
-			return nil, err
-		}
-
-		// Re-attempt without STARTTLS. It is not possible to reuse connection
-		// since it is probably in a bad state.
-		c.Log.Error("TLS error, falling back to plain-text connection", err, "remote_server", endp.Host+endp.Port)
-		return c.attemptConnect(ctx, endp, false)
+		return false, nil, TLSError{err}
 	}
 
-	return cl, nil
+	return true, cl, nil
 }
 
 // Mail sends the MAIL FROM command to the remote server.
@@ -338,5 +330,9 @@ func (c *C) Close() error {
 		c.Log.Error("QUIT error", c.wrapClientErr(err, c.serverName))
 		return c.cl.Close()
 	}
+
+	c.cl = nil
+	c.serverName = ""
+
 	return nil
 }

@@ -26,7 +26,8 @@ type SMTPMessage struct {
 }
 
 type SMTPBackend struct {
-	Messages []*SMTPMessage
+	Messages        []*SMTPMessage
+	MailFromCounter int
 
 	AuthErr error
 	MailErr error
@@ -91,6 +92,8 @@ func (s *session) Logout() error {
 }
 
 func (s *session) Mail(from string, opts smtp.MailOptions) error {
+	s.backend.MailFromCounter++
+
 	if s.backend.MailErr != nil {
 		return s.backend.MailErr
 	}
@@ -335,7 +338,7 @@ func CheckSMTPConnLeak(t *testing.T, srv *smtp.Server) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatal("Non-closed connections present after test completion")
+	t.Error("Non-closed connections present after test completion")
 }
 
 func WaitForConnsClose(t *testing.T, srv *smtp.Server) {

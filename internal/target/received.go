@@ -41,10 +41,7 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 			builder.WriteString(" (")
 			if msgMeta.Conn.RDNSName != nil {
 				rdnsName, err := msgMeta.Conn.RDNSName.GetContext(ctx)
-				if err != nil {
-					return "", err
-				}
-				if rdnsName != nil && rdnsName.(string) != "" {
+				if err == nil && rdnsName != nil && rdnsName.(string) != "" {
 					// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
 					encoded, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, rdnsName.(string))
 					if err == nil {

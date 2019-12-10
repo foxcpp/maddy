@@ -42,11 +42,11 @@ func TestSMTPUTF8_Sender_UTF8_Punycode(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -71,11 +71,11 @@ func TestSMTPUTF8_Rcpt_UTF8_Punycode(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -100,11 +100,11 @@ func TestSMTPUTF8_Sender_UTF8_Reject(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -123,11 +123,11 @@ func TestSMTPUTF8_Rcpt_UTF8_Reject(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -145,11 +145,11 @@ func TestSMTPUTF8_Sender_UTF8_Domain(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -173,11 +173,11 @@ func TestSMTPUTF8_Rcpt_UTF8_Domain(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -202,11 +202,11 @@ func TestSMTPUTF8_Sender_UTF8_Username(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -231,11 +231,11 @@ func TestSMTPUTF8_Rcpt_UTF8_Username(t *testing.T) {
 
 	c := New()
 	c.Log = testutils.Logger(t, "smtp_downstream")
-	if err := c.Connect(context.Background(), config.Endpoint{
+	if _, err := c.Connect(context.Background(), config.Endpoint{
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()

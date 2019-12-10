@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"flag"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -10,10 +11,19 @@ import (
 )
 
 var (
-	debugLog = flag.Bool("test.debuglog", false, "Turn on debug log messages")
+	debugLog  = flag.Bool("test.debuglog", false, "(maddy) Turn on debug log messages")
+	directLog = flag.Bool("test.directlog", false, "(maddy) Log to stderr instead of test log")
 )
 
 func Logger(t *testing.T, name string) log.Logger {
+	if *directLog {
+		return log.Logger{
+			Out:   log.WriterOutput(os.Stderr, true),
+			Name:  name,
+			Debug: *debugLog,
+		}
+	}
+
 	return log.Logger{
 		Out: log.FuncOutput(func(_ time.Time, debug bool, str string) {
 			t.Helper()

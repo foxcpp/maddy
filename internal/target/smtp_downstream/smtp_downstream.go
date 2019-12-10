@@ -11,6 +11,7 @@ package smtp_downstream
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -151,25 +152,31 @@ func (d *delivery) connect(ctx context.Context) error {
 	var lastErr error
 
 	conn := smtpconn.New()
-	conn.RequireTLS = d.u.requireTLS
-	conn.AttemptTLS = d.u.attemptStartTLS
 	conn.TLSConfig = &d.u.tlsConfig
 	conn.Log = d.log
 	conn.Hostname = d.u.hostname
 	conn.AddrInSMTPMsg = false
 
 	for _, endp := range d.u.endpoints {
-		err := conn.Connect(ctx, endp)
-		if err == nil {
-			d.log.DebugMsg("connected", "downstream_server", conn.ServerName())
-			lastErr = nil
-			break
+		didTLS, err := conn.Connect(ctx, endp, d.u.attemptStartTLS)
+		if err != nil {
+			if len(d.u.endpoints) != 1 {
+				d.log.Msg("connect error", err, "downstream_server", net.JoinHostPort(endp.Host, endp.Port))
+			}
+			lastErr = err
+			continue
 		}
 
-		if len(d.u.endpoints) != 1 {
-			d.log.Msg("connect error", err, "downstream_server", net.JoinHostPort(endp.Host, endp.Port))
+		d.log.DebugMsg("connected", "downstream_server", conn.ServerName())
+
+		if !didTLS && d.u.requireTLS {
+			conn.Close()
+			lastErr = errors.New("TLS is required, but unsupported by downstream")
+			continue
 		}
-		lastErr = err
+
+		lastErr = nil
+		break
 	}
 	if lastErr != nil {
 		return moduleError(lastErr)

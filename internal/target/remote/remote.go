@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/trace"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -28,10 +27,8 @@ import (
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/mtasts"
-	"github.com/foxcpp/maddy/internal/smtpconn"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
-	"golang.org/x/net/publicsuffix"
 )
 
 const (
@@ -182,7 +179,7 @@ type remoteDelivery struct {
 	Log      log.Logger
 
 	recipients  []string
-	connections map[string]*smtpconn.C
+	connections map[string]mxConn
 }
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
@@ -191,7 +188,7 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 		mailFrom:    mailFrom,
 		msgMeta:     msgMeta,
 		Log:         target.DeliveryLogger(rt.Log, msgMeta),
-		connections: map[string]*smtpconn.C{},
+		connections: map[string]mxConn{},
 	}, nil
 }
 
@@ -460,96 +457,6 @@ func (rd *remoteDelivery) Close() error {
 	return nil
 }
 
-func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string) (*smtpconn.C, error) {
-	domain = strings.ToLower(domain)
-
-	if c, ok := rd.connections[domain]; ok {
-		return c, nil
-	}
-
-	authMXs, nonAuthMXs, requireTLS, err := rd.lookupAndFilter(ctx, domain)
-	if err != nil {
-		return nil, err
-	}
-	requireTLS = requireTLS || rd.rt.requireTLS
-	if !requireTLS {
-		rd.Log.Msg("TLS not enforced", "domain", domain)
-	}
-
-	var (
-		lastErr error
-		conn    = smtpconn.New()
-	)
-
-	conn.Dialer = rd.rt.dialer
-	conn.RequireTLS = rd.rt.requireTLS
-	conn.AttemptTLS = true
-	conn.TLSConfig = rd.rt.tlsConfig
-	conn.Log = rd.Log
-	conn.Hostname = rd.rt.hostname
-	conn.AddrInSMTPMsg = true
-
-	addrs := append(make([]string, 0, len(authMXs)+len(nonAuthMXs)), authMXs...)
-	addrs = append(addrs, nonAuthMXs...)
-	rd.Log.DebugMsg("considering", "mxs", addrs)
-	for i, addr := range addrs {
-		err = conn.Connect(ctx, config.Endpoint{
-			Scheme: "tcp",
-			Host:   addr,
-			Port:   smtpPort,
-		})
-		if err != nil {
-			if len(addrs) != 1 {
-				rd.Log.Error("connect error", err, "remote_server", addr, "domain", domain)
-			}
-			lastErr = err
-			continue
-		}
-		if _, disabled := rd.rt.mxAuth[AuthDisabled]; !disabled && i >= len(authMXs) {
-			rd.Log.Msg("using non-authenticated MX", "remote_server", addr, "domain", domain)
-		}
-	}
-	if conn.Client() == nil {
-		if lastErr == nil {
-			return nil, &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-				Message:      "No usable MXs",
-				TargetName:   "remote",
-			}
-
-		}
-		return nil, moduleError(lastErr)
-	}
-
-	rd.Log.DebugMsg("connected", "remote_server", conn.ServerName())
-
-	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
-		conn.Close()
-		return nil, moduleError(err)
-	}
-
-	rd.connections[domain] = conn
-	return conn, nil
-}
-
-func (rt *Target) getSTSPolicy(ctx context.Context, domain string) (*mtasts.Policy, error) {
-	stsPolicy, err := rt.mtastsGet(ctx, domain)
-	if err != nil && !mtasts.IsNoPolicy(err) {
-		return nil, &exterrors.SMTPError{
-			Code:         exterrors.SMTPCode(err, 450, 554),
-			EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 0, 0}),
-			Message:      "Failed to fetch the recipient policy",
-			TargetName:   "remote",
-			Err:          err,
-			Misc: map[string]interface{}{
-				"domain": domain,
-			},
-		}
-	}
-	return stsPolicy, nil
-}
-
 func (rt *Target) stsCacheUpdater() {
 	// Always update cache on start-up since we may have been down for some
 	// time.
@@ -572,158 +479,6 @@ func (rt *Target) stsCacheUpdater() {
 			return
 		}
 	}
-}
-
-func (rd *remoteDelivery) lookupAndFilter(ctx context.Context, domain string) (authMXs, nonAuthMXs []string, requireTLS bool, err error) {
-	defer trace.StartRegion(ctx, "remote/LookupAndFilterMX").End()
-
-	var policy *mtasts.Policy
-	if _, use := rd.rt.mxAuth[AuthMTASTS]; use {
-		policy, err = rd.rt.getSTSPolicy(ctx, domain)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		if policy != nil {
-			switch policy.Mode {
-			case mtasts.ModeEnforce:
-				requireTLS = true
-			case mtasts.ModeNone:
-				policy = nil
-			}
-		}
-	}
-
-	dnssecOk, mxs, err := rd.lookupMX(ctx, domain)
-	if err != nil {
-		return nil, nil, false, err
-	}
-
-	// Fallback to A/AAA RR when no MX records are present as
-	// required by RFC 5321 Section 5.1.
-	if len(mxs) == 0 {
-		mxs = append(mxs, &net.MX{
-			Host: domain,
-			Pref: 0,
-		})
-	}
-
-	sort.Slice(mxs, func(i, j int) bool {
-		return mxs[i].Pref < mxs[j].Pref
-	})
-
-	authMXs = make([]string, 0, len(mxs))
-	nonAuthMXs = make([]string, 0, len(mxs))
-
-	for _, mx := range mxs {
-		if mx.Host == "." {
-			return nil, nil, false, &exterrors.SMTPError{
-				Code:         556,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 10},
-				Message:      "Domain does not accept email (null MX)",
-			}
-		}
-
-		authenticated := false
-
-		// This is exactly the domain we wanted to want to send a message to.
-		if dns.Equal(mx.Host, domain) {
-			authenticated = true
-		}
-
-		// If we have MTA-STS - policy match is enough to mark MX as "safe"
-		if policy != nil {
-			if policy.Match(mx.Host) {
-				// Policy in 'testing' mode is enough to authenticate MX too.
-				rd.Log.DebugMsg("authenticated MX using MTA-STS", "mx", mx.Host, "domain", domain)
-				authenticated = true
-			} else if policy.Mode == mtasts.ModeEnforce {
-				// Honor *enforced* policy and skip non-matching MXs even if we
-				// don't require authentication.
-				rd.Log.Msg("ignoring MX due to MTA-STS", "mx", mx.Host, "domain", domain)
-				continue
-			}
-		}
-		// If we have DNSSEC - DNSSEC-signed MX record also qualifies as "safe".
-		if dnssecOk {
-			rd.Log.DebugMsg("authenticated MX using DNSSEC", "mx", mx.Host, "domain", domain)
-			authenticated = true
-		}
-		if _, use := rd.rt.mxAuth[AuthCommonDomain]; use && commonDomainCheck(domain, mx.Host) {
-			rd.Log.DebugMsg("authenticated MX using common domain rule", "mx", mx.Host, "domain", domain)
-			authenticated = true
-		}
-
-		if !authenticated {
-			if rd.rt.requireMXAuth {
-				rd.Log.Msg("ignoring non-authenticated MX", "mx", mx.Host, "domain", domain)
-				continue
-			}
-		}
-
-		if authenticated {
-			authMXs = append(authMXs, mx.Host)
-		} else {
-			nonAuthMXs = append(nonAuthMXs, mx.Host)
-		}
-	}
-
-	return authMXs, nonAuthMXs, requireTLS, nil
-}
-
-func commonDomainCheck(domain string, mx string) bool {
-	domainPart, err := publicsuffix.EffectiveTLDPlusOne(domain)
-	if err != nil {
-		return false
-	}
-	mxPart, err := publicsuffix.EffectiveTLDPlusOne(strings.TrimSuffix(mx, "."))
-	if err != nil {
-		return false
-	}
-
-	return domainPart == mxPart
-}
-
-func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk bool, records []*net.MX, err error) {
-	if _, use := rd.rt.mxAuth[AuthDNSSEC]; use {
-		if rd.rt.extResolver == nil {
-			return false, nil, errors.New("remote: can't do DNSSEC verification without security-aware resolver")
-		}
-		ad, records, err := rd.rt.extResolver.AuthLookupMX(context.Background(), domain)
-		if err != nil {
-			code := 554
-			enchCode := exterrors.EnhancedCode{5, 4, 4}
-			if exterrors.IsTemporary(err) {
-				code = 451
-				enchCode = exterrors.EnhancedCode{4, 4, 4}
-			}
-			return false, nil, &exterrors.SMTPError{
-				Code:         code,
-				EnhancedCode: enchCode,
-				Message:      "MX lookup error",
-				TargetName:   "remote",
-				Err:          err,
-			}
-		}
-		return ad, records, nil
-	}
-
-	records, err = rd.rt.resolver.LookupMX(ctx, domain)
-	if err != nil {
-		code := 554
-		enchCode := exterrors.EnhancedCode{5, 4, 4}
-		if exterrors.IsTemporary(err) {
-			code = 451
-			enchCode = exterrors.EnhancedCode{4, 4, 4}
-		}
-		return false, nil, &exterrors.SMTPError{
-			Code:         code,
-			EnhancedCode: enchCode,
-			Message:      "MX lookup error",
-			TargetName:   "remote",
-			Err:          err,
-		}
-	}
-	return false, records, err
 }
 
 func init() {
