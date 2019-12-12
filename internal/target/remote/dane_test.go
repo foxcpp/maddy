@@ -43,6 +43,25 @@ func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdn
 	}
 }
 
+func tlsaRecord(name string, usage, matchType, selector uint8, cert string) map[miekgdns.Type][]miekgdns.RR {
+	return map[miekgdns.Type][]miekgdns.RR{
+		miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+			&miekgdns.TLSA{
+				Hdr: miekgdns.RR_Header{
+					Name:   name,
+					Class:  miekgdns.ClassINET,
+					Rrtype: miekgdns.TypeTLSA,
+					Ttl:    9999,
+				},
+				Usage:        usage,
+				MatchingType: matchType,
+				Selector:     selector,
+				Certificate:  cert,
+			},
+		},
+	}
+}
+
 func TestRemoteDelivery_DANE_Ok(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()
@@ -57,22 +76,9 @@ func TestRemoteDelivery_DANE_Ok(t *testing.T) {
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
-			Misc: map[miekgdns.Type][]miekgdns.RR{
-				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
-					&miekgdns.TLSA{
-						Hdr: miekgdns.RR_Header{
-							Name:   "_25._tcp.mx.example.invalid.",
-							Class:  miekgdns.ClassINET,
-							Rrtype: miekgdns.TypeTLSA,
-							Ttl:    9999,
-						},
-						Usage:        3,
-						MatchingType: 1,
-						Selector:     1,
-						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
-					},
-				},
-			},
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 
@@ -99,22 +105,9 @@ func TestRemoteDelivery_DANE_NonADIgnore(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 		"_25._tcp.mx.example.invalid.": {
-			Misc: map[miekgdns.Type][]miekgdns.RR{
-				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
-					&miekgdns.TLSA{
-						Hdr: miekgdns.RR_Header{
-							Name:   "_25._tcp.mx.example.invalid.",
-							Class:  miekgdns.ClassINET,
-							Rrtype: miekgdns.TypeTLSA,
-							Ttl:    9999,
-						},
-						Usage:        3,
-						MatchingType: 1,
-						Selector:     1,
-						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
-					},
-				},
-			},
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 
@@ -141,22 +134,9 @@ func TestRemoteDelivery_DANE_Mismatch(t *testing.T) {
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
-			Misc: map[miekgdns.Type][]miekgdns.RR{
-				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
-					&miekgdns.TLSA{
-						Hdr: miekgdns.RR_Header{
-							Name:   "_25._tcp.mx.example.invalid.",
-							Class:  miekgdns.ClassINET,
-							Rrtype: miekgdns.TypeTLSA,
-							Ttl:    9999,
-						},
-						Usage:        3,
-						MatchingType: 1,
-						Selector:     1,
-						Certificate:  "b5b4d02f996f6385ebe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
-					},
-				},
-			},
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "ffb5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 
@@ -245,22 +225,9 @@ func TestRemoteDelivery_DANE_NoTLS(t *testing.T) {
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
-			Misc: map[miekgdns.Type][]miekgdns.RR{
-				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
-					&miekgdns.TLSA{
-						Hdr: miekgdns.RR_Header{
-							Name:   "_25._tcp.mx.example.invalid.",
-							Class:  miekgdns.ClassINET,
-							Rrtype: miekgdns.TypeTLSA,
-							Ttl:    9999,
-						},
-						Usage:        3,
-						MatchingType: 1,
-						Selector:     1,
-						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
-					},
-				},
-			},
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
@@ -292,31 +259,25 @@ func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
-			Misc: map[miekgdns.Type][]miekgdns.RR{
-				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
-					&miekgdns.TLSA{
-						Hdr: miekgdns.RR_Header{
-							Name:   "_25._tcp.mx.example.invalid.",
-							Class:  miekgdns.ClassINET,
-							Rrtype: miekgdns.TypeTLSA,
-							Ttl:    9999,
-						},
-						Usage:        3,
-						MatchingType: 1,
-						Selector:     1,
-						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
-					},
-				},
-			},
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
 	tgt.mxAuth[AuthDNSSEC] = struct{}{}
 	tgt.dane = true
-	tgt.tlsConfig = &tls.Config{}
-	// tgt.tlsConfig not set to trust the test server certificate.
 
+	// Cause failure through version incompatibility.
+	tgt.tlsConfig = &tls.Config{
+		MaxVersion: tls.VersionTLS12,
+		MinVersion: tls.VersionTLS12,
+	}
+	srv.TLSConfig.MinVersion = tls.VersionTLS11
+	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+
+	// DANE should prevent the fallback to plaintext.
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Error("Expected an error, got none")

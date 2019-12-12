@@ -3,9 +3,11 @@ package remote
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/internal/future"
 )
 
 func (rd *remoteDelivery) lookupTLSA(ctx context.Context, host string) ([]dns.TLSA, error) {
@@ -26,17 +28,17 @@ func (rd *remoteDelivery) lookupTLSA(ctx context.Context, host string) ([]dns.TL
 	return recs, nil
 }
 
-func (rd *remoteDelivery) verifyDANE(ctx context.Context, conn mxConn, connState tls.ConnectionState) error {
+func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, connState tls.ConnectionState) (overridePKIX bool, err error) {
 	// DANE is disabled.
-	if conn.tlsaFut == nil {
-		return nil
+	if tlsaFut == nil {
+		return false, nil
 	}
 
-	recsI, err := conn.tlsaFut.GetContext(ctx)
+	recsI, err := tlsaFut.GetContext(ctx)
 	if err != nil {
 		// No records.
 		if err == dns.ErrNotFound {
-			return nil
+			return false, nil
 		}
 
 		// Lookup error here indicates a resolution failure or may also
@@ -46,27 +48,22 @@ func (rd *remoteDelivery) verifyDANE(ctx context.Context, conn mxConn, connState
 		// We assume DANE failure in both cases as a safety measure.
 		// However, there is a possibility of a temporary error condition,
 		// so we mark it as such.
-		return exterrors.WithTemporary(err, true)
+		return false, exterrors.WithTemporary(err, true)
 	}
 	recs := recsI.([]dns.TLSA)
 
 	return verifyDANE(recs, connState)
 }
 
-func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) error {
-	requireTLS := func() error {
-		if !connState.HandshakeComplete {
-			return &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
-				Message:      "TLS is required but unsupported or failed (DANE)",
-				TargetName:   "remote",
-				Misc: map[string]interface{}{
-					"remote_server": connState.ServerName,
-				},
-			}
-		}
-		return nil
+func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) (overridePKIX bool, err error) {
+	tlsErr := &exterrors.SMTPError{
+		Code:         550,
+		EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
+		Message:      "TLS is required but unsupported or failed (enforced by DANE)",
+		TargetName:   "remote",
+		Misc: map[string]interface{}{
+			"remote_server": connState.ServerName,
+		},
 	}
 
 	// See https://tools.ietf.org/html/rfc6698#appendix-B.2
@@ -77,12 +74,12 @@ func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) error {
 	// We assume upstream resolver will generate an error if the DNSSEC
 	// signature is bogus so this case is "DNSSEC-authenticated denial of existence".
 	if len(recs) == 0 {
-		return nil
+		return false, nil
 	}
 
 	// Require TLS even if all records are not usable, per Section 2.2 of RFC 7672.
-	if err := requireTLS(); err != nil {
-		return err
+	if !connState.HandshakeComplete {
+		return false, tlsErr
 	}
 
 	// Ignore invalid records.
@@ -105,32 +102,30 @@ func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) error {
 	for _, rec := range validRecs {
 		switch rec.Usage {
 		case 0, 2: // CA constraint (PKIX-TA) and Trust Anchor Assertion (DANE-TA)
-			// For DANE-TA, this should override failing PKIX check, but
-			// currently it is not done and I (fox.cpp) do not see a way to
-			// implement this. Perhaps we can get away without doing so since
-			// no public mail server is going to use invalid certs, right?
-			// TODO
+			chains := connState.VerifiedChains
+			if len(chains) == 0 { // Happens if InsecureSkipVerify=true
+				chains = [][]*x509.Certificate{connState.PeerCertificates}
+			}
 
-			for _, chain := range connState.VerifiedChains {
+			// TODO: DANE-TA requires ServerName match so do not override PKIX
+			// unless it matches.
+
+			for _, chain := range chains {
 				for _, cert := range chain {
 					if cert.IsCA && rec.Verify(cert) == nil {
-						return nil
+						return false, nil
 					}
 				}
 			}
 		case 1, 3: // Service certificate constraint (PKIX-EE) and Domain issued certificate (DANE-EE)
-			// Comment for DANE-TA above applies here too for DANE-EE.
-			// Also, SMTP DANE profile does not require ServerName match for
-			// DANE-EE, but we do not override it too.
-
 			if rec.Verify(connState.PeerCertificates[0]) == nil {
-				return nil
+				return rec.Usage == 3, nil
 			}
 		}
 	}
 
 	// There are valid records, but none matched.
-	return &exterrors.SMTPError{
+	return false, &exterrors.SMTPError{
 		Code:         550,
 		EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 		Message:      "No matching TLSA records",

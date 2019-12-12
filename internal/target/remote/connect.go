@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -29,15 +30,11 @@ type mxConn struct {
 	// May be nil if MTA-STS is disabled.
 	stsFut *future.Future
 
-	// Future value holding the TLSA lookup results for this MX.
-	// May be nil if DANE is disabled.
-	tlsaFut *future.Future
-
 	// The MX record is DNSSEC-signed and was verified by the used resolver.
 	dnssecOk bool
 }
 
-func (rd *remoteDelivery) checkPolicies(ctx context.Context, mx string, didTLS bool, conn mxConn) error {
+func (rd *remoteDelivery) checkPolicies(ctx context.Context, mx string, didTLS, tlsPKIX bool, conn mxConn) error {
 	var (
 		authenticated bool
 		requireTLS    bool
@@ -103,15 +100,113 @@ func (rd *remoteDelivery) checkPolicies(ctx context.Context, mx string, didTLS b
 			Message:      fmt.Sprintf("Failed to estabilish the MX record (%s) authenticity", mx),
 		}
 	}
-	if requireTLS && !didTLS {
+	if requireTLS && (!didTLS || !tlsPKIX) {
 		return &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
-			Message:      fmt.Sprintf("TLS is required but unsupported or failed (mx = %s)", mx),
+			Message:      "TLS is required but unsupported or failed (enforced by MTA-STS)",
 		}
 	}
 
 	// All green.
+	return nil
+}
+
+func isVerifyError(err error) bool {
+	_, ok := err.(x509.UnknownAuthorityError)
+	if ok {
+		return true
+	}
+	_, ok = err.(x509.HostnameError)
+	if ok {
+		return true
+	}
+	_, ok = err.(x509.ConstraintViolationError)
+	if ok {
+		return true
+	}
+	_, ok = err.(x509.CertificateInvalidError)
+	return ok
+}
+
+func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *net.MX) error {
+	var (
+		daneCtx context.Context
+		tlsaFut *future.Future
+	)
+	if rd.rt.dane {
+		var daneCancel func()
+		daneCtx, daneCancel = context.WithCancel(ctx)
+		defer daneCancel()
+		tlsaFut = future.New()
+		go func() {
+			tlsaFut.Set(rd.lookupTLSA(daneCtx, record.Host))
+		}()
+	}
+
+	var (
+		tlsCfg  *tls.Config
+		tlsPKIX = true
+	)
+	if rd.rt.tlsConfig != nil {
+		tlsCfg = rd.rt.tlsConfig.Clone()
+		tlsCfg.ServerName = record.Host
+	}
+
+	rd.Log.DebugMsg("trying", "mx", record.Host, "domain", conn.domain)
+
+retry:
+	// smtpconn.C default TLS behavior is not useful for us, we want to handle
+	// TLS errors separately hence starttls=false.
+	_, err := conn.Connect(ctx, config.Endpoint{
+		Host: record.Host,
+		Port: smtpPort,
+	}, false, nil)
+	if err != nil {
+		return err
+	}
+
+	starttlsOk, _ := conn.Client().Extension("STARTTLS")
+	if starttlsOk && tlsCfg != nil {
+		if err := conn.Client().StartTLS(tlsCfg); err != nil {
+			// Attempt TLS without authentication. It is still better than
+			// plaintext and we might be able to actually authenticate the
+			// server using DANE-EE/DANE-TA later.
+			//
+			// tlsPKIX is to avoid looping forever if the same verify error
+			// happens with InsecureSkipVerify too (e.g. certificate is *too*
+			// broken).
+			if isVerifyError(err) && tlsPKIX {
+				rd.Log.Error("TLS verify error, trying without authentication", err, "mx", record.Host, "domain", conn.domain)
+				tlsCfg.InsecureSkipVerify = true
+				tlsPKIX = false
+				conn.Close()
+
+				goto retry
+			}
+
+			rd.Log.Error("TLS error, trying plaintext", err, "mx", record.Host, "domain", conn.domain)
+			tlsCfg = nil
+			tlsPKIX = false
+			conn.Close()
+
+			goto retry
+		}
+	}
+
+	tlsState, didTLS := conn.Client().TLSConnectionState()
+
+	if err := rd.checkPolicies(ctx, record.Host, didTLS, tlsPKIX, conn); err != nil {
+		conn.Close()
+		return err
+	}
+
+	_, err = rd.verifyDANE(ctx, tlsaFut, tlsState)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
 	return nil
 }
 
@@ -128,7 +223,6 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 
 	conn.Dialer = rd.rt.dialer
-	conn.TLSConfig = rd.rt.tlsConfig
 	conn.Log = rd.Log
 	conn.Hostname = rd.rt.hostname
 	conn.AddrInSMTPMsg = true
@@ -154,17 +248,9 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 	conn.dnssecOk = dnssecOk
 
-	var (
-		lastErr    error
-		daneCancel func()
-	)
+	var lastErr error
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")
 	for _, record := range records {
-		if daneCancel != nil {
-			daneCancel()
-			daneCancel = nil
-		}
-
 		if record.Host == "." {
 			return nil, &exterrors.SMTPError{
 				Code:         556,
@@ -173,72 +259,16 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			}
 		}
 
-		if rd.rt.dane {
-			var daneCtx context.Context
-			daneCtx, daneCancel = context.WithCancel(ctx)
-			conn.tlsaFut = future.New()
-			go func() {
-				conn.tlsaFut.Set(rd.lookupTLSA(daneCtx, record.Host))
-			}()
-		}
-
-		rd.Log.DebugMsg("trying", "mx", record.Host, "domain", domain)
-		didTLS, err := conn.Connect(ctx, config.Endpoint{
-			Host: record.Host,
-			Port: smtpPort,
-		}, true)
-		authErr := rd.checkPolicies(ctx, record.Host, didTLS, conn)
-
-		if err != nil {
-			lastErr = err
-
-			// If there was a TLS error and MX auth does not seem to complain
-			// about plaintext - reconnect without TLS.
-			if _, ok := err.(smtpconn.TLSError); ok && authErr == nil {
-				// Check if DANE is here and prevents our fallback.
-				if err := rd.verifyDANE(ctx, conn, tls.ConnectionState{}); err != nil {
-					lastErr = err
-					continue
-				}
-
-				rd.Log.Error("TLS error, falling back to plaintext", err,
-					"mx", record.Host, "domain", domain)
-
-				_, err := conn.Connect(ctx, config.Endpoint{
-					Host: record.Host,
-					Port: smtpPort,
-				}, false)
-				if err != nil {
-					// That's odd, but whatever.
-					continue
-				}
-			} else {
-				continue
+		if err := rd.attemptMX(ctx, conn, record); err != nil {
+			if len(records) != 0 {
+				rd.Log.Error("cannot use MX", err, "mx", record.Host, "domain", domain)
 			}
-		}
-
-		if authErr != nil {
-			conn.Close()
-			lastErr = authErr
-			continue
-		}
-
-		tlsState, _ := conn.Client().TLSConnectionState()
-		if err := rd.verifyDANE(ctx, conn, tlsState); err != nil {
-			conn.Close()
 			lastErr = err
 			continue
 		}
-
 		break
 	}
 	region.End()
-
-	// Cancel it to make staticcheck happy. verifyDANE call in loop above
-	// will wait for it to complete anyway.
-	if daneCancel != nil {
-		daneCancel()
-	}
 
 	// Stil not connected? Bail out.
 	if conn.Client() == nil {
@@ -253,8 +283,6 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			},
 		}
 	}
-
-	rd.Log.DebugMsg("connected", "mx", conn.ServerName(), "domain", domain)
 
 	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
 		conn.Close()

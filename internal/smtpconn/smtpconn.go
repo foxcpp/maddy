@@ -120,9 +120,9 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 }
 
 // Connect actually estabilishes the network connection with the remote host.
-func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool) (didTLS bool, err error) {
+func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
 	// TODO: Helper function to try multiple endpoints?
-	didTLS, cl, err := c.attemptConnect(ctx, endp, starttls)
+	didTLS, cl, err := c.attemptConnect(ctx, endp, starttls, tlsConfig)
 	if err != nil {
 		return false, c.wrapClientErr(err, endp.Host)
 	}
@@ -149,7 +149,7 @@ func (err TLSError) Unwrap() error {
 	return err.Err
 }
 
-func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls bool) (didTLS bool, cl *smtp.Client, err error) {
+func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, cl *smtp.Client, err error) {
 	var conn net.Conn
 	conn, err = c.Dialer(ctx, endp.Network(), endp.Address())
 	if err != nil {
@@ -157,7 +157,7 @@ func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls b
 	}
 
 	if endp.IsTLS() {
-		cfg := c.TLSConfig.Clone()
+		cfg := tlsConfig.Clone()
 		cfg.ServerName = endp.Host
 		conn = tls.Client(conn, cfg)
 	}
@@ -182,7 +182,7 @@ func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls b
 		return false, cl, nil
 	}
 
-	cfg := c.TLSConfig.Clone()
+	cfg := tlsConfig.Clone()
 	cfg.ServerName = endp.Host
 	if err := cl.StartTLS(cfg); err != nil {
 		// After the handshake failure, the connection may be in a bad state.

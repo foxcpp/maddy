@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 	"strconv"
@@ -231,6 +232,101 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 			return &mtasts.Policy{
 				Mode: mtasts.ModeTesting,
 				MX:   []string{"mx4.example.invalid"}, // not mx.example.invalid!
+			}, nil
+		},
+		Log: testutils.Logger(t, "remote"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if be1.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
+	be1, srv1 := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv1.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv1)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:          "remote",
+		hostname:      "mx.example.com",
+		tlsConfig:     &tls.Config{},
+		resolver:      &mockdns.Resolver{Zones: zones},
+		dialer:        resolver.DialContext,
+		extResolver:   nil,
+		requireMXAuth: true,
+		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+			if domain != "example.invalid" {
+				return nil, errors.New("Wrong domain in lookup")
+			}
+
+			return &mtasts.Policy{
+				Mode: mtasts.ModeEnforce,
+				MX:   []string{"mx.example.invalid"},
+			}, nil
+		},
+		Log: testutils.Logger(t, "remote"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if be1.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
+	_, be1, srv1 := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv1.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv1)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	tgt := Target{
+		name:     "remote",
+		hostname: "mx.example.com",
+		// Client not configured to trust the server cert.
+		tlsConfig:     &tls.Config{},
+		resolver:      &mockdns.Resolver{Zones: zones},
+		dialer:        resolver.DialContext,
+		extResolver:   nil,
+		requireMXAuth: true,
+		mxAuth:        map[string]struct{}{AuthMTASTS: {}},
+		mtastsGet: func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+			if domain != "example.invalid" {
+				return nil, errors.New("Wrong domain in lookup")
+			}
+
+			return &mtasts.Policy{
+				Mode: mtasts.ModeEnforce,
+				MX:   []string{"mx.example.invalid"},
 			}, nil
 		},
 		Log: testutils.Logger(t, "remote"),

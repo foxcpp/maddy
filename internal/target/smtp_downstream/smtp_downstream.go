@@ -152,13 +152,12 @@ func (d *delivery) connect(ctx context.Context) error {
 	var lastErr error
 
 	conn := smtpconn.New()
-	conn.TLSConfig = &d.u.tlsConfig
 	conn.Log = d.log
 	conn.Hostname = d.u.hostname
 	conn.AddrInSMTPMsg = false
 
 	for _, endp := range d.u.endpoints {
-		didTLS, err := conn.Connect(ctx, endp, d.u.attemptStartTLS)
+		didTLS, err := conn.Connect(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
 		if err != nil {
 			if len(d.u.endpoints) != 1 {
 				d.log.Msg("connect error", err, "downstream_server", net.JoinHostPort(endp.Host, endp.Port))

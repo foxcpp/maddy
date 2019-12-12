@@ -46,7 +46,7 @@ func TestSMTPUTF8_Sender_UTF8_Punycode(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -75,7 +75,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Punycode(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -104,7 +104,7 @@ func TestSMTPUTF8_Sender_UTF8_Reject(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -127,7 +127,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Reject(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -149,7 +149,7 @@ func TestSMTPUTF8_Sender_UTF8_Domain(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -177,7 +177,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Domain(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -206,7 +206,7 @@ func TestSMTPUTF8_Sender_UTF8_Username(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
@@ -235,7 +235,7 @@ func TestSMTPUTF8_Rcpt_UTF8_Username(t *testing.T) {
 		Scheme: "tcp",
 		Host:   "127.0.0.1",
 		Port:   testPort,
-	}, false); err != nil {
+	}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()

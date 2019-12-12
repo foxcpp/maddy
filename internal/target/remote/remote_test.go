@@ -850,7 +850,7 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 }
 
 func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
-	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
@@ -863,13 +863,19 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 	}
 	resolver := &mockdns.Resolver{Zones: zones}
 
+	// Cause failure through version incompatibility.
+	clientCfg.MaxVersion = tls.VersionTLS12
+	clientCfg.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MinVersion = tls.VersionTLS11
+	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+
 	tgt := Target{
 		name:        "remote",
 		hostname:    "mx.example.com",
 		resolver:    &mockdns.Resolver{Zones: zones},
 		dialer:      resolver.DialContext,
 		extResolver: nil,
-		tlsConfig:   &tls.Config{},
+		tlsConfig:   clientCfg,
 		Log:         testutils.Logger(t, "remote"),
 	}
 
@@ -937,7 +943,44 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 }
 
 func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
-	_, _, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	clientCfg, _, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	// Cause failure through version incompatibility.
+	clientCfg.MaxVersion = tls.VersionTLS12
+	clientCfg.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MinVersion = tls.VersionTLS11
+	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &mockdns.Resolver{Zones: zones},
+		dialer:      resolver.DialContext,
+		extResolver: nil,
+		tlsConfig:   clientCfg,
+		requireTLS:  true,
+		Log:         testutils.Logger(t, "remote"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+}
+
+func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
+	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
@@ -956,15 +999,52 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 		resolver:    &mockdns.Resolver{Zones: zones},
 		dialer:      resolver.DialContext,
 		extResolver: nil,
-		tlsConfig:   &tls.Config{},
-		requireTLS:  true,
+		// Client is not configured to trust the server cert.
+		tlsConfig: &tls.Config{},
+		Log:       testutils.Logger(t, "remote"),
+	}
+
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+
+	// But it should still be delivered over TLS.
+	if !be.Messages[0].State.TLS.HandshakeComplete {
+		t.Fatal("Message was not delivered over TLS")
+	}
+}
+
+func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	// Cause failure through version incompatibility.
+	clientCfg.MaxVersion = tls.VersionTLS12
+	clientCfg.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MinVersion = tls.VersionTLS11
+	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &mockdns.Resolver{Zones: zones},
+		dialer:      resolver.DialContext,
+		extResolver: nil,
+		tlsConfig:   clientCfg,
 		Log:         testutils.Logger(t, "remote"),
 	}
 
-	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
+	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestMain(m *testing.M) {
