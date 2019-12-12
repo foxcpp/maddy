@@ -75,4 +75,4 @@ The code is under MIT license. See [LICENSE](LICENSE) for more information.
 [dnsbl]: https://en.wikipedia.org/wiki/DNSBL
 [backscatter]: https://en.wikipedia.org/wiki/Backscatter_(e-mail)
 
-[setup-tutorial]: https://foxcpp.dev/maddy/tutorial/setting-up/
+[setup-tutorial]: https://foxcpp.dev/maddy/tutorials/setting-up/
