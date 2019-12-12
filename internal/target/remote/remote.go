@@ -53,6 +53,7 @@ type Target struct {
 	tlsConfig     *tls.Config
 	requireMXAuth bool
 	mxAuth        map[string]struct{}
+	dane          bool
 
 	resolver    dns.Resolver
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -99,6 +100,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
+	cfg.Bool("dane", false, true, &rt.dane)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -127,7 +129,7 @@ func (rt *Target) initMXAuth(methods []string) error {
 		return errors.New("remote: can't use 'off' together with other options in authenticate_mx")
 	}
 
-	if _, use := rt.mxAuth[AuthDNSSEC]; use {
+	if _, use := rt.mxAuth[AuthDNSSEC]; use || rt.dane {
 		var err error
 		rt.extResolver, err = dns.NewExtResolver()
 		if err != nil {

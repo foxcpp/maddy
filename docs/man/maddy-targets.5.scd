@@ -99,6 +99,7 @@ remote {
     require_tls no
     debug no
     mtasts_cache StateDirectory/mtasts-cache
+    dane yes
 }
 ```
 
@@ -171,6 +172,19 @@ Enable verbose logging.
 *Default*: StateDirectory/mtasts-cache
 
 Set location of the MTA-STS policies cache directory.
+
+*Syntax*: dane _boolean_ ++
+*Default*: yes
+
+Enable DANE lookup and verification. Requires a validating DNS server to work
+correctly.
+
+If the recipient has DANE configured (TLSA records for SMTP) then TLS will be
+required for outgoing connections. It is best to use this option together with
+'authenticate_mx dnssec' to ensure full authentication.
+
+Simiarly to 'authenticate_mx dnssec', this option is currently unsupported on
+non-Unix platforms.
 
 # SMTP transparent forwarding module (smtp_downstream)
 

@@ -37,6 +37,10 @@ func TestRemoteDelivery_EHLO_ALabel(t *testing.T) {
 				Name: "hostname",
 				Args: []string{"тест.invalid"},
 			},
+			{
+				Name: "dane",
+				Args: []string{"no"},
+			},
 		},
 	})); err != nil {
 		t.Fatal(err)

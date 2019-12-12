@@ -73,6 +73,8 @@ github.com/foxcpp/go-mockdns v0.0.0-20191116212937-0c6663a11ba3 h1:WpRSDZUlGndFX
 github.com/foxcpp/go-mockdns v0.0.0-20191116212937-0c6663a11ba3/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20191123143003-02edb10da1e3 h1:Xb9iu/7Gy3ZIaMUCHQICa0jSCeY4Sow2X877Y0GZ1pM=
 github.com/foxcpp/go-mockdns v0.0.0-20191123143003-02edb10da1e3/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
+github.com/foxcpp/go-mockdns v0.0.0-20191211223108-4a6fcad1301d h1:XtbADe4vz/W1kw94dqp3xbkm2/W+ian7r7AvlDP4tUg=
+github.com/foxcpp/go-mockdns v0.0.0-20191211223108-4a6fcad1301d/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/frankban/quicktest v1.5.0 h1:Tb4jWdSpdjKzTUicPnY61PZxKbDoGa7ABbrReT3gQVY=
 github.com/frankban/quicktest v1.5.0/go.mod h1:jaStnuzAqU1AJdCO0l53JDCJrVDKcS03DbaAcR7Ks/o=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=

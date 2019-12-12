@@ -1,0 +1,329 @@
+package remote
+
+import (
+	"crypto/tls"
+	"net"
+	"strconv"
+	"testing"
+
+	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/internal/testutils"
+	miekgdns "github.com/miekg/dns"
+)
+
+func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdns.Server, *Target) {
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	dnsSrv, err := mockdns.NewServer(zones)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dialer := net.Dialer{}
+	dialer.Resolver = &net.Resolver{}
+	dnsSrv.PatchNet(dialer.Resolver)
+	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
+
+	extResolver, err := dns.NewExtResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	extResolver.Cfg.Servers = []string{addr.IP.String()}
+	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
+
+	return dnsSrv, &Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    &mockdns.Resolver{Zones: zones},
+		dialer:      resolver.DialContext,
+		extResolver: extResolver,
+		mxAuth:      map[string]struct{}{},
+		Log:         testutils.Logger(t, "remote"),
+	}
+}
+
+func TestRemoteDelivery_DANE_Ok(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			AD: true,
+			Misc: map[miekgdns.Type][]miekgdns.RR{
+				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+					&miekgdns.TLSA{
+						Hdr: miekgdns.RR_Header{
+							Name:   "_25._tcp.mx.example.invalid.",
+							Class:  miekgdns.ClassINET,
+							Rrtype: miekgdns.TypeTLSA,
+							Ttl:    9999,
+						},
+						Usage:        3,
+						MatchingType: 1,
+						Selector:     1,
+						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
+					},
+				},
+			},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+	tgt.tlsConfig = clientCfg
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_DANE_NonADIgnore(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			Misc: map[miekgdns.Type][]miekgdns.RR{
+				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+					&miekgdns.TLSA{
+						Hdr: miekgdns.RR_Header{
+							Name:   "_25._tcp.mx.example.invalid.",
+							Class:  miekgdns.ClassINET,
+							Rrtype: miekgdns.TypeTLSA,
+							Ttl:    9999,
+						},
+						Usage:        3,
+						MatchingType: 1,
+						Selector:     1,
+						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
+					},
+				},
+			},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_DANE_Mismatch(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			AD: true,
+			Misc: map[miekgdns.Type][]miekgdns.RR{
+				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+					&miekgdns.TLSA{
+						Hdr: miekgdns.RR_Header{
+							Name:   "_25._tcp.mx.example.invalid.",
+							Class:  miekgdns.ClassINET,
+							Rrtype: miekgdns.TypeTLSA,
+							Ttl:    9999,
+						},
+						Usage:        3,
+						MatchingType: 1,
+						Selector:     1,
+						Certificate:  "b5b4d02f996f6385ebe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
+					},
+				},
+			},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+	tgt.tlsConfig = clientCfg
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued but should not")
+	}
+}
+
+func TestRemoteDelivery_DANE_NoRecord(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+	tgt.tlsConfig = clientCfg
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_DANE_LookupErr(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			Err: &net.DNSError{},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+	tgt.tlsConfig = clientCfg
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued but should not")
+	}
+}
+
+func TestRemoteDelivery_DANE_NoTLS(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			AD: true,
+			Misc: map[miekgdns.Type][]miekgdns.RR{
+				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+					&miekgdns.TLSA{
+						Hdr: miekgdns.RR_Header{
+							Name:   "_25._tcp.mx.example.invalid.",
+							Class:  miekgdns.ClassINET,
+							Rrtype: miekgdns.TypeTLSA,
+							Ttl:    9999,
+						},
+						Usage:        3,
+						MatchingType: 1,
+						Selector:     1,
+						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
+					},
+				},
+			},
+		},
+	}
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued but should not")
+	}
+}
+
+func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
+	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			AD: true,
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			AD: true,
+			Misc: map[miekgdns.Type][]miekgdns.RR{
+				miekgdns.Type(miekgdns.TypeTLSA): []miekgdns.RR{
+					&miekgdns.TLSA{
+						Hdr: miekgdns.RR_Header{
+							Name:   "_25._tcp.mx.example.invalid.",
+							Class:  miekgdns.ClassINET,
+							Rrtype: miekgdns.TypeTLSA,
+							Ttl:    9999,
+						},
+						Usage:        3,
+						MatchingType: 1,
+						Selector:     1,
+						Certificate:  "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf",
+					},
+				},
+			},
+		},
+	}
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.mxAuth[AuthDNSSEC] = struct{}{}
+	tgt.dane = true
+	tgt.tlsConfig = &tls.Config{}
+	// tgt.tlsConfig not set to trust the test server certificate.
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued but should not")
+	}
+}
+
+// TODO: Test other matching types, etc.

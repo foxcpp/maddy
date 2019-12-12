@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -27,6 +28,10 @@ type mxConn struct {
 	// Future value holding the MTA-STS fetch results for this domain.
 	// May be nil if MTA-STS is disabled.
 	stsFut *future.Future
+
+	// Future value holding the TLSA lookup results for this MX.
+	// May be nil if DANE is disabled.
+	tlsaFut *future.Future
 
 	// The MX record is DNSSEC-signed and was verified by the used resolver.
 	dnssecOk bool
@@ -149,15 +154,32 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 	conn.dnssecOk = dnssecOk
 
-	var lastErr error
+	var (
+		lastErr    error
+		daneCancel func()
+	)
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")
 	for _, record := range records {
+		if daneCancel != nil {
+			daneCancel()
+			daneCancel = nil
+		}
+
 		if record.Host == "." {
 			return nil, &exterrors.SMTPError{
 				Code:         556,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 10},
 				Message:      "Domain does not accept email (null MX)",
 			}
+		}
+
+		if rd.rt.dane {
+			var daneCtx context.Context
+			daneCtx, daneCancel = context.WithCancel(ctx)
+			conn.tlsaFut = future.New()
+			go func() {
+				conn.tlsaFut.Set(rd.lookupTLSA(daneCtx, record.Host))
+			}()
 		}
 
 		rd.Log.DebugMsg("trying", "mx", record.Host, "domain", domain)
@@ -173,6 +195,12 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			// If there was a TLS error and MX auth does not seem to complain
 			// about plaintext - reconnect without TLS.
 			if _, ok := err.(smtpconn.TLSError); ok && authErr == nil {
+				// Check if DANE is here and prevents our fallback.
+				if err := rd.verifyDANE(ctx, conn, tls.ConnectionState{}); err != nil {
+					lastErr = err
+					continue
+				}
+
 				rd.Log.Error("TLS error, falling back to plaintext", err,
 					"mx", record.Host, "domain", domain)
 
@@ -195,9 +223,22 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			continue
 		}
 
+		tlsState, _ := conn.Client().TLSConnectionState()
+		if err := rd.verifyDANE(ctx, conn, tlsState); err != nil {
+			conn.Close()
+			lastErr = err
+			continue
+		}
+
 		break
 	}
 	region.End()
+
+	// Cancel it to make staticcheck happy. verifyDANE call in loop above
+	// will wait for it to complete anyway.
+	if daneCancel != nil {
+		daneCancel()
+	}
 
 	// Stil not connected? Bail out.
 	if conn.Client() == nil {

@@ -3,11 +3,14 @@ package dns
 import (
 	"context"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/miekg/dns"
 )
+
+type TLSA = dns.TLSA
 
 // ExtResolver is a convenience wrapper for miekg/dns library that provides
 // access to certain low-level functionality (notably, AD flag in responses,
@@ -17,12 +20,39 @@ type ExtResolver struct {
 	Cfg *dns.ClientConfig
 }
 
+// ErrRCode is returned by ExtResolver when the RCODE in response is not
+// NOERROR.
+type ErrRCode struct {
+	Code int
+}
+
+func (err ErrRCode) Error() string {
+	switch err.Code {
+	case dns.RcodeFormatError:
+		return "dns: rcode FORMERR"
+	case dns.RcodeServerFailure:
+		return "dns: rcode SERVFAIL"
+	case dns.RcodeNameError:
+		return "dns: rcode NXDOMAIN"
+	case dns.RcodeNotImplemented:
+		return "dns: rcode NOTIMP"
+	case dns.RcodeRefused:
+		return "dns: rcode REFUSED"
+	}
+	return "dns: non-success rcode: " + strconv.Itoa(err.Code)
+}
+
+var ErrNotFound = ErrRCode{dns.RcodeNameError}
+
 func (e ExtResolver) exchange(ctx context.Context, msg *dns.Msg) (*dns.Msg, error) {
 	var resp *dns.Msg
 	var lastErr error
 	for _, srv := range e.Cfg.Servers {
 		resp, _, lastErr = e.cl.ExchangeContext(ctx, msg, net.JoinHostPort(srv, e.Cfg.Port))
 		if lastErr == nil {
+			if resp.Rcode != dns.RcodeSuccess {
+				return nil, ErrRCode{resp.Rcode}
+			}
 			break
 		}
 	}
@@ -167,6 +197,35 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	}
 
 	return ad, addrs, err
+}
+
+func (e ExtResolver) AuthLookupTLSA(ctx context.Context, service, network, domain string) (ad bool, recs []TLSA, err error) {
+	name, err := dns.TLSAName(domain, service, network)
+	if err != nil {
+		return false, nil, err
+	}
+
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn(name), dns.TypeTLSA)
+	msg.SetEdns0(4096, false)
+	msg.AuthenticatedData = true
+
+	resp, err := e.exchange(ctx, msg)
+	if err != nil {
+		return false, nil, err
+	}
+
+	ad = resp.AuthenticatedData
+	recs = make([]dns.TLSA, 0, len(resp.Answer))
+	for _, rr := range resp.Answer {
+		rr, ok := rr.(*dns.TLSA)
+		if !ok {
+			continue
+		}
+
+		recs = append(recs, *rr)
+	}
+	return
 }
 
 func NewExtResolver() (*ExtResolver, error) {

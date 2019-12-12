@@ -25,6 +25,10 @@ func New() *Future {
 // Set sets the Future (value, error) pair. All currently blocked and future
 // Get calls will return it.
 func (f *Future) Set(val interface{}, err error) {
+	if f == nil {
+		panic("nil future used")
+	}
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -40,10 +44,18 @@ func (f *Future) Set(val interface{}, err error) {
 }
 
 func (f *Future) Get() (interface{}, error) {
+	if f == nil {
+		panic("nil future used")
+	}
+
 	return f.GetContext(context.Background())
 }
 
 func (f *Future) GetContext(ctx context.Context) (interface{}, error) {
+	if f == nil {
+		panic("nil future used")
+	}
+
 	f.mu.RLock()
 	if f.set {
 		val := f.val
