@@ -201,7 +201,7 @@ retry:
 		return err
 	}
 
-	_, err = rd.verifyDANE(ctx, tlsaFut, tlsState)
+	_, err = rd.verifyDANE(ctx, tlsaFut, conn.ServerName(), tlsState)
 	if err != nil {
 		conn.Close()
 		return err

@@ -28,7 +28,7 @@ func (rd *remoteDelivery) lookupTLSA(ctx context.Context, host string) ([]dns.TL
 	return recs, nil
 }
 
-func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, connState tls.ConnectionState) (overridePKIX bool, err error) {
+func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, serverName string, connState tls.ConnectionState) (overridePKIX bool, err error) {
 	// DANE is disabled.
 	if tlsaFut == nil {
 		return false, nil
@@ -52,10 +52,17 @@ func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future
 	}
 	recs := recsI.([]dns.TLSA)
 
-	return verifyDANE(recs, connState)
+	return verifyDANE(recs, serverName, connState)
 }
 
-func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) (overridePKIX bool, err error) {
+// verifyDANE checks whether TLSA records require TLS use and match the
+// certificate and name used by the server.
+//
+// overridePKIX result indicates whether DANE should make server authentication
+// succeed even if PKIX/X.509 verification fails. That is, if InsecureSkipVerify
+// is used and verifyDANE returns overridePKIX=true, the server certificate
+// should trusted.
+func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionState) (overridePKIX bool, err error) {
 	tlsErr := &exterrors.SMTPError{
 		Code:         550,
 		EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
@@ -107,18 +114,21 @@ func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) (overridePKIX bo
 				chains = [][]*x509.Certificate{connState.PeerCertificates}
 			}
 
-			// TODO: DANE-TA requires ServerName match so do not override PKIX
-			// unless it matches.
-
 			for _, chain := range chains {
 				for _, cert := range chain {
 					if cert.IsCA && rec.Verify(cert) == nil {
-						return false, nil
+						// DANE-TA requires ServerName match, so verify it to
+						// override PKIX.
+						return rec.Usage == 2 &&
+							chain[0].VerifyHostname(serverName) == nil, nil
 					}
 				}
 			}
 		case 1, 3: // Service certificate constraint (PKIX-EE) and Domain issued certificate (DANE-EE)
 			if rec.Verify(connState.PeerCertificates[0]) == nil {
+				// https://tools.ietf.org/html/rfc7672#section-3.1.1
+				// - SAN/CN are not considered so always override.
+				// - Expired certificates are fine too.
 				return rec.Usage == 3, nil
 			}
 		}
