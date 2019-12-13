@@ -6,6 +6,7 @@ import (
 	"net"
 	"runtime/trace"
 	"strings"
+	"sync"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -30,6 +31,7 @@ type List struct {
 	EHLO     bool
 	MAILFROM bool
 
+	ScoreAdj  int
 	Responses []net.IPNet
 }
 
@@ -43,7 +45,9 @@ type DNSBL struct {
 	listedAction check.FailAction
 	inlineBls    []string
 	bls          []List
-	wls          []List
+
+	quarantineThres int
+	rejectThres     int
 
 	resolver dns.Resolver
 	log      log.Logger
@@ -70,10 +74,8 @@ func (bl *DNSBL) InstanceName() string {
 func (bl *DNSBL) Init(cfg *config.Map) error {
 	cfg.Bool("debug", false, false, &bl.log.Debug)
 	cfg.Bool("check_early", false, false, &bl.checkEarly)
-	cfg.Custom("listed_action", false, false,
-		func() (interface{}, error) {
-			return check.FailAction{Reject: true}, nil
-		}, check.FailActionDirective, &bl.listedAction)
+	cfg.Int("quarantine_threadhold", false, false, 1, &bl.quarantineThres)
+	cfg.Int("reject_threadhold", false, false, 9999, &bl.rejectThres)
 	cfg.AllowUnknown()
 	unknown, err := cfg.Process()
 	if err != nil {
@@ -99,7 +101,6 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 func (bl *DNSBL) readListCfg(node config.Node) error {
 	var (
 		listCfg      List
-		whitelist    bool
 		responseNets []string
 	)
 
@@ -108,7 +109,7 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 	cfg.Bool("client_ipv6", false, defaultBL.ClientIPv4, &listCfg.ClientIPv6)
 	cfg.Bool("ehlo", false, defaultBL.EHLO, &listCfg.EHLO)
 	cfg.Bool("mailfrom", false, defaultBL.EHLO, &listCfg.MAILFROM)
-	cfg.Bool("whitelist", false, false, &whitelist)
+	cfg.Int("score", false, false, 1, &listCfg.ScoreAdj)
 	cfg.StringList("responses", false, false, []string{"127.0.0.1/24"}, &responseNets)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -132,18 +133,15 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 		zoneCfg := listCfg
 		zoneCfg.Zone = zone
 
-		if whitelist {
+		if listCfg.ScoreAdj < 0 {
 			if zoneCfg.EHLO {
-				return errors.New("dnsbl: 'ehlo' can't be used with 'whitelist'")
+				return errors.New("dnsbl: 'ehlo' should not be used with negative score")
 			}
 			if zoneCfg.MAILFROM {
-				return errors.New("dnsbl: 'mailfrom' can't be used with 'whitelist'")
+				return errors.New("dnsbl: 'mailfrom' should not be used with negative score")
 			}
-
-			bl.wls = append(bl.wls, zoneCfg)
-		} else {
-			bl.bls = append(bl.bls, zoneCfg)
 		}
+		bl.bls = append(bl.bls, zoneCfg)
 
 		// From RFC 5782 Section 7:
 		// >To avoid this situation, systems that use
@@ -276,46 +274,78 @@ func (bl *DNSBL) checkList(ctx context.Context, list List, ip net.IP, ehlo, mail
 	return nil
 }
 
-func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom string) error {
-	eg := errgroup.Group{}
+func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom string) module.CheckResult {
+	var (
+		eg = errgroup.Group{}
+
+		// Protects variables below.
+		lck      sync.Mutex
+		score    int
+		listedOn []string
+		reasons  []string
+	)
 
 	for _, list := range bl.bls {
 		list := list
 		eg.Go(func() error {
-			return bl.checkList(ctx, list, ip, ehlo, mailFrom)
+			err := bl.checkList(ctx, list, ip, ehlo, mailFrom)
+			if err != nil {
+				listErr, listed := err.(ListedErr)
+				if !listed {
+					return err
+				}
+
+				lck.Lock()
+				defer lck.Unlock()
+				listedOn = append(listedOn, listErr.List)
+				reasons = append(reasons, listErr.Reason)
+				score += list.ScoreAdj
+			}
+			return nil
 		})
 	}
 
 	err := eg.Wait()
-	_, listed := err.(ListedErr)
-	if !listed {
+	if err != nil {
 		// Lookup error for BL, hard-fail.
-		return err
-	}
-	if len(bl.wls) == 0 {
-		// No whitelists, hence not worth checking.
-		return err
-	}
-
-	eg = errgroup.Group{}
-
-	// Check configured whitelists.
-	for _, list := range bl.wls {
-		list := list
-		eg.Go(func() error {
-			return bl.checkList(ctx, list, ip, ehlo, mailFrom)
-		})
+		return module.CheckResult{
+			Reject: true,
+			Reason: &exterrors.SMTPError{
+				Code:         exterrors.SMTPCode(err, 451, 554),
+				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
+				Message:      "DNS error during policy check",
+				Err:          err,
+				CheckName:    "dnsbl",
+			},
+		}
 	}
 
-	wlerr := eg.Wait()
-	if wlErr, listedWl := wlerr.(ListedErr); listedWl {
-		// Listed on WL, override the BL result to 'neutral'.
-		bl.log.Msg("WL overrides BL listing", "list", wlErr.List, "listed_identity", wlErr.Identity)
-		return nil
+	if score >= bl.rejectThres {
+		return module.CheckResult{
+			Reject: true,
+			Reason: &exterrors.SMTPError{
+				Code:         554,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+				Message:      "Client identity is listed in the used DNSBL",
+				Err:          err,
+				CheckName:    "dnsbl",
+			},
+		}
+	}
+	if score >= bl.quarantineThres {
+		return module.CheckResult{
+			Quarantine: true,
+			Reason: &exterrors.SMTPError{
+				Code:         554,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+				Message:      "Client identity is listed in the used DNSBL",
+				Err:          err,
+				CheckName:    "dnsbl",
+			},
+		}
 	}
 
-	// Lookup error for WL, hard-fail.
-	return wlerr
+	return module.CheckResult{}
 }
 
 // CheckConnection implements module.EarlyCheck.
@@ -334,8 +364,9 @@ func (bl *DNSBL) CheckConnection(ctx context.Context, state *smtp.ConnectionStat
 		return nil
 	}
 
-	if err := bl.checkLists(ctx, ip.IP, state.Hostname, ""); err != nil {
-		return exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"})
+	result := bl.checkLists(ctx, ip.IP, state.Hostname, "")
+	if result.Reject {
+		return result.Reason
 	}
 
 	return nil
@@ -374,16 +405,7 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	if err := s.bl.checkLists(ctx, ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom); err != nil {
-		// TODO: Support per-list actions?
-		return s.bl.listedAction.Apply(module.CheckResult{
-			Reason: exterrors.WithFields(err, map[string]interface{}{"check": "dnsbl"}),
-		})
-	}
-
-	s.log.DebugMsg("ok")
-
-	return module.CheckResult{}
+	return s.bl.checkLists(ctx, ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
 }
 
 func (*state) CheckSender(context.Context, string) module.CheckResult {

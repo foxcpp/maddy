@@ -102,29 +102,61 @@ func TestCheckList(t *testing.T) {
 }
 
 func TestCheckLists(t *testing.T) {
-	test := func(zones map[string]mockdns.Zone, bls, wls []List, ip net.IP, ehlo, mailFrom string, expectedErr error) {
+	test := func(zones map[string]mockdns.Zone, bls []List, ip net.IP, ehlo, mailFrom string, reject, quarantine bool) {
 		mod := &DNSBL{
-			bls: bls, wls: wls,
-			resolver: &mockdns.Resolver{Zones: zones},
-			log:      testutils.Logger(t, "dnsbl"),
+			bls:             bls,
+			resolver:        &mockdns.Resolver{Zones: zones},
+			log:             testutils.Logger(t, "dnsbl"),
+			quarantineThres: 1,
+			rejectThres:     2,
 		}
-		err := mod.checkLists(context.Background(), ip, ehlo, mailFrom)
-		if !reflect.DeepEqual(err, expectedErr) {
-			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
+		result := mod.checkLists(context.Background(), ip, ehlo, mailFrom)
+
+		if result.Reject && !reject {
+			t.Errorf("Expected message to not be rejected")
+		}
+		if !result.Reject && reject {
+			t.Errorf("Expected message to be rejected")
+		}
+		if result.Quarantine && !quarantine {
+			t.Errorf("Expected message to not be quarantined")
+		}
+		if !result.Quarantine && quarantine {
+			t.Errorf("Expected message to be quarantined")
 		}
 	}
 
+	// Score 2 >= 2, reject
 	test(map[string]mockdns.Zone{
 		"4.3.2.1.example.org.": {
 			A: []string{"127.0.0.1"},
 		},
-	}, []List{{Zone: "example.org", ClientIPv4: true}}, nil, net.IPv4(1, 2, 3, 4),
-		"mx.example.com", "foo@example.com", ListedErr{
-			Identity: "1.2.3.4",
-			List:     "example.org",
-			Reason:   "127.0.0.1",
+	}, []List{
+		{
+			Zone:       "example.org",
+			ClientIPv4: true,
+			ScoreAdj:   2,
 		},
+	}, net.IPv4(1, 2, 3, 4),
+		"mx.example.com", "foo@example.com", true, false,
 	)
+
+	// Score 1 >= 1, quarantine
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.1"},
+		},
+	}, []List{
+		{
+			Zone:       "example.org",
+			ClientIPv4: true,
+			ScoreAdj:   1,
+		},
+	}, net.IPv4(1, 2, 3, 4),
+		"mx.example.com", "foo@example.com", false, true,
+	)
+
+	// Score 0, no action
 	test(map[string]mockdns.Zone{
 		"4.3.2.1.example.org.": {
 			A: []string{"127.0.0.1"},
@@ -133,11 +165,16 @@ func TestCheckLists(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	},
-		[]List{{Zone: "example.org", ClientIPv4: true}},
-		[]List{{Zone: "example.net", ClientIPv4: true}},
+		[]List{
+			{Zone: "example.org", ClientIPv4: true, ScoreAdj: 1},
+			{Zone: "example.net", ClientIPv4: true, ScoreAdj: -1},
+		},
 		net.IPv4(1, 2, 3, 4),
-		"mx.example.com", "foo@example.com", nil,
+		"mx.example.com", "foo@example.com",
+		false, false,
 	)
+
+	// DNS error, hard-fail (reject)
 	test(map[string]mockdns.Zone{
 		"4.3.2.2.example.org.": {
 			Err: &net.DNSError{
@@ -147,34 +184,12 @@ func TestCheckLists(t *testing.T) {
 			},
 		},
 	},
-		[]List{{Zone: "example.org", ClientIPv4: true}},
-		[]List{{Zone: "example.net", ClientIPv4: true}},
+		[]List{
+			{Zone: "example.org", ClientIPv4: true, ScoreAdj: 1},
+			{Zone: "example.net", ClientIPv4: true, ScoreAdj: 2},
+		},
 		net.IPv4(2, 2, 3, 4),
-		"mx.example.com", "foo@example.com", &net.DNSError{
-			Err:         "i/o timeout",
-			IsTimeout:   true,
-			IsTemporary: true,
-		},
-	)
-	test(map[string]mockdns.Zone{
-		"4.3.2.2.example.org.": {
-			A: []string{"127.0.0.1"},
-		},
-		"4.3.2.2.example.net.": {
-			Err: &net.DNSError{
-				Err:         "i/o timeout",
-				IsTimeout:   true,
-				IsTemporary: true,
-			},
-		},
-	},
-		[]List{{Zone: "example.org", ClientIPv4: true}},
-		[]List{{Zone: "example.net", ClientIPv4: true}},
-		net.IPv4(2, 2, 3, 4),
-		"mx.example.com", "foo@example.com", &net.DNSError{
-			Err:         "i/o timeout",
-			IsTimeout:   true,
-			IsTemporary: true,
-		},
+		"mx.example.com", "foo@example.com",
+		true, false,
 	)
 }

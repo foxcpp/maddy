@@ -241,7 +241,9 @@ of blocks specifing lists to use and kind of lookups to perform on them.
 dnsbl {
     debug no
     check_early no
-    listed_action reject
+
+    quarantine_threshold 1
+    reject_threshold 1
 
     # Lists configuration example.
     dnsbl.example.org {
@@ -249,12 +251,14 @@ dnsbl {
         client_ipv6 no
         ehlo no
         mailfrom no
+        score 1
     }
     hsrbl.example.org {
         client_ipv4 no
         client_ipv6 no
         ehlo yes
         mailfrom yes
+        score 1
     }
 }
 ```
@@ -279,6 +283,7 @@ check {
             client_ipv6 no
             ehlo no
             mailfrom no
+            score 1
         }
     }
 }
@@ -301,17 +306,23 @@ pipeline block.
 
 In particular, this means:
 - No logging is done for rejected messages.
-- listed_action takes no effect. It is always reject.
+- No action is taken if quarantine_threshold is hit, only reject_threshold
+  applies.
 - defer_sender_reject from SMTP configuration takes no effect.
 - MAIL FROM is not checked, even if specified.
 
 If you often get hit by spam attacks, this is recommended to enable this
 setting to save server resources.
 
-*Syntax*: listed_action reject|quarantine|ignore ++
-*Default*: reject
+*Syntax*: quarantine_threshold _integer_ ++
+*Default*: 1
 
-Action to take when one of the client identifiers is listed on the DNSBL.
+DNSBL score needed (equals-or-higher) to quarantine the message.
+
+*Syntax*: reject_threshold _integer_ ++
+*Default*: 9999
+
+DNSBL score needed (equals-or-higher) to reject the message.
 
 ## List configuration
 
@@ -322,7 +333,7 @@ dnsbl.example.org dnsbl.example.com {
     ehlo no
     mailfrom no
     responses 127.0.0.1/24
-    whitelist no
+	score 1
 }
 ```
 
@@ -361,14 +372,19 @@ This works correctly only with domain-based DNSBLs.
 IP networks (in CIDR notation) or addresses to permit in list lookup results.
 Addresses not matching any entry in this directives will be ignored.
 
-*Syntax*: whitelist _boolean_ ++
-*Default*: no
+*Syntax*: score _integer_ ++
+*Default*: 1
 
-This list is a whitelist. If client IP is listed on it, all BL listings should
-be ignored.
+Score value to add for the message if it is listed.
 
-This directive can't be used with 'ehlo' and 'mailfrom' since these identifiers
-are under sender control.
+If sum of list scores is equals or higher than quarantine_threshold, the
+message will be quarantined.
+
+If sum of list scores is equals or higher than rejected_threshold, the message
+will be rejected.
+
+It is possible to specify a negative value to make list act like a whitelist
+and override results of other blocklists.
 
 # DKIM signing module (sign_dkim)
 
