@@ -163,6 +163,7 @@ func (dtd *testTargetDelivery) Commit(ctx context.Context) error {
 }
 
 func DoTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []string) string {
+	t.Helper()
 	return DoTestDeliveryMeta(t, tgt, from, to, &module.MsgMetadata{
 		OriginalFrom: from,
 	})
