@@ -87,6 +87,10 @@ func (l Logger) Msg(msg string, fields ...interface{}) {
 // context in which the error is *handled*. For example, if error leads to
 // rejection of SMTP DATA command, msg will probably be "DATA error".
 func (l Logger) Error(msg string, err error, fields ...interface{}) {
+	if err == nil {
+		return
+	}
+
 	errFields := exterrors.Fields(err)
 	allFields := make(map[string]interface{}, len(fields)+len(errFields)+2)
 	for k, v := range errFields {
