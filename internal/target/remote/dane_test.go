@@ -13,8 +13,6 @@ import (
 )
 
 func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdns.Server, *Target) {
-	resolver := &mockdns.Resolver{Zones: zones}
-
 	dnsSrv, err := mockdns.NewServer(zones)
 	if err != nil {
 		t.Fatal(err)
@@ -32,15 +30,7 @@ func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdn
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	return dnsSrv, &Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: extResolver,
-		mxAuth:      map[string]struct{}{},
-		Log:         testutils.Logger(t, "remote"),
-	}
+	return dnsSrv, testTarget(t, zones, extResolver, nil)
 }
 
 func tlsaRecord(name string, usage, matchType, selector uint8, cert string) map[miekgdns.Type][]miekgdns.RR {
@@ -84,8 +74,6 @@ func TestRemoteDelivery_DANE_Ok(t *testing.T) {
 
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 	tgt.tlsConfig = clientCfg
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -113,8 +101,6 @@ func TestRemoteDelivery_DANE_NonADIgnore(t *testing.T) {
 
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -142,8 +128,6 @@ func TestRemoteDelivery_DANE_Mismatch(t *testing.T) {
 
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 	tgt.tlsConfig = clientCfg
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -171,8 +155,6 @@ func TestRemoteDelivery_DANE_NoRecord(t *testing.T) {
 
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 	tgt.tlsConfig = clientCfg
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -198,8 +180,6 @@ func TestRemoteDelivery_DANE_LookupErr(t *testing.T) {
 
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 	tgt.tlsConfig = clientCfg
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -232,8 +212,6 @@ func TestRemoteDelivery_DANE_NoTLS(t *testing.T) {
 	}
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -266,8 +244,6 @@ func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
 	}
 	dnsSrv, tgt := targetWithExtResolver(t, zones)
 	defer dnsSrv.Close()
-	tgt.mxAuth[AuthDNSSEC] = struct{}{}
-	tgt.dane = true
 
 	// Cause failure through version incompatibility.
 	tgt.tlsConfig = &tls.Config{

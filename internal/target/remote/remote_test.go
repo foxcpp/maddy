@@ -15,14 +15,40 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
 // .invalid TLD is used here to make sure if there is something wrong about
 // DNS hooks and lookups go to the real Internet, they will not result in
 // any useful data that can lead to outgoing connections being made.
+
+func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.ExtResolver,
+	mtastsGet func(ctx context.Context, domain string) (*mtasts.Policy, error)) *Target {
+	resolver := &mockdns.Resolver{Zones: zones}
+
+	if mtastsGet == nil {
+		mtastsGet = func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+			return nil, mtasts.ErrIgnorePolicy
+		}
+	}
+
+	tgt := Target{
+		name:        "remote",
+		hostname:    "mx.example.com",
+		resolver:    resolver,
+		dialer:      resolver.DialContext,
+		extResolver: extResolver,
+		tlsConfig:   &tls.Config{},
+		Log:         testutils.Logger(t, "remote"),
+		mtastsGet:   mtastsGet,
+	}
+
+	return &tgt
+}
 
 func TestRemoteDelivery(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
@@ -36,23 +62,17 @@ func TestRemoteDelivery(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
-
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
 func TestRemoteDelivery_IPLiteral(t *testing.T) {
+	t.Skip("Support disabled")
+
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
@@ -68,18 +88,10 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 			PTR: []string{"mx.example.invalid."},
 		},
 	}
-	resolver := mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &resolver,
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
-
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@[127.0.0.1]"})
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@[127.0.0.1]"})
 }
@@ -88,24 +100,16 @@ func TestRemoteDelivery_FallbackMX(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
-	resolver := &mockdns.Resolver{
-		Zones: map[string]mockdns.Zone{
-			"example.invalid.": {
-				A: []string{"127.0.0.1"},
-			},
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			A: []string{"127.0.0.1"},
 		},
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    resolver,
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
@@ -121,21 +125,14 @@ func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    resolver,
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	c := multipleErrs{
 		errs: map[string]error{},
 	}
-	testutils.DoTestDeliveryNonAtomic(t, &c, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDeliveryNonAtomic(t, &c, tgt, "test@example.com", []string{"test@example.invalid"})
 
 	if err := c.errs["test@example.invalid"]; err != nil {
 		t.Fatal(err)
@@ -156,16 +153,9 @@ func TestRemoteDelivery_Abort(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -193,16 +183,9 @@ func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -231,7 +214,6 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be.MailErr = &smtp.SMTPError{
 		Code:         550,
@@ -239,14 +221,8 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 		Message:      "Hey",
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -270,16 +246,9 @@ func TestRemoteDelivery_NoMX(t *testing.T) {
 			MX: []net.MX{},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    resolver,
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -307,16 +276,9 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 			MX: []net.MX{{Host: ".", Pref: 10}},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -343,16 +305,9 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	meta := module.MsgMetadata{ID: "test..."}
 
@@ -392,7 +347,6 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be.MailErr = &smtp.SMTPError{
 		Code:         550,
@@ -400,14 +354,8 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 		Message:      "Hey",
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -437,7 +385,6 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be.RcptErr = map[string]error{
 		"test@example.invalid": &smtp.SMTPError{
@@ -447,14 +394,8 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 		},
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -503,18 +444,11 @@ func TestRemoteDelivery_DownMX(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
@@ -533,18 +467,11 @@ func TestRemoteDelivery_AllMXDown(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
-	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -571,18 +498,11 @@ func TestRemoteDelivery_Split(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid", "test@example2.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid", "test@example2.invalid"})
 
 	be1.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 	be2.CheckMsg(t, 0, "test@example.com", []string{"test@example2.invalid"})
@@ -609,7 +529,6 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be1.RcptErr = map[string]error{
 		"test@example.invalid": &smtp.SMTPError{
@@ -619,14 +538,8 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 		},
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -671,7 +584,6 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be.DataErr = &smtp.SMTPError{
 		Code:         550,
@@ -679,14 +591,8 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 		Message:      "Hey",
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -732,7 +638,6 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be1.DataErr = &smtp.SMTPError{
 		Code:         421,
@@ -740,14 +645,8 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 		Message:      "Hey",
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -795,7 +694,6 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 			A: []string{"127.0.0.2"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	be1.DataErr = &smtp.SMTPError{
 		Code:         550,
@@ -803,14 +701,8 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 		Message:      "Hey",
 	}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
 
 	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -861,7 +753,6 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	// Cause failure through version incompatibility.
 	clientCfg.MaxVersion = tls.VersionTLS12
@@ -869,17 +760,11 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		tlsConfig:   clientCfg,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
@@ -895,19 +780,12 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		requireTLS:  true,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.minTLSLevel = TLSEncrypted
+	defer tgt.Close()
 
-	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Errorf("expected an error, got none")
 	}
@@ -925,20 +803,13 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		requireTLS:  true,
-		tlsConfig:   clientCfg,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.tlsConfig = clientCfg
+	tgt.minTLSLevel = TLSEncrypted
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
@@ -954,7 +825,6 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	// Cause failure through version incompatibility.
 	clientCfg.MaxVersion = tls.VersionTLS12
@@ -962,18 +832,12 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		tlsConfig:   clientCfg,
-		requireTLS:  true,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.tlsConfig = clientCfg
+	tgt.minTLSLevel = TLSEncrypted
+	defer tgt.Close()
 
-	_, err := testutils.DoTestDeliveryErr(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}
@@ -991,20 +855,13 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		// Client is not configured to trust the server cert.
-		tlsConfig: &tls.Config{},
-		Log:       testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	// tlsConfig is not configured to trust server cert.
+	tgt.minTLSLevel = TLSEncrypted
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 
 	// But it should still be delivered over TLS.
@@ -1025,7 +882,6 @@ func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
 			A: []string{"127.0.0.1"},
 		},
 	}
-	resolver := &mockdns.Resolver{Zones: zones}
 
 	// Cause failure through version incompatibility.
 	clientCfg.MaxVersion = tls.VersionTLS12
@@ -1033,17 +889,11 @@ func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 
-	tgt := Target{
-		name:        "remote",
-		hostname:    "mx.example.com",
-		resolver:    &mockdns.Resolver{Zones: zones},
-		dialer:      resolver.DialContext,
-		extResolver: nil,
-		tlsConfig:   clientCfg,
-		Log:         testutils.Logger(t, "remote"),
-	}
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
 
-	testutils.DoTestDelivery(t, &tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 

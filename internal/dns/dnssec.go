@@ -20,29 +20,42 @@ type ExtResolver struct {
 	Cfg *dns.ClientConfig
 }
 
-// ErrRCode is returned by ExtResolver when the RCODE in response is not
+// RCodeError is returned by ExtResolver when the RCODE in response is not
 // NOERROR.
-type ErrRCode struct {
+type RCodeError struct {
+	Name string
 	Code int
 }
 
-func (err ErrRCode) Error() string {
-	switch err.Code {
-	case dns.RcodeFormatError:
-		return "dns: rcode FORMERR"
-	case dns.RcodeServerFailure:
-		return "dns: rcode SERVFAIL"
-	case dns.RcodeNameError:
-		return "dns: rcode NXDOMAIN"
-	case dns.RcodeNotImplemented:
-		return "dns: rcode NOTIMP"
-	case dns.RcodeRefused:
-		return "dns: rcode REFUSED"
-	}
-	return "dns: non-success rcode: " + strconv.Itoa(err.Code)
+func (err RCodeError) Temporary() bool {
+	return err.Code == dns.RcodeServerFailure
 }
 
-var ErrNotFound = ErrRCode{dns.RcodeNameError}
+func (err RCodeError) Error() string {
+	switch err.Code {
+	case dns.RcodeFormatError:
+		return "dns: rcode FORMERR when looking up " + err.Name
+	case dns.RcodeServerFailure:
+		return "dns: rcode SERVFAIL when looking up " + err.Name
+	case dns.RcodeNameError:
+		return "dns: rcode NXDOMAIN when looking up " + err.Name
+	case dns.RcodeNotImplemented:
+		return "dns: rcode NOTIMP when looking up " + err.Name
+	case dns.RcodeRefused:
+		return "dns: rcode REFUSED when looking up " + err.Name
+	}
+	return "dns: non-success rcode: " + strconv.Itoa(err.Code) + " when looking up " + err.Name
+}
+
+func IsNotFound(err error) bool {
+	if dnsErr, ok := err.(*net.DNSError); ok {
+		return dnsErr.IsNotFound
+	}
+	if rcodeErr, ok := err.(RCodeError); ok {
+		return rcodeErr.Code == dns.RcodeNameError
+	}
+	return false
+}
 
 func (e ExtResolver) exchange(ctx context.Context, msg *dns.Msg) (*dns.Msg, error) {
 	var resp *dns.Msg
@@ -51,7 +64,7 @@ func (e ExtResolver) exchange(ctx context.Context, msg *dns.Msg) (*dns.Msg, erro
 		resp, _, lastErr = e.cl.ExchangeContext(ctx, msg, net.JoinHostPort(srv, e.Cfg.Port))
 		if lastErr == nil {
 			if resp.Rcode != dns.RcodeSuccess {
-				return nil, ErrRCode{resp.Rcode}
+				return nil, RCodeError{msg.Question[0].Name, resp.Rcode}
 			}
 			break
 		}

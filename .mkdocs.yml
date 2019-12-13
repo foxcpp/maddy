@@ -15,6 +15,7 @@ nav:
     - tutorials/manual-installation.md
     - tutorials/alias-to-remote.md
   - get.sh-script.md
+  - seclevels.md
   - Manual pages:
     - man/_generated_maddy.1.md
     - man/_generated_maddy-auth.5.md

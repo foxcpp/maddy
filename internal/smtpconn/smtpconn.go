@@ -336,3 +336,12 @@ func (c *C) Close() error {
 
 	return nil
 }
+
+// DirectClose closes the underlying connection without sending the QUIT
+// command.
+func (c *C) DirectClose() error {
+	c.cl.Close()
+	c.cl = nil
+	c.serverName = ""
+	return nil
+}

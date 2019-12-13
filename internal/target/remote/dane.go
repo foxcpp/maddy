@@ -28,7 +28,11 @@ func (rd *remoteDelivery) lookupTLSA(ctx context.Context, host string) ([]dns.TL
 	return recs, nil
 }
 
-func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, serverName string, connState tls.ConnectionState) (overridePKIX bool, err error) {
+// verifyDANE verifies the whether TLSA records require TLS and match the
+// certificate and name used by the server.
+//
+// It calls verifyDANE function internally.
+func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, conn mxConn) (overridePKIX bool, err error) {
 	// DANE is disabled.
 	if tlsaFut == nil {
 		return false, nil
@@ -37,7 +41,7 @@ func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future
 	recsI, err := tlsaFut.GetContext(ctx)
 	if err != nil {
 		// No records.
-		if err == dns.ErrNotFound {
+		if dns.IsNotFound(err) {
 			return false, nil
 		}
 
@@ -52,7 +56,9 @@ func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future
 	}
 	recs := recsI.([]dns.TLSA)
 
-	return verifyDANE(recs, serverName, connState)
+	tlsState, _ := conn.Client().TLSConnectionState()
+
+	return verifyDANE(recs, conn.ServerName(), tlsState)
 }
 
 // verifyDANE checks whether TLSA records require TLS use and match the

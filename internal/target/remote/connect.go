@@ -4,20 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
-	"fmt"
 	"net"
 	"runtime/trace"
 	"sort"
 	"strings"
 
 	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/future"
 	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/smtpconn"
-	"golang.org/x/net/publicsuffix"
 )
 
 type mxConn struct {
@@ -34,17 +30,13 @@ type mxConn struct {
 	dnssecOk bool
 }
 
-func (rd *remoteDelivery) checkPolicies(ctx context.Context, mx string, didTLS, tlsPKIX bool, conn mxConn) error {
-	var (
-		authenticated bool
-		requireTLS    bool
-	)
-
-	// Implicit MX is always authenticated (and explicit one with the same
-	// hostname too).
-	if dns.Equal(mx, conn.domain) {
-		authenticated = true
-	}
+// checkMXAuth checks MTA-STS, DNSSEC status of MX record and also applies
+// 'common domain' rule if configured.
+//
+// requirePKIXTLS - Whether the TLS should be used and PKIX/X.509 verification
+// should pass.
+func (rd *remoteDelivery) checkMXAuth(ctx context.Context, mx string, conn mxConn) (requirePKIXTLS bool, mxLevel MXLevel, err error) {
+	mxLevel = MXNone
 
 	// Apply recipient MTA-STS policy.
 	if conn.stsFut != nil {
@@ -54,62 +46,37 @@ func (rd *remoteDelivery) checkPolicies(ctx context.Context, mx string, didTLS, 
 
 			// Respect the policy: require TLS if it exists, skip non-matching MXs.
 			// Any policy (even None) is enough to mark MX as 'authenticated'.
-			requireTLS = stsPolicy.Mode == mtasts.ModeEnforce
-			if requireTLS {
-				rd.Log.DebugMsg("TLS required by MTA-STS", "mx", mx, "domain", conn.domain)
+			requirePKIXTLS = stsPolicy.Mode == mtasts.ModeEnforce
+			if requirePKIXTLS {
+				rd.Log.DebugMsg("TLS required by MTA-STS", "remote_server", mx, "domain", conn.domain)
 			}
 			if stsPolicy.Match(mx) {
-				rd.Log.DebugMsg("authenticated MX using MTA-STS", "mx", mx)
-				authenticated = true
+				rd.Log.DebugMsg("authenticated MX using MTA-STS", "remote_server", mx)
+				if mxLevel < MX_MTASTS {
+					mxLevel = MX_MTASTS
+				}
 			} else if stsPolicy.Mode == mtasts.ModeEnforce {
-				rd.Log.Msg("skipping MX not matching MTA-STS", "mx", mx, "domain", conn.domain)
-				return &exterrors.SMTPError{
+				return false, MXNone, &exterrors.SMTPError{
 					Code:         550,
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 					Message:      "Failed to estabilish the MX record authenticity (MTA-STS)",
 				}
 			}
 		} else {
-			rd.Log.DebugMsg("Policy fetch error, ignoring", "mx", mx, "domain", conn.domain, "err", err)
+			rd.Log.DebugMsg("policy fetch error, ignoring", "remote_server", mx, "domain", conn.domain, "err", err)
 		}
 	}
 
 	// Mark MX as 'authenticated' if DNS zone is signed.
-	if _, do := rd.rt.mxAuth[AuthDNSSEC]; do && conn.dnssecOk {
-		rd.Log.DebugMsg("authenticated MX using DNSSEC", "mx", mx, "domain", conn.domain)
-		authenticated = true
-	}
-
-	// Mark MX as 'authenticated' if they have the same eTLD+1 domain part.
-	if _, do := rd.rt.mxAuth[AuthCommonDomain]; do && commonDomainCheck(conn.domain, mx) {
-		rd.Log.DebugMsg("authenticated MX using common domain rule", "mx", mx, "domain", conn.domain)
-		authenticated = true
-	}
-
-	// Apply local policy.
-	if rd.rt.requireTLS {
-		rd.Log.DebugMsg("TLS required by local policy", "mx", mx, "domain", conn.domain)
-		requireTLS = true
-	}
-
-	// Make decision based on the policy and connection state.
-	if rd.rt.requireMXAuth && !authenticated {
-		return &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-			Message:      fmt.Sprintf("Failed to estabilish the MX record (%s) authenticity", mx),
-		}
-	}
-	if requireTLS && (!didTLS || !tlsPKIX) {
-		return &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
-			Message:      "TLS is required but unsupported or failed (enforced by MTA-STS)",
+	if conn.dnssecOk {
+		rd.Log.DebugMsg("authenticated MX using DNSSEC", "remote_server", mx, "domain", conn.domain)
+		if mxLevel < MX_DNSSEC {
+			mxLevel = MX_DNSSEC
 		}
 	}
 
 	// All green.
-	return nil
+	return requirePKIXTLS, mxLevel, nil
 }
 
 func isVerifyError(err error) bool {
@@ -129,12 +96,77 @@ func isVerifyError(err error) bool {
 	return ok
 }
 
+// connect attempts to connect to the MX, first trying STARTTLS with X.509
+// verification but falling back to unauthenticated TLS or plaintext as
+// necesary.
+//
+// Return values:
+// - tlsLevel    TLS security level that was estabilished.
+// - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
+func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel TLSLevel, tlsErr error, err error) {
+	tlsLevel = TLSAuthenticated
+	if rd.rt.tlsConfig != nil {
+		tlsCfg = rd.rt.tlsConfig.Clone()
+		tlsCfg.ServerName = host
+	}
+
+	rd.Log.DebugMsg("trying", "remote_server", host, "domain", conn.domain)
+
+retry:
+	// smtpconn.C default TLS behavior is not useful for us, we want to handle
+	// TLS errors separately hence starttls=false.
+	_, err = conn.Connect(ctx, config.Endpoint{
+		Host: host,
+		Port: smtpPort,
+	}, false, nil)
+	if err != nil {
+		return TLSNone, nil, err
+	}
+
+	starttlsOk, _ := conn.Client().Extension("STARTTLS")
+	if starttlsOk && tlsCfg != nil {
+		if err := conn.Client().StartTLS(tlsCfg); err != nil {
+			tlsErr = err
+
+			// Attempt TLS without authentication. It is still better than
+			// plaintext and we might be able to actually authenticate the
+			// server using DANE-EE/DANE-TA later.
+			//
+			// Check tlsLevel is to avoid looping forever if the same verify
+			// error happens with InsecureSkipVerify too (e.g. certificate is
+			// *too* broken).
+			if isVerifyError(err) && tlsLevel == TLSAuthenticated {
+				rd.Log.Error("TLS verify error, trying without authentication", err, "remote_server", host, "domain", conn.domain)
+				tlsCfg.InsecureSkipVerify = true
+				tlsLevel = TLSEncrypted
+
+				// TODO: Check go-smtp code to make TLS verification errors
+				// non-sticky so we can properly send QUIT in this case.
+				conn.DirectClose()
+
+				goto retry
+			}
+
+			rd.Log.Error("TLS error, trying plaintext", err, "remote_server", host, "domain", conn.domain)
+			tlsCfg = nil
+			tlsLevel = TLSNone
+			conn.DirectClose()
+
+			goto retry
+		}
+	} else {
+		tlsLevel = TLSNone
+	}
+
+	return tlsLevel, tlsErr, nil
+}
+
 func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *net.MX) error {
 	var (
 		daneCtx context.Context
 		tlsaFut *future.Future
 	)
-	if rd.rt.dane {
+	if rd.rt.extResolver != nil {
 		var daneCancel func()
 		daneCtx, daneCancel = context.WithCancel(ctx)
 		defer daneCancel()
@@ -144,67 +176,73 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		}()
 	}
 
-	var (
-		tlsCfg  *tls.Config
-		tlsPKIX = true
-	)
-	if rd.rt.tlsConfig != nil {
-		tlsCfg = rd.rt.tlsConfig.Clone()
-		tlsCfg.ServerName = record.Host
-	}
-
-	rd.Log.DebugMsg("trying", "mx", record.Host, "domain", conn.domain)
-
-retry:
-	// smtpconn.C default TLS behavior is not useful for us, we want to handle
-	// TLS errors separately hence starttls=false.
-	_, err := conn.Connect(ctx, config.Endpoint{
-		Host: record.Host,
-		Port: smtpPort,
-	}, false, nil)
+	tlsLevel, tlsErr, err := rd.connect(ctx, conn, record.Host, rd.rt.tlsConfig)
 	if err != nil {
 		return err
 	}
 
-	starttlsOk, _ := conn.Client().Extension("STARTTLS")
-	if starttlsOk && tlsCfg != nil {
-		if err := conn.Client().StartTLS(tlsCfg); err != nil {
-			// Attempt TLS without authentication. It is still better than
-			// plaintext and we might be able to actually authenticate the
-			// server using DANE-EE/DANE-TA later.
-			//
-			// tlsPKIX is to avoid looping forever if the same verify error
-			// happens with InsecureSkipVerify too (e.g. certificate is *too*
-			// broken).
-			if isVerifyError(err) && tlsPKIX {
-				rd.Log.Error("TLS verify error, trying without authentication", err, "mx", record.Host, "domain", conn.domain)
-				tlsCfg.InsecureSkipVerify = true
-				tlsPKIX = false
-				conn.Close()
+	requirePKIXTLS, mxLevel, err := rd.checkMXAuth(ctx, record.Host, conn)
+	if err != nil {
+		conn.Close()
+		return err
+	}
 
-				goto retry
-			}
+	rd.Log.DebugMsg("levels", "mx", mxLevel, "tls", tlsLevel)
 
-			rd.Log.Error("TLS error, trying plaintext", err, "mx", record.Host, "domain", conn.domain)
-			tlsCfg = nil
-			tlsPKIX = false
-			conn.Close()
+	// Make decision based on the policy and connection state.
+	//
+	// Note: All policy errors are marked as temporary to give the local admin
+	// chance to troubleshoot them without losing messages.
 
-			goto retry
+	// Note: tlsLevel is checked before it is modified by
+	if requirePKIXTLS && tlsLevel != TLSAuthenticated {
+		conn.Close()
+		return &exterrors.SMTPError{
+			Code:         451,
+			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
+			Message: "Recipient server TLS certificate is not trusted but " +
+				"authentication is required by MTA-STS",
+			Err: tlsErr,
+			Misc: map[string]interface{}{
+				"tls_level": tlsLevel,
+			},
+		}
+	}
+	if rd.rt.minMXLevel > mxLevel {
+		conn.Close()
+		return &exterrors.SMTPError{
+			Code:         451,
+			EnhancedCode: exterrors.EnhancedCode{4, 7, 0},
+			Message:      "Failed to estabilish the MX record authenticity",
+			Err:          tlsErr,
+			Misc: map[string]interface{}{
+				"mx_level": mxLevel,
+			},
 		}
 	}
 
-	tlsState, didTLS := conn.Client().TLSConnectionState()
-
-	if err := rd.checkPolicies(ctx, record.Host, didTLS, tlsPKIX, conn); err != nil {
+	overridePKIX, err := rd.verifyDANE(ctx, tlsaFut, conn)
+	if err != nil {
 		conn.Close()
 		return err
 	}
 
-	_, err = rd.verifyDANE(ctx, tlsaFut, conn.ServerName(), tlsState)
-	if err != nil {
+	// TLS authenticated via DANE-EE or DANE-TA.
+	if overridePKIX {
+		tlsLevel = TLSAuthenticated
+	}
+
+	if rd.rt.minTLSLevel > tlsLevel {
 		conn.Close()
-		return err
+		return &exterrors.SMTPError{
+			Code:         451,
+			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
+			Message:      "TLS it not available or unauthenticated",
+			Err:          tlsErr,
+			Misc: map[string]interface{}{
+				"tls_level": tlsLevel,
+			},
+		}
 	}
 
 	return nil
@@ -227,17 +265,15 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	conn.Hostname = rd.rt.hostname
 	conn.AddrInSMTPMsg = true
 
-	if _, do := rd.rt.mxAuth[AuthMTASTS]; do {
-		conn.stsFut = future.New()
-		if rd.rt.mtastsGet != nil {
-			go func() {
-				conn.stsFut.Set(rd.rt.mtastsGet(ctx, domain))
-			}()
-		} else {
-			go func() {
-				conn.stsFut.Set(rd.rt.mtastsCache.Get(ctx, domain))
-			}()
-		}
+	conn.stsFut = future.New()
+	if rd.rt.mtastsGet != nil {
+		go func() {
+			conn.stsFut.Set(rd.rt.mtastsGet(ctx, domain))
+		}()
+	} else {
+		go func() {
+			conn.stsFut.Set(rd.rt.mtastsCache.Get(ctx, domain))
+		}()
 	}
 
 	region := trace.StartRegion(ctx, "remote/LookupMX")
@@ -261,7 +297,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 
 		if err := rd.attemptMX(ctx, conn, record); err != nil {
 			if len(records) != 0 {
-				rd.Log.Error("cannot use MX", err, "mx", record.Host, "domain", domain)
+				rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
 			}
 			lastErr = err
 			continue
@@ -273,8 +309,8 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	// Stil not connected? Bail out.
 	if conn.Client() == nil {
 		return nil, &exterrors.SMTPError{
-			Code:         exterrors.SMTPCode(err, 451, 550),
-			EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 0}),
+			Code:         exterrors.SMTPCode(lastErr, 451, 550),
+			EnhancedCode: exterrors.SMTPEnchCode(lastErr, exterrors.EnhancedCode{0, 4, 0}),
 			Message:      "No usable MXs, last err: " + lastErr.Error(),
 			TargetName:   "remote",
 			Err:          lastErr,
@@ -293,24 +329,8 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	return conn.C, nil
 }
 
-func commonDomainCheck(domain string, mx string) bool {
-	domainPart, err := publicsuffix.EffectiveTLDPlusOne(domain)
-	if err != nil {
-		return false
-	}
-	mxPart, err := publicsuffix.EffectiveTLDPlusOne(strings.TrimSuffix(mx, "."))
-	if err != nil {
-		return false
-	}
-
-	return domainPart == mxPart
-}
-
 func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk bool, records []*net.MX, err error) {
-	if _, use := rd.rt.mxAuth[AuthDNSSEC]; use {
-		if rd.rt.extResolver == nil {
-			return false, nil, errors.New("remote: can't do DNSSEC verification without security-aware resolver")
-		}
+	if rd.rt.extResolver != nil {
 		dnssecOk, records, err = rd.rt.extResolver.AuthLookupMX(context.Background(), domain)
 	} else {
 		records, err = rd.rt.resolver.LookupMX(ctx, domain)

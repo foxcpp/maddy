@@ -38,6 +38,45 @@ const (
 	AuthCommonDomain = "common_domain"
 )
 
+type (
+	TLSLevel int
+	MXLevel  int
+)
+
+const (
+	TLSNone TLSLevel = iota
+	TLSEncrypted
+	TLSAuthenticated
+
+	MXNone MXLevel = iota
+	MX_MTASTS
+	MX_DNSSEC
+)
+
+func (l TLSLevel) String() string {
+	switch l {
+	case TLSNone:
+		return "none"
+	case TLSEncrypted:
+		return "encrypted"
+	case TLSAuthenticated:
+		return "authenticated"
+	}
+	return "???"
+}
+
+func (l MXLevel) String() string {
+	switch l {
+	case MXNone:
+		return "none"
+	case MX_MTASTS:
+		return "mtasts"
+	case MX_DNSSEC:
+		return "dnssec"
+	}
+	return "???"
+}
+
 var smtpPort = "25"
 
 func moduleError(err error) error {
@@ -47,20 +86,18 @@ func moduleError(err error) error {
 }
 
 type Target struct {
-	name          string
-	hostname      string
-	requireTLS    bool
-	tlsConfig     *tls.Config
-	requireMXAuth bool
-	mxAuth        map[string]struct{}
-	dane          bool
+	name        string
+	hostname    string
+	minTLSLevel TLSLevel
+	minMXLevel  MXLevel
+	tlsConfig   *tls.Config
 
 	resolver    dns.Resolver
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	// This is the callback that is usually mtastsCache.Get,
-	// but replaced by tests to mock mtasts.Cache.
+	// This is the callback set to mock mtasts.Cache in tests.
+	// It is nil in real code, mtastsCache should be used in this case.
 	mtastsGet func(ctx context.Context, domain string) (*mtasts.Policy, error)
 
 	mtastsCache        mtasts.Cache
@@ -88,21 +125,40 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 }
 
 func (rt *Target) Init(cfg *config.Map) error {
-	var mxAuth []string
+	var (
+		minTLSLevel string
+		minMXLevel  string
+	)
 
 	cfg.String("hostname", true, true, "", &rt.hostname)
 	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
-	cfg.Bool("require_tls", false, false, &rt.requireTLS)
-	cfg.EnumList("authenticate_mx", false, false,
-		[]string{AuthDisabled, AuthDNSSEC, AuthMTASTS, AuthCommonDomain},
-		[]string{AuthMTASTS, AuthDNSSEC}, &mxAuth)
+	cfg.Enum("min_tls_level", false, false,
+		[]string{"none", "encrypted", "authenticated"}, "encrypted", &minTLSLevel)
+	cfg.Enum("min_mx_level", false, false,
+		[]string{"none", "mtasts", "dnssec"}, "none", &minMXLevel)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
-	cfg.Bool("dane", false, true, &rt.dane)
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	switch minTLSLevel {
+	case "none":
+		rt.minTLSLevel = TLSNone
+	case "encrypted":
+		rt.minTLSLevel = TLSEncrypted
+	case "authenticated":
+		rt.minTLSLevel = TLSAuthenticated
+	}
+	switch minMXLevel {
+	case "none":
+		rt.minMXLevel = MXNone
+	case "mtasts":
+		rt.minMXLevel = MX_MTASTS
+	case "dnssec":
+		rt.minMXLevel = MX_DNSSEC
 	}
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
@@ -112,57 +168,44 @@ func (rt *Target) Init(cfg *config.Map) error {
 		return fmt.Errorf("remote: cannot represent the hostname as an A-label name: %w", err)
 	}
 
-	if err := rt.initMXAuth(mxAuth); err != nil {
+	if err := rt.initMXAuth(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (rt *Target) initMXAuth(methods []string) error {
-	rt.mxAuth = make(map[string]struct{})
-	for _, method := range methods {
-		rt.mxAuth[method] = struct{}{}
-	}
-
-	if _, disabled := rt.mxAuth[AuthDisabled]; disabled && len(rt.mxAuth) > 1 {
-		return errors.New("remote: can't use 'off' together with other options in authenticate_mx")
-	}
-
-	if _, use := rt.mxAuth[AuthDNSSEC]; use || rt.dane {
-		var err error
-		rt.extResolver, err = dns.NewExtResolver()
-		if err != nil {
+func (rt *Target) initMXAuth() error {
+	var err error
+	rt.extResolver, err = dns.NewExtResolver()
+	if err != nil {
+		if rt.minMXLevel >= MX_DNSSEC {
 			return fmt.Errorf("remote: failed to init DNSSEC-aware stub resolver: %w", err)
+		} else {
+			rt.Log.Error("failed to initialize DNSSEC-aware stub resolver", err)
 		}
 	}
 
-	// Without MX authentication, TLS is fragile.
-	if _, disabled := rt.mxAuth[AuthDisabled]; !disabled && rt.requireTLS {
-		rt.Log.Printf("MX authentication is enforced due to require_tls")
-		rt.requireMXAuth = true
+	if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
+		return err
 	}
-
-	if _, use := rt.mxAuth[AuthMTASTS]; use {
-		if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
-			return err
-		}
-		rt.mtastsCache.Logger = log.Logger{Name: "remote/mtasts", Debug: rt.Log.Debug}
-		// MTA-STS policies typically have max_age around one day, so updating them
-		// twice a day should keep them up-to-date most of the time.
-		rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
-		rt.mtastsGet = rt.mtastsCache.Get
-		go rt.stsCacheUpdater()
-	}
+	rt.mtastsCache.Logger = log.Logger{Name: "remote/mtasts", Debug: rt.Log.Debug}
+	rt.mtastsCache.Resolver = rt.resolver
+	// MTA-STS policies typically have max_age around one day, so updating them
+	// twice a day should keep them up-to-date most of the time.
+	rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
+	rt.mtastsGet = rt.mtastsCache.Get
+	go rt.stsCacheUpdater()
 
 	return nil
 }
 
 func (rt *Target) Close() error {
-	if _, use := rt.mxAuth[AuthMTASTS]; use {
+	if rt.mtastsGet == nil {
 		rt.stsCacheUpdateDone <- struct{}{}
 		<-rt.stsCacheUpdateDone
 	}
+
 	return nil
 }
 
@@ -217,15 +260,17 @@ func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
 		return &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-			Message:      "<postmaster> address it no ssupported",
+			Message:      "<postmaster> address it no supported",
 			TargetName:   "remote",
 		}
 	}
 
 	if strings.HasPrefix(domain, "[") {
-		domain, err = rd.domainFromIP(domain)
-		if err != nil {
-			return err
+		return &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
+			Message:      "IP address literals are not supported",
+			TargetName:   "remote",
 		}
 	}
 
@@ -254,7 +299,7 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 	ip := ipLiteral[1 : len(ipLiteral)-1]
 	ip = strings.TrimPrefix(ip, "IPv6:")
 
-	if !rd.rt.requireMXAuth {
+	if rd.rt.minMXLevel < MX_DNSSEC {
 		names, err := rd.rt.resolver.LookupAddr(context.Background(), ip)
 		if err != nil {
 			return "", &exterrors.SMTPError{
@@ -281,13 +326,13 @@ func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
 	// With required MX authentication, we require DNSSEC-signed PTR.
 	// Most ISPs don't provide this, so this will fail 99.99% of times.
 
-	if _, ok := rd.rt.mxAuth[AuthDNSSEC]; !ok {
+	if rd.rt.extResolver == nil {
 		return "", &exterrors.SMTPError{
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
 			Message:      "Cannot authenticate the recipient IP",
 			TargetName:   "remote",
-			Reason:       "DNSSEC authentication should be enabled for IP literals to be accepted",
+			Reason:       "DNSSEC status is not available",
 		}
 	}
 

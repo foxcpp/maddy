@@ -95,8 +95,8 @@ records. You probably want to use it with queue module for reliability.
 ```
 remote {
     hostname mx.example.org
-    authenticate_mx mtasts dnssec
-    require_tls no
+	min_tls_level none
+	min_mx_level none
     debug no
     mtasts_cache StateDirectory/mtasts-cache
     dane yes
@@ -115,53 +115,17 @@ Hostname to use client greeting (EHLO/HELO command). Some servers require it to
 be FQDN, SPF-capable servers check whether it corresponds to the server IP
 address, so it is better to set it to a domain that resolves to the server IP.
 
-*Syntax*: authenticate_mx _methods..._ ++
-*Default*: mtasts dnssec
+*Syntax*: min_mx_level none|mtasts|dnssec ++
+*Default*: none
 
-List of methods to use when verifying authenticity of MX records.
-Since TLS verification uses server name from MX records, it is important to
-make they are authentic, otherwise it would be possible to perform easy MitM
-attack.
+Minimal MX records security level to require before using remote server for
+delivery. See [Security levels](../../seclevels) page for details.
 
-Valid values are:
+*Syntax*: min_tls_level none|encrypted|authenticated
+*Default*: none
 
-- off
-
-	Disable authentication. THIS MAKES TLS FOR OUTBOUND DELIVERY INSECURE, DON'T
-	USE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
-
-- mtasts
-
-	Use MTA-STS policies for authentication. Note that MX records that are not
-	allowed by an enforced MTA-STS policy will be always skipped.
-
-- dnssec
-
-	Use Authenticated Data (AD) DNS flag for authentication. This relies on
-	system resolver being able to verify DNSSEC signatures. maddy does not do it
-	itself.  Due to implementation details, dnssec is not supported on non-Unix
-	platforms.
-
-- common_domain
-
-	Compare eTLD+1 of recipient domain and MX record. This is weak method and
-	should be only used if interoperability with recipients without DNSSEC and
-	MTA-STS is required with 'require_tls' in effect.
-
-Unless 'require_tls' is also specified, inability to authenticate MX records
-will not cause delivery failure.
-
-*Syntax*: require_tls _boolean_ ++
-*Default*: no
-
-Refuse to send messages over unencrypted connections.
-
-This option changes behavior of MX record authentication. With 'require_tls',
-delivery will fail if there MX records for recipient domain can't be
-authenticated.
-
-Note that TLS can be enforced at request of message source (e.g. by REQUIRETLS
-SMTP extension) or by recipient (by DANE or MTA-STS).
+Minimal MX records security level to require before using remote server for
+delivery. See [Security levels](../../seclevels) page for details.
 
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
@@ -172,19 +136,6 @@ Enable verbose logging.
 *Default*: StateDirectory/mtasts-cache
 
 Set location of the MTA-STS policies cache directory.
-
-*Syntax*: dane _boolean_ ++
-*Default*: yes
-
-Enable DANE lookup and verification. Requires a validating DNS server to work
-correctly.
-
-If the recipient has DANE configured (TLSA records for SMTP) then TLS will be
-required for outgoing connections. It is best to use this option together with
-'authenticate_mx dnssec' to ensure full authentication.
-
-Simiarly to 'authenticate_mx dnssec', this option is currently unsupported on
-non-Unix platforms.
 
 # SMTP transparent forwarding module (smtp_downstream)
 
