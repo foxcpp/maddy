@@ -57,17 +57,36 @@ func IsNotFound(err error) bool {
 	return false
 }
 
+func isLoopback(addr string) bool {
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback()
+}
+
 func (e ExtResolver) exchange(ctx context.Context, msg *dns.Msg) (*dns.Msg, error) {
 	var resp *dns.Msg
 	var lastErr error
 	for _, srv := range e.Cfg.Servers {
 		resp, _, lastErr = e.cl.ExchangeContext(ctx, msg, net.JoinHostPort(srv, e.Cfg.Port))
-		if lastErr == nil {
-			if resp.Rcode != dns.RcodeSuccess {
-				return nil, RCodeError{msg.Question[0].Name, resp.Rcode}
-			}
-			break
+		if lastErr != nil {
+			continue
 		}
+
+		if resp.Rcode != dns.RcodeSuccess {
+			lastErr = RCodeError{msg.Question[0].Name, resp.Rcode}
+			continue
+		}
+
+		// Diregard AD flags from non-local resolvers, likely they are
+		// communicated with using an insecure channel and so flags can be
+		// tampered with.
+		if !isLoopback(srv) {
+			resp.AuthenticatedData = false
+		}
+
+		break
 	}
 	return resp, lastErr
 }
