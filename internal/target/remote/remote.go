@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
@@ -26,7 +27,6 @@ import (
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
-	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
@@ -128,10 +128,11 @@ func (rt *Target) Init(cfg *config.Map) error {
 	var (
 		minTLSLevel string
 		minMXLevel  string
+		mtastsCache string
 	)
 
 	cfg.String("hostname", true, true, "", &rt.hostname)
-	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &rt.mtastsCache.Location)
+	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &mtastsCache)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Enum("min_tls_level", false, false,
 		[]string{"none", "encrypted", "authenticated"}, "encrypted", &minTLSLevel)
@@ -143,6 +144,8 @@ func (rt *Target) Init(cfg *config.Map) error {
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
+
+	rt.mtastsCache = *mtasts.NewFSCache(mtastsCache)
 
 	switch minTLSLevel {
 	case "none":
@@ -168,14 +171,14 @@ func (rt *Target) Init(cfg *config.Map) error {
 		return fmt.Errorf("remote: cannot represent the hostname as an A-label name: %w", err)
 	}
 
-	if err := rt.initMXAuth(); err != nil {
+	if err := rt.initMXAuth(mtastsCache); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (rt *Target) initMXAuth() error {
+func (rt *Target) initMXAuth(mtastsDir string) error {
 	var err error
 	rt.extResolver, err = dns.NewExtResolver()
 	if err != nil {
@@ -186,10 +189,9 @@ func (rt *Target) initMXAuth() error {
 		}
 	}
 
-	if err := os.MkdirAll(rt.mtastsCache.Location, os.ModePerm); err != nil {
+	if err := os.MkdirAll(mtastsDir, os.ModePerm); err != nil {
 		return err
 	}
-	rt.mtastsCache.Logger = log.Logger{Name: "remote/mtasts", Debug: rt.Log.Debug}
 	rt.mtastsCache.Resolver = rt.resolver
 	// MTA-STS policies typically have max_age around one day, so updating them
 	// twice a day should keep them up-to-date most of the time.

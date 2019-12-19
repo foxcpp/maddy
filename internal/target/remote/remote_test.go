@@ -14,11 +14,11 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/module"
-	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -32,7 +32,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 
 	if mtastsGet == nil {
 		mtastsGet = func(ctx context.Context, domain string) (*mtasts.Policy, error) {
-			return nil, mtasts.ErrIgnorePolicy
+			return nil, mtasts.ErrNoPolicy
 		}
 	}
 

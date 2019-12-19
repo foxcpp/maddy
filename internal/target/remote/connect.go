@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/future"
-	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 )
 

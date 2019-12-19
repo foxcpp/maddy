@@ -18,7 +18,8 @@ require (
 	github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e
 	github.com/emersion/go-smtp v0.12.1-0.20191206174923-1f576e0ec85c
 	github.com/foxcpp/go-imap-sql v0.3.2-0.20191208094750-8b4ec6b19a78
-	github.com/foxcpp/go-mockdns v0.0.0-20191211223108-4a6fcad1301d
+	github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f
+	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1
 	github.com/klauspost/compress v1.9.1 // indirect
@@ -27,7 +28,7 @@ require (
 	github.com/miekg/dns v1.1.22
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/cli v1.22.1
-	golang.org/x/crypto v0.0.0-20191108234033-bd318be0434a
+	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect

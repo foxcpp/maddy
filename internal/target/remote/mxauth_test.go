@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/mtasts"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -220,7 +220,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 			return nil, errors.New("Wrong domain in lookup")
 		}
 
-		return nil, mtasts.ErrIgnorePolicy
+		return nil, mtasts.ErrNoPolicy
 	})
 	tgt.tlsConfig = clientCfg
 	tgt.minMXLevel = MX_MTASTS
