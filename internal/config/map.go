@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
+	"strings"
+	
 	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 )
 
@@ -272,10 +273,10 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 			return nil, m.MatchErr("expected exactly 1 argument")
 		}
 
-		switch node.Args[0] {
-		case "yes":
+		switch strings.ToLower(node.Args[0]) {
+		case "1", "true", "on", "yes":
 			return true, nil
-		case "no":
+		case "0", "false", "off", "no":
 			return false, nil
 		}
 		return nil, m.MatchErr("bool argument should be 'yes' or 'no'")
