@@ -71,7 +71,7 @@ ensure_go_toolchain() {
         echo "Downloading Go $GOVERSION toolchain..." >&2
         if ! [ -e go$GOVERSION ]; then
             if ! [ -e go$GOVERSION.linux-amd64.tar.gz ]; then
-                wget -q 'https://dl.google.com/go/go1.13.3.linux-amd64.tar.gz'
+                wget -q "https://dl.google.com/go/go$GOVERSION.linux-amd64.tar.gz"
             fi
             tar xf go$GOVERSION.linux-amd64.tar.gz
             mv go go$GOVERSION
