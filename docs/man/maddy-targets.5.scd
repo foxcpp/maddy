@@ -95,18 +95,14 @@ records. You probably want to use it with queue module for reliability.
 ```
 remote {
     hostname mx.example.org
-	min_tls_level none
-	min_mx_level none
     debug no
-    mtasts_cache StateDirectory/mtasts-cache
-    dane yes
 }
 ```
 
 If a message check marks a message as 'quarantined', remote module
 will refuse to deliver it.
 
-Valid configuration directives:
+## Configuration directives
 
 *Syntax*: hostname _domain_ ++
 *Default*: global directive value
@@ -132,10 +128,105 @@ delivery. See [Security levels](../../seclevels) page for details.
 
 Enable verbose logging.
 
-*Syntax*: mtasts_cache _directory_ ++
-*Default*: StateDirectory/mtasts-cache
+## Security policies
 
-Set location of the MTA-STS policies cache directory.
+'remote' module implements a number of of schemes and protocols necessary to
+ensure security of message delivery. Most of these schemes are concerned with
+authentication of recipient server and TLS enforcement.
+
+Each of the specified mechanisms can be disabled by specifying 'mech off' where
+'mech' is the name of corresponding configuration block (e.g. 'dane off' to
+disable DANE). However, it is not recommended to do so as it degrades delivery
+security considerably.
+
+## Security policies: MTA-STS
+
+Checks MTA-STS policy of the recipient domain. Provides proper authentication
+and TLS enforcement for delivery, but partially vulnerable to persistent active
+attacks.
+
+Sets MX level to "mtasts" if the used MX matches MTA-STS policy even if it is
+not set to "enforce" mode.
+
+```
+mtasts {
+	cache fs
+	fs_dir StateDirectory/mtasts_cache
+}
+```
+
+*Syntax*: cache fs|ram ++
+*Default*: fs
+
+Storage to use for MTA-STS cache. 'fs' is to use a filesystem directory, 'ram'
+to store the cache in memory.
+
+It is recommended to use 'fs' since that will not discard the cache (and thus
+cause MTA-STS security to disappear) on server restart. However, using the RAM
+cache can make sense for high-load configurations with good uptime.
+
+*Syntax*: fs_dir _directory_ ++
+*Default*: StateDirectory/mtasts_cache
+
+Filesystem directory to use for policies caching if 'cache' is set to 'fs'.
+
+## Security policies: DNSSEC
+
+Checks whether MX records are signed. Sets MX level to "dnssec" is they are.
+
+maddy does not validate DNSSEC signatures on its own. Instead it reslies on
+the upstream resolver to do so by causing lookup to fail when verification
+fails and setting the AD flag for signed and verfified zones. As a safety
+measure, if the resolver is not 127.0.0.1 or ::1, the AD flag is ignored.
+
+DNSSEC is currently not supported on Windows and other platforms that do not
+have the /etc/resolv.conf file in the standard format.
+
+```
+dnssec { }
+```
+
+## Security policies: DANE
+
+Checks TLSA records for the recipient MX. Provides downgrade-resistant TLS
+enforcement.
+
+Sets TLS level to "authenticated" if a valid and matching TLSA record uses
+DANE-EE or DANE-TA usage type.
+
+See above for notes on DNSSEC. DNSSEC support is required for DANE to work.
+
+```
+dane { }
+```
+
+## Security policies: Local policy
+
+Checks effective TLS and MX levels (as set by other policies) against local
+configuration.
+
+```
+local_policy {
+	min_tls_level none
+	min_mx_level none
+}
+```
+
+Using 'local_policy off' is equivalent to setting both directives to 'none'.
+
+*Syntax*: min_tls_level none|encrypted|authenticated ++
+*Default*: none
+
+Set the minimal TLS security level required for all outbound messages.
+
+See [Security levels](../../seclevels) page for details.
+
+*Syntax*: min_mx_level: none|mtasts|dnssec ++
+*Default*: none
+
+Set the minimal MX security level required for all outbound messages.
+
+See [Security levels](../../seclevels) page for details.
 
 # SMTP transparent forwarding module (smtp_downstream)
 

@@ -26,7 +26,7 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -36,6 +36,10 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 			Mode: mtasts.ModeTesting,
 			MX:   []string{"mx.example.invalid"},
 		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -67,7 +71,7 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -76,9 +80,13 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 			Mode: mtasts.ModeEnforce,
 			MX:   []string{"mx2.example.invalid"},
 		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.minMXLevel = MX_MTASTS
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -103,7 +111,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -112,9 +120,13 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 			Mode: mtasts.ModeTesting,
 			MX:   []string{"mx4.example.invalid"}, // not mx.example.invalid!
 		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.minMXLevel = MX_MTASTS
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -141,7 +153,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -150,8 +162,12 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 			Mode: mtasts.ModeEnforce,
 			MX:   []string{"mx.example.invalid"},
 		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
-	tgt.minMXLevel = MX_MTASTS
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -178,7 +194,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -187,8 +203,12 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 			Mode: mtasts.ModeEnforce,
 			MX:   []string{"mx.example.invalid"},
 		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
-	tgt.minMXLevel = MX_MTASTS
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -215,15 +235,19 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
 
 		return nil, mtasts.ErrNoPolicy
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.minMXLevel = MX_MTASTS
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -309,7 +333,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.minMXLevel = MX_DNSSEC
+	tgt.localPolicy.minMXLevel = MX_DNSSEC
 	defer tgt.Close()
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -361,7 +385,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.minMXLevel = MX_DNSSEC
+	tgt.localPolicy.minMXLevel = MX_DNSSEC
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
@@ -406,7 +430,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.minMXLevel = MX_DNSSEC
+	tgt.localPolicy.minMXLevel = MX_DNSSEC
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 	if err == nil {

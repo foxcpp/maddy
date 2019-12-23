@@ -37,7 +37,6 @@ MTA-STS and DANE solve this problem. In the first case, if policy is in
 remote server. DANE does pretty much the same thing, but using DNSSEC-signed
 TLSA records.
 
-
 ## maddy policy details
 
 maddy defines two values indicating how "secure" delivery of message will be:
@@ -53,7 +52,7 @@ connection is closed and next candidate server is used. If all connections fail
 this way - the delivery is failed (or deferred if there was a temporary error
 when checking policies).
 
-Below is the table summarizing the security level values defined by maddy and
+Below is the table summarizing the security level values defined in maddy and
 protection they offer.
 
 | MX/TLS level  | None | Encrypted | Authenticated        |
@@ -81,5 +80,11 @@ attacks
 **Note 1:** Persistent attacker able to control network connection can
 interfere with policy refresh, downgrading protection to be secure only against
 passive attacks.
+
+## maddy security policies
+
+See [**maddy-targets(5)**](../\_generated\_maddy-targets.5) page for
+description of configuration options available for each policy mechanism
+supported by maddy.
 
 [RFC 8461 Section 10.2]: https://www.rfc-editor.org/rfc/rfc8461.html#section-10.2 (SMTP MTA Strict Transport Security - 10.2. Preventing Policy Discovery)

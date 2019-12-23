@@ -11,15 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
 	"runtime/trace"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
@@ -86,23 +82,16 @@ func moduleError(err error) error {
 }
 
 type Target struct {
-	name        string
-	hostname    string
-	minTLSLevel TLSLevel
-	minMXLevel  MXLevel
-	tlsConfig   *tls.Config
+	name      string
+	hostname  string
+	tlsConfig *tls.Config
 
 	resolver    dns.Resolver
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	// This is the callback set to mock mtasts.Cache in tests.
-	// It is nil in real code, mtastsCache should be used in this case.
-	mtastsGet func(ctx context.Context, domain string) (*mtasts.Policy, error)
-
-	mtastsCache        mtasts.Cache
-	stsCacheUpdateTick *time.Ticker
-	stsCacheUpdateDone chan struct{}
+	policies    []Policy
+	localPolicy *localPolicy
 
 	Log log.Logger
 }
@@ -114,98 +103,65 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 		return nil, errors.New("remote: inline arguments are not used")
 	}
 	return &Target{
-		name:        instName,
-		resolver:    dns.DefaultResolver(),
-		dialer:      (&net.Dialer{}).DialContext,
-		mtastsCache: mtasts.Cache{Resolver: dns.DefaultResolver()},
-		Log:         log.Logger{Name: "remote"},
-
-		stsCacheUpdateDone: make(chan struct{}),
+		name:     instName,
+		resolver: dns.DefaultResolver(),
+		dialer:   (&net.Dialer{}).DialContext,
+		Log:      log.Logger{Name: "remote"},
 	}, nil
 }
 
 func (rt *Target) Init(cfg *config.Map) error {
-	var (
-		minTLSLevel string
-		minMXLevel  string
-		mtastsCache string
-	)
+	var err error
+	rt.extResolver, err = dns.NewExtResolver()
+	if err != nil {
+		rt.Log.Error("cannot initialize DNSSEC-aware resolver, DNSSEC and DANE are not available", err)
+	}
 
 	cfg.String("hostname", true, true, "", &rt.hostname)
-	cfg.String("mtasts_cache", false, false, filepath.Join(config.StateDirectory, "mtasts-cache"), &mtastsCache)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
-	cfg.Enum("min_tls_level", false, false,
-		[]string{"none", "encrypted", "authenticated"}, "encrypted", &minTLSLevel)
-	cfg.Enum("min_mx_level", false, false,
-		[]string{"none", "mtasts", "dnssec"}, "none", &minMXLevel)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
+
+	policies := make([]Policy, 3)
+	cfg.Custom("mtasts", false, false,
+		rt.defaultPolicy(cfg.Globals, "mtasts"), rt.policyMatcher("mtasts"), &policies[0])
+	cfg.Custom("dane", false, false,
+		rt.defaultPolicy(cfg.Globals, "dane"), rt.policyMatcher("dane"), &policies[1])
+	cfg.Custom("dnssec", false, false,
+		rt.defaultPolicy(cfg.Globals, "dnssec"), rt.policyMatcher("dnssec"), &policies[2])
+
+	// localPolicy should be the last one, since it considers levels defined by
+	// other policies.
+	// Also, it should be directly accessible from tests to adjust required levels.
+	cfg.Custom("local_policy", false, false,
+		rt.defaultPolicy(cfg.Globals, "local"), rt.policyMatcher("local"), &rt.localPolicy)
+
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
-	rt.mtastsCache = *mtasts.NewFSCache(mtastsCache)
-
-	switch minTLSLevel {
-	case "none":
-		rt.minTLSLevel = TLSNone
-	case "encrypted":
-		rt.minTLSLevel = TLSEncrypted
-	case "authenticated":
-		rt.minTLSLevel = TLSAuthenticated
+	// Exclude disabled policies.
+	for _, p := range policies {
+		if p == nil {
+			continue
+		}
+		rt.policies = append(rt.policies, p)
 	}
-	switch minMXLevel {
-	case "none":
-		rt.minMXLevel = MXNone
-	case "mtasts":
-		rt.minMXLevel = MX_MTASTS
-	case "dnssec":
-		rt.minMXLevel = MX_DNSSEC
-	}
+	rt.policies = append(rt.policies, rt.localPolicy)
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
-	var err error
 	rt.hostname, err = idna.ToASCII(rt.hostname)
 	if err != nil {
 		return fmt.Errorf("remote: cannot represent the hostname as an A-label name: %w", err)
 	}
 
-	if err := rt.initMXAuth(mtastsCache); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (rt *Target) initMXAuth(mtastsDir string) error {
-	var err error
-	rt.extResolver, err = dns.NewExtResolver()
-	if err != nil {
-		if rt.minMXLevel >= MX_DNSSEC {
-			return fmt.Errorf("remote: failed to init DNSSEC-aware stub resolver: %w", err)
-		} else {
-			rt.Log.Error("failed to initialize DNSSEC-aware stub resolver", err)
-		}
-	}
-
-	if err := os.MkdirAll(mtastsDir, os.ModePerm); err != nil {
-		return err
-	}
-	rt.mtastsCache.Resolver = rt.resolver
-	// MTA-STS policies typically have max_age around one day, so updating them
-	// twice a day should keep them up-to-date most of the time.
-	rt.stsCacheUpdateTick = time.NewTicker(12 * time.Hour)
-	rt.mtastsGet = rt.mtastsCache.Get
-	go rt.stsCacheUpdater()
-
 	return nil
 }
 
 func (rt *Target) Close() error {
-	if rt.mtastsGet == nil {
-		rt.stsCacheUpdateDone <- struct{}{}
-		<-rt.stsCacheUpdateDone
+	for _, p := range rt.policies {
+		p.Close()
 	}
 
 	return nil
@@ -227,15 +183,24 @@ type remoteDelivery struct {
 
 	recipients  []string
 	connections map[string]mxConn
+
+	policies []DeliveryPolicy
 }
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	// TODO: Consider using sync.Pool?
+	policies := make([]DeliveryPolicy, 0, len(rt.policies))
+	for _, p := range rt.policies {
+		policies = append(policies, p.Start(msgMeta))
+	}
+
 	return &remoteDelivery{
 		rt:          rt,
 		mailFrom:    mailFrom,
 		msgMeta:     msgMeta,
 		Log:         target.DeliveryLogger(rt.Log, msgMeta),
 		connections: map[string]mxConn{},
+		policies:    policies,
 	}, nil
 }
 
@@ -287,96 +252,6 @@ func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
 
 	rd.recipients = append(rd.recipients, to)
 	return nil
-}
-
-func (rd *remoteDelivery) domainFromIP(ipLiteral string) (string, error) {
-	if !strings.HasSuffix(ipLiteral, "]") {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Malformed address literal",
-			TargetName:   "remote",
-		}
-	}
-	ip := ipLiteral[1 : len(ipLiteral)-1]
-	ip = strings.TrimPrefix(ip, "IPv6:")
-
-	if rd.rt.minMXLevel < MX_DNSSEC {
-		names, err := rd.rt.resolver.LookupAddr(context.Background(), ip)
-		if err != nil {
-			return "", &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-				Message:      "Cannot use that recipient IP",
-				TargetName:   "remote",
-				Err:          err,
-			}
-		}
-		if len(names) == 0 {
-			return "", &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-				Message:      "Cannot use this recipient IP",
-				TargetName:   "remote",
-				Reason:       "Missing the PTR record",
-			}
-		}
-
-		return names[0], nil
-	}
-
-	// With required MX authentication, we require DNSSEC-signed PTR.
-	// Most ISPs don't provide this, so this will fail 99.99% of times.
-
-	if rd.rt.extResolver == nil {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Cannot authenticate the recipient IP",
-			TargetName:   "remote",
-			Reason:       "DNSSEC status is not available",
-		}
-	}
-
-	if rd.rt.extResolver == nil {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Cannot authenticate the recipient IP",
-			TargetName:   "remote",
-			Reason:       "Cannot do DNSSEC authentication without a security-aware resolver",
-		}
-	}
-
-	ad, names, err := rd.rt.extResolver.AuthLookupAddr(context.Background(), ip)
-	if err != nil {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Cannot use that recipient IP",
-			TargetName:   "remote",
-			Err:          err,
-		}
-	}
-	if len(names) == 0 {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Used recipient IP lacks a rDNS name",
-			TargetName:   "remote",
-		}
-	}
-	if !ad {
-		return "", &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 2},
-			Message:      "Cannot authenticate the recipient IP",
-			TargetName:   "remote",
-			Reason:       "Reverse zone is not DNSSEC-signed",
-		}
-	}
-
-	return names[0], nil
 }
 
 type multipleErrs struct {
@@ -504,30 +379,6 @@ func (rd *remoteDelivery) Close() error {
 		conn.Close()
 	}
 	return nil
-}
-
-func (rt *Target) stsCacheUpdater() {
-	// Always update cache on start-up since we may have been down for some
-	// time.
-	rt.Log.Debugln("updating MTA-STS cache...")
-	if err := rt.mtastsCache.Refresh(); err != nil {
-		rt.Log.Msg("MTA-STS cache update error", err)
-	}
-	rt.Log.Debugln("updating MTA-STS cache... done!")
-
-	for {
-		select {
-		case <-rt.stsCacheUpdateTick.C:
-			rt.Log.Debugln("updating MTA-STS cache...")
-			if err := rt.mtastsCache.Refresh(); err != nil {
-				rt.Log.Msg("MTA-STS cache opdate error", err)
-			}
-			rt.Log.Debugln("updating MTA-STS cache... done!")
-		case <-rt.stsCacheUpdateDone:
-			rt.stsCacheUpdateDone <- struct{}{}
-			return
-		}
-	}
 }
 
 func init() {

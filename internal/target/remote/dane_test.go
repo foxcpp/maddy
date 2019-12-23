@@ -30,7 +30,9 @@ func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdn
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	return dnsSrv, testTarget(t, zones, extResolver, nil)
+	return dnsSrv, testTarget(t, zones, extResolver, []Policy{
+		testDANEPolicy(t, extResolver),
+	})
 }
 
 func tlsaRecord(name string, usage, matchType, selector uint8, cert string) map[miekgdns.Type][]miekgdns.RR {

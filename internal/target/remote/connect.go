@@ -9,10 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/future"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 )
 
@@ -20,63 +18,8 @@ type mxConn struct {
 	*smtpconn.C
 
 	// Domain this MX belongs to.
-	domain string
-
-	// Future value holding the MTA-STS fetch results for this domain.
-	// May be nil if MTA-STS is disabled.
-	stsFut *future.Future
-
-	// The MX record is DNSSEC-signed and was verified by the used resolver.
+	domain   string
 	dnssecOk bool
-}
-
-// checkMXAuth checks MTA-STS, DNSSEC status of MX record and also applies
-// 'common domain' rule if configured.
-//
-// requirePKIXTLS - Whether the TLS should be used and PKIX/X.509 verification
-// should pass.
-func (rd *remoteDelivery) checkMXAuth(ctx context.Context, mx string, conn mxConn) (requirePKIXTLS bool, mxLevel MXLevel, err error) {
-	mxLevel = MXNone
-
-	// Apply recipient MTA-STS policy.
-	if conn.stsFut != nil {
-		stsPolicy, err := conn.stsFut.GetContext(ctx)
-		if err == nil {
-			stsPolicy := stsPolicy.(*mtasts.Policy)
-
-			// Respect the policy: require TLS if it exists, skip non-matching MXs.
-			// Any policy (even None) is enough to mark MX as 'authenticated'.
-			requirePKIXTLS = stsPolicy.Mode == mtasts.ModeEnforce
-			if requirePKIXTLS {
-				rd.Log.DebugMsg("TLS required by MTA-STS", "remote_server", mx, "domain", conn.domain)
-			}
-			if stsPolicy.Match(mx) {
-				rd.Log.DebugMsg("authenticated MX using MTA-STS", "remote_server", mx)
-				if mxLevel < MX_MTASTS {
-					mxLevel = MX_MTASTS
-				}
-			} else if stsPolicy.Mode == mtasts.ModeEnforce {
-				return false, MXNone, &exterrors.SMTPError{
-					Code:         550,
-					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-					Message:      "Failed to estabilish the MX record authenticity (MTA-STS)",
-				}
-			}
-		} else {
-			rd.Log.DebugMsg("policy fetch error, ignoring", "remote_server", mx, "domain", conn.domain, "err", err)
-		}
-	}
-
-	// Mark MX as 'authenticated' if DNS zone is signed.
-	if conn.dnssecOk {
-		rd.Log.DebugMsg("authenticated MX using DNSSEC", "remote_server", mx, "domain", conn.domain)
-		if mxLevel < MX_DNSSEC {
-			mxLevel = MX_DNSSEC
-		}
-	}
-
-	// All green.
-	return requirePKIXTLS, mxLevel, nil
 }
 
 func isVerifyError(err error) bool {
@@ -98,7 +41,7 @@ func isVerifyError(err error) bool {
 
 // connect attempts to connect to the MX, first trying STARTTLS with X.509
 // verification but falling back to unauthenticated TLS or plaintext as
-// necesary.
+// necessary.
 //
 // Return values:
 // - tlsLevel    TLS security level that was estabilished.
@@ -162,86 +105,43 @@ retry:
 }
 
 func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *net.MX) error {
-	var (
-		daneCtx context.Context
-		tlsaFut *future.Future
-	)
-	if rd.rt.extResolver != nil {
-		var daneCancel func()
-		daneCtx, daneCancel = context.WithCancel(ctx)
-		defer daneCancel()
-		tlsaFut = future.New()
-		go func() {
-			tlsaFut.Set(rd.lookupTLSA(daneCtx, record.Host))
-		}()
+	mxLevel := MXNone
+
+	connCtx, cancel := context.WithCancel(ctx)
+	// Cancel async policy lookups if rd.connect fails.
+	defer cancel()
+
+	for _, p := range rd.policies {
+		policyLevel, err := p.CheckMX(connCtx, mxLevel, conn.domain, record.Host, conn.dnssecOk)
+		if err != nil {
+			return err
+		}
+		if policyLevel > mxLevel {
+			mxLevel = policyLevel
+		}
+
+		p.PrepareConn(ctx, record.Host)
 	}
 
-	tlsLevel, tlsErr, err := rd.connect(ctx, conn, record.Host, rd.rt.tlsConfig)
+	tlsLevel, tlsErr, err := rd.connect(connCtx, conn, record.Host, rd.rt.tlsConfig)
 	if err != nil {
 		return err
 	}
-
-	requirePKIXTLS, mxLevel, err := rd.checkMXAuth(ctx, record.Host, conn)
-	if err != nil {
-		conn.Close()
-		return err
-	}
-
-	rd.Log.DebugMsg("levels", "mx", mxLevel, "tls", tlsLevel)
 
 	// Make decision based on the policy and connection state.
 	//
 	// Note: All policy errors are marked as temporary to give the local admin
 	// chance to troubleshoot them without losing messages.
 
-	// Note: tlsLevel is checked before it is modified by
-	if requirePKIXTLS && tlsLevel != TLSAuthenticated {
-		conn.Close()
-		return &exterrors.SMTPError{
-			Code:         451,
-			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message: "Recipient server TLS certificate is not trusted but " +
-				"authentication is required by MTA-STS",
-			Err: tlsErr,
-			Misc: map[string]interface{}{
-				"tls_level": tlsLevel,
-			},
+	tlsState, _ := conn.Client().TLSConnectionState()
+	for _, p := range rd.policies {
+		policyLevel, err := p.CheckConn(connCtx, tlsLevel, conn.domain, record.Host, tlsState)
+		if err != nil {
+			conn.Close()
+			return exterrors.WithFields(err, map[string]interface{}{"tls_err": tlsErr})
 		}
-	}
-	if rd.rt.minMXLevel > mxLevel {
-		conn.Close()
-		return &exterrors.SMTPError{
-			Code:         451,
-			EnhancedCode: exterrors.EnhancedCode{4, 7, 0},
-			Message:      "Failed to estabilish the MX record authenticity",
-			Err:          tlsErr,
-			Misc: map[string]interface{}{
-				"mx_level": mxLevel,
-			},
-		}
-	}
-
-	overridePKIX, err := rd.verifyDANE(ctx, tlsaFut, conn)
-	if err != nil {
-		conn.Close()
-		return err
-	}
-
-	// TLS authenticated via DANE-EE or DANE-TA.
-	if overridePKIX {
-		tlsLevel = TLSAuthenticated
-	}
-
-	if rd.rt.minTLSLevel > tlsLevel {
-		conn.Close()
-		return &exterrors.SMTPError{
-			Code:         451,
-			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message:      "TLS it not available or unauthenticated",
-			Err:          tlsErr,
-			Misc: map[string]interface{}{
-				"tls_level": tlsLevel,
-			},
+		if policyLevel > tlsLevel {
+			tlsLevel = policyLevel
 		}
 	}
 
@@ -265,15 +165,8 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	conn.Hostname = rd.rt.hostname
 	conn.AddrInSMTPMsg = true
 
-	conn.stsFut = future.New()
-	if rd.rt.mtastsGet != nil {
-		go func() {
-			conn.stsFut.Set(rd.rt.mtastsGet(ctx, domain))
-		}()
-	} else {
-		go func() {
-			conn.stsFut.Set(rd.rt.mtastsCache.Get(ctx, domain))
-		}()
+	for _, p := range rd.policies {
+		p.PrepareDomain(ctx, domain)
 	}
 
 	region := trace.StartRegion(ctx, "remote/LookupMX")

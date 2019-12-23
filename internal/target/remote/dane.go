@@ -1,65 +1,12 @@
 package remote
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/future"
 )
-
-func (rd *remoteDelivery) lookupTLSA(ctx context.Context, host string) ([]dns.TLSA, error) {
-	ad, recs, err := rd.rt.extResolver.AuthLookupTLSA(ctx, "25", "tcp", host)
-	if err != nil {
-		return nil, err
-	}
-	if !ad {
-		// Per https://tools.ietf.org/html/rfc7672#section-2.2 we interpret
-		// a non-authenticated RRset just like an empty RRset. Side note:
-		// "bogus" signatures are expected to be caught by the upstream
-		// resolver.
-		return nil, nil
-	}
-
-	// recs can be empty indicating absence of records.
-
-	return recs, nil
-}
-
-// verifyDANE verifies the whether TLSA records require TLS and match the
-// certificate and name used by the server.
-//
-// It calls verifyDANE function internally.
-func (rd *remoteDelivery) verifyDANE(ctx context.Context, tlsaFut *future.Future, conn mxConn) (overridePKIX bool, err error) {
-	// DANE is disabled.
-	if tlsaFut == nil {
-		return false, nil
-	}
-
-	recsI, err := tlsaFut.GetContext(ctx)
-	if err != nil {
-		// No records.
-		if dns.IsNotFound(err) {
-			return false, nil
-		}
-
-		// Lookup error here indicates a resolution failure or may also
-		// indicate a bogus DNSSEC signature.
-		// There is a big problem with differentiating these two.
-		//
-		// We assume DANE failure in both cases as a safety measure.
-		// However, there is a possibility of a temporary error condition,
-		// so we mark it as such.
-		return false, exterrors.WithTemporary(err, true)
-	}
-	recs := recsI.([]dns.TLSA)
-
-	tlsState, _ := conn.Client().TLSConnectionState()
-
-	return verifyDANE(recs, conn.ServerName(), tlsState)
-}
 
 // verifyDANE checks whether TLSA records require TLS use and match the
 // certificate and name used by the server.

@@ -16,6 +16,7 @@ import (
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/module"
@@ -27,14 +28,8 @@ import (
 // any useful data that can lead to outgoing connections being made.
 
 func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.ExtResolver,
-	mtastsGet func(ctx context.Context, domain string) (*mtasts.Policy, error)) *Target {
+	extraPolicies []Policy) *Target {
 	resolver := &mockdns.Resolver{Zones: zones}
-
-	if mtastsGet == nil {
-		mtastsGet = func(ctx context.Context, domain string) (*mtasts.Policy, error) {
-			return nil, mtasts.ErrNoPolicy
-		}
-	}
 
 	tgt := Target{
 		name:        "remote",
@@ -44,10 +39,36 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		extResolver: extResolver,
 		tlsConfig:   &tls.Config{},
 		Log:         testutils.Logger(t, "remote"),
-		mtastsGet:   mtastsGet,
+		policies:    extraPolicies,
+		localPolicy: &localPolicy{},
 	}
+	tgt.policies = append(tgt.policies, tgt.localPolicy)
 
 	return &tgt
+}
+
+func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(context.Context, string) (*mtasts.Policy, error)) *mtastsPolicy {
+	p, err := NewMTASTSPolicy(&mockdns.Resolver{Zones: zones}, false, config.NewMap(nil, &config.Node{
+		Children: []config.Node{
+			{
+				Name: "cache",
+				Args: []string{"ram"},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.mtastsGet = mtastsGet
+	p.log = testutils.Logger(t, "remote/mtasts")
+
+	return p
+}
+
+func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
+	p := NewDANEPolicy(extR, false)
+	p.log = testutils.Logger(t, "remote/dane")
+	return p
 }
 
 func TestRemoteDelivery(t *testing.T) {
@@ -782,7 +803,7 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	tgt.minTLSLevel = TLSEncrypted
+	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -806,7 +827,7 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
-	tgt.minTLSLevel = TLSEncrypted
+	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -834,7 +855,7 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
-	tgt.minTLSLevel = TLSEncrypted
+	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -858,7 +879,7 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	// tlsConfig is not configured to trust server cert.
-	tgt.minTLSLevel = TLSEncrypted
+	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
