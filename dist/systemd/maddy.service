@@ -25,6 +25,7 @@ RuntimeDirectory=maddy
 StateDirectory=maddy
 LogsDirectory=maddy
 ReadOnlyPaths=/usr/lib/maddy
+ReadWritePaths=/var/lib/maddy
 
 # Strict sandboxing. You have no reason to trust code written by strangers from GitHub.
 PrivateTmp=true
