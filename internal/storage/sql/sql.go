@@ -310,17 +310,31 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 
 	store.updPushStop = make(chan struct{})
 	go func() {
-		for u := range upds {
-			if err := store.updPipe.Push(u); err != nil {
-				store.Log.Error("IMAP update pipe push failed", err)
-			}
+		defer func() {
+			store.updPushStop <- struct{}{}
+			close(wrapped)
+		}()
 
-			if mode != updatepipe.ModePush {
-				wrapped <- u
+		for {
+			select {
+			case <-store.updPushStop:
+				return
+			case u := <-upds:
+				if u == nil {
+					// The channel is closed. We must be stopping now.
+					<-store.updPushStop
+					return
+				}
+
+				if err := store.updPipe.Push(u); err != nil {
+					store.Log.Error("IMAP update pipe push failed", err)
+				}
+
+				if mode != updatepipe.ModePush {
+					wrapped <- u
+				}
 			}
 		}
-		close(wrapped)
-		store.updPushStop <- struct{}{}
 	}()
 
 	store.updates = wrapped
@@ -401,20 +415,17 @@ func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
 }
 
 func (store *Storage) Close() error {
-	// Closes update channel. 'updates replicate' goroutine stops (see
-	// EnableUpdatePipe).
+	// Stop backend from generating new updates.
 	store.Back.Close()
-
-	// Close UpdatePipe, stops generation of new updates.
-	if store.updPipe != nil {
-		store.updPipe.Close()
-	}
 
 	// Wait for 'updates replicate' goroutine to actually stop so we will send
 	// all updates before shuting down (this is especially important for
 	// maddyctl).
-	if store.updPushStop != nil {
+	if store.updPipe != nil {
+		store.updPushStop <- struct{}{}
 		<-store.updPushStop
+
+		store.updPipe.Close()
 	}
 
 	return nil
