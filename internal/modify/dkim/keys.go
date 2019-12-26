@@ -140,7 +140,11 @@ func writeDNSRecord(keyPath, dkimAlgoName string, pkey crypto.Signer) (string, e
 	)
 	switch pubkey := pubkey.(type) {
 	case *rsa.PublicKey:
-		keyBlob = x509.MarshalPKCS1PublicKey(pubkey)
+		var err error
+		keyBlob, err = x509.MarshalPKIXPublicKey(pubkey)
+		if err != nil {
+			return "", err
+		}
 	case ed25519.PublicKey:
 		keyBlob = pubkey
 	default:
