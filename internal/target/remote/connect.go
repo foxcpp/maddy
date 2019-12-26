@@ -135,7 +135,7 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 
 	tlsState, _ := conn.Client().TLSConnectionState()
 	for _, p := range rd.policies {
-		policyLevel, err := p.CheckConn(connCtx, tlsLevel, conn.domain, record.Host, tlsState)
+		policyLevel, err := p.CheckConn(connCtx, mxLevel, tlsLevel, conn.domain, record.Host, tlsState)
 		if err != nil {
 			conn.Close()
 			return exterrors.WithFields(err, map[string]interface{}{"tls_err": tlsErr})

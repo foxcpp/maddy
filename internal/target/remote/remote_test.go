@@ -6,6 +6,7 @@ import (
 	"flag"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -61,6 +62,23 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 	}
 	p.mtastsGet = mtastsGet
 	p.log = testutils.Logger(t, "remote/mtasts")
+
+	return p
+}
+
+func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
+	p, err := NewSTSPreloadPolicy(false, http.DefaultClient, download, config.NewMap(nil, &config.Node{
+		Children: []config.Node{
+			{
+				Name: "source",
+				Args: []string{"https://127.0.0.1:1111"},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.log = testutils.Logger(t, "remote/preload")
 
 	return p
 }

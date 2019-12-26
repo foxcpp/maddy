@@ -170,6 +170,40 @@ cache can make sense for high-load configurations with good uptime.
 
 Filesystem directory to use for policies caching if 'cache' is set to 'fs'.
 
+## Security policies: STARTTLS Everywhere
+
+Apply rules from the STARTTLS Everywhere list or from any other similarly
+structured list.
+
+See https://starttls-everywhere.org for details.
+
+```
+sts_preload {
+	source eff
+	early_adopter yes
+}
+```
+
+*Syntax*: source eff | file://path | https://path ++
+*Default*: eff
+
+Source to download the list from. 'eff' is the alias to use the STARTTLS
+Everywhere list maintained by EFF. In addition to that, 'eff' alias enables
+verification of PGP signature using hardcoded PGP key.
+
+When the argument starts with file://, it should point to the local FS file
+with the list.
+When HTTPS URI is used, the list is downloaded from that location.
+
+In all cases, the list is checked for updates when it is about to expiry.
+
+*Syntax*: enforce_testing _boolean_ ++
+*Default*: yes
+
+Interpret 'testing' records as enforced ones. Using this makes list actually
+useful for security at the risk of deliverability problems if record becomes
+out-of-date and host does not publish an MTA-STS policy .
+
 ## Security policies: DNSSEC
 
 Checks whether MX records are signed. Sets MX level to "dnssec" is they are.

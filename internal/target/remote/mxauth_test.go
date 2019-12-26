@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/go-mtasts"
+	"github.com/foxcpp/go-mtasts/preload"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
@@ -42,6 +45,219 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_AuthMX_STSPreload(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	download := func(*http.Client, preload.Source) (*preload.List, error) {
+		return &preload.List{
+			Timestamp: preload.ListTime(time.Now()),
+			Expires:   preload.ListTime(time.Now().Add(time.Hour)),
+			Version:   "0.1",
+			Policies: map[string]preload.Entry{
+				"example.invalid": {
+					Mode: mtasts.ModeEnforce,
+					MXs:  []string{"mx.example.invalid"},
+				},
+			},
+		}, nil
+	}
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPreload(t, download),
+	})
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_AuthMX_STSPreload_Fail(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "spoofed.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	download := func(*http.Client, preload.Source) (*preload.List, error) {
+		return &preload.List{
+			Timestamp: preload.ListTime(time.Now()),
+			Expires:   preload.ListTime(time.Now().Add(time.Hour)),
+			Version:   "0.1",
+			Policies: map[string]preload.Entry{
+				"example.invalid": {
+					Mode: mtasts.ModeEnforce,
+					MXs:  []string{"mx.example.invalid"},
+				},
+			},
+		}, nil
+	}
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPreload(t, download),
+	})
+	tgt.tlsConfig = clientCfg
+	tgt.localPolicy.minMXLevel = MX_MTASTS
+	defer tgt.Close()
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_AuthMX_STSPreload_NoTLS(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	download := func(*http.Client, preload.Source) (*preload.List, error) {
+		return &preload.List{
+			Timestamp: preload.ListTime(time.Now()),
+			Expires:   preload.ListTime(time.Now().Add(time.Hour)),
+			Version:   "0.1",
+			Policies: map[string]preload.Entry{
+				"example.invalid": {
+					Mode: mtasts.ModeEnforce,
+					MXs:  []string{"mx.example.invalid"},
+				},
+			},
+		}, nil
+	}
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPreload(t, download),
+	})
+	tgt.localPolicy.minMXLevel = MX_MTASTS
+	defer tgt.Close()
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_AuthMX_STSPreload_RequirePKIX(t *testing.T) {
+	_, be1, srv1 := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv1.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv1)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	download := func(*http.Client, preload.Source) (*preload.List, error) {
+		return &preload.List{
+			Timestamp: preload.ListTime(time.Now()),
+			Expires:   preload.ListTime(time.Now().Add(time.Hour)),
+			Version:   "0.1",
+			Policies: map[string]preload.Entry{
+				"example.invalid": {
+					Mode: mtasts.ModeEnforce,
+					MXs:  []string{"mx.example.invalid"},
+				},
+			},
+		}, nil
+	}
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPreload(t, download),
+	})
+	tgt.localPolicy.minMXLevel = MX_MTASTS
+	defer tgt.Close()
+
+	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	if err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if be1.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_AuthMX_STSPreload_MTASTS(t *testing.T) {
+	clientCfg, be, srv1 := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv1.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv1)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			Mode: mtasts.ModeEnforce,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+	download := func(*http.Client, preload.Source) (*preload.List, error) {
+		return &preload.List{
+			Timestamp: preload.ListTime(time.Now()),
+			Expires:   preload.ListTime(time.Now().Add(time.Hour)),
+			Version:   "0.1",
+			Policies: map[string]preload.Entry{
+				"example.invalid": {
+					Mode: mtasts.ModeEnforce,
+					MXs:  []string{"outdated.example.invalid"},
+				},
+			},
+		}, nil
+	}
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+		testSTSPreload(t, download),
+	})
+	tgt.tlsConfig = clientCfg
+	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})

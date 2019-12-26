@@ -123,19 +123,24 @@ func (rt *Target) Init(cfg *config.Map) error {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
 
-	policies := make([]Policy, 3)
+	policies := make([]Policy, 4)
 	cfg.Custom("mtasts", false, false,
 		rt.defaultPolicy(cfg.Globals, "mtasts"), rt.policyMatcher("mtasts"), &policies[0])
+	// sts_preload should go after mtasts so it will take not effect if MXLevel is already MX_MTASTS.
+	cfg.Custom("sts_preload", false, false,
+		rt.defaultPolicy(cfg.Globals, "sts_preload"), rt.policyMatcher("sts_preload"), &policies[1])
 	cfg.Custom("dane", false, false,
-		rt.defaultPolicy(cfg.Globals, "dane"), rt.policyMatcher("dane"), &policies[1])
+		rt.defaultPolicy(cfg.Globals, "dane"), rt.policyMatcher("dane"), &policies[2])
 	cfg.Custom("dnssec", false, false,
-		rt.defaultPolicy(cfg.Globals, "dnssec"), rt.policyMatcher("dnssec"), &policies[2])
+		rt.defaultPolicy(cfg.Globals, "dnssec"), rt.policyMatcher("dnssec"), &policies[3])
+
+	var localPolicy localPolicy
 
 	// localPolicy should be the last one, since it considers levels defined by
 	// other policies.
 	// Also, it should be directly accessible from tests to adjust required levels.
 	cfg.Custom("local_policy", false, false,
-		rt.defaultPolicy(cfg.Globals, "local"), rt.policyMatcher("local"), &rt.localPolicy)
+		rt.defaultPolicy(cfg.Globals, "local"), rt.policyMatcher("local"), &localPolicy)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -148,7 +153,8 @@ func (rt *Target) Init(cfg *config.Map) error {
 		}
 		rt.policies = append(rt.policies, p)
 	}
-	rt.policies = append(rt.policies, rt.localPolicy)
+	rt.localPolicy = &localPolicy
+	rt.policies = append(rt.policies, &localPolicy)
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
 	rt.hostname, err = idna.ToASCII(rt.hostname)
