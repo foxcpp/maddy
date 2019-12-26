@@ -127,13 +127,13 @@ can be used.
 
 These directives applied for all configuration blocks that don't override it.
 
-*Syntax*: statedir _path_ ++
+*Syntax*: state_dir _path_ ++
 *Default*: /var/lib/maddy
 
 The path to the state directory. This directory will be used to store all
 persistent data and should be writable.
 
-*Syntax*: runtimedir _path_ ++
+*Syntax*: runtime_dir _path_ ++
 *Default*: /run/maddy
 
 The path to the runtime directory. Used for Unix sockets and other temporary

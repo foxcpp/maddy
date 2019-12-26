@@ -18,8 +18,8 @@ func findBlockInCfg(path, cfgBlock string) (root, block *config.Node, err error)
 	defer f.Close()
 
 	globals := config.NewMap(nil, &config.Node{Children: nodes})
-	globals.String("state", false, false, maddy.DefaultStateDirectory, &config.StateDirectory)
-	globals.String("runtime", false, false, maddy.DefaultRuntimeDirectory, &config.RuntimeDirectory)
+	globals.String("state_dir", false, false, maddy.DefaultStateDirectory, &config.StateDirectory)
+	globals.String("runtime_dir", false, false, maddy.DefaultRuntimeDirectory, &config.RuntimeDirectory)
 
 	// We don't care about other directives, but permit them.
 	globals.AllowUnknown()
