@@ -68,6 +68,9 @@ LimitNOFILE=131072
 # processes launched.
 LimitNPROC=512
 
-Restart=on-abnormal
+# Restart server on any problem.
+Restart=on-failure
+# ... Unless it is a configuration problem.
+RestartPreventExitStatus=2
 
 ExecStart=/usr/bin/maddy
