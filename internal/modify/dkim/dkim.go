@@ -403,7 +403,7 @@ func (s state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
 	}
 
-	h.Add("DKIM-Signature", signer.SignatureValue())
+	h.AddRaw([]byte(signer.Signature()))
 
 	s.m.log.DebugMsg("signed", "identifier", id)
 

@@ -37,6 +37,8 @@ github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca h1:OYhqtJI4
 github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca/go.mod h1:3h+HsGTCFHmk4ngJ2IV/YPhdlaOcR6hcgqM3yca9v7c=
 github.com/emersion/go-message v0.10.9-0.20191116124005-65fd0119e899 h1:KQ2ms0F+BcPuPHSDayTbkpsUs+IdbJ4jArwJ8rhiCXQ=
 github.com/emersion/go-message v0.10.9-0.20191116124005-65fd0119e899/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
+github.com/emersion/go-message v0.11.1-0.20191229143723-71005f4b31f3 h1:sYu7DbHUvQ3+HOc2FcbarC2ppPfgm0SYt6P//8QYs3w=
+github.com/emersion/go-message v0.11.1-0.20191229143723-71005f4b31f3/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c h1:0as6ct8PVWrlCofyWPh8o/fNRr6/DPbjkBicSG+3ZQI=
 github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
@@ -77,6 +79,8 @@ github.com/foxcpp/go-mockdns v0.0.0-20191211223108-4a6fcad1301d h1:XtbADe4vz/W1k
 github.com/foxcpp/go-mockdns v0.0.0-20191211223108-4a6fcad1301d/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f h1:b/CFmrdqIGU6eV774xeaQwd1VfgiLuR/8jiY3LyLiMc=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
+github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe h1:vzxspt1t/cOPBbDoIfVdS+7Ytdb5B5BJN46fDMCTxkY=
+github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8 h1:k8w0iy6GP9oeSZWUH3p2DqZHaXDKZGNs3NZGZMGfQHc=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8/go.mod h1:HO1YOCbBM8KjpgThMMFejHx6K/UsnEv2Oh9YGtBIlOU=
 github.com/frankban/quicktest v1.5.0 h1:Tb4jWdSpdjKzTUicPnY61PZxKbDoGa7ABbrReT3gQVY=
