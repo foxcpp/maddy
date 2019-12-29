@@ -62,6 +62,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 	}
 	p.mtastsGet = mtastsGet
 	p.log = testutils.Logger(t, "remote/mtasts")
+	p.StartUpdater()
 
 	return p
 }
@@ -79,6 +80,7 @@ func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
 		t.Fatal(err)
 	}
 	p.log = testutils.Logger(t, "remote/preload")
+	p.StartUpdater()
 
 	return p
 }
