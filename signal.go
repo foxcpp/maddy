@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/foxcpp/maddy/internal/hooks"
 	"github.com/foxcpp/maddy/internal/log"
 )
 
@@ -18,13 +19,16 @@ import (
 // SIGUSR1 will call reinitLogging without returning.
 func handleSignals() os.Signal {
 	sig := make(chan os.Signal, 5)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1, syscall.SIGUSR2)
 
 	for {
 		switch s := <-sig; s {
 		case syscall.SIGUSR1:
-			log.Println("SIGUSR1 received, reinitializing logging")
-			reinitLogging()
+			log.Printf("signal received (%s), rotating logs", s.String())
+			hooks.RunHooks(hooks.EventLogRotate)
+		case syscall.SIGUSR2:
+			log.Printf("signal received (%s), reloading state", s.String())
+			hooks.RunHooks(hooks.EventReload)
 		default:
 			go func() {
 				s := handleSignals()

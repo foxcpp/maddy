@@ -10,10 +10,12 @@ package modconfig
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/hooks"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	parser "github.com/foxcpp/maddy/pkg/cfgparser"
@@ -34,7 +36,21 @@ func createInlineModule(modName string, args []string) (module.Module, error) {
 //
 // args must contain at least one argument, otherwise initInlineModule panics.
 func initInlineModule(modObj module.Module, globals map[string]interface{}, block *config.Node) error {
-	return modObj.Init(config.NewMap(globals, block))
+	err := modObj.Init(config.NewMap(globals, block))
+	if err != nil {
+		return err
+	}
+
+	if closer, ok := modObj.(io.Closer); ok {
+		hooks.AddHook(hooks.EventShutdown, func() {
+			log.Debugf("close %s (%s)", modObj.Name(), modObj.InstanceName())
+			if err := closer.Close(); err != nil {
+				log.Printf("module %s (%s) close failed: %v", modObj.Name(), modObj.InstanceName(), err)
+			}
+		})
+	}
+
+	return nil
 }
 
 // ModuleFromNode does all work to create or get existing module object with a certain type.

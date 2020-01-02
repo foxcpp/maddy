@@ -2,8 +2,11 @@ package module
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/hooks"
+	"github.com/foxcpp/maddy/internal/log"
 )
 
 var (
@@ -69,6 +72,15 @@ func GetInstance(name string) (Module, error) {
 	Initialized[name] = true
 	if err := mod.mod.Init(mod.cfg); err != nil {
 		return mod.mod, err
+	}
+
+	if closer, ok := mod.mod.(io.Closer); ok {
+		hooks.AddHook(hooks.EventShutdown, func() {
+			log.Debugf("close %s (%s)", mod.mod.Name(), mod.mod.InstanceName())
+			if err := closer.Close(); err != nil {
+				log.Printf("module %s (%s) close failed: %v", mod.mod.Name(), mod.mod.InstanceName(), err)
+			}
+		})
 	}
 
 	return mod.mod, nil

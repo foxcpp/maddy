@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/hooks"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	parser "github.com/foxcpp/maddy/pkg/cfgparser"
@@ -264,7 +265,9 @@ func moduleMain(cfg []config.Node) error {
 
 	defer log.DefaultLogger.Out.Close()
 
-	insts, err := instancesFromConfig(globals.Values, unknown)
+	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
+
+	_, err = instancesFromConfig(globals.Values, unknown)
 	if err != nil {
 		return err
 	}
@@ -275,13 +278,7 @@ func moduleMain(cfg []config.Node) error {
 
 	systemdStatus(SDStopping, "Waiting for running transactions to complete...")
 
-	for _, inst := range insts {
-		if closer, ok := inst.(io.Closer); ok {
-			if err := closer.Close(); err != nil {
-				log.Printf("module %s (%s) close failed: %v", inst.Name(), inst.InstanceName(), err)
-			}
-		}
-	}
+	hooks.RunHooks(hooks.EventShutdown)
 
 	return nil
 }
@@ -352,6 +349,16 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 	for _, endp := range endpoints {
 		if err := endp.instance.Init(config.NewMap(globals, &endp.cfg)); err != nil {
 			return nil, err
+		}
+
+		if closer, ok := endp.instance.(io.Closer); ok {
+			endp := endp
+			hooks.AddHook(hooks.EventShutdown, func() {
+				log.Debugf("close %s (%s)", endp.instance.Name(), endp.instance.InstanceName())
+				if err := closer.Close(); err != nil {
+					log.Printf("module %s (%s) close failed: %v", endp.instance.Name(), endp.instance.InstanceName(), err)
+				}
+			})
 		}
 	}
 
