@@ -68,3 +68,6 @@ Restart=on-failure
 RestartPreventExitStatus=2
 
 ExecStart=/usr/bin/maddy -config /etc/maddy/%i.conf
+
+ExecReload=/bin/kill -USR1 $MAINPID
+ExecReload=/bin/kill -USR2 $MAINPID

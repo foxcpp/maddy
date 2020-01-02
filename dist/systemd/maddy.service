@@ -74,3 +74,6 @@ Restart=on-failure
 RestartPreventExitStatus=2
 
 ExecStart=/usr/bin/maddy
+
+ExecReload=/bin/kill -USR1 $MAINPID
+ExecReload=/bin/kill -USR2 $MAINPID
