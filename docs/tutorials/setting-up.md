@@ -9,6 +9,7 @@ For purposes of clarity, these values are used in this tutorial as examples,
 wherever you see them, you need to replace them with your actual values:
 
 - Domain: example.org
+- MX domain (hostname): example.org
 - IPv4 address: 10.2.3.4
 - IPv6 address: 2001:beef::1
 
@@ -118,6 +119,30 @@ the first start-up. You can find it in
 record for `default._domainkey.example.org` domain, like that:
 ```
 default._domainkey.example.org    TXT   "v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg="
+```
+
+## MTA-STS
+
+By default SMTP is not protected against active attacks. MTA-STS policy tells
+compatible senders to always use properly authenticated TLS when talking to
+your server, offering a simple-to-deploy way to protect your server against
+MitM attacks on port 25.
+
+Basically, you to create a file with following contents and make it available
+at https://mta-sts.example.org/.well-known/mta-sts.txt:
+```
+mode: enforce
+max_age: 604800
+mx: example.org
+```
+
+**Note**: example.org in the file is your MX hostname, example.org in URL is
+the domain you are receiving messages for. In simple configurations, they are
+going to be the same, but this is not the case for more complex setups.
+If you have multiple MX servers - add them all once per line, like that:
+```
+mx: mx1.example.org
+mx: mx2.example.org
 ```
 
 ## postmaster and other user accounts
