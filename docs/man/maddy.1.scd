@@ -217,6 +217,22 @@ logrotate daemon. Send SIGUSR1 to maddy process to make it reopen log files.
 Enable verbose logging for all modules. You don't need that unless you are
 reporting a bug.
 
+# Signals
+
+*SIGTERM, SIGINT, SIGHUP*
+
+Stop the server process gracefully. Send the signal second time to force
+immediate shutdown (likely unclean).
+
+*SIGUSR1*
+
+Reopen log files, if any are used.
+
+*SIGUSR2*
+
+Reload some files from disk, including alias mappings and TLS certificates.
+This does not include the main configuration, though.
+
 # Authors
 
 Maintained by Max Mazurov <fox.cpp@disroot.org>. Project includes contributions
