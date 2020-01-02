@@ -71,17 +71,9 @@ You still need to make keys readable for maddy, though:
 $ sudo setfacl -R -m u:maddy:rX /etc/letsencrypt/{live,archive}
 ```
 
-Additionally, it is a good idea to automatically restart
-maddy on certificate renewal.
-Put that into /etc/letsencrypt/renewal-hooks/post/restart:
-```shell
-#!/bin/bash
-systemctl restart maddy
-```
-And make it executable:
-```
-$ sudo chmod +x /etc/letsencrypt/renewal-hooks/post/restart
-```
+maddy reloads TLS certificates from disk once in a minute so it will notice
+renewal. It is possible to force reload via `systemctl reload maddy` (or just
+`killall -USR2 maddy`).
 
 ## First run
 

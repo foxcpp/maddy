@@ -33,7 +33,7 @@ func (cfg *TLSConfig) Get() *tls.Config {
 	return cfg.cfg.Clone()
 }
 
-func (cfg *TLSConfig) read(m *Map, node *Node) error {
+func (cfg *TLSConfig) read(m *Map, node *Node, generateSelfSig bool) error {
 	cfg.l.Lock()
 	defer cfg.l.Unlock()
 
@@ -44,6 +44,10 @@ func (cfg *TLSConfig) read(m *Map, node *Node) error {
 			cfg.cfg = nil
 			return nil
 		case "self_signed":
+			if !generateSelfSig {
+				return nil
+			}
+
 			tlsCfg := &tls.Config{
 				MinVersion: tls.VersionTLS10,
 				MaxVersion: tls.VersionTLS13,
@@ -79,16 +83,25 @@ func TLSDirective(m *Map, node *Node) (interface{}, error) {
 	cfg := TLSConfig{
 		initCfg: node,
 	}
-	if err := cfg.read(m, node); err != nil {
+	if err := cfg.read(m, node, true); err != nil {
 		return nil, err
 	}
 
 	hooks.AddHook(hooks.EventReload, func() {
-		log.Debugln("reloading TLS configuration")
-		if err := cfg.read(NewMap(nil, cfg.initCfg), cfg.initCfg); err != nil {
-			log.DefaultLogger.Error("failed to reload TLS config", err)
+		log.Debugln("tls: reloading certificates")
+		if err := cfg.read(NewMap(nil, cfg.initCfg), cfg.initCfg, false); err != nil {
+			log.DefaultLogger.Error("tls: failed to load new certs", err)
 		}
 	})
+	go func() {
+		t := time.NewTicker(1 * time.Minute)
+		for range t.C {
+			log.Debugln("tls: reloading certificates")
+			if err := cfg.read(NewMap(nil, cfg.initCfg), cfg.initCfg, false); err != nil {
+				log.DefaultLogger.Error("tls: failed to load new certs", err)
+			}
+		}
+	}()
 
 	// Return nil so callers can check whether TLS is enabled easier.
 	if cfg.cfg == nil {
