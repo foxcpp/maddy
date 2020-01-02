@@ -67,10 +67,4 @@ SMTP endpoint is on port 465 with TLS enforced ("implicit TLS").
 ### systemd unit
 
 You can use the systemd unit file from the [dist/](dist) directory in
-this repo. It will automatically set-up user account and directories.
-Additionally, it will apply strict sandbox to maddy to ensure additional
-security.
-
-You need a relatively new systemd version (235+) both of these things to work
-properly. Otherwise, you still have to manually create a user account and the
-state + runtime directories with read-write permissions for the maddy user.
+this repo.

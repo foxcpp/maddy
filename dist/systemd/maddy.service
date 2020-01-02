@@ -9,7 +9,6 @@ After=network.target
 Type=notify
 NotifyAccess=main
 
-# For systemd before 235. Assumes pre-existing user & group.
 User=maddy
 Group=maddy
 
@@ -17,9 +16,6 @@ Group=maddy
 # in config will be relative to it unless handled specially.
 WorkingDirectory=/var/lib/maddy
 
-# For systemd 235+. systemd will take care of user accounts
-# directories and permissions.
-DynamicUser=true
 ConfigurationDirectory=maddy
 RuntimeDirectory=maddy
 StateDirectory=maddy

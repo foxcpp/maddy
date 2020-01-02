@@ -9,17 +9,15 @@ After=network.target
 Type=notify
 NotifyAccess=main
 
-# For systemd before 235. Assumes pre-existing user & group.
 User=maddy
 Group=maddy
 
-# For systemd 235+. systemd will take care of user accounts
-# and permissions.
-DynamicUser=true
 ConfigurationDirectory=maddy
+RuntimeDirectory=maddy
 StateDirectory=maddy
-ReadOnlyPaths=/usr/lib/maddy
 LogsDirectory=maddy
+ReadOnlyPaths=/usr/lib/maddy
+ReadWritePaths=/var/lib/maddy
 
 # Strict sandboxing. You have no reason to trust code written by strangers from GitHub.
 PrivateTmp=true
