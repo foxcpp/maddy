@@ -17,8 +17,9 @@ import (
 type SDStatus string
 
 const (
-	SDReady    = "READY=1"
-	SDStopping = "STOPPING=1"
+	SDReady     = "READY=1"
+	SDReloading = "RELOADING=1"
+	SDStopping  = "STOPPING=1"
 )
 
 var (

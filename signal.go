@@ -25,10 +25,14 @@ func handleSignals() os.Signal {
 		switch s := <-sig; s {
 		case syscall.SIGUSR1:
 			log.Printf("signal received (%s), rotating logs", s.String())
+			systemdStatus(SDReloading, "Reopening logs...")
 			hooks.RunHooks(hooks.EventLogRotate)
+			systemdStatus(SDReady, "Listening for incoming connections...")
 		case syscall.SIGUSR2:
 			log.Printf("signal received (%s), reloading state", s.String())
+			systemdStatus(SDReloading, "Reloading state...")
 			hooks.RunHooks(hooks.EventReload)
+			systemdStatus(SDReady, "Listening for incoming connections...")
 		default:
 			go func() {
 				s := handleSignals()
