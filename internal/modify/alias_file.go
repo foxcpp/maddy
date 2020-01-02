@@ -14,6 +14,7 @@ import (
 	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/hooks"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 )
@@ -29,6 +30,7 @@ type Modifier struct {
 	aliasesStamp time.Time
 
 	stopReloader chan struct{}
+	forceReload  chan struct{}
 
 	log log.Logger
 }
@@ -39,6 +41,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 		files:        inlineArgs,
 		aliases:      make(map[string]string),
 		stopReloader: make(chan struct{}),
+		forceReload:  make(chan struct{}),
 		log:          log.Logger{Name: ModName},
 	}, nil
 }
@@ -77,6 +80,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	}
 
 	go m.aliasesReloader()
+	hooks.AddHook(hooks.EventReload, func() {
+		m.forceReload <- struct{}{}
+	})
 
 	return nil
 }
@@ -129,30 +135,32 @@ func (m *Modifier) aliasesReloader() {
 				m.aliasesLck.Unlock()
 				continue
 			}
-			m.log.Printf("alias files changed, reloading")
-
-			newAliases := make(map[string]string, len(m.aliases)+5)
-
-			for _, file := range m.files {
-				if err := readFile(file, newAliases); err != nil {
-					if os.IsNotExist(err) {
-						m.log.Printf("ignoring non-existent file: %s", file)
-					} else {
-						m.log.Println(err)
-						goto dontreplace
-					}
-					continue
-				}
-			}
-
-			m.aliasesLck.Lock()
-			m.aliases = newAliases
-			m.aliasesStamp = time.Now()
-			m.aliasesLck.Unlock()
+		case <-m.forceReload:
 		case <-m.stopReloader:
 			m.stopReloader <- struct{}{}
 			return
 		}
+
+		m.log.Debugf("reloading aliases")
+
+		newAliases := make(map[string]string, len(m.aliases)+5)
+
+		for _, file := range m.files {
+			if err := readFile(file, newAliases); err != nil {
+				if os.IsNotExist(err) {
+					m.log.Printf("ignoring non-existent file: %s", file)
+					continue
+				}
+
+				m.log.Println(err)
+				goto dontreplace
+			}
+		}
+
+		m.aliasesLck.Lock()
+		m.aliases = newAliases
+		m.aliasesStamp = time.Now()
+		m.aliasesLck.Unlock()
 	dontreplace:
 	}
 }
