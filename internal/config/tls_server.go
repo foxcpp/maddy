@@ -10,39 +10,96 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/foxcpp/maddy/internal/hooks"
 	"github.com/foxcpp/maddy/internal/log"
 )
 
-func TLSDirective(m *Map, node *Node) (interface{}, error) {
+type TLSConfig struct {
+	initCfg *Node
+
+	l   sync.Mutex
+	cfg *tls.Config
+}
+
+func (cfg *TLSConfig) Get() *tls.Config {
+	cfg.l.Lock()
+	defer cfg.l.Unlock()
+	if cfg.cfg == nil {
+		return nil
+	}
+	return cfg.cfg.Clone()
+}
+
+func (cfg *TLSConfig) read(m *Map, node *Node) error {
+	cfg.l.Lock()
+	defer cfg.l.Unlock()
+
 	switch len(node.Args) {
 	case 1:
 		switch node.Args[0] {
 		case "off":
-			return nil, nil
+			cfg.cfg = nil
+			return nil
 		case "self_signed":
-			cfg := &tls.Config{
+			tlsCfg := &tls.Config{
 				MinVersion: tls.VersionTLS10,
-				MaxVersion: tls.VersionTLS12,
+				MaxVersion: tls.VersionTLS13,
 			}
-			if err := makeSelfSignedCert(cfg); err != nil {
-				return nil, err
+			if err := makeSelfSignedCert(tlsCfg); err != nil {
+				return err
 			}
 			log.Println("tls: using self-signed certificate, this is not secure!")
-			return cfg, nil
+			cfg.cfg = tlsCfg
+			return nil
+		default:
+			log.Println(node.Name, node.Args)
+			return m.MatchErr("unexpected argument (%s), want 'off' or 'self_signed'", node.Args[0])
 		}
 	case 2:
-		cfg, err := readTLSBlock(m, node)
+		tlsCfg, err := readTLSBlock(m, node)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return cfg, nil
+		cfg.cfg = tlsCfg
+		return nil
 	default:
-		return nil, m.MatchErr("expected 1 or 2 arguments")
+		return m.MatchErr("expected 1 or 2 arguments")
+	}
+}
+
+// TLSDirective reads the TLS configuration and adds the reload handler to
+// reread certificates on SIGUSR2.
+//
+// The returned value is *tls.TLSConfig with GetConfigForClient set.
+// If the 'tls off' is used, returned value is nil.
+func TLSDirective(m *Map, node *Node) (interface{}, error) {
+	cfg := TLSConfig{
+		initCfg: node,
+	}
+	if err := cfg.read(m, node); err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	hooks.AddHook(hooks.EventReload, func() {
+		log.Debugln("reloading TLS configuration")
+		if err := cfg.read(NewMap(nil, cfg.initCfg), cfg.initCfg); err != nil {
+			log.DefaultLogger.Error("failed to reload TLS config", err)
+		}
+	})
+
+	// Return nil so callers can check whether TLS is enabled easier.
+	if cfg.cfg == nil {
+		return nil, nil
+	}
+
+	return &tls.Config{
+		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			return cfg.Get(), nil
+		},
+	}, nil
 }
 
 func readTLSBlock(m *Map, blockNode *Node) (*tls.Config, error) {
@@ -80,7 +137,7 @@ func readTLSBlock(m *Map, blockNode *Node) (*tls.Config, error) {
 		return nil, err
 	}
 
-	log.Debugf("tls: using %s/%s", certPath, keyPath)
+	log.Debugf("tls: using %s : %s", certPath, keyPath)
 	cfg.Certificates = append(cfg.Certificates, cert)
 
 	cfg.MinVersion = tlsVersions[0]

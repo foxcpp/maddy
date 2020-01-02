@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
-	
+
 	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 )
 
@@ -570,6 +570,8 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 	m.Values = make(map[string]interface{})
 
 	for _, subnode := range block.Children {
+		// Copy node in case mapper wants to keep it for something.
+		subnode := subnode
 		m.curNode = &subnode
 
 		if matched[subnode.Name] {
@@ -585,7 +587,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 			continue
 		}
 
-		val, err := matcher.mapper(m, m.curNode)
+		val, err := matcher.mapper(m, &subnode)
 		if err != nil {
 			return nil, err
 		}
