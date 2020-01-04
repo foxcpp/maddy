@@ -1,0 +1,38 @@
+# AppArmor profile for maddy daemon.
+# vim:syntax=apparmor:ts=2:sw=2:et
+
+#include <tunables/global>
+
+profile dev.foxcpp.maddy /usr{/local,}/bin/maddy {
+  #include <abstractions/base>
+  #include <abstractions/ssl_certs>
+  #include <abstractions/ssl_keys>
+  /etc/ca-certificates/** r,
+
+  /etc/resolv.conf r,
+  /proc/sys/net/core/somaxconn r,
+  /sys/kernel/mm/transparent_hugepage/hpage_pmd_size r,
+  deny ptrace,
+  capability net_bind_service,
+  network tcp,
+  network unix,
+
+  # systemd process management and Type=notify
+  signal (receive) peer=unconfined,
+  signal (receive) peer=/usr/bin/systemd,
+  unix (create, connect, send, setopt) type=dgram addr=@*,
+  /run/systemd/notify w,
+
+  /etc/maddy/** r,
+  owner /run/maddy/ rw,
+  owner /run/maddy/** rwkl,
+  owner /var/lib/maddy/ rw,
+  owner /var/lib/maddy/** rwk,
+  owner /var/lib/maddy/**.db-{wal,shm} rmk,
+
+  /usr{/local,}/lib/maddy/* PUx,
+
+  /usr{/local,}/bin/maddy{,ctl} rmix,
+
+  #include if exists <local/dev.foxcpp.maddy>
+}
