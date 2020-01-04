@@ -17,7 +17,7 @@ require (
 	github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c
 	github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e
 	github.com/emersion/go-smtp v0.12.1-0.20191206174923-1f576e0ec85c
-	github.com/foxcpp/go-imap-sql v0.3.2-0.20200104152930-161bee854917
+	github.com/foxcpp/go-imap-sql v0.3.2-0.20200104153843-b750dd351611
 	github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.4.1
