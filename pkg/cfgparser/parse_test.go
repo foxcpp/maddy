@@ -242,6 +242,18 @@ var cases = []struct {
 		false,
 	},
 	{
+		"invalid directive name",
+		`a-a4@%8 whatever`,
+		nil,
+		true,
+	},
+	{
+		"directive name starts with a digit",
+		`1w whatever`,
+		nil,
+		true,
+	},
+	{
 		"missing block header",
 		`{ a_child1 c1arg1 c1arg2 }`,
 		nil,

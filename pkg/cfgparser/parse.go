@@ -2,9 +2,11 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"github.com/foxcpp/maddy/internal/config/lexer"
 )
@@ -49,6 +51,29 @@ type parseContext struct {
 	macros   map[string][]string
 
 	fileLocation string
+}
+
+func validateNodeName(s string) error {
+	if len(s) == 0 {
+		return errors.New("empty directive name")
+	}
+
+	if unicode.IsDigit([]rune(s)[0]) {
+		return errors.New("directive name cannot start with a digit")
+	}
+
+	var allowedPunct = map[rune]bool{'.': true, '-': true, '_': true}
+
+	for _, ch := range s {
+		if !unicode.IsLetter(ch) &&
+			!unicode.IsDigit(ch) &&
+			!allowedPunct[ch] {
+
+			return errors.New("character not allowed in directive name: " + string(ch))
+		}
+	}
+
+	return nil
 }
 
 // readNode reads node starting at current token pointed by the lexer's
@@ -116,6 +141,12 @@ func (ctx *parseContext) readNode() (Node, error) {
 		node.Name = macroName
 		node.Args = macroArgs
 		node.Macro = true
+	}
+
+	if !node.Macro && !node.Snippet {
+		if err := validateNodeName(node.Name); err != nil {
+			return node, err
+		}
 	}
 
 	return node, nil
