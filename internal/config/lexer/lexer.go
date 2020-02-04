@@ -29,6 +29,8 @@ type (
 		reader *bufio.Reader
 		token  Token
 		line   int
+
+		lastErr error
 	}
 
 	// Token represents a single parsable unit.
@@ -60,22 +62,30 @@ func (l *lexer) load(input io.Reader) error {
 	return nil
 }
 
+func (l *lexer) err() error {
+	return l.lastErr
+}
+
 // next loads the next token into the lexer.
-// A token is delimited by whitespace, unless
-// the token starts with a quotes character (")
-// in which case the token goes until the closing
-// quotes (the enclosing quotes are not included).
-// Inside quoted strings, quotes may be escaped
-// with a preceding \ character. No other chars
-// may be escaped. The rest of the line is skipped
-// if a "#" character is read in. Returns true if
-// a token was loaded; false otherwise.
+//
+// A token is delimited by whitespace, unless the token starts with a quotes
+// character (") in which case the token goes until the closing quotes (the
+// enclosing quotes are not included). Inside quoted strings, quotes may be
+// escaped with a preceding \ character. No other chars may be escaped. Curly
+// braces ('{', '}') are emitted as a separate tokens.
+//
+// The rest of the line is skipped if a "#" character is read in.
+//
+// Returns true if a token was loaded; false otherwise. If read from
+// underlying Reader fails, next() returns false and err() will return the
+// error occured.
 func (l *lexer) next() bool {
 	var val []rune
 	var comment, quoted, escaped bool
 
 	makeToken := func() bool {
 		l.token.Text = string(val)
+		l.lastErr = nil
 		return true
 	}
 
@@ -88,7 +98,8 @@ func (l *lexer) next() bool {
 			if err == io.EOF {
 				return false
 			}
-			panic(err)
+			l.lastErr = err
+			return false
 		}
 
 		if quoted {

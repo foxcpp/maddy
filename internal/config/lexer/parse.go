@@ -17,5 +17,7 @@ func allTokens(input io.Reader) ([]Token, error) {
 	for l.next() {
 		tokens = append(tokens, l.token)
 	}
+	if err := l.err(); err != nil {
+	}
 	return tokens, nil
 }
