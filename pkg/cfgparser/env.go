@@ -28,12 +28,10 @@ func expandEnvironment(nodes []Node) []Node {
 	return newNodes
 }
 
-var unixEnvvarRe = regexp.MustCompile(`{\$([^\$]+)}`)
-var winEnvvarRe = regexp.MustCompile(`{%([^%]+)%}`)
+var unixEnvvarRe = regexp.MustCompile(`{env:([^\$]+)}`)
 
 func removeUnexpandedEnvvars(s string) string {
 	s = unixEnvvarRe.ReplaceAllString(s, "")
-	s = winEnvvarRe.ReplaceAllString(s, "")
 	return s
 }
 
@@ -45,8 +43,7 @@ func buildEnvReplacer() *strings.Replacer {
 		key := parts[0]
 		value := parts[1]
 
-		pairs = append(pairs, "{%"+key+"%}", value)
-		pairs = append(pairs, "{$"+key+"}", value)
+		pairs = append(pairs, "{env:"+key+"}", value)
 	}
 	return strings.NewReplacer(pairs...)
 }

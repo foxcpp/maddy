@@ -287,8 +287,8 @@ var cases = []struct {
 		false,
 	},
 	{
-		"environment variable expansion (unix-like syntax)",
-		`a {$TESTING_VARIABLE}`,
+		"environment variable expansion",
+		`a {env:TESTING_VARIABLE}`,
 		[]Node{
 			{
 				Name:     "a",
@@ -301,36 +301,8 @@ var cases = []struct {
 		false,
 	},
 	{
-		"environment variable expansion (windows-like syntax)",
-		`a {%TESTING_VARIABLE2%}`,
-		[]Node{
-			{
-				Name:     "a",
-				Args:     []string{"ABC2 DEF2"},
-				Children: nil,
-				File:     "test",
-				Line:     1,
-			},
-		},
-		false,
-	},
-	{
 		"missing environment variable expansion (unix-like syntax)",
-		`a {$TESTING_VARIABLE3}`,
-		[]Node{
-			{
-				Name:     "a",
-				Args:     []string{""},
-				Children: nil,
-				File:     "test",
-				Line:     1,
-			},
-		},
-		false,
-	},
-	{
-		"missing environment variable expansion (windows-like syntax)",
-		`a {%TESTING_VARIABLE3%}`,
+		`a {env:TESTING_VARIABLE3}`,
 		[]Node{
 			{
 				Name:     "a",
@@ -344,11 +316,11 @@ var cases = []struct {
 	},
 	{
 		"incomplete environment variable syntax",
-		`a {%TESTING_VARIABLE3`,
+		`a {env:TESTING_VARIABLE`,
 		[]Node{
 			{
 				Name:     "a",
-				Args:     []string{"{%TESTING_VARIABLE3"},
+				Args:     []string{"{env:TESTING_VARIABLE"},
 				Children: nil,
 				File:     "test",
 				Line:     1,

@@ -73,15 +73,18 @@ directive2 # same as above
 ## Environment variables
 
 Environment variables can be referenced in the configuration using either
-{$VARIABLENAME} or {%VARIABLENAME%} syntax.
+{env:VARIABLENAME} syntax.
 
 Non-existent variables are expanded to empty strings and not removed from
 the arguments list.  In the following example, directive0 will have one argument
-independently of whether $VAR is defined.
+independently of whether VAR is defined.
 
 ```
-directive0 {$VAR}
+directive0 {env:VAR}
 ```
+
+Parse is forgiving and incomplete variable placeholder (e.g. '{env:VAR') will
+be left as-is. Variables are expanded inside quotes too.
 
 ## Snippets & imports
 
@@ -182,7 +185,7 @@ Also note that the following is not valid, unlike Duration values syntax:
 
 Maddy configuration uses URL-like syntax to specify network addresses.
 
-- unix://file_path 
+- unix://file_path
   Unix domain socket. Relative paths are relative to runtime directory
   (/run/maddy).
 
