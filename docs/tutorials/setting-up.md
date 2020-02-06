@@ -9,7 +9,7 @@ For purposes of clarity, these values are used in this tutorial as examples,
 wherever you see them, you need to replace them with your actual values:
 
 - Domain: example.org
-- MX domain (hostname): example.org
+- MX domain (hostname): mx.example.org
 - IPv4 address: 10.2.3.4
 - IPv6 address: 2001:beef::1
 
@@ -36,18 +36,26 @@ distributions, this should be enough:
 # apt-get install build-essential
 ```
 
-get.sh script will do the rest for you:
+build.sh script will do the rest for you:
 
 ```
-$ curl 'https://foxcpp.dev/maddy/get.sh' | bash
+$ curl 'https://foxcpp.dev/maddy/build.sh' | bash
 ```
-
-It will leave `maddy-setup` directory lying around, you might want to keep it
-so you don't have to redownload and recompile everything on update.
 
 *Note:* If you can't / don't use this script for some reason, instructions for
 manual installation can be found
 [here](../manual-installation)
+
+## Host name + domain
+
+Open /etc/maddy/maddy.conf with ~~vim~~your favorite editor and change
+the following lines to match your server name and domain you want to handle
+mail for.
+
+```
+$(hostname) = mx.example.org
+$(primary_domain) = example.org
+```
 
 ## TLS certificates
 
@@ -168,7 +176,7 @@ For Debian-based distributions:
 apt-get install fail2ban
 ```
 
-2. get.sh already installed necessary jail configuration files, but you have to
+2. build.sh already installed necessary jail configuration files, but you have to
    enable them. Open /etc/fail2ban/jail.d/common.local (create one if needed)
    and add the following lines:
 ```

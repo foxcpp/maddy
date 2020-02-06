@@ -12,5 +12,5 @@ scdoc < maddy-filters.5.scd > maddy-filters.5
 man ./maddy-filters.5
 ```
 
-get.sh script in the repo root compiles and installs man pages if the scdoc
+build.sh script in the repo root compiles and installs man pages if the scdoc
 utility is installed in the system.

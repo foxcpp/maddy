@@ -35,4 +35,4 @@ cmd/maddy-*-helper/maddy-*-helper
 cmd/maddy/*mtasts-cache
 cmd/maddy/*queue
 
-maddy-setup/
+build/
