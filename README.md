@@ -67,7 +67,7 @@ See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 The code is under MIT license. See [LICENSE](LICENSE) for more information.
 
 
-[dkim]: https://blog.returnpath.com/how-to-explain-dkim-in-plain-english-2/
+[dkim]: https://www.validity.com/blog/how-to-explain-dkim-in-plain-english/
 [spf]: https://blog.returnpath.com/how-to-explain-spf-in-plain-english/
 [dmarc]: https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/
 [mtasts]: https://www.hardenize.com/blog/mta-sts
