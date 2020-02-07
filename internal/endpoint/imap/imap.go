@@ -19,6 +19,7 @@ import (
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/go-message"
 	_ "github.com/emersion/go-message/charset"
+	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
 	"github.com/foxcpp/go-imap-sql/children"
 	"github.com/foxcpp/maddy/internal/config"
 	modconfig "github.com/foxcpp/maddy/internal/config/module"
@@ -195,6 +196,14 @@ func (endp *Endpoint) EnableChildrenExt() bool {
 	return endp.Store.(children.Backend).EnableChildrenExt()
 }
 
+func (endp *Endpoint) I18NLevel() int {
+	be, ok := endp.Store.(i18nlevel.Backend)
+	if !ok {
+		return 0
+	}
+	return be.I18NLevel()
+}
+
 func (endp *Endpoint) enableExtensions() error {
 	exts := endp.Store.IMAPExtensions()
 	for _, ext := range exts {
@@ -207,6 +216,8 @@ func (endp *Endpoint) enableExtensions() error {
 			endp.serv.Enable(move.NewExtension())
 		case "SPECIAL-USE":
 			endp.serv.Enable(specialuse.NewExtension())
+		case "I18NLEVEL=1", "I18NLEVEL=2":
+			endp.serv.Enable(i18nlevel.NewExtension())
 		}
 	}
 

@@ -341,8 +341,12 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 	return nil
 }
 
+func (store *Storage) I18NLevel() int {
+	return 1
+}
+
 func (store *Storage) IMAPExtensions() []string {
-	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE"}
+	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE", "I18NLEVEL=1"}
 }
 
 func (store *Storage) CreateMessageLimit() *uint32 {
