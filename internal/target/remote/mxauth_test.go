@@ -438,9 +438,20 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 }
 
 func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
-	clientCfg, be1, srv1 := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv1.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv1)
+	// At the moment, implementation ensures all MX policy checks are completed
+	// before attempting to connect.
+	// However, we cannot run complete go-smtp server to check whether it is
+	// violated and the connection is actually estabilished since this causes
+	// weird race conditions when test completes before go-smtp has the
+	// chance to fully initialize itself (Serve is still at the conn.listeners
+	// assignment when Close is called).
+	// There is a workaround in SMTPServerSTARTTLS function but it does not
+	// seem to work correctly.
+	// FIXME: This also affects many other tests here where go-smtp server is
+	// replaced with "tarpit" instance.
+	// https://builds.sr.ht/~emersion/job/147975
+	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
+	defer tarpit.Close()
 
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -462,17 +473,12 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
-	tgt.tlsConfig = clientCfg
 	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
-	}
-
-	if be1.MailFromCounter != 0 {
-		t.Fatal("MAIL FROM issued for server failing authentication")
 	}
 }
 
