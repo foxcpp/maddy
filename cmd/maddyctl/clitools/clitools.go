@@ -75,6 +75,9 @@ func ReadPassword(prompt string) (string, error) {
 		hiddenPass = false
 		fmt.Fprintln(os.Stderr, "Failed to disable terminal output:", err)
 	}
+
+	// There is no meaningful way to handle error here.
+	//nolint:errcheck
 	defer TcSetAttr(os.Stdin.Fd(), &termios)
 
 	fmt.Fprintf(os.Stderr, "%s: ", prompt)

@@ -222,11 +222,14 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 			Reject: true,
 		}
 	}
-	defer cmd.Process.Signal(os.Interrupt)
 
 	bufOut := bufio.NewReader(stdout)
 	hdr, err := textproto.ReadHeader(bufOut)
 	if err != nil && !errors.Is(err, io.EOF) {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			s.log.Error("failed to kill process", err)
+		}
+
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:      450,
@@ -246,6 +249,13 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 
 	err = cmd.Wait()
 	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			// If that's not ExitError, the process may still be running. We do
+			// not want this.
+			if err := cmd.Process.Signal(os.Interrupt); err != nil {
+				s.log.Error("failed to kill process", err)
+			}
+		}
 		return s.errorRes(err, res, cmd.String())
 
 	}

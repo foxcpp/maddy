@@ -78,7 +78,7 @@ func (l *lexer) err() error {
 //
 // Returns true if a token was loaded; false otherwise. If read from
 // underlying Reader fails, next() returns false and err() will return the
-// error occured.
+// error occurred.
 func (l *lexer) next() bool {
 	var val []rune
 	var comment, quoted, escaped bool

@@ -12,7 +12,6 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
@@ -40,11 +39,10 @@ var defaultBL = List{
 }
 
 type DNSBL struct {
-	instName     string
-	checkEarly   bool
-	listedAction check.FailAction
-	inlineBls    []string
-	bls          []List
+	instName   string
+	checkEarly bool
+	inlineBls  []string
+	bls        []List
 
 	quarantineThres int
 	rejectThres     int
