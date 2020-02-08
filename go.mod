@@ -14,26 +14,27 @@ require (
 	github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.11.1
-	github.com/emersion/go-msgauth v0.3.2-0.20191028231513-55b75676976c
+	github.com/emersion/go-msgauth v0.4.0
 	github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b
 	github.com/emersion/go-smtp v0.12.2-0.20200116100735-2f00eafcaf68
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-sql v0.3.2-0.20200104153843-b750dd351611
 	github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.1
-	github.com/klauspost/compress v1.9.1 // indirect
-	github.com/lib/pq v1.2.0
-	github.com/mattn/go-sqlite3 v1.11.0
-	github.com/miekg/dns v1.1.22
+	github.com/klauspost/compress v1.9.8 // indirect
+	github.com/lib/pq v1.3.0
+	github.com/mattn/go-sqlite3 v1.13.0
+	github.com/miekg/dns v1.1.27
+	github.com/pierrec/lz4 v2.4.1+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/cli v1.22.1
-	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
+	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd
+	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect
+	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
