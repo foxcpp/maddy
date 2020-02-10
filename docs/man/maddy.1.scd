@@ -4,7 +4,7 @@ maddy(1) "maddy mail server" "maddy reference documentation"
 
 # Name
 
-maddy - Simple, fast, secure all-in-one mail server.
+maddy - Composable all-in-one mail server.
 
 # Synopsis
 

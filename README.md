@@ -2,7 +2,7 @@
 
 [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
 
-Simple, fast, secure all-in-one mail server.
+Composable all-in-one mail server.
 
 **⚠️ Disclaimer: maddy is in development, many planned features are
 missing, bugs are waiting to eat your messages and incompatible
