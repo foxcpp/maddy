@@ -471,3 +471,9 @@ default_destination {
 }
 ```
 
+## Reusable pipeline parts (msgpipeline module)
+
+The message pipeline can be used independently of the SMTP module in other
+contexts that require a delivery target.
+
+Full pipeline functionality can be used where a delivery target is expected.
