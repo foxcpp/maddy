@@ -38,11 +38,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 
 			cfg.globalChecks = append(cfg.globalChecks, globalChecks...)
 		case "modify":
-			if len(node.Children) == 0 {
-				return msgpipelineCfg{}, config.NodeErr(&node, "empty modifiers block")
-			}
-
-			globalModifiers, err := parseModifiersGroup(globals, node.Children)
+			globalModifiers, err := parseModifiersGroup(globals, &node)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
@@ -140,11 +136,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 
 			src.checks = append(src.checks, checks...)
 		case "modify":
-			if len(node.Children) == 0 {
-				return sourceBlock{}, config.NodeErr(&node, "empty modifiers block")
-			}
-
-			modifiers, err := parseModifiersGroup(globals, node.Children)
+			modifiers, err := parseModifiersGroup(globals, &node)
 			if err != nil {
 				return sourceBlock{}, err
 			}
@@ -225,11 +217,7 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 
 			rcpt.checks = append(rcpt.checks, checks...)
 		case "modify":
-			if len(node.Children) == 0 {
-				return nil, config.NodeErr(&node, "empty modifiers block")
-			}
-
-			modifiers, err := parseModifiersGroup(globals, node.Children)
+			modifiers, err := parseModifiersGroup(globals, &node)
 			if err != nil {
 				return nil, err
 			}
@@ -344,17 +332,14 @@ func parseChecksGroup(globals map[string]interface{}, node *config.Node) ([]modu
 	return cg.L, nil
 }
 
-func parseModifiersGroup(globals map[string]interface{}, nodes []config.Node) (modify.Group, error) {
-	modifiers := modify.Group{}
-	for _, child := range nodes {
-		modifier, err := modconfig.MsgModifier(globals, append([]string{child.Name}, child.Args...), &child)
-		if err != nil {
-			return modify.Group{}, err
-		}
-
-		modifiers.Modifiers = append(modifiers.Modifiers, modifier)
+func parseModifiersGroup(globals map[string]interface{}, node *config.Node) (modify.Group, error) {
+	// Module object is *modify.Group, not modify.Group.
+	var mg *modify.Group
+	err := modconfig.GroupFromNode("modifiers", node.Args, node, globals, &mg)
+	if err != nil {
+		return modify.Group{}, err
 	}
-	return modifiers, nil
+	return *mg, nil
 }
 
 func validMatchRule(rule string) bool {

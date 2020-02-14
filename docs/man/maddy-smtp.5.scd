@@ -285,7 +285,7 @@ default_source {
 
 ## Directives
 
-*Syntax*: check { ... } ++
+*Syntax*: check _block name_ { ... } ++
 *Context*: pipeline configuration, source block, destination block
 
 List of the module references for checks that should be executed on
@@ -310,6 +310,20 @@ check {
 }
 ```
 
+It is also possible to define the block of checks at the top level
+as "checks" module and reference it using & syntax. Example:
+```
+checks inbound_checks {
+	require_matching_ehlo
+}
+
+# ... somewhere else ...
+{
+	...
+	check &inbound_checks
+}
+```
+
 *Syntax*: modify { ... } ++
 *Default*: not specified ++
 *Context*: pipeline configuration, source block, destination block
@@ -330,6 +344,20 @@ on the message.
 NOTE: Modifiers that affect the message header or source address can
 be used only globally or on per-source basis, they will be no-op
 inside destination blocks.
+
+It is also possible to define the block of modifiers at the top level
+as "modiifers" module and reference it using & syntax. Example:
+```
+modifiers local_modifiers {
+	alias_file /etc/maddy/aliases
+}
+
+# ... somewhere else ...
+{
+	...
+	modify &local_modifiers
+}
+```
 
 *Syntax*: ++
     reject _smtp_code_ _smtp_enhanced_code_ _error_description_ ++

@@ -5,12 +5,18 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/internal/config"
+	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/module"
 )
 
 type (
 	// Group wraps multiple modifiers and runs them serially.
+	//
+	// It is also registered as a module under 'modifiers' name and acts as a
+	// module group.
 	Group struct {
+		instName  string
 		Modifiers []module.Modifier
 	}
 
@@ -18,6 +24,30 @@ type (
 		states []module.ModifierState
 	}
 )
+
+func (g *Group) Init(cfg *config.Map) error {
+	for _, node := range cfg.Block.Children {
+		// Prevent aliasing TODO: Get rid of pointer arguments for config.Node.
+		node := node
+
+		mod, err := modconfig.MsgModifier(cfg.Globals, append([]string{node.Name}, node.Args...), &node)
+		if err != nil {
+			return err
+		}
+
+		g.Modifiers = append(g.Modifiers, mod)
+	}
+
+	return nil
+}
+
+func (g *Group) Name() string {
+	return "modifiers"
+}
+
+func (g *Group) InstanceName() string {
+	return g.instName
+}
 
 func (g Group) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	gs := groupState{}
@@ -77,4 +107,12 @@ func (gs groupState) Close() error {
 		}
 	}
 	return lastErr
+}
+
+func init() {
+	module.Register("modifiers", func(_, instName string, _, _ []string) (module.Module, error) {
+		return &Group{
+			instName: instName,
+		}, nil
+	})
 }
