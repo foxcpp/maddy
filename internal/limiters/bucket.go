@@ -6,10 +6,9 @@ import (
 	"time"
 )
 
-// RateSet combines a group of token bucket as implemented by the Rate
-// structure into a single key-indexes structure. Basically, each unique key
-// gets its own counter. The main use case for RateSet is to apply per-resource
-// rate limiting.
+// BucketSet combines a group of Limiters into a single key-indexed structure.
+// Basically, each unique key gets its own counter. The main use case for
+// BucketSet is to apply per-resource rate limiting.
 //
 // Amount of buckets is limited to a certain value. When the size of internal
 // map is around or equal to that value, next Take call will attempt to remove
@@ -17,32 +16,42 @@ import (
 // buckets are in active use), Take will return false. Alternatively, in some
 // rare cases, some other (undefined) waiting Take can return false.
 //
-// Similarly to Rate, if burst = 0, all methods are no-op and always succeed.
-type RateSet struct {
-	maxBuckets int
-	interval   time.Duration
-	burst      int
+// A BucksetSet without a New function assigned is no-op: Take and TakeContext
+// always succeed and Release does nothing.
+type BucketSet struct {
+	// New function is used to construct underlying Limiter instances.
+	//
+	// It is safe to change it only when BucketSet is not used by any
+	// goroutine.
+	New func() Limiter
+
+	// Time after which bucket is considered stale and can be removed from the
+	// set. For safe use with Rate limiter, it should be at least as twice as
+	// big as Rate refill interval.
+	ReapInterval time.Duration
+
+	MaxBuckets int
 
 	mLck sync.Mutex
 	m    map[string]*struct {
-		r       Rate
+		r       Limiter
 		lastUse time.Time
 	}
 }
 
-func NewRateSet(burst int, interval time.Duration, maxBuckets int) *RateSet {
-	return &RateSet{
-		maxBuckets: maxBuckets,
-		interval:   interval,
-		burst:      burst,
+func NewBucketSet(new_ func() Limiter, reapInterval time.Duration, maxBuckets int) *BucketSet {
+	return &BucketSet{
+		New:          new_,
+		ReapInterval: reapInterval,
+		MaxBuckets:   maxBuckets,
 		m: map[string]*struct {
-			r       Rate
+			r       Limiter
 			lastUse time.Time
 		}{},
 	}
 }
 
-func (r *RateSet) Close() {
+func (r *BucketSet) Close() {
 	r.mLck.Lock()
 	defer r.mLck.Unlock()
 
@@ -51,19 +60,15 @@ func (r *RateSet) Close() {
 	}
 }
 
-func (r *RateSet) take(key string) *Rate {
+func (r *BucketSet) take(key string) Limiter {
 	r.mLck.Lock()
 	defer r.mLck.Unlock()
 
-	if len(r.m) > r.maxBuckets {
+	if len(r.m) > r.MaxBuckets {
 		now := time.Now()
 		// Attempt to get rid of stale buckets.
 		for k, v := range r.m {
-			// Skip non-full buckets, they are likely in use.
-			if len(v.r.bucket) != r.burst {
-				continue
-			}
-			if v.lastUse.Sub(now) > r.interval*2 {
+			if v.lastUse.Sub(now) > r.ReapInterval {
 				// Drop the bucket, if there happen to be any waiting Take for it.
 				// It will return 'false', but this is fine for us since this
 				// whole 'reaping' process will run only when we are under a
@@ -75,7 +80,7 @@ func (r *RateSet) take(key string) *Rate {
 		}
 
 		// Still full? E.g. all buckets are in use.
-		if len(r.m) > r.maxBuckets {
+		if len(r.m) > r.MaxBuckets {
 			return nil
 		}
 	}
@@ -83,21 +88,21 @@ func (r *RateSet) take(key string) *Rate {
 	bucket, ok := r.m[key]
 	if !ok {
 		r.m[key] = &struct {
-			r       Rate
+			r       Limiter
 			lastUse time.Time
 		}{
-			r:       NewRate(r.burst, r.interval),
+			r:       r.New(),
 			lastUse: time.Now(),
 		}
 		bucket = r.m[key]
 	}
 	r.m[key].lastUse = time.Now()
 
-	return &bucket.r
+	return bucket.r
 }
 
-func (r *RateSet) Take(key string) bool {
-	if r.burst == 0 {
+func (r *BucketSet) Take(key string) bool {
+	if r.New == nil {
 		return true
 	}
 
@@ -105,8 +110,8 @@ func (r *RateSet) Take(key string) bool {
 	return bucket.Take()
 }
 
-func (r *RateSet) TakeContext(ctx context.Context, key string) error {
-	if r.burst == 0 {
+func (r *BucketSet) TakeContext(ctx context.Context, key string) error {
+	if r.New == nil {
 		return nil
 	}
 
