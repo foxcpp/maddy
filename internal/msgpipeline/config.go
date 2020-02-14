@@ -31,11 +31,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			if len(node.Children) == 0 {
-				return msgpipelineCfg{}, config.NodeErr(&node, "empty checks block")
-			}
-
-			globalChecks, err := parseChecksGroup(globals, node.Children)
+			globalChecks, err := parseChecksGroup(globals, &node)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
@@ -137,11 +133,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			if len(node.Children) == 0 {
-				return sourceBlock{}, config.NodeErr(&node, "empty checks block")
-			}
-
-			checks, err := parseChecksGroup(globals, node.Children)
+			checks, err := parseChecksGroup(globals, &node)
 			if err != nil {
 				return sourceBlock{}, err
 			}
@@ -226,11 +218,7 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			if len(node.Children) == 0 {
-				return nil, config.NodeErr(&node, "empty checks block")
-			}
-
-			checks, err := parseChecksGroup(globals, node.Children)
+			checks, err := parseChecksGroup(globals, &node)
 			if err != nil {
 				return nil, err
 			}
@@ -347,17 +335,13 @@ func parseEnhancedCode(s string) (exterrors.EnhancedCode, error) {
 	return code, nil
 }
 
-func parseChecksGroup(globals map[string]interface{}, nodes []config.Node) ([]module.Check, error) {
-	checks := make([]module.Check, 0, len(nodes))
-	for _, child := range nodes {
-		msgCheck, err := modconfig.MessageCheck(globals, append([]string{child.Name}, child.Args...), &child)
-		if err != nil {
-			return nil, err
-		}
-
-		checks = append(checks, msgCheck)
+func parseChecksGroup(globals map[string]interface{}, node *config.Node) ([]module.Check, error) {
+	var cg *CheckGroup
+	err := modconfig.GroupFromNode("checks", node.Args, node, globals, &cg)
+	if err != nil {
+		return nil, err
 	}
-	return checks, nil
+	return cg.L, nil
 }
 
 func parseModifiersGroup(globals map[string]interface{}, nodes []config.Node) (modify.Group, error) {
