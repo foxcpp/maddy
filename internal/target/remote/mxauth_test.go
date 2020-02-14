@@ -115,9 +115,9 @@ func TestRemoteDelivery_AuthMX_STSPreload_Fail(t *testing.T) {
 	}
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPreload(t, download),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -158,8 +158,8 @@ func TestRemoteDelivery_AuthMX_STSPreload_NoTLS(t *testing.T) {
 	}
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPreload(t, download),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -201,8 +201,8 @@ func TestRemoteDelivery_AuthMX_STSPreload_RequirePKIX(t *testing.T) {
 	}
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPreload(t, download),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -255,9 +255,9 @@ func TestRemoteDelivery_AuthMX_STSPreload_MTASTS(t *testing.T) {
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
 		testSTSPreload(t, download),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -300,9 +300,9 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -340,9 +340,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -382,8 +382,8 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -423,8 +423,8 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -472,8 +472,8 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, []Policy{
 		testSTSPolicy(t, zones, mtastsGet),
+		&localPolicy{minMXLevel: MX_MTASTS},
 	})
-	tgt.localPolicy.minMXLevel = MX_MTASTS
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -554,8 +554,9 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.localPolicy.minMXLevel = MX_DNSSEC
+	tgt := testTarget(t, zones, extResolver, []Policy{
+		&localPolicy{minMXLevel: MX_DNSSEC},
+	})
 	defer tgt.Close()
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -606,8 +607,9 @@ func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.localPolicy.minMXLevel = MX_DNSSEC
+	tgt := testTarget(t, zones, extResolver, []Policy{
+		&localPolicy{minMXLevel: MX_DNSSEC},
+	})
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
@@ -651,8 +653,9 @@ func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	tgt := testTarget(t, zones, extResolver, nil)
-	tgt.localPolicy.minMXLevel = MX_DNSSEC
+	tgt := testTarget(t, zones, extResolver, []Policy{
+		&localPolicy{minMXLevel: MX_DNSSEC},
+	})
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 	if err == nil {

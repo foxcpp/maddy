@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -587,7 +588,12 @@ type (
 	}
 )
 
-func NewDANEPolicy(extR *dns.ExtResolver, debug bool) *danePolicy {
+func NewDANEPolicy(debug bool) *danePolicy {
+	extR, err := dns.NewExtResolver()
+	if err != nil {
+		log.DefaultLogger.Error("DANE support is no-op: unable to init EDNS resolver", err)
+	}
+
 	return &danePolicy{
 		log:         log.Logger{Name: "remote/dane", Debug: debug},
 		extResolver: extR,
@@ -759,90 +765,39 @@ func (l localPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TL
 	return TLSNone, nil
 }
 
-func (rt *Target) policyMatcher(name string) func(*config.Map, *config.Node) (interface{}, error) {
-	return func(m *config.Map, node *config.Node) (interface{}, error) {
-		// TODO: Fix rt.Log.Debug propagation. This function is called in
-		// arbitrary order before or after the 'debug' directive is handled.
-		switch len(node.Args) {
-		case 0:
-		case 1:
-			if node.Args[0] != "off" {
-				return nil, m.MatchErr("only 'off' argument is allowed")
-			}
-			return nil, nil
-		default:
-			return nil, m.MatchErr("at most one argument allowed")
-		}
-
-		var (
-			policy Policy
-			err    error
-		)
-		switch name {
-		case "mtasts":
-			policy, err = NewMTASTSPolicy(rt.resolver, log.DefaultLogger.Debug, config.NewMap(m.Globals, node))
-		case "dane":
-			if node.Children != nil {
-				return nil, m.MatchErr("policy offers no additional configuration")
-			}
-			policy = NewDANEPolicy(rt.extResolver, log.DefaultLogger.Debug)
-		case "dnssec":
-			if node.Children != nil {
-				return nil, m.MatchErr("policy offers no additional configuration")
-			}
-			policy = &dnssecPolicy{}
-		case "sts_preload":
-			policy, err = NewSTSPreloadPolicy(log.DefaultLogger.Debug, http.DefaultClient, preload.Download,
-				config.NewMap(m.Globals, node))
-		case "local":
-			policy, err = NewLocalPolicy(config.NewMap(m.Globals, node))
-		default:
-			panic("unknown policy module")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		return policy, nil
+func policyFromNode(debugLog bool, m *config.Map, node *config.Node) (Policy, error) {
+	if len(node.Args) != 0 {
+		return nil, m.MatchErr("no arguments allowed")
 	}
-}
 
-func (rt *Target) defaultPolicy(globals map[string]interface{}, name string) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		// TODO: Fix rt.Log.Debug propagation. This function is called in
-		// arbitrary order before or after the 'debug' directive is handled.
-		var (
-			policy Policy
-			err    error
-		)
-		switch name {
-		case "mtasts":
-			mtastsPol, err := NewMTASTSPolicy(rt.resolver, log.DefaultLogger.Debug, config.NewMap(globals, &config.Node{}))
-			if err != nil {
-				return nil, err
-			}
-			mtastsPol.StartUpdater()
-			policy = mtastsPol
-		case "dane":
-			policy = NewDANEPolicy(rt.extResolver, log.DefaultLogger.Debug)
-		case "dnssec":
-			policy = &dnssecPolicy{}
-		case "sts_preload":
-			preloadPolicy, err := NewSTSPreloadPolicy(log.DefaultLogger.Debug, http.DefaultClient, preload.Download,
-				config.NewMap(globals, &config.Node{}))
-			if err != nil {
-				return nil, err
-			}
-			preloadPolicy.StartUpdater()
-			policy = preloadPolicy
-		case "local":
-			policy, err = NewLocalPolicy(config.NewMap(globals, &config.Node{}))
-		default:
-			panic("unknown policy module")
+	var (
+		policy Policy
+		err    error
+	)
+	switch node.Name {
+	case "mtasts":
+		policy, err = NewMTASTSPolicy(net.DefaultResolver, log.DefaultLogger.Debug, config.NewMap(m.Globals, node))
+	case "dane":
+		if node.Children != nil {
+			return nil, m.MatchErr("policy offers no additional configuration")
 		}
-		if err != nil {
-			return nil, err
+		policy = NewDANEPolicy(debugLog)
+	case "dnssec":
+		if node.Children != nil {
+			return nil, m.MatchErr("policy offers no additional configuration")
 		}
-		return policy, nil
+		policy = &dnssecPolicy{}
+	case "sts_preload":
+		policy, err = NewSTSPreloadPolicy(log.DefaultLogger.Debug, http.DefaultClient, preload.Download,
+			config.NewMap(m.Globals, node))
+	case "local_policy":
+		policy, err = NewLocalPolicy(config.NewMap(m.Globals, node))
+	default:
+		return nil, m.MatchErr("unknown policy module: %v", node.Name)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	return policy, nil
 }

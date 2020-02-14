@@ -130,14 +130,57 @@ Enable verbose logging.
 
 ## Security policies
 
+*Syntax*: mx_auth _config block_
+*Default*: no policies
+
 'remote' module implements a number of of schemes and protocols necessary to
 ensure security of message delivery. Most of these schemes are concerned with
 authentication of recipient server and TLS enforcement.
 
-Each of the specified mechanisms can be disabled by specifying 'mech off' where
-'mech' is the name of corresponding configuration block (e.g. 'dane off' to
-disable DANE). However, it is not recommended to do so as it degrades delivery
-security considerably.
+To enable mechanism, specify its name in the mx_auth directive block:
+```
+mx_auth {
+	dane
+	mtasts
+}
+```
+Additional configuration is possible if supported by the mechanism by
+specifying additional options as a block for the corresponding mechanism.
+E.g.
+```
+mtasts {
+	cache ram
+}
+```
+
+If the mx_auth directive is not specified, no mechanisms are enabled. Note
+that, however, this makes outbound SMTP vulnerable to a numberous downgrade
+attacks and hence not recommended.
+
+It is possible to share the same set of policies for multiple 'remote' module
+instances by defining it at the top-level using 'mx_auth' module and then
+referencing it using standard & syntax:
+```
+mx_auth outbound_policy {
+	dane
+	mtasts {
+		cache ram
+	}
+}
+
+# ... somewhere else ...
+
+deliver_to remote {
+	mx_auth &outbound_policy
+}
+
+# ... somewhere else ...
+
+deliver_to remote {
+	mx_auth &outbound_policy
+	tls_client { ... }
+}
+```
 
 ## Security policies: MTA-STS
 

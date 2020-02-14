@@ -41,9 +41,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		tlsConfig:   &tls.Config{},
 		Log:         testutils.Logger(t, "remote"),
 		policies:    extraPolicies,
-		localPolicy: &localPolicy{},
 	}
-	tgt.policies = append(tgt.policies, tgt.localPolicy)
 
 	return &tgt
 }
@@ -86,7 +84,10 @@ func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
 }
 
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
-	p := NewDANEPolicy(extR, false)
+	// FIXME: This will print a warning on Windows to global logger about
+	// missing EDNS support even though we can actually run tests.
+	p := NewDANEPolicy(false)
+	p.extResolver = extR
 	p.log = testutils.Logger(t, "remote/dane")
 	return p
 }
@@ -822,8 +823,9 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, nil)
-	tgt.localPolicy.minTLSLevel = TLSEncrypted
+	tgt := testTarget(t, zones, nil, []Policy{
+		&localPolicy{minTLSLevel: TLSEncrypted},
+	})
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -845,9 +847,10 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, nil)
+	tgt := testTarget(t, zones, nil, []Policy{
+		&localPolicy{minTLSLevel: TLSEncrypted},
+	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -873,9 +876,10 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 
-	tgt := testTarget(t, zones, nil, nil)
+	tgt := testTarget(t, zones, nil, []Policy{
+		&localPolicy{minTLSLevel: TLSEncrypted},
+	})
 	tgt.tlsConfig = clientCfg
-	tgt.localPolicy.minTLSLevel = TLSEncrypted
 	defer tgt.Close()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -897,9 +901,10 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, nil)
 	// tlsConfig is not configured to trust server cert.
-	tgt.localPolicy.minTLSLevel = TLSEncrypted
+	tgt := testTarget(t, zones, nil, []Policy{
+		&localPolicy{minTLSLevel: TLSEncrypted},
+	})
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})

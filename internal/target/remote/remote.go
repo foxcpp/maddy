@@ -19,6 +19,7 @@ import (
 	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
+	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/log"
@@ -90,8 +91,7 @@ type Target struct {
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	policies    []Policy
-	localPolicy *localPolicy
+	policies []Policy
 
 	Log log.Logger
 }
@@ -122,39 +122,22 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, config.TLSClientBlock, &rt.tlsConfig)
-
-	policies := make([]Policy, 4)
-	cfg.Custom("mtasts", false, false,
-		rt.defaultPolicy(cfg.Globals, "mtasts"), rt.policyMatcher("mtasts"), &policies[0])
-	// sts_preload should go after mtasts so it will take not effect if MXLevel is already MX_MTASTS.
-	cfg.Custom("sts_preload", false, false,
-		rt.defaultPolicy(cfg.Globals, "sts_preload"), rt.policyMatcher("sts_preload"), &policies[1])
-	cfg.Custom("dane", false, false,
-		rt.defaultPolicy(cfg.Globals, "dane"), rt.policyMatcher("dane"), &policies[2])
-	cfg.Custom("dnssec", false, false,
-		rt.defaultPolicy(cfg.Globals, "dnssec"), rt.policyMatcher("dnssec"), &policies[3])
-
-	var localPolicy localPolicy
-
-	// localPolicy should be the last one, since it considers levels defined by
-	// other policies.
-	// Also, it should be directly accessible from tests to adjust required levels.
-	cfg.Custom("local_policy", false, false,
-		rt.defaultPolicy(cfg.Globals, "local"), rt.policyMatcher("local"), &localPolicy)
+	cfg.Custom("mx_auth", false, false, func() (interface{}, error) {
+		// Default is "no policies" to follow the principles of explicit
+		// configuration (if it is not requested - it is not done).
+		return nil, nil
+	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+		// Module instance is &PolicyGroup.
+		var p *PolicyGroup
+		if err := modconfig.GroupFromNode("mx_auth", n.Args, n, cfg.Globals, &p); err != nil {
+			return nil, err
+		}
+		return p.L, nil
+	}, &rt.policies)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
-
-	// Exclude disabled policies.
-	for _, p := range policies {
-		if p == nil {
-			continue
-		}
-		rt.policies = append(rt.policies, p)
-	}
-	rt.localPolicy = &localPolicy
-	rt.policies = append(rt.policies, &localPolicy)
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
 	rt.hostname, err = idna.ToASCII(rt.hostname)
