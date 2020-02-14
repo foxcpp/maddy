@@ -93,8 +93,15 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	// NOTE: This will panic if moduleIface is not a pointer.
 	modIfaceType := reflect.TypeOf(moduleIface).Elem()
 	modObjType := reflect.TypeOf(modObj)
-	if !modObjType.Implements(modIfaceType) && !modObjType.AssignableTo(modIfaceType) {
-		return parser.NodeErr(inlineCfg, "module %s (%s) doesn't implement %v interface", modObj.Name(), modObj.InstanceName(), modIfaceType)
+
+	if modIfaceType.Kind() == reflect.Interface {
+		// Case for assignment to module interface type.
+		if !modObjType.Implements(modIfaceType) && !modObjType.AssignableTo(modIfaceType) {
+			return parser.NodeErr(inlineCfg, "module %s (%s) doesn't implement %v interface", modObj.Name(), modObj.InstanceName(), modIfaceType)
+		}
+	} else if !modObjType.AssignableTo(modIfaceType) {
+		// Case for assignment to concrete module type. Used in "module groups".
+		return parser.NodeErr(inlineCfg, "module %s (%s) is not %v", modObj.Name(), modObj.InstanceName(), modIfaceType)
 	}
 
 	reflect.ValueOf(moduleIface).Elem().Set(reflect.ValueOf(modObj))
@@ -106,4 +113,14 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 	}
 
 	return nil
+}
+
+// GroupFromNode provides a special kind of ModuleFromNode syntax that allows
+// to omit the module name when defining inine configuration.  If it is not
+// present, name in defaultModule is used.
+func GroupFromNode(defaultModule string, args []string, inlineCfg *config.Node, globals map[string]interface{}, moduleIface interface{}) error {
+	if len(args) == 0 {
+		args = append(args, defaultModule)
+	}
+	return ModuleFromNode(args, inlineCfg, globals, moduleIface)
 }
