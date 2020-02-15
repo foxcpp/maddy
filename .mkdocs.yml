@@ -14,6 +14,7 @@ nav:
     - tutorials/setting-up.md
     - tutorials/manual-installation.md
     - tutorials/alias-to-remote.md
+    - tutorials/multiple-domains.md
   - seclevels.md
   - unicode.md
   - specifications.md
