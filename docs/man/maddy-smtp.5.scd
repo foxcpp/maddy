@@ -109,6 +109,13 @@ Amount of RCPT-time errors that should be logged. Further errors will be
 handled silently. This is to prevent log flooding during email dictonary
 attacks (address probing).
 
+*Syntax*: max_received _integer_ ++
+*Default*: 50
+
+Max. amount of Received header fields in the message header. If the incoming
+message has more fields than this number, it will be rejected with the permanent error
+5.4.6 ("Routing loop detected").
+
 *Syntax*: ++
 	buffer ram ++
 	buffer fs _[path]_ ++

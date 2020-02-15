@@ -352,6 +352,10 @@ func (s *Session) Data(r io.Reader) error {
 		s.releaseLimits()
 	}()
 
+	if err := s.checkRoutingLoops(header); err != nil {
+		return wrapErr(err)
+	}
+
 	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
 		return wrapErr(err)
 	}
@@ -400,6 +404,10 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		s.releaseLimits()
 	}()
 
+	if err := s.checkRoutingLoops(header); err != nil {
+		return wrapErr(err)
+	}
+
 	s.delivery.(module.PartialDelivery).BodyNonAtomic(bodyCtx, statusWrapper{sc, s}, header, buf)
 
 	// We can't really tell whether it is failed completely or succeeded
@@ -409,6 +417,26 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	return nil
+}
+
+func (s *Session) checkRoutingLoops(header textproto.Header) error {
+	// RFC 5321 Section 6.3:
+	// >Simple counting of the number of "Received:" header fields in a
+	// >message has proven to be an effective, although rarely optimal,
+	// >method of detecting loops in mail systems.
+	receivedCount := 0
+	for f := header.FieldsByKey("Received"); f.Next(); {
+		receivedCount++
+	}
+	if receivedCount > s.endp.maxReceived {
+		return &exterrors.SMTPError{
+			Code:         554,
+			EnhancedCode: exterrors.EnhancedCode{5, 4, 6},
+			Message:      fmt.Sprintf("Too many Received header fields (%d), possible forwarding loop", receivedCount),
+		}
+	}
 
 	return nil
 }
@@ -499,6 +527,7 @@ type Endpoint struct {
 	lmtp                bool
 	deferServerReject   bool
 	maxLoggedRcptErrors int
+	maxReceived         int
 
 	listenersWg sync.WaitGroup
 
@@ -664,6 +693,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
+	cfg.Int("max_received", false, false, 50, &endp.maxReceived)
 	cfg.Custom("buffer", false, false, func() (interface{}, error) {
 		path := filepath.Join(config.StateDirectory, "buffer")
 		if err := os.MkdirAll(path, 0700); err != nil {
