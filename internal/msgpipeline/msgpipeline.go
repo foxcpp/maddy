@@ -311,8 +311,11 @@ func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header
 	if err := dd.checkRunner.checkBody(ctx, dd.sourceBlock.checks, header, body); err != nil {
 		return err
 	}
-	// TODO: Decide whether per-recipient body checks should be executed.
-
+	for blk := range dd.rcptModifiersState {
+		if err := dd.checkRunner.checkBody(ctx, blk.checks, header, body); err != nil {
+			return err
+		}
+	}
 	if err := dd.checkRunner.applyResults(dd.d.Hostname, &header); err != nil {
 		return err
 	}
@@ -324,6 +327,11 @@ func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header
 	}
 	if err := dd.sourceModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		return err
+	}
+	for _, modifiers := range dd.rcptModifiersState {
+		if err := modifiers.RewriteBody(ctx, &header, body); err != nil {
+			return err
+		}
 	}
 
 	for _, delivery := range dd.deliveries {
@@ -383,6 +391,12 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(ctx context.Context, c module.Statu
 	if err := dd.sourceModifiersState.RewriteBody(ctx, &header, body); err != nil {
 		setStatusAll(err)
 		return
+	}
+	for _, modifiers := range dd.rcptModifiersState {
+		if err := modifiers.RewriteBody(ctx, &header, body); err != nil {
+			setStatusAll(err)
+			return
+		}
 	}
 
 	for _, delivery := range dd.deliveries {

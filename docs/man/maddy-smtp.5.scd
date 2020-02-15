@@ -388,9 +388,9 @@ to the different mailbox or it can cryptographically sign outgoing message
 (e.g. using DKIM). Some modifier can perform multiple unrelated modifications
 on the message.
 
-NOTE: Modifiers that affect the message header or source address can
-be used only globally or on per-source basis, they will be no-op
-inside destination blocks.
+*Note*: Modifiers that affect source address can be used only globally or on
+per-source basis, they will be no-op inside destination blocks. Modifiers that
+affect the message header will affect it for all recipients.
 
 It is also possible to define the block of modifiers at the top level
 as "modiifers" module and reference it using & syntax. Example:
