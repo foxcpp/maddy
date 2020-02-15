@@ -103,6 +103,15 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 				Err:          err,
 			}
 		}
+		if _, ok := err.(imapsql.SerializationError); ok {
+			return &exterrors.SMTPError{
+				Code:         453,
+				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
+				Message:      "Storage access serialiation problem, try again later",
+				TargetName:   "sql",
+				Err:          err,
+			}
+		}
 		return err
 	}
 
@@ -115,13 +124,34 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
+			if _, ok := err.(imapsql.SerializationError); ok {
+				return &exterrors.SMTPError{
+					Code:         453,
+					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
+					Message:      "Storage access serialiation problem, try again later",
+					TargetName:   "sql",
+					Err:          err,
+				}
+			}
 			return err
 		}
 	}
 
 	header = header.Copy()
 	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
-	return d.d.BodyParsed(header, body.Len(), body)
+	err := d.d.BodyParsed(header, body.Len(), body)
+	if err != nil {
+		if _, ok := err.(imapsql.SerializationError); ok {
+			return &exterrors.SMTPError{
+				Code:         453,
+				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
+				Message:      "Storage access serialiation problem, try again later",
+				TargetName:   "sql",
+				Err:          err,
+			}
+		}
+	}
+	return nil
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
@@ -201,7 +231,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
 	cfg.Int("sqlite3_cache_size", false, false, 0, &opts.CacheSize)
-	cfg.Int("sqlite3_busy_timeout", false, false, 0, &opts.BusyTimeout)
+	cfg.Int("sqlite3_busy_timeout", false, false, 5000, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
 
