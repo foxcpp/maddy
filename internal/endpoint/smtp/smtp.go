@@ -2,12 +2,15 @@ package smtp
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"runtime/trace"
 	"strings"
 	"sync"
@@ -309,8 +312,7 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 		}
 	}
 
-	// TODO: Disk buffering.
-	buf, err := buffer.BufferInMemory(bufr)
+	buf, err := s.endp.buffer(bufr)
 	if err != nil {
 		return textproto.Header{}, nil, err
 	}
@@ -337,6 +339,18 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return wrapErr(err)
 	}
+	defer func() {
+		if err := buf.Remove(); err != nil {
+			s.log.Error("failed to remove buffered body", err)
+		}
+
+		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
+		s.delivery = nil
+		s.msgCtx = nil
+		s.msgTask.End()
+		s.msgTask = nil
+		s.releaseLimits()
+	}()
 
 	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
 		return wrapErr(err)
@@ -347,13 +361,6 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
-
-	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-	s.delivery = nil
-	s.msgCtx = nil
-	s.msgTask.End()
-	s.msgTask = nil
-	s.releaseLimits()
 
 	return nil
 }
@@ -380,6 +387,18 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	if err != nil {
 		return wrapErr(err)
 	}
+	defer func() {
+		if err := buf.Remove(); err != nil {
+			s.log.Error("failed to remove buffered body", err)
+		}
+
+		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
+		s.delivery = nil
+		s.msgCtx = nil
+		s.msgTask.End()
+		s.msgTask = nil
+		s.releaseLimits()
+	}()
 
 	s.delivery.(module.PartialDelivery).BodyNonAtomic(bodyCtx, statusWrapper{sc, s}, header, buf)
 
@@ -390,13 +409,6 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
-
-	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-	s.delivery = nil
-	s.msgCtx = nil
-	s.msgTask.End()
-	s.msgTask = nil
-	s.releaseLimits()
 
 	return nil
 }
@@ -480,6 +492,8 @@ type Endpoint struct {
 	resolver  dns.Resolver
 	limits    *limits.Group
 
+	buffer func(r io.Reader) (buffer.Buffer, error)
+
 	authAlwaysRequired  bool
 	submission          bool
 	lmtp                bool
@@ -506,6 +520,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 		submission: modName == "submission",
 		lmtp:       modName == "lmtp",
 		resolver:   dns.DefaultResolver(),
+		buffer:     buffer.BufferInMemory,
 		Log:        log.Logger{Name: modName},
 	}
 	return endp, nil
@@ -562,6 +577,81 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	return nil
 }
 
+func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, error) {
+	return func(r io.Reader) (buffer.Buffer, error) {
+		// First try to read up to N bytes.
+		initial := make([]byte, maxSize)
+		actualSize, err := io.ReadFull(r, initial)
+		if err != nil {
+			if err == io.ErrUnexpectedEOF {
+				// Ok, the message is smaller than N. Make a MemoryBuffer and
+				// handle it in RAM.
+				log.Debugln("autobuffer: keeping the message in RAM")
+				return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
+			}
+			// Some I/O error happened, bail out.
+			return nil, err
+		}
+
+		log.Debugln("autobuffer: spilling the message to the FS")
+		// The message is big. Dump what we got to the disk and continue writing it there.
+		return buffer.BufferInFile(
+			io.MultiReader(bytes.NewReader(initial[:actualSize]), r),
+			dir)
+	}
+}
+
+func bufferModeDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	if len(node.Args) < 1 {
+		return nil, m.MatchErr("at least one argument required")
+	}
+	switch node.Args[0] {
+	case "ram":
+		if len(node.Args) > 1 {
+			return nil, m.MatchErr("no additional arguments for 'ram' mode")
+		}
+		return buffer.BufferInMemory, nil
+	case "fs":
+		path := filepath.Join(config.StateDirectory, "buffer")
+		switch len(node.Args) {
+		case 2:
+			path = node.Args[1]
+			fallthrough
+		case 1:
+			return func(r io.Reader) (buffer.Buffer, error) {
+				return buffer.BufferInFile(r, path)
+			}, nil
+		default:
+			return nil, m.MatchErr("too many arguments for 'fs' mode")
+		}
+	case "auto":
+		path := filepath.Join(config.StateDirectory, "buffer")
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
+
+		maxSize := 1 * 1024 * 1024 // 1 MiB
+		switch len(node.Args) {
+		case 3:
+			path = node.Args[2]
+			fallthrough
+		case 2:
+			var err error
+			maxSize, err = config.ParseDataSize(node.Args[1])
+			if err != nil {
+				return nil, m.MatchErr("%v", err)
+			}
+			fallthrough
+		case 1:
+			return autoBufferMode(maxSize, path), nil
+		default:
+			return nil, m.MatchErr("too many arguments for 'auto' mode")
+		}
+	default:
+		return nil, m.MatchErr("unknown buffer mode: %v", node.Args[0])
+	}
+}
+
 func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	var (
 		err     error
@@ -574,6 +664,13 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
+	cfg.Custom("buffer", false, false, func() (interface{}, error) {
+		path := filepath.Join(config.StateDirectory, "buffer")
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
+		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
+	}, bufferModeDirective, &endp.buffer)
 	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", false, false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)

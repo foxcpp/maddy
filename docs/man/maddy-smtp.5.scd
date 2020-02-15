@@ -109,6 +109,29 @@ Amount of RCPT-time errors that should be logged. Further errors will be
 handled silently. This is to prevent log flooding during email dictonary
 attacks (address probing).
 
+*Syntax*: ++
+	buffer ram ++
+	buffer fs _[path]_ ++
+	buffer auto _max_size_ _[path]_ ++
+*Default*: auto 1M StateDirectory/buffer
+
+Temporary storage to use for the body of accepted messages.
+
+- ram
+
+Store the body in RAM.
+
+- fs
+
+Write out the message to the FS and read it back as needed.
+_path_ can be omitted and defaults to StateDirectory/buffer.
+
+- auto
+
+Store message bodies smaller than _max_size_ entirely in RAM, otherwise write
+them out to the FS.
+_path_ can be omitted and defaults to StateDirectory/buffer.
+
 *Syntax*: dmarc _boolean_ ++
 *Default*: yes
 

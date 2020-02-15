@@ -382,7 +382,7 @@ func TestMapBool(t *testing.T) {
 
 func TestParseDataSize(t *testing.T) {
 	check := func(s string, ok bool, expected int) {
-		val, err := parseDataSize(s)
+		val, err := ParseDataSize(s)
 		if err != nil && ok {
 			t.Errorf("unexpected parseDataSize('%s') fail: %v", s, err)
 			return

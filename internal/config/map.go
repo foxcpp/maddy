@@ -168,7 +168,7 @@ func (m *Map) Duration(name string, inheritGlobal, required bool, defaultVal tim
 	}, store)
 }
 
-func parseDataSize(s string) (int, error) {
+func ParseDataSize(s string) (int, error) {
 	if len(s) == 0 {
 		return 0, errors.New("missing a number")
 	}
@@ -241,7 +241,7 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 		}
 
 		durationStr := strings.Join(node.Args, " ")
-		dur, err := parseDataSize(durationStr)
+		dur, err := ParseDataSize(durationStr)
 		if err != nil {
 			return nil, m.MatchErr("%v", err)
 		}
