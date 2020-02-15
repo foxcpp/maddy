@@ -126,6 +126,18 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	}
 	msgMeta.OriginalFrom = from
 
+	_, domain, err := address.Split(cleanFrom)
+	if err != nil {
+		return "", err
+	}
+	remoteIP, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		remoteIP = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	if err := s.endp.limits.TakeMsg(context.Background(), remoteIP.IP, domain); err != nil {
+		return "", err
+	}
+
 	if s.connState.AuthUser != "" {
 		s.log.Msg("incoming message",
 			"src_host", msgMeta.Conn.Hostname,
@@ -144,18 +156,6 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	}
 
 	s.msgCtx, s.msgTask = trace.NewTask(ctx, "Incoming Message")
-
-	_, domain, err := address.Split(cleanFrom)
-	if err != nil {
-		return "", err
-	}
-	remoteIP, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		remoteIP = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
-	}
-	if err := s.endp.limits.TakeMsg(s.msgCtx, remoteIP.IP, domain); err != nil {
-		return "", err
-	}
 
 	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
 	defer mailTask.End()
