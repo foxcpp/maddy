@@ -20,6 +20,7 @@ import (
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
@@ -41,6 +42,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		tlsConfig:   &tls.Config{},
 		Log:         testutils.Logger(t, "remote"),
 		policies:    extraPolicies,
+		limits:      &limits.Group{},
 	}
 
 	return &tgt

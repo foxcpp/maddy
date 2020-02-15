@@ -207,11 +207,14 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 	// Domain is already should be normalized by the message source (e.g.
 	// endpoint/smtp).
 	region := trace.StartRegion(ctx, "remote/limits.Take")
-	addr, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	addr := net.IPv4(127, 0, 0, 1)
+	if msgMeta.Conn != nil && msgMeta.Conn.RemoteAddr != nil {
+		tcpAddr, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+		if ok {
+			addr = tcpAddr.IP
+		}
 	}
-	if err := rt.limits.TakeMsg(ctx, addr.IP, domain); err != nil {
+	if err := rt.limits.TakeMsg(ctx, addr, domain); err != nil {
 		region.End()
 		return nil, &exterrors.SMTPError{
 			Code:         451,
@@ -416,11 +419,14 @@ func (rd *remoteDelivery) Close() error {
 	if err != nil {
 		return err
 	}
-	addr, ok := rd.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	addr := net.IPv4(127, 0, 0, 1)
+	if rd.msgMeta.Conn != nil && rd.msgMeta.Conn.RemoteAddr != nil {
+		tcpAddr, ok := rd.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+		if ok {
+			addr = tcpAddr.IP
+		}
 	}
-	rd.rt.limits.ReleaseMsg(addr.IP, domain)
+	rd.rt.limits.ReleaseMsg(addr, domain)
 
 	return nil
 }
