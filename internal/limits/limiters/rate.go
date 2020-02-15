@@ -93,6 +93,9 @@ func (r Rate) TakeContext(ctx context.Context) error {
 	}
 }
 
+func (r Rate) Release() {
+}
+
 func (r Rate) Close() {
 	close(r.stop)
 }

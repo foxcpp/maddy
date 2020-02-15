@@ -22,6 +22,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/target"
@@ -92,6 +93,7 @@ type Target struct {
 	extResolver *dns.ExtResolver
 
 	policies []Policy
+	limits   *limits.Group
 
 	Log log.Logger
 }
@@ -134,6 +136,15 @@ func (rt *Target) Init(cfg *config.Map) error {
 		}
 		return p.L, nil
 	}, &rt.policies)
+	cfg.Custom("limits", false, false, func() (interface{}, error) {
+		return &limits.Group{}, nil
+	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+		var g *limits.Group
+		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {
+			return nil, err
+		}
+		return g, nil
+	}, &rt.limits)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -182,6 +193,36 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 	for _, p := range rt.policies {
 		policies = append(policies, p.Start(msgMeta))
 	}
+
+	_, domain, err := address.Split(mailFrom)
+	if err != nil {
+		return nil, &exterrors.SMTPError{
+			Code:         501,
+			EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
+			Message:      "Malformed sender address",
+			TargetName:   "remote",
+			Err:          err,
+		}
+	}
+	// Domain is already should be normalized by the message source (e.g.
+	// endpoint/smtp).
+	region := trace.StartRegion(ctx, "remote/limits.Take")
+	addr, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	if err := rt.limits.TakeMsg(ctx, addr.IP, domain); err != nil {
+		region.End()
+		return nil, &exterrors.SMTPError{
+			Code:         451,
+			EnhancedCode: exterrors.EnhancedCode{4, 4, 5},
+			Message:      "High load, try again later",
+			Reason:       "Global limit timeout",
+			TargetName:   "remote",
+			Err:          err,
+		}
+	}
+	region.End()
 
 	return &remoteDelivery{
 		rt:          rt,
@@ -365,8 +406,22 @@ func (rd *remoteDelivery) Commit(ctx context.Context) error {
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
 		rd.Log.Debugf("disconnected from %s", conn.ServerName())
+
+		rd.rt.limits.ReleaseDest(conn.domain)
+
 		conn.Close()
 	}
+
+	_, domain, err := address.Split(rd.mailFrom)
+	if err != nil {
+		return err
+	}
+	addr, ok := rd.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	rd.rt.limits.ReleaseMsg(addr.IP, domain)
+
 	return nil
 }
 

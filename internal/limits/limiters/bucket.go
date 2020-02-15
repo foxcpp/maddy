@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// BucketSet combines a group of Limiters into a single key-indexed structure.
+// BucketSet combines a group of Ls into a single key-indexed structure.
 // Basically, each unique key gets its own counter. The main use case for
 // BucketSet is to apply per-resource rate limiting.
 //
@@ -19,11 +19,11 @@ import (
 // A BucksetSet without a New function assigned is no-op: Take and TakeContext
 // always succeed and Release does nothing.
 type BucketSet struct {
-	// New function is used to construct underlying Limiter instances.
+	// New function is used to construct underlying L instances.
 	//
 	// It is safe to change it only when BucketSet is not used by any
 	// goroutine.
-	New func() Limiter
+	New func() L
 
 	// Time after which bucket is considered stale and can be removed from the
 	// set. For safe use with Rate limiter, it should be at least as twice as
@@ -34,18 +34,18 @@ type BucketSet struct {
 
 	mLck sync.Mutex
 	m    map[string]*struct {
-		r       Limiter
+		r       L
 		lastUse time.Time
 	}
 }
 
-func NewBucketSet(new_ func() Limiter, reapInterval time.Duration, maxBuckets int) *BucketSet {
+func NewBucketSet(new_ func() L, reapInterval time.Duration, maxBuckets int) *BucketSet {
 	return &BucketSet{
 		New:          new_,
 		ReapInterval: reapInterval,
 		MaxBuckets:   maxBuckets,
 		m: map[string]*struct {
-			r       Limiter
+			r       L
 			lastUse time.Time
 		}{},
 	}
@@ -60,7 +60,7 @@ func (r *BucketSet) Close() {
 	}
 }
 
-func (r *BucketSet) take(key string) Limiter {
+func (r *BucketSet) take(key string) L {
 	r.mLck.Lock()
 	defer r.mLck.Unlock()
 
@@ -88,7 +88,7 @@ func (r *BucketSet) take(key string) Limiter {
 	bucket, ok := r.m[key]
 	if !ok {
 		r.m[key] = &struct {
-			r       Limiter
+			r       L
 			lastUse time.Time
 		}{
 			r:       r.New(),
@@ -108,6 +108,21 @@ func (r *BucketSet) Take(key string) bool {
 
 	bucket := r.take(key)
 	return bucket.Take()
+}
+
+func (r *BucketSet) Release(key string) {
+	if r.New == nil {
+		return
+	}
+
+	r.mLck.Lock()
+	defer r.mLck.Unlock()
+
+	bucket, ok := r.m[key]
+	if !ok {
+		return
+	}
+	bucket.r.Release()
 }
 
 func (r *BucketSet) TakeContext(ctx context.Context, key string) error {

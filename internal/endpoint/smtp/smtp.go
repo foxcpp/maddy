@@ -24,7 +24,7 @@ import (
 	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/future"
-	"github.com/foxcpp/maddy/internal/limiters"
+	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
@@ -64,8 +64,19 @@ func (s *Session) Reset() {
 	s.endp.Log.DebugMsg("reset")
 }
 
+func (s *Session) releaseLimits() {
+	_, domain, err := address.Split(s.mailFrom)
+	if err != nil {
+		return
+	}
+	addr, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	s.endp.limits.ReleaseMsg(addr.IP, domain)
+}
+
 func (s *Session) abort(ctx context.Context) {
-	s.endp.semaphore.Release()
 	if err := s.delivery.Abort(ctx); err != nil {
 		s.endp.Log.Error("delivery abort failed", err)
 	}
@@ -113,16 +124,7 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	if err != nil {
 		return "", err
 	}
-	msgMeta.OriginalFrom = cleanFrom
-
-	limitersCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := s.endp.ratelimit.TakeContext(limitersCtx); err != nil {
-		return "", err
-	}
-	if err := s.endp.semaphore.TakeContext(limitersCtx); err != nil {
-		return "", err
-	}
+	msgMeta.OriginalFrom = from
 
 	if s.connState.AuthUser != "" {
 		s.log.Msg("incoming message",
@@ -142,6 +144,19 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	}
 
 	s.msgCtx, s.msgTask = trace.NewTask(ctx, "Incoming Message")
+
+	_, domain, err := address.Split(cleanFrom)
+	if err != nil {
+		return "", err
+	}
+	remoteIP, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		remoteIP = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	if err := s.endp.limits.TakeMsg(s.msgCtx, remoteIP.IP, domain); err != nil {
+		return "", err
+	}
+
 	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
 	defer mailTask.End()
 
@@ -338,7 +353,7 @@ func (s *Session) Data(r io.Reader) error {
 	s.msgCtx = nil
 	s.msgTask.End()
 	s.msgTask = nil
-	s.endp.semaphore.Release()
+	s.releaseLimits()
 
 	return nil
 }
@@ -381,7 +396,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	s.msgCtx = nil
 	s.msgTask.End()
 	s.msgTask = nil
-	s.endp.semaphore.Release()
+	s.releaseLimits()
 
 	return nil
 }
@@ -391,7 +406,7 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
 		return nil
 	}
 
-	if err == context.DeadlineExceeded {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return &smtp.SMTPError{
 			Code:         451,
 			EnhancedCode: smtp.EnhancedCode{4, 4, 5},
@@ -463,8 +478,7 @@ type Endpoint struct {
 	listeners []net.Listener
 	pipeline  *msgpipeline.MsgPipeline
 	resolver  dns.Resolver
-	ratelimit limiters.Rate
-	semaphore limiters.Semaphore
+	limits    *limits.Group
 
 	authAlwaysRequired  bool
 	submission          bool
@@ -566,12 +580,15 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
-	cfg.Custom("ratelimit", false, false, func() (interface{}, error) {
-		return limiters.NewRate(10, time.Second), nil
-	}, config.GlobalRateLimit, &endp.ratelimit)
-	cfg.Custom("concurrency", false, false, func() (interface{}, error) {
-		return limiters.NewSemaphore(1000), nil
-	}, config.ConcurrencyLimit, &endp.semaphore)
+	cfg.Custom("limits", false, false, func() (interface{}, error) {
+		return &limits.Group{}, nil
+	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+		var g *limits.Group
+		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {
+			return nil, err
+		}
+		return g, nil
+	}, &endp.limits)
 	cfg.AllowUnknown()
 	unknown, err := cfg.Process()
 	if err != nil {

@@ -15,11 +15,12 @@ func NewSemaphore(max int) Semaphore {
 	return Semaphore{c: make(chan struct{}, max)}
 }
 
-func (s Semaphore) Take() {
+func (s Semaphore) Take() bool {
 	if cap(s.c) <= 0 {
-		return
+		return true
 	}
 	s.c <- struct{}{}
+	return true
 }
 
 func (s Semaphore) TakeContext(ctx context.Context) error {
@@ -43,4 +44,7 @@ func (s Semaphore) Release() {
 	default:
 		panic("limiters: mismatched Release call")
 	}
+}
+
+func (s Semaphore) Close() {
 }

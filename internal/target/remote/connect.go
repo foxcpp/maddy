@@ -7,7 +7,6 @@ import (
 	"net"
 	"runtime/trace"
 	"sort"
-	"strings"
 
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/exterrors"
@@ -149,8 +148,6 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 }
 
 func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string) (*smtpconn.C, error) {
-	domain = strings.ToLower(domain)
-
 	if c, ok := rd.connections[domain]; ok {
 		return c.C, nil
 	}
@@ -176,6 +173,13 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		return nil, err
 	}
 	conn.dnssecOk = dnssecOk
+
+	region = trace.StartRegion(ctx, "remote/limits.TakeDest")
+	if err := rd.rt.limits.TakeDest(ctx, domain); err != nil {
+		region.End()
+		return nil, err
+	}
+	region.End()
 
 	var lastErr error
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")

@@ -21,7 +21,10 @@ smtp tcp://0.0.0.0:25 {
     auth pam
     defer_sender_reject yes
     dmarc yes
-	ratelimit 0 0s
+	limits {
+		endpoint rate 10
+		endpoint concurrency 500
+	}
 
     # Example pipeline ocnfiguration.
     destination example.org {
@@ -81,25 +84,6 @@ I/O read timeout.
 
 I/O write timeout.
 
-*Syntex*: ratelimit _burst_ _interval_ ++
-*Default*: 20 1s (up to 20 messages per second)
-
-Restrict the inbound messages rate to at most _burst_ messages in _interval_.
-Specify both values to 0 to disable the limit.
-
-If the message waits for more than 5 seconds, it is rejected with code 451.
-
-*Syntax*: concurrency _max_ ++
-*Default*: 1000
-
-Restrict the amount of concurrent inbound deliveries to handle.
-Specify 0 to disable restriction.
-
-If the message waits for more than 5 seconds, it is rejected with code 451.
-
-Example: ratelimit 20 1s
-Limit to 20 messages per second.
-
 *Syntax*: max_message_size _size_ ++
 *Default*: 32M
 
@@ -135,6 +119,69 @@ check module.
 
 *NOTE*: DMARC needs apply_spf and verify_dkim checks to function correctly.
 Without these, DMARC check will not run.
+
+## Rate & concurrency limiting
+
+*Syntax*: limits _config block_ ++
+*Default*: no limits
+
+This allows configuring a set of message flow restrictions including
+max. concurrency and rate per-endpoint, per-source, per-destination.
+
+Limits are specified as directives inside the block:
+```
+limits {
+	all rate 20
+	destination concurrency 5
+}
+```
+
+Supported limits:
+
+- Rate limit
+
+*Syntax*: _scope_ rate _burst_ _[period]_ ++
+Restrict the amount of messages processed in _period_ to _burst_ messages.
+If period is not specified, 1 second is used.
+
+- Concurrency limit
+
+*Syntax*: _scope_ concurrency _max_ ++
+Restrict the amount of messages processed in parallel to _max_.
+
+For each supported limitation, _scope_ determines whether it should be applied
+for all messages ("all"), per-sender IP ("ip") or per-recipient domain
+("destination"). Having a scope other than "all" means that the restriction
+will be enforced independently for each group determined by scope. E.g.
+"ip rate 20" means that the same IP cannot send more than 20 messages in a
+scond. "destination concurrency 5" means that no more than 5 messages can be
+sent in parallel to a single domain.
+
+*Note*: At the moment, SMTP endpoint does not support per-recipient limits.
+They will be no-op. If you want to enforce a per-recipient restriction on
+outbound messages, do so using 'limits' directive for the 'remote' module (see
+*maddy-targets*(5)).
+
+It is possible to share limit counters between multiple endpoints (or any other
+modules). To do so define a top-level configuration block for module "limits"
+and reference it where needed using standard & syntax. E.g.
+```
+limits inbound_limits {
+	all rate 20
+}
+
+smtp smtp://0.0.0.0:25 {
+	limits &inbound_limits
+	...
+}
+
+submission tls://0.0.0.0:465 {
+	limits &inbound_limits
+	...
+}
+```
+Using an "all rate" restriction in such way means that no more than 20
+messages can enter the server through both endpoints in one second.
 
 # Submission module (submission)
 

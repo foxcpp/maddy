@@ -111,17 +111,13 @@ Hostname to use client greeting (EHLO/HELO command). Some servers require it to
 be FQDN, SPF-capable servers check whether it corresponds to the server IP
 address, so it is better to set it to a domain that resolves to the server IP.
 
-*Syntax*: min_mx_level none|mtasts|dnssec ++
-*Default*: none
+*Syntax*: limits _config block_ ++
+*Default*: no limits
 
-Minimal MX records security level to require before using remote server for
-delivery. See [Security levels](../../seclevels) page for details.
+See 'limits' directive in *maddy-smtp*(5) for SMTP endpoint.
+It works the same except for address domains used for
+per-source/per-destination are as observed when message exits the server.
 
-*Syntax*: min_tls_level none|encrypted|authenticated
-*Default*: none
-
-Minimal MX records security level to require before using remote server for
-delivery. See [Security levels](../../seclevels) page for details.
 
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
@@ -130,7 +126,7 @@ Enable verbose logging.
 
 ## Security policies
 
-*Syntax*: mx_auth _config block_
+*Syntax*: mx_auth _config block_ ++
 *Default*: no policies
 
 'remote' module implements a number of of schemes and protocols necessary to
