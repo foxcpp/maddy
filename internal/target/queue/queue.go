@@ -174,7 +174,7 @@ func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error)
 	q := &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,
-		retryTimeScale:   2,
+		retryTimeScale:   0.25,
 		postInitDelay:    10 * time.Second,
 		Log:              log.Logger{Name: "queue"},
 	}
@@ -192,7 +192,7 @@ func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error)
 func (q *Queue) Init(cfg *config.Map) error {
 	var maxParallelism int
 	cfg.Bool("debug", true, false, &q.Log.Debug)
-	cfg.Int("max_tries", false, false, 8, &q.maxTries)
+	cfg.Int("max_tries", false, false, 20, &q.maxTries)
 	cfg.Int("max_parallelism", false, false, 16, &maxParallelism)
 	cfg.String("location", false, false, q.location, &q.location)
 	cfg.Custom("target", false, true, nil, modconfig.DeliveryDirective, &q.Target)
