@@ -78,6 +78,12 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 			msg = serverName + " said: " + err.Message
 		}
 
+		if err.Code == 552 {
+			err.Code = 452
+			err.EnhancedCode[0] = 4
+			c.Log.Msg("SMTP code 552 rewritten to 452 per RFC 5321 Section 4.5.3.1.10")
+		}
+
 		return &exterrors.SMTPError{
 			Code:         err.Code,
 			EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
