@@ -229,7 +229,7 @@ func TestQueueDelivery(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	encID := testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
 	// This is far from being a proper blackbox testing.
 	// But I can't come up with a better way to inspect the Queue state.
@@ -241,7 +241,7 @@ func TestQueueDelivery(t *testing.T) {
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	q.Close()
 
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, encID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
 	// There should be no queued messages.
 	checkQueueDir(t, q, []string{})
@@ -307,14 +307,14 @@ func TestQueueDelivery_TemporaryFail(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	encID := testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
 	// Delivery should be aborted, because it failed for all recipients.
 	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
 
 	// Second retry, should work fine.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, encID+"-2")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
 	q.Close()
 	// No more retries scheduled, queue storage is clear.
@@ -336,18 +336,18 @@ func TestQueueDelivery_TemporaryFail_Partial(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	encID := testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
 	// Committed, tester1@example.org - ok.
 	msg := readMsgChanTimeout(t, dt.committed, 5000*time.Second)
 	// Side note: unreliableTarget adds recipients to the msg object even if they were rejected
 	// later using a partial error. So slice below is all recipients that were submitted by
 	// the queue.
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, encID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
 	// committed #2, tester2@example.org - ok
 	msg = readMsgChanTimeout(t, dt.committed, 5000*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, encID+"-2")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 	q.Close()
 	// No more retries scheduled, queue storage is clear.
@@ -373,13 +373,13 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	encID := testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org", "tester3@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org", "tester3@example.org"})
 
 	// Committed because delivery to tester3@example.org is succeeded.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	// Side note: This slice contains all recipients submitted by the queue, even if
 	// they were rejected later using partialError.
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org", "tester3@example.org"}, encID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org", "tester3@example.org"}, "")
 
 	// tester1 is failed permanently, should not be retried.
 	// tester2 is failed temporary, should be retried.
@@ -387,7 +387,7 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 
 	// Third attempt... tester2 delivered.
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, encID+"-3")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 	q.Close()
 	// No more retries should be scheduled.
@@ -408,11 +408,11 @@ func TestQueueDelivery_PermanentRcptReject(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	encID := testutils.DoTestDelivery(t, q, "tester@example.org", []string{"tester1@example.org", "tester2@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.org", []string{"tester1@example.org", "tester2@example.org"})
 
 	// Committed, tester2@example.org succeeded.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.org", []string{"tester2@example.org"}, encID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.org", []string{"tester2@example.org"}, "")
 
 	q.Close()
 	// No more retries should be scheduled.
@@ -438,15 +438,15 @@ func TestQueueDelivery_TemporaryRcptReject(t *testing.T) {
 	//  tester2 - ok
 	// Second attempt:
 	//  tester1 - ok
-	encID := testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	// Unlike previous tests where unreliableTarget rejected recipients by partialError, here they are rejected
 	// by AddRcpt directly, so they are NOT saved by the target.
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, encID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, encID+"-2")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, "")
 
 	q.Close()
 	// No more retries should be scheduled.
@@ -479,7 +479,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 
 	// Standard partial delivery, retry will be scheduled for tester1@example.org.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, deliveryID+"-1")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 	// Then stop it.
 	q.Close()
@@ -492,7 +492,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 
 	// Wait for retry and check it.
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, deliveryID+"-2")
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, "")
 
 	// Close it again.
 	q.Close()
@@ -527,7 +527,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 
 		// Standard partial delivery, retry will be scheduled for tester1@example.org.
 		msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-		testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, deliveryID+"-1")
+		testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 		q.Close()
 
