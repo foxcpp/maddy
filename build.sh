@@ -284,7 +284,7 @@ compile_binaries() {
 
     echo '--- Building main executable...' >&2
     go build -trimpath -buildmode=pie \
-        -ldflags "-extldflags $LDFLAGS \
+        -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.ConfigDirectory=$CONFDIR\" \
             -X \"github.com/foxcpp/maddy.Version=$MADDY_VER\"" \
@@ -292,7 +292,7 @@ compile_binaries() {
 
     echo '--- Building management utility executable...' >&2
     go build -trimpath -buildmode=pie \
-        -ldflags "-extldflags $LDFLAGS \
+        -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.ConfigDirectory=$CONFDIR\" \
             -X \"github.com/foxcpp/maddy.Version=$MADDY_VER\"" \
