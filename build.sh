@@ -189,7 +189,7 @@ ensure_go() {
     if ! command -v go >/dev/null; then
         downloadgo=1
     else
-        SYSGOVERSION=$(go version | cut -f3 -d ' ' | grep -Po "([0-9]+\.){2}[0-9]+")
+        SYSGOVERSION=$(go version | cut -f3 -d ' ' | grep -Eo "([0-9]+\.){2}[0-9]+")
         SYSGOMAJOR=$(cut -f1 -d. <<<"$SYSGOVERSION")
         SYSGOMINOR=$(cut -f2 -d. <<<"$SYSGOVERSION")
         SYSGOPATCH=$(cut -f3 -d. <<<"$SYSGOVERSION")
@@ -319,11 +319,11 @@ build_man_pages() {
 
     for f in "$MADDY_SRC"/docs/man/*.1.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
-        install -Dm 0644 /tmp/maddy-tmp.gz "$PKGDIR/$PREFIX/share/man/man1/$(basename -s .scd "$f").gz"
+        install -Dm 0644 /tmp/maddy-tmp.gz "$PKGDIR/$PREFIX/share/man/man1/$(basename "$f" .scd).gz"
     done
     for f in "$MADDY_SRC"/docs/man/*.5.scd; do
         scdoc < "$f" | gzip > /tmp/maddy-tmp.gz
-        install -Dm 0644 /tmp/maddy-tmp.gz "$PKGDIR/$PREFIX/share/man/man5/$(basename -s .scd "$f").gz"
+        install -Dm 0644 /tmp/maddy-tmp.gz "$PKGDIR/$PREFIX/share/man/man5/$(basename "$f" .scd).gz"
     done
 }
 
