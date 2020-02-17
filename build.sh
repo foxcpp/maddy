@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-options=$(getopt -o hb:p:d: --longoptions help,builddir:,prefix:,destdir:,systemddir:,configdir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
+options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
 eval set -- "$options"
 print_help() {
     cat >&2 <<EOF
@@ -145,7 +145,7 @@ read_config() {
                 shift
                 export GITVERSION="$1"
                 ;;
-            --buildversion)
+            --version)
                 shift
                 export MADDY_VER="$1"
                 ;;
@@ -257,9 +257,10 @@ ensure_source_tree() {
     fi
 
     if [ ! -e "$MADDY_SRC/.git" ]; then
-        if [ "$MADDY_VER" != "unknown" ]; then
+        if [ "$MADDY_VER" == "unknown" ]; then
             echo '--- WARNING: Source tree is not a Git repository and no version specified.' >&2
         fi
+        popd >/dev/null
         return
     fi
 
