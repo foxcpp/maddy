@@ -72,8 +72,8 @@ func (bl *DNSBL) InstanceName() string {
 func (bl *DNSBL) Init(cfg *config.Map) error {
 	cfg.Bool("debug", false, false, &bl.log.Debug)
 	cfg.Bool("check_early", false, false, &bl.checkEarly)
-	cfg.Int("quarantine_threadhold", false, false, 1, &bl.quarantineThres)
-	cfg.Int("reject_threadhold", false, false, 9999, &bl.rejectThres)
+	cfg.Int("quarantine_threshold", false, false, 1, &bl.quarantineThres)
+	cfg.Int("reject_threshold", false, false, 9999, &bl.rejectThres)
 	cfg.AllowUnknown()
 	unknown, err := cfg.Process()
 	if err != nil {
@@ -195,7 +195,7 @@ func (bl *DNSBL) testList(listCfg List) {
 			return
 		}
 
-		// 2. IPv4-based DNSxLs MUST NOT contain an entry for 127.0.0.1.
+		// 2. IPv4-based DNSxLs MUST NOT contain an entry for ::FFFF:7F00:1
 		mustNotIP := net.ParseIP("::FFFF:7F00:1")
 		err = checkIP(context.Background(), bl.resolver, listCfg, mustNotIP)
 		if err != nil {
