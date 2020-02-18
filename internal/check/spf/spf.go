@@ -180,7 +180,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 			Reason: &exterrors.SMTPError{
 				Code:         451,
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
-				Message:      "SPF authentication failed with temporary error",
+				Message:      "SPF authentication failed with a temporary error",
 				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
@@ -190,8 +190,8 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 		return s.c.permerrAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
-				Message:      "SPF authentication failed with permanent error",
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
+				Message:      "SPF authentication failed with a permanent error",
 				CheckName:    modName,
 			},
 			AuthResult: []authres.Result{spfAuth},
