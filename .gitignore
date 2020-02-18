@@ -36,3 +36,6 @@ cmd/maddy/*mtasts-cache
 cmd/maddy/*queue
 
 build/
+
+tests/maddy.cover
+tests/maddy

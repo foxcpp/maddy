@@ -1,0 +1,285 @@
+// Package tests provides the framework for integration testing of maddy.
+//
+// The packages core object is tests.T object that encapsulates all test
+// state. It runs the server using test-provided configuration file and acts as
+// a proxy for all interactions with the server.
+package tests
+
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/foxcpp/go-mockdns"
+)
+
+var (
+	TestBinary  = "./maddy"
+	CoverageOut string
+)
+
+type T struct {
+	*testing.T
+
+	testDir string
+	cfg     string
+
+	dnsServ  *mockdns.Server
+	ports    map[string]uint16
+	portsRev map[uint16]string
+
+	servProc *exec.Cmd
+}
+
+func NewT(t *testing.T) *T {
+	return &T{
+		T:        t,
+		ports:    map[string]uint16{},
+		portsRev: map[uint16]string{},
+	}
+}
+
+// Config sets the configuration to use for the server. It must be called
+// before Run.
+func (t *T) Config(cfg string) {
+	t.Helper()
+
+	if t.servProc != nil {
+		panic("tests: Config called after Run")
+	}
+
+	t.cfg = cfg
+}
+
+// DNS sets the DNS zones to emulate for the tested server instance.
+//
+// If it is not called before Run, DNS(nil) call is assumed which makes the
+// mockdns server respond with NXDOMAIN to all queries.
+func (t *T) DNS(zones map[string]mockdns.Zone) {
+	t.Helper()
+
+	if t.dnsServ != nil {
+		t.Log("NOTE: Multiple DNS calls, replacing the server instance...")
+		t.dnsServ.Close()
+	}
+
+	dnsServ, err := mockdns.NewServer(zones)
+	if err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+	t.dnsServ = dnsServ
+}
+
+// Port allocates the random TCP port for use by test. It will made accessible
+// in the configuration via environment variables with name in the form
+// TEST_PORT_name.
+//
+// If there is a port with name remote_smtp, it will be passed as the value for
+// the -debug.smtpport parameter.
+func (t *T) Port(name string) uint16 {
+	if port := t.ports[name]; port != 0 {
+		return port
+	}
+
+	// TODO: Try to bind on port to test its usability.
+	port := rand.Int31n(45536) + 20000
+	t.ports[name] = uint16(port)
+	t.portsRev[uint16(port)] = name
+	return uint16(port)
+}
+
+// Run completes the configuration of test environment and starts the test server.
+//
+// T.Close should be called by the end of test to release any resources and
+// shutdown the server.
+//
+// The parameter waitListeners specifies the amount of listeners the server is
+// supposed to configure. Run() will block before all of them are up.
+func (t *T) Run(waitListeners int) {
+	if t.cfg == "" {
+		panic("tests: Run called without configuration set")
+	}
+	if t.dnsServ == nil {
+		// If there is no DNS zones set in test - start a server that will
+		// respond with NXDOMAIN to all queries to avoid accidentally leaking
+		// any DNS queries to the real world.
+		dnsServ, err := mockdns.NewServer(nil)
+		if err != nil {
+			t.Fatal("Test configuration failed:", err)
+		}
+		t.dnsServ = dnsServ
+	}
+
+	// Setup file system, create statedir, runtimedir, write out config.
+	testDir, err := ioutil.TempDir("", "maddy-tests-")
+	if err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+	t.testDir = testDir
+
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+
+		// Clean-up on test failure (if Run failed somewhere)
+
+		t.dnsServ.Close()
+		t.dnsServ = nil
+
+		os.RemoveAll(t.testDir)
+		t.testDir = ""
+	}()
+
+	if err := os.MkdirAll(filepath.Join(t.testDir, "statedir"), os.ModePerm); err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+	if err := os.MkdirAll(filepath.Join(t.testDir, "runtimedir"), os.ModePerm); err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+
+	configPreable := "state_dir " + filepath.Join(t.testDir, "statedir") + "\n" +
+		"runtime_dir " + filepath.Join(t.testDir, "runtime") + "\n\n"
+
+	ioutil.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
+	if err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+
+	// Assigning 0 by default will make outbound SMTP unusable.
+	remoteSmtp := "0"
+	if port := t.ports["remote_smtp"]; port != 0 {
+		remoteSmtp = strconv.Itoa(int(port))
+	}
+
+	cmd := exec.Command(TestBinary,
+		"-config", filepath.Join(t.testDir, "maddy.conf"),
+		"-debug.smtpport", remoteSmtp,
+		"-debug.dnsoverride", t.dnsServ.LocalAddr().String(),
+		"-log", "stderr")
+
+	if CoverageOut != "" {
+		cmd.Args = append(cmd.Args, "-test.coverprofile", CoverageOut+"."+strconv.FormatInt(time.Now().UnixNano(), 16))
+	}
+
+	t.Logf("launching %v", cmd.Args)
+
+	// Set environment variables.
+	cmd.Env = []string{
+		"TEST_STATE_DIR=" + filepath.Join(t.testDir, "statedir"),
+		"TEST_RUNTIME_DIR=" + filepath.Join(t.testDir, "statedir"),
+	}
+	for name, port := range t.ports {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("TEST_PORT_%s=%d", name, port))
+	}
+
+	// Capture maddy log and redirect it.
+	logOut, err := cmd.StderrPipe()
+	if err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		t.Fatal("Test configuration failed:", err)
+	}
+
+	// TODO: Mock the systemd notify socket and use it to detect start-up errors
+	// and other problems (?). Though, it would be Linux-specific.
+
+	// Log scanning goroutine checks for the "listening" messages and sends 'true'
+	// on the channel each time.
+	listeningMsg := make(chan bool)
+
+	go func() {
+		defer logOut.Close()
+		defer close(listeningMsg)
+		scnr := bufio.NewScanner(logOut)
+		for scnr.Scan() {
+			line := scnr.Text()
+
+			if strings.Contains(line, "listening on") {
+				listeningMsg <- true
+				line += " (test runner>listener wait trigger<)"
+			}
+
+			t.Log("maddy:", line)
+		}
+		if err := scnr.Err(); err != nil {
+			t.Log("stderr I/O error:", err)
+		}
+	}()
+
+	for i := 0; i < waitListeners; i++ {
+		if !<-listeningMsg {
+			t.Fatal("Log ended before all expected listeners are up. Start-up error?")
+		}
+	}
+
+	t.servProc = cmd
+}
+
+func (t *T) Close() {
+	if err := t.dnsServ.Close(); err != nil {
+		t.Log("Unable to stop the DNS server:", err)
+	}
+	t.dnsServ = nil
+
+	if err := t.servProc.Process.Signal(os.Interrupt); err != nil {
+		t.Log("Unable to kill the server process:", err)
+		os.RemoveAll(t.testDir)
+		return // Return, as now it is pointless to wait for it.
+	}
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		if t.servProc != nil {
+			t.servProc.Process.Kill()
+		}
+	}()
+
+	if err := t.servProc.Wait(); err != nil {
+		t.Error("The server did not stop cleanly, deadlock?")
+	}
+
+	t.servProc = nil
+
+	if err := os.RemoveAll(t.testDir); err != nil {
+		t.Log("Failed to remove test directory:", err)
+	}
+	t.testDir = ""
+}
+
+func (t *T) Conn(portName string) Conn {
+	port := t.ports[portName]
+	if port == 0 {
+		panic("tests: connection for the unused port name is requested")
+	}
+
+	conn, err := net.Dial("tcp4", "127.0.0.1:"+strconv.Itoa(int(port)))
+	if err != nil {
+		t.Fatal("Could not connect, is server listening?", err)
+	}
+
+	return Conn{
+		T:            t,
+		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		Conn:         conn,
+		Scanner:      bufio.NewScanner(conn),
+	}
+}
+
+func init() {
+	flag.StringVar(&TestBinary, "integration.executable", "./maddy", "executable to test")
+	flag.StringVar(&CoverageOut, "integration.coverprofile", "", "write coverage stats to file (requires special maddy executable)")
+}
