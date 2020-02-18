@@ -12,6 +12,9 @@ tasks:
   - test: |
       cd maddy
       go test ./... -cover -race
+  - integration-test: |
+      cd maddy/tests
+      ./run.sh
   - build-man-pages: |
       cd maddy/docs/man
       scdoc < maddy.1.scd > /dev/null
