@@ -48,6 +48,8 @@ github.com/emersion/go-smtp v0.12.2-0.20200116100735-2f00eafcaf68 h1:avd3PvRFQNN
 github.com/emersion/go-smtp v0.12.2-0.20200116100735-2f00eafcaf68/go.mod h1:SD9V/xa4ndMw77lR3Mf7htkp8RBNYuPh9UeuBs9tpUQ=
 github.com/emersion/go-smtp v0.12.2-0.20200218143153-f0afe6a4d295 h1:rbuMab3zIYXwsewyg4+INm6SFIDf+8ErgRSUZPGhED0=
 github.com/emersion/go-smtp v0.12.2-0.20200218143153-f0afe6a4d295/go.mod h1:SD9V/xa4ndMw77lR3Mf7htkp8RBNYuPh9UeuBs9tpUQ=
+github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554 h1:/Wxg1q8rzmzlgeM+LHOsNTMEy/n7Y4X/wLlw08+ixqU=
+github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554/go.mod h1:SD9V/xa4ndMw77lR3Mf7htkp8RBNYuPh9UeuBs9tpUQ=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe h1:40SWqY0zE3qCi6ZrtTf5OUdNm5lDnGnjRSq9GgmeTrg=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200104150404-bd7815ad9f5a h1:0M1igChqRDhGcWrjuAq+BiYC7CdVCsyktmbKWlJeuuo=
