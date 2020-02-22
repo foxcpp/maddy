@@ -42,6 +42,10 @@ build.sh script will do the rest for you:
 $ curl 'https://foxcpp.dev/maddy/build.sh' | bash
 ```
 
+Alternatively, if you can download the pre-built tarball from
+[GitHub](https://github.com/foxcpp/maddy/releases) and copy its contents into
+the root directory.
+
 *Note:* If you can't / don't use this script for some reason, instructions for
 manual installation can be found
 [here](../manual-installation)
