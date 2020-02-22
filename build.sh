@@ -223,7 +223,7 @@ ensure_go() {
             mv go go$GOVERSION
         fi
         export GOROOT="$PWD/go$GOVERSION"
-        export PATH=go$GOVERSION/bin:$PATH
+        export PATH=$PWD/go$GOVERSION/bin:$PATH
 
         echo "--- Using downloaded Go toolchain ($GOVERSION, $(command -v go))." >&2
     fi
