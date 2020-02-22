@@ -140,18 +140,16 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 	header = header.Copy()
 	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
 	err := d.d.BodyParsed(header, body.Len(), body)
-	if err != nil {
-		if _, ok := err.(imapsql.SerializationError); ok {
-			return &exterrors.SMTPError{
-				Code:         453,
-				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-				Message:      "Storage access serialiation problem, try again later",
-				TargetName:   "sql",
-				Err:          err,
-			}
+	if _, ok := err.(imapsql.SerializationError); ok {
+		return &exterrors.SMTPError{
+			Code:         453,
+			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
+			Message:      "Storage access serialiation problem, try again later",
+			TargetName:   "sql",
+			Err:          err,
 		}
 	}
-	return nil
+	return err
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
