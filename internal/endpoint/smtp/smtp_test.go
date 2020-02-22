@@ -82,6 +82,7 @@ func testEndpoint(t *testing.T, modName string, auth module.AuthProvider, tgt mo
 	endp.pipeline = msgpipeline.Mock(tgt, checks)
 	endp.pipeline.Hostname = "mx.example.com"
 	endp.pipeline.Resolver = endp.resolver
+	endp.pipeline.FirstPipeline = true
 	endp.pipeline.Log = testutils.Logger(t, "smtp/pipeline")
 
 	return endp

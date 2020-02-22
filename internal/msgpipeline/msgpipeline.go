@@ -28,6 +28,22 @@ type MsgPipeline struct {
 	Hostname string
 	Resolver dns.Resolver
 
+	// Used to indicate the pipeline is handling messages received from the
+	// external source and not from any other module. That is, this MsgPipeline
+	// is an instance embedded in endpoint/smtp implementation, for example.
+	//
+	// This is a hack since only MsgPipeline can execute some operations at the
+	// right time but it is not a good idea to execute them multiple multiple
+	// times for a single message that might be actually handled my multiple
+	// pipelines via 'msgpipeline' module or 'reroute' directive.
+	//
+	// At the moment, the only such operation is the addition of the Received
+	// header field. See where it happens for explanation on why it is done
+	// exactly in this place.
+	//
+	// FIXME: Get rid of that hack.
+	FirstPipeline bool
+
 	Log log.Logger
 }
 
@@ -316,6 +332,19 @@ func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header
 			return err
 		}
 	}
+
+	if dd.d.FirstPipeline {
+		// Add Received *after* checks to make sure they see the message literally
+		// how we received it BUT place it below any other field that might be
+		// added by applyResults (including Authentication-Results)
+		// per recommendation in RFC 7001, Section 4 (see GH issue #135).
+		received, err := target.GenerateReceived(ctx, dd.msgMeta, dd.d.Hostname, dd.msgMeta.OriginalFrom)
+		if err != nil {
+			return err
+		}
+		header.Add("Received", received)
+	}
+
 	if err := dd.checkRunner.applyResults(dd.d.Hostname, &header); err != nil {
 		return err
 	}

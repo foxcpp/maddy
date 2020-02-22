@@ -31,7 +31,6 @@ import (
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
-	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
 
@@ -331,12 +330,6 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 	if err != nil {
 		return textproto.Header{}, nil, err
 	}
-
-	received, err := target.GenerateReceived(ctx, s.msgMeta, s.endp.hostname, s.msgMeta.OriginalFrom)
-	if err != nil {
-		return textproto.Header{}, nil, err
-	}
-	header.Add("Received", received)
 
 	return header, buf, nil
 }
@@ -743,6 +736,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	endp.pipeline.Hostname = endp.serv.Domain
 	endp.pipeline.Resolver = endp.resolver
 	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
+	endp.pipeline.FirstPipeline = true
 
 	endp.serv.AuthDisabled = endp.Auth == nil
 	if endp.submission {
