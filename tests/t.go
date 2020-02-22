@@ -26,6 +26,7 @@ import (
 var (
 	TestBinary  = "./maddy"
 	CoverageOut string
+	DebugLog    bool
 )
 
 type T struct {
@@ -77,6 +78,7 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
+	dnsServ.Log = t
 	t.dnsServ = dnsServ
 }
 
@@ -113,11 +115,8 @@ func (t *T) Run(waitListeners int) {
 		// If there is no DNS zones set in test - start a server that will
 		// respond with NXDOMAIN to all queries to avoid accidentally leaking
 		// any DNS queries to the real world.
-		dnsServ, err := mockdns.NewServer(nil)
-		if err != nil {
-			t.Fatal("Test configuration failed:", err)
-		}
-		t.dnsServ = dnsServ
+		t.Log("NOTE: Explicit DNS(nil) is recommended.")
+		t.DNS(nil)
 	}
 
 	// Setup file system, create statedir, runtimedir, write out config.
@@ -151,7 +150,7 @@ func (t *T) Run(waitListeners int) {
 	configPreable := "state_dir " + filepath.Join(t.testDir, "statedir") + "\n" +
 		"runtime_dir " + filepath.Join(t.testDir, "runtime") + "\n\n"
 
-	ioutil.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
+	err = ioutil.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
@@ -171,14 +170,24 @@ func (t *T) Run(waitListeners int) {
 	if CoverageOut != "" {
 		cmd.Args = append(cmd.Args, "-test.coverprofile", CoverageOut+"."+strconv.FormatInt(time.Now().UnixNano(), 16))
 	}
+	if DebugLog {
+		cmd.Args = append(cmd.Args, "-debug")
+	}
 
 	t.Logf("launching %v", cmd.Args)
 
-	// Set environment variables.
-	cmd.Env = []string{
-		"TEST_STATE_DIR=" + filepath.Join(t.testDir, "statedir"),
-		"TEST_RUNTIME_DIR=" + filepath.Join(t.testDir, "statedir"),
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal("Test configuration failed:", err)
 	}
+
+	// Set environment variables.
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env,
+		"TEST_PWD="+pwd,
+		"TEST_STATE_DIR="+filepath.Join(t.testDir, "statedir"),
+		"TEST_RUNTIME_DIR="+filepath.Join(t.testDir, "statedir"),
+	)
 	for name, port := range t.ports {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TEST_PORT_%s=%d", name, port))
 	}
@@ -228,12 +237,15 @@ func (t *T) Run(waitListeners int) {
 	t.servProc = cmd
 }
 
-func (t *T) Close() {
-	if err := t.dnsServ.Close(); err != nil {
-		t.Log("Unable to stop the DNS server:", err)
-	}
-	t.dnsServ = nil
+func (t *T) StateDir() string {
+	return filepath.Join(t.testDir, "statedir")
+}
 
+func (t *T) RuntimeDir() string {
+	return filepath.Join(t.testDir, "statedir")
+}
+
+func (t *T) Close() {
 	if err := t.servProc.Process.Signal(os.Interrupt); err != nil {
 		t.Log("Unable to kill the server process:", err)
 		os.RemoveAll(t.testDir)
@@ -243,7 +255,7 @@ func (t *T) Close() {
 	go func() {
 		time.Sleep(5 * time.Second)
 		if t.servProc != nil {
-			t.servProc.Process.Kill()
+			t.servProc.Process.Kill() //nolint:errcheck
 		}
 	}()
 
@@ -257,6 +269,75 @@ func (t *T) Close() {
 		t.Log("Failed to remove test directory:", err)
 	}
 	t.testDir = ""
+
+	// Shutdown the DNS server after maddy to make sure it will not spend time
+	// timing out queries.
+	if err := t.dnsServ.Close(); err != nil {
+		t.Log("Unable to stop the DNS server:", err)
+	}
+	t.dnsServ = nil
+}
+
+// Printf implements Logger interfaces used by some libraries.
+func (t *T) Printf(f string, a ...interface{}) {
+	t.Logf(f, a...)
+}
+
+// Conn6 connects to the server listener at the specified named port using IPv6 loopback.
+func (t *T) Conn6(portName string) Conn {
+	port := t.ports[portName]
+	if port == 0 {
+		panic("tests: connection for the unused port name is requested")
+	}
+
+	conn, err := net.Dial("tcp6", "[::1]:"+strconv.Itoa(int(port)))
+	if err != nil {
+		t.Fatal("Could not connect, is server listening?", err)
+	}
+
+	return Conn{
+		T:            t,
+		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		Conn:         conn,
+		Scanner:      bufio.NewScanner(conn),
+	}
+}
+
+// Conn4 connects to the server listener at the specified named port using one
+// of 127.0.0.0/8 addresses as a source.
+func (t *T) Conn4(sourceIP, portName string) Conn {
+	port := t.ports[portName]
+	if port == 0 {
+		panic("tests: connection for the unused port name is requested")
+	}
+
+	localIP := net.ParseIP(sourceIP)
+	if localIP == nil {
+		panic("tests: invalid localIP argument")
+	}
+	if localIP.To4() == nil {
+		panic("tests: only IPv4 addresses are allowed")
+	}
+
+	conn, err := net.DialTCP("tcp4", &net.TCPAddr{
+		IP:   localIP,
+		Port: 0,
+	}, &net.TCPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: int(port),
+	})
+	if err != nil {
+		t.Fatal("Could not connect, is server listening?", err)
+	}
+
+	return Conn{
+		T:            t,
+		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		Conn:         conn,
+		Scanner:      bufio.NewScanner(conn),
+	}
 }
 
 func (t *T) Conn(portName string) Conn {
@@ -279,7 +360,16 @@ func (t *T) Conn(portName string) Conn {
 	}
 }
 
+func (t *T) Subtest(name string, f func(t *T)) {
+	t.T.Run(name, func(subTT *testing.T) {
+		subT := *t
+		subT.T = subTT
+		f(&subT)
+	})
+}
+
 func init() {
 	flag.StringVar(&TestBinary, "integration.executable", "./maddy", "executable to test")
 	flag.StringVar(&CoverageOut, "integration.coverprofile", "", "write coverage stats to file (requires special maddy executable)")
+	flag.BoolVar(&DebugLog, "integration.debug", false, "pass -debug to maddy executable")
 }

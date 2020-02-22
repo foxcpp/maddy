@@ -34,7 +34,7 @@ func (c *Conn) AllowIOErr(ok bool) {
 }
 
 // Write writes the string to the connection socket.
-func (c *Conn) Write(s string) error {
+func (c *Conn) Write(s string) {
 	c.T.Helper()
 
 	// Make sure the test will not accidentally hang waiting for I/O forever if
@@ -50,22 +50,17 @@ func (c *Conn) Write(s string) error {
 
 	c.log('>', "%s", s)
 	if _, err := io.WriteString(c.Conn, s); err != nil {
-		if c.allowIOErr {
-			return err
-		}
 		c.fatal("Unexpected I/O error: %v", err)
 	}
-
-	return nil
 }
 
-func (c *Conn) Writeln(s string) error {
+func (c *Conn) Writeln(s string) {
 	c.T.Helper()
 
-	return c.Write(s + "\r\n")
+	c.Write(s + "\r\n")
 }
 
-func (c *Conn) consumeLine() (string, error) {
+func (c *Conn) Readln() (string, error) {
 	c.T.Helper()
 
 	// Make sure the test will not accidentally hang waiting for I/O forever if
@@ -97,15 +92,29 @@ func (c *Conn) consumeLine() (string, error) {
 	return c.Scanner.Text(), nil
 }
 
+func (c *Conn) Expect(line string) error {
+	c.T.Helper()
+
+	actual, err := c.Readln()
+	if err != nil {
+		return err
+	}
+
+	if line != actual {
+		c.T.Fatalf("Response line not matching the expected one, want %q", line)
+	}
+	return nil
+}
+
 // ExpectPattern reads a line from the connection socket and checks whether is
 // matches the supplied shell pattern (as defined by path.Match). The original
 // line is returned.
-func (c *Conn) ExpectPattern(pat string) (string, error) {
+func (c *Conn) ExpectPattern(pat string) string {
 	c.T.Helper()
 
-	line, err := c.consumeLine()
+	line, err := c.Readln()
 	if err != nil {
-		return line, err
+		c.T.Fatal("Unexpected I/O error:", err)
 	}
 
 	match, err := path.Match(pat, line)
@@ -113,23 +122,27 @@ func (c *Conn) ExpectPattern(pat string) (string, error) {
 		c.T.Fatal("Malformed pattern:", err)
 	}
 	if !match {
-		c.T.Fatal("Response line not matching the expected pattern, want", pat)
+		c.T.Fatalf("Response line not matching the expected pattern, want %q", pat)
 	}
 
-	return line, nil
+	return line
 }
 
 func (c *Conn) fatal(f string, args ...interface{}) {
+	c.T.Helper()
 	c.log('-', f, args...)
 	c.T.FailNow()
 }
 
 func (c *Conn) error(f string, args ...interface{}) {
+	c.T.Helper()
 	c.log('-', f, args...)
 	c.T.Fail()
 }
 
 func (c *Conn) log(direction rune, f string, args ...interface{}) {
+	c.T.Helper()
+
 	local, remote := c.Conn.LocalAddr().(*net.TCPAddr), c.Conn.RemoteAddr().(*net.TCPAddr)
 	msg := strings.Builder{}
 	if local.IP.IsLoopback() {
@@ -177,6 +190,75 @@ func (c *Conn) TLS() {
 	c.Scanner = bufio.NewScanner(c.Conn)
 }
 
+func (c *Conn) SMTPNegotation(ourName string, requireExts, blacklistExts []string) {
+	c.T.Helper()
+
+	needCapsMap := make(map[string]bool)
+	blacklistCapsMap := make(map[string]bool)
+	for _, ext := range requireExts {
+		needCapsMap[ext] = false
+	}
+	for _, ext := range blacklistExts {
+		blacklistCapsMap[ext] = false
+	}
+
+	c.Writeln("EHLO " + ourName)
+
+	// Consume the first line from socket, it is either initial greeting (sent
+	// before we sent EHLO) or the EHLO reply in case of re-negotiation after
+	// STARTTLS.
+	l, err := c.Readln()
+	if err != nil {
+		c.T.Fatal("I/O error during SMTP negotiation:", err)
+	}
+	if strings.HasPrefix(l, "220") {
+		// That was initial greeting, consume one more line.
+		c.ExpectPattern("250-*")
+	}
+
+	var caps []string
+capsloop:
+	for {
+		line, err := c.Readln()
+		if err != nil {
+			c.T.Fatal("I/O error during SMTP negotiation:", err)
+		}
+
+		switch {
+		case strings.HasPrefix(line, "250-"):
+			caps = append(caps, strings.TrimPrefix(line, "250-"))
+		case strings.HasPrefix(line, "250 "):
+			caps = append(caps, strings.TrimPrefix(line, "250 "))
+			break capsloop
+		default:
+			c.T.Fatal("Unexpected reply during SMTP negotiation:", line)
+		}
+	}
+
+	for _, ext := range caps {
+		needCapsMap[ext] = true
+		if _, ok := blacklistCapsMap[ext]; ok {
+			blacklistCapsMap[ext] = true
+		}
+	}
+	for ext, status := range needCapsMap {
+		if !status {
+			c.T.Fatalf("Capability %v is missing but required", ext)
+		}
+	}
+	for ext, status := range blacklistCapsMap {
+		if status {
+			c.T.Fatalf("Capability %v is present but not allowed", ext)
+		}
+	}
+}
+
 func (c *Conn) Close() error {
 	return c.Conn.Close()
+}
+
+func (c *Conn) Rebind(subtest *T) *Conn {
+	cpy := *c
+	cpy.T = subtest
+	return &cpy
 }

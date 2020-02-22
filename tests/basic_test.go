@@ -9,6 +9,8 @@ import (
 )
 
 func TestBasic(tt *testing.T) {
+	tt.Parallel()
+
 	// This test is mostly intended to test whether the integration testing
 	// library is working as expected.
 
