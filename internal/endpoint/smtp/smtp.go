@@ -49,6 +49,9 @@ type Session struct {
 	// Specific for the currently handled message.
 	// msgCtx is not used for cancellation or timeouts, only for tracing.
 	// It is the subcontext of sessionCtx.
+	// Mutex is used to prevent Close from accessing inconsistent state when it
+	// is called asynchronously to any SMTP command.
+	msgLock     sync.Mutex
 	msgCtx      context.Context
 	msgTask     *trace.Task
 	mailFrom    string
@@ -61,6 +64,9 @@ type Session struct {
 }
 
 func (s *Session) Reset() {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	if s.delivery != nil {
 		s.abort(s.msgCtx)
 	}
@@ -178,6 +184,9 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 }
 
 func (s *Session) Mail(from string, opts smtp.MailOptions) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	if !s.endp.deferServerReject {
 		// Will initialize s.msgCtx.
 		msgID, err := s.startDelivery(s.sessionCtx, from, opts)
@@ -224,6 +233,9 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 }
 
 func (s *Session) Rcpt(to string) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	// deferServerReject = true and this is the first RCPT TO command.
 	if s.delivery == nil {
 		// If we already attempted to initialize the delivery -
@@ -285,6 +297,9 @@ func (s *Session) rcpt(ctx context.Context, to string) error {
 }
 
 func (s *Session) Logout() error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	if s.delivery != nil {
 		s.abort(s.msgCtx)
 
