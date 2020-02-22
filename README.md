@@ -4,10 +4,6 @@
 
 Composable all-in-one mail server.
 
-**⚠️ Disclaimer: maddy is in development, many planned features are
-missing, bugs are waiting to eat your messages and incompatible
-changes happen from time to time**
-
 ## Features
 
 - IMAP4rev1 & SMTP server in one binary

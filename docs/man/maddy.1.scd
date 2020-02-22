@@ -16,10 +16,6 @@ Maddy is Mail Transfer agent (MTA), Mail Delivery Agent (MDA), Mail Submission
 Agent (MSA), IMAP server and a set of other essential protocols/schemes
 necessary to run secure email server implemented in one executable.
 
-*Disclaimer: maddy is in early development, backward-incompatible changes
-happen from time to time and bugs are waiting to eat your messages. Caveat
-emptor.*
-
 # Command line arguments
 
 *-h, -help*
