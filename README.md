@@ -42,8 +42,8 @@ Detailed explaination of what you need to do to get it running can be found
 
 The full documentation is published [here](https://foxcpp.dev/maddy/)
 
-Examples of more advanced configurations with explainations can be found in the
-[examples](examples/) directory in the source repository.
+Manual pages with reference documentation will be installed by build.sh if
+scdoc utility is available on the system.
 
 ## Community
 

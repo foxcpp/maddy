@@ -35,6 +35,11 @@ On Debian-based distributions, this should be enough:
 # apt-get install gcc git curl
 ```
 
+If you want manual pages with reference docs, install scdoc too:
+```
+# apt-get install scdoc
+```
+
 build.sh script will do the rest for you:
 
 ```
@@ -42,7 +47,7 @@ $ curl 'https://foxcpp.dev/maddy/build.sh' | bash
 ```
 
 Alternatively, you can download the pre-built tarball from
-[GitHub](https://github.com/foxcpp/maddy/releases) and copy its contents into
+[GitHub](https://github.com/foxcpp/maddy/releases) and extract its contents into
 the root directory.
 
 *Note:* If you can't / don't use this script for some reason, instructions for
@@ -51,7 +56,7 @@ manual installation can be found
 
 ## Host name + domain
 
-Open /etc/maddy/maddy.conf with ~~vim~~your favorite editor and change
+Open /etc/maddy/maddy.conf with ~~vim~~ your favorite editor and change
 the following lines to match your server name and domain you want to handle
 mail for.
 
@@ -89,6 +94,7 @@ renewal. It is possible to force reload via `systemctl reload maddy` (or just
 ## First run
 
 ```
+systemctl daemon-reload
 systemctl start maddy
 ```
 
