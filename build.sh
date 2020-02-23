@@ -217,7 +217,7 @@ ensure_go() {
         echo "--- Downloading Go $GOVERSION toolchain..." >&2
         if ! [ -e go$GOVERSION ]; then
             if ! [ -e go$GOVERSION.linux-amd64.tar.gz ]; then
-                wget -q "https://dl.google.com/go/go$GOVERSION.linux-amd64.tar.gz"
+                curl "https://dl.google.com/go/go$GOVERSION.linux-amd64.tar.gz" -o go$GOVERSION.linux-amd64.tar.gz
             fi
             tar xf go$GOVERSION.linux-amd64.tar.gz
             mv go go$GOVERSION

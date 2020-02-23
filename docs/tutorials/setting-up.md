@@ -29,10 +29,10 @@ there are a few things to keep in mind:
 Since there are currently no pre-compiled binaries for maddy, we are going to
 build it from the source. Nothing scary, this is relatively easy to do with Go.
 
-System dependencies you need to have installed is C compiler, Git and wget.
+System dependencies you need to have installed is C compiler, Git and curl.
 On Debian-based distributions, this should be enough:
 ```
-# apt-get install gcc git wget
+# apt-get install gcc git curl
 ```
 
 build.sh script will do the rest for you:
@@ -41,7 +41,7 @@ build.sh script will do the rest for you:
 $ curl 'https://foxcpp.dev/maddy/build.sh' | bash
 ```
 
-Alternatively, if you can download the pre-built tarball from
+Alternatively, you can download the pre-built tarball from
 [GitHub](https://github.com/foxcpp/maddy/releases) and copy its contents into
 the root directory.
 
