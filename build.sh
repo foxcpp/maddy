@@ -182,7 +182,7 @@ read_config() {
 # version. If it is not present or incompatible - download Go $GOVERSION and unpack.
 ensure_go() {
     REQUIRED_GOVERSION=1.13.0
-    GOVERSION=1.13.4
+    GOVERSION=1.13.8
 
     pushd "$BUILDDIR" >/dev/null
 
@@ -241,7 +241,9 @@ ensure_source_tree() {
     fi
 
     gomod="$(go env GOMOD)"
-    if [ "$gomod" = "/dev/null" ]; then
+    # /dev/null is used when Go module mode is forced, otherwise it is just an
+    # empty string. Check both to avoid depending on environment.
+    if [ "$gomod" = "/dev/null" ] || [ "$gomod" = "" ]; then
         echo '--- Downloading source tree...' >&2
         if [ ! -e "$BUILDDIR/maddy" ]; then
             git clone https://github.com/foxcpp/maddy.git "$BUILDDIR/maddy"
