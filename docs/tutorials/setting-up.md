@@ -29,11 +29,10 @@ there are a few things to keep in mind:
 Since there are currently no pre-compiled binaries for maddy, we are going to
 build it from the source. Nothing scary, this is relatively easy to do with Go.
 
-One dependency you need to figure out is the C compiler, it is needed for
-SQLite3 support which is used in the default configuration. On Debian-based
-distributions, this should be enough:
+System dependencies you need to have installed is C compiler, Git and wget.
+On Debian-based distributions, this should be enough:
 ```
-# apt-get install build-essential
+# apt-get install gcc git wget
 ```
 
 build.sh script will do the rest for you:
