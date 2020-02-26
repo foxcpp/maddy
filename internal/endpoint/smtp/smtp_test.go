@@ -27,7 +27,7 @@ const testMsg = "From: <sender@example.org>\r\n" +
 	"\r\n" +
 	"foobar\r\n"
 
-func testEndpoint(t *testing.T, modName string, auth module.AuthProvider, tgt module.DeliveryTarget, checks []module.Check, cfg []config.Node) *Endpoint {
+func testEndpoint(t *testing.T, modName string, auth module.PlainAuth, tgt module.DeliveryTarget, checks []module.Check, cfg []config.Node) *Endpoint {
 	t.Helper()
 
 	mod, err := New(modName, []string{"tcp://127.0.0.1:" + testPort})

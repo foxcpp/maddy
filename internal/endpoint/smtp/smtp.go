@@ -519,7 +519,7 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
 
 type Endpoint struct {
 	hostname  string
-	Auth      module.AuthProvider
+	Auth      module.PlainAuth
 	serv      *smtp.Server
 	name      string
 	addrs     []string
@@ -803,11 +803,14 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 		return nil, endp.wrapErr("", true, err)
 	}
 
-	if !endp.Auth.CheckPlain(username, password) {
-		endp.Log.Msg("authentication failed", "username", username, "src_ip", state.RemoteAddr)
+	_, err := endp.Auth.AuthPlain(username, password)
+	if err != nil {
+		// TODO: Update fail2ban filters.
+		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}
 
+	// TODO: Pass valid identifies to SMTP pipeline.
 	return endp.newSession(false, username, password, state), nil
 }
 

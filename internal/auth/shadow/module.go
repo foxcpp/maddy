@@ -67,43 +67,37 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) CheckPlain(username, password string) bool {
+func (a *Auth) AuthPlain(username, password string) ([]string, error) {
 	accountName, _, err := address.Split(username)
 	if err != nil {
-		return false
+		return nil, err
 	}
 
 	if a.useHelper {
-		return external.AuthUsingHelper(a.Log, a.helperPath, accountName, password)
+		return []string{username}, external.AuthUsingHelper(a.helperPath, accountName, password)
 	}
 
 	ent, err := Lookup(accountName)
 	if err != nil {
-		if err != ErrNoSuchUser {
-			a.Log.Error("lookup error", err, "username", username)
-		}
-		return false
+		return nil, err
 	}
 
 	if !ent.IsAccountValid() {
-		a.Log.Msg("account is expired", "username", username)
-		return false
+		return nil, fmt.Errorf("shadow: account is expired")
 	}
 
 	if !ent.IsPasswordValid() {
-		a.Log.Msg("password is expired", "username", username)
-		return false
+		return nil, fmt.Errorf("shadow: password is expired")
 	}
 
 	if err := ent.VerifyPassword(password); err != nil {
-		if err != ErrWrongPassword {
-			a.Log.Printf("%v", err)
+		if err == ErrWrongPassword {
+			return nil, module.ErrUnknownCredentials
 		}
-		a.Log.Msg("password verification failed", "username", username)
-		return false
+		return nil, err
 	}
 
-	return true
+	return []string{username}, nil
 }
 
 func init() {

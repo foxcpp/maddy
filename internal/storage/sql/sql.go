@@ -3,7 +3,7 @@
 //
 // Interfaces implemented:
 // - module.StorageBackend
-// - module.AuthProvider
+// - module.PlainAuth
 // - module.DeliveryTarget
 package sql
 
@@ -420,21 +420,25 @@ func prepareUsername(username string) (string, error) {
 	return mbox + "@" + domain, nil
 }
 
-func (store *Storage) CheckPlain(username, password string) bool {
+func (store *Storage) AuthPlain(username, password string) ([]string, error) {
 	// TODO: Pass session context there.
-	defer trace.StartRegion(context.Background(), "sql/CheckPlain").End()
+	defer trace.StartRegion(context.Background(), "sql/AuthPlain").End()
 
 	accountName, err := prepareUsername(username)
 	if err != nil {
-		return false
+		return nil, err
 	}
 
 	password, err = precis.OpaqueString.CompareKey(password)
 	if err != nil {
-		return false
+		return nil, err
 	}
 
-	return store.Back.CheckPlain(accountName, password)
+	// TODO: Make go-imap-sql CheckPlain return an actual error.
+	if !store.Back.CheckPlain(accountName, password) {
+		return nil, module.ErrUnknownCredentials
+	}
+	return []string{username}, nil
 }
 
 func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {

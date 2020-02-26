@@ -6,7 +6,7 @@ import (
 )
 
 func AuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	var provider module.AuthProvider
+	var provider module.PlainAuth
 	if err := ModuleFromNode(node.Args, node, m.Globals, &provider); err != nil {
 		return nil, err
 	}

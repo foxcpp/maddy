@@ -8,15 +8,15 @@ import (
 	"github.com/foxcpp/maddy/internal/config"
 )
 
-// Dummy is a struct that implements AuthProvider and DeliveryTarget
+// Dummy is a struct that implements PlainAuth and DeliveryTarget
 // interfaces but does nothing. Useful for testing.
 //
 // It is always registered under the 'dummy' name and can be used in both tests
 // and the actual server code (but the latter is kinda pointless).
 type Dummy struct{ instName string }
 
-func (d *Dummy) CheckPlain(_, _ string) bool {
-	return true
+func (d *Dummy) AuthPlain(username, _ string) ([]string, error) {
+	return []string{username}, nil
 }
 
 func (d *Dummy) Name() string {

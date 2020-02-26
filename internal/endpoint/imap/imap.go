@@ -32,7 +32,7 @@ type Endpoint struct {
 	addrs     []string
 	serv      *imapserver.Server
 	listeners []net.Listener
-	Auth      module.AuthProvider
+	Auth      module.PlainAuth
 	Store     module.Storage
 
 	updater     imapbackend.BackendUpdater
@@ -184,11 +184,14 @@ func (endp *Endpoint) Close() error {
 }
 
 func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
-	if !endp.Auth.CheckPlain(username, password) {
-		endp.Log.Msg("authentication failed", "username", username, "src_ip", connInfo.RemoteAddr)
+	_, err := endp.Auth.AuthPlain(username, password)
+	if err != nil {
+		endp.Log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
+	// TODO: Wrap GetOrCreateUser and possibly implement INBOXES extension
+	// (though it is draft 00 for quite some time so it likely has no future).
 	return endp.Store.GetOrCreateUser(username)
 }
 

@@ -61,29 +61,28 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) CheckPlain(username, password string) bool {
+func (a *Auth) AuthPlain(username, password string) ([]string, error) {
 	var accountName string
 	if a.expectAddress {
 		var err error
 		accountName, _, err = address.Split(username)
 		if err != nil {
-			return false
+			return nil, err
 		}
 	} else {
 		accountName = username
 	}
 
 	if a.useHelper {
-		return external.AuthUsingHelper(a.Log, a.helperPath, accountName, password)
+		if err := external.AuthUsingHelper(a.helperPath, accountName, password); err != nil {
+			return nil, err
+		}
 	}
 	err := runPAMAuth(accountName, password)
 	if err != nil {
-		if err == ErrInvalidCredentials {
-			a.Log.Println(err)
-		}
-		return false
+		return nil, err
 	}
-	return true
+	return []string{username}, nil
 }
 
 func init() {
