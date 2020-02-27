@@ -18,4 +18,6 @@ linters:
   - nakedret
   - dogsled
   - godox
+  - gocyclo
   - dupl
+  - unparam
