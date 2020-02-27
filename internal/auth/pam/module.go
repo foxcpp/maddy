@@ -58,17 +58,17 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) AuthPlain(username, password string) ([]string, error) {
+func (a *Auth) AuthPlain(username, password string) error {
 	if a.useHelper {
 		if err := external.AuthUsingHelper(a.helperPath, username, password); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	err := runPAMAuth(username, password)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return []string{username}, nil
+	return nil
 }
 
 func init() {

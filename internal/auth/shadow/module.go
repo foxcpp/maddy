@@ -66,32 +66,32 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) AuthPlain(username, password string) ([]string, error) {
+func (a *Auth) AuthPlain(username, password string) error {
 	if a.useHelper {
-		return []string{username}, external.AuthUsingHelper(a.helperPath, username, password)
+		return external.AuthUsingHelper(a.helperPath, username, password)
 	}
 
 	ent, err := Lookup(username)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !ent.IsAccountValid() {
-		return nil, fmt.Errorf("shadow: account is expired")
+		return fmt.Errorf("shadow: account is expired")
 	}
 
 	if !ent.IsPasswordValid() {
-		return nil, fmt.Errorf("shadow: password is expired")
+		return fmt.Errorf("shadow: password is expired")
 	}
 
 	if err := ent.VerifyPassword(password); err != nil {
 		if err == ErrWrongPassword {
-			return nil, module.ErrUnknownCredentials
+			return module.ErrUnknownCredentials
 		}
-		return nil, err
+		return err
 	}
 
-	return []string{username}, nil
+	return nil
 }
 
 func init() {

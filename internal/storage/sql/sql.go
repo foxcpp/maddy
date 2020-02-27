@@ -420,25 +420,25 @@ func prepareUsername(username string) (string, error) {
 	return mbox + "@" + domain, nil
 }
 
-func (store *Storage) AuthPlain(username, password string) ([]string, error) {
+func (store *Storage) AuthPlain(username, password string) error {
 	// TODO: Pass session context there.
 	defer trace.StartRegion(context.Background(), "sql/AuthPlain").End()
 
 	accountName, err := prepareUsername(username)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	password, err = precis.OpaqueString.CompareKey(password)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// TODO: Make go-imap-sql CheckPlain return an actual error.
 	if !store.Back.CheckPlain(accountName, password) {
-		return nil, module.ErrUnknownCredentials
+		return module.ErrUnknownCredentials
 	}
-	return []string{username}, nil
+	return nil
 }
 
 func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {

@@ -269,8 +269,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 				return auth.FailingSASLServ{Err: endp.wrapErr("", true, err)}
 			}
 
-			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(ids []string) error {
-				c.SetSession(endp.newSession(false, ids[0], "", &state))
+			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
+				c.SetSession(endp.newSession(false, id, "", &state))
 				return nil
 			})
 		})
@@ -332,14 +332,13 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 		return nil, endp.wrapErr("", true, err)
 	}
 
-	_, err := endp.saslAuth.AuthPlain(username, password)
+	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		// TODO: Update fail2ban filters.
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}
 
-	// TODO: Pass valid identifies to SMTP pipeline.
 	return endp.newSession(false, username, password, state), nil
 }
 

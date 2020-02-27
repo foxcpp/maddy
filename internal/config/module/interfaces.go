@@ -51,14 +51,6 @@ func StorageDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	return backend, nil
 }
 
-func SASLAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	var provider module.SASLProvider
-	if err := ModuleFromNode(node.Args, node, m.Globals, &provider); err != nil {
-		return nil, err
-	}
-	return provider, nil
-}
-
 func TableDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	var tbl module.Table
 	if err := ModuleFromNode(node.Args, node, m.Globals, &tbl); err != nil {

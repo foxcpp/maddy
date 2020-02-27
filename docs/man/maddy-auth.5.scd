@@ -16,8 +16,7 @@ Most likely, you are going to use these modules with 'auth' directive of IMAP
 sql module described in *maddy-storage*(5) can also be used as a authentication
 backend.
 
-The authorization identity is required to be a valid RFC 5321 e-mail address.
-It is returned as the authorization identity.
+The username is required to be a valid RFC 5321 e-mail address.
 
 # External authentication module (extauth)
 
@@ -31,8 +30,6 @@ to stdin, adding \\n to the end. If binary exits with 0 status code -
 authentication is considered successful. If the status code is 1 -
 authentication is failed. If the status code is 2 - another unrelated error has
 happened. Additional information should be written to stderr.
-
-The authorization identtity is the same as authorization identity.
 
 ```
 extauth {
@@ -79,13 +76,10 @@ maddy should be built with libpam build tag to use this module without
 go get -tags 'libpam' ...
 ```
 
-The authorization identtity is the same as authorization identity.
-
 ```
 pam {
     debug no
     use_helper no
-	expect_address yes
 }
 ```
 
@@ -109,7 +103,7 @@ privileges (e.g. when using system accounts).
 For 2, you need to make maddy-pam-helper binary setuid, see
 README.md in source tree for details.
 
-TL;DR (assuming you have maddy group):
+TL;DR (assuming you have the maddy group):
 ```
 chown root:maddy /usr/lib/maddy/maddy-pam-helper
 chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
@@ -119,8 +113,6 @@ chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 
 Implements authentication by reading /etc/shadow. Alternatively it can be
 configured to use helper binary like extauth does.
-
-The authorization identtity is the same as authorization identity.
 
 ```
 shadow {
@@ -175,14 +167,7 @@ How it works:
 2. Each table specified with the 'user' directive looked up using normalized
    username. If match is not found in any table, authentication fails.
 3. Each authentication provider specified with the 'pass' directive is tried.
-   First match wins same as in step 2.
-
-The set of authorization identities estabilished by plain_separate is the list of
-strings found in 'user' tables. If there are no 'user' tables (only 'pass'
-directives are specified), the list of authorization identities returned by
-auth. providers is used.
-*Note*: If a username table returns empty string, the authorization identity is
-assumed to be the same as authentication identity.
+   If authentication with all providers fails - an error is returned.
 
 ## Configuration directives
 

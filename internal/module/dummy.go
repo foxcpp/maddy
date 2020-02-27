@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-sasl"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
 )
@@ -16,12 +15,8 @@ import (
 // and the actual server code (but the latter is kinda pointless).
 type Dummy struct{ instName string }
 
-func (d *Dummy) SASLMechanisms() []string {
-	return []string{sasl.Plain, sasl.Login}
-}
-
-func (d *Dummy) AuthPlain(username, _ string) ([]string, error) {
-	return []string{username}, nil
+func (d *Dummy) AuthPlain(username, _ string) error {
+	return nil
 }
 
 func (d *Dummy) Name() string {

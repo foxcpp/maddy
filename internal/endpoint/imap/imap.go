@@ -123,8 +123,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
-			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(ids []string) error {
-				return endp.openAccount(c, ids)
+			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string) error {
+				return endp.openAccount(c, identity)
 			})
 		})
 	}
@@ -199,8 +199,8 @@ func (endp *Endpoint) Close() error {
 	return nil
 }
 
-func (endp *Endpoint) openAccount(c imapserver.Conn, identities []string) error {
-	u, err := endp.Store.GetOrCreateUser(identities[0])
+func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
+	u, err := endp.Store.GetOrCreateUser(identity)
 	if err != nil {
 		return err
 	}
@@ -211,14 +211,12 @@ func (endp *Endpoint) openAccount(c imapserver.Conn, identities []string) error 
 }
 
 func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
-	_, err := endp.saslAuth.AuthPlain(username, password)
+	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
-	// TODO: Wrap GetOrCreateUser and possibly implement INBOXES extension
-	// (though it is draft 00 for quite some time so it likely has no future).
 	return endp.Store.GetOrCreateUser(username)
 }
 

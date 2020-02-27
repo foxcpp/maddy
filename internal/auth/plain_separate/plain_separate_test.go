@@ -2,7 +2,6 @@ package plain_separate
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/emersion/go-sasl"
@@ -10,19 +9,19 @@ import (
 )
 
 type mockAuth struct {
-	db map[string][]string
+	db map[string]bool
 }
 
 func (mockAuth) SASLMechanisms() []string {
 	return []string{sasl.Plain, sasl.Login}
 }
 
-func (m mockAuth) AuthPlain(username, _ string) ([]string, error) {
-	ids, ok := m.db[username]
+func (m mockAuth) AuthPlain(username, _ string) error {
+	ok := m.db[username]
 	if !ok {
-		return nil, errors.New("invalid creds")
+		return errors.New("invalid creds")
 	}
-	return ids, nil
+	return nil
 }
 
 type mockTable struct {
@@ -38,19 +37,16 @@ func TestPlainSplit_NoUser(t *testing.T) {
 	a := Auth{
 		passwd: []module.PlainAuth{
 			mockAuth{
-				db: map[string][]string{
-					"user1": []string{"user1a", "user1b"},
+				db: map[string]bool{
+					"user1": true,
 				},
 			},
 		},
 	}
 
-	ids, err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain("user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
-	}
-	if !reflect.DeepEqual(ids, []string{"user1a", "user1b"}) {
-		t.Fatal("Wrong ids returned:", ids)
 	}
 }
 
@@ -58,24 +54,21 @@ func TestPlainSplit_NoUser_MultiPass(t *testing.T) {
 	a := Auth{
 		passwd: []module.PlainAuth{
 			mockAuth{
-				db: map[string][]string{
-					"user2": []string{"user2a", "user2b"},
+				db: map[string]bool{
+					"user2": true,
 				},
 			},
 			mockAuth{
-				db: map[string][]string{
-					"user1": []string{"user1a", "user1b"},
+				db: map[string]bool{
+					"user1": true,
 				},
 			},
 		},
 	}
 
-	ids, err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain("user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
-	}
-	if !reflect.DeepEqual(ids, []string{"user1a", "user1b"}) {
-		t.Fatal("Wrong ids returned:", ids)
 	}
 }
 
@@ -84,30 +77,27 @@ func TestPlainSplit_UserPass(t *testing.T) {
 		userTbls: []module.Table{
 			mockTable{
 				db: map[string]string{
-					"user1": "user2",
+					"user1": "",
 				},
 			},
 		},
 		passwd: []module.PlainAuth{
 			mockAuth{
-				db: map[string][]string{
-					"user2": []string{"user2a", "user2b"},
+				db: map[string]bool{
+					"user2": true,
 				},
 			},
 			mockAuth{
-				db: map[string][]string{
-					"user1": []string{"user1a", "user1b"},
+				db: map[string]bool{
+					"user1": true,
 				},
 			},
 		},
 	}
 
-	ids, err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain("user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
-	}
-	if !reflect.DeepEqual(ids, []string{"user2"}) {
-		t.Fatal("Wrong ids returned:", ids)
 	}
 }
 
@@ -116,34 +106,31 @@ func TestPlainSplit_MultiUser_Pass(t *testing.T) {
 		userTbls: []module.Table{
 			mockTable{
 				db: map[string]string{
-					"userWH": "user1",
+					"userWH": "",
 				},
 			},
 			mockTable{
 				db: map[string]string{
-					"user1": "user2",
+					"user1": "",
 				},
 			},
 		},
 		passwd: []module.PlainAuth{
 			mockAuth{
-				db: map[string][]string{
-					"user2": []string{"user2a", "user2b"},
+				db: map[string]bool{
+					"user2": true,
 				},
 			},
 			mockAuth{
-				db: map[string][]string{
-					"user1": []string{"user1a", "user1b"},
+				db: map[string]bool{
+					"user1": true,
 				},
 			},
 		},
 	}
 
-	ids, err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain("user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
-	}
-	if !reflect.DeepEqual(ids, []string{"user2"}) {
-		t.Fatal("Wrong ids returned:", ids)
 	}
 }

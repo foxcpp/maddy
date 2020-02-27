@@ -6,7 +6,6 @@ import (
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
-	"golang.org/x/text/secure/precis"
 )
 
 type Auth struct {
@@ -54,56 +53,32 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) AuthPlain(username, password string) ([]string, error) {
-	key, err := precis.UsernameCaseMapped.CompareKey(username)
-	if err != nil {
-		return nil, err
-	}
-
-	identities := make([]string, 0, 1)
-	if len(a.userTbls) != 0 {
-		for _, tbl := range a.userTbls {
-			repl, ok, err := tbl.Lookup(key)
-			if err != nil {
-				return nil, err
-			}
-			if !ok {
-				continue
-			}
-			if repl != "" {
-				identities = append(identities, repl)
-			} else {
-				identities = append(identities, key)
-			}
-			if a.onlyFirstID && len(identities) != 0 {
-				break
-			}
-		}
-		if len(identities) == 0 {
-			return nil, errors.New("plain_separate: unknown credentials")
-		}
-	}
-
-	var (
-		lastErr error
-		ok      bool
-	)
-	for _, pass := range a.passwd {
-		passIDs, err := pass.AuthPlain(username, password)
+func (a *Auth) AuthPlain(username, password string) error {
+	ok := len(a.userTbls) == 0
+	for _, tbl := range a.userTbls {
+		_, tblOk, err := tbl.Lookup(username)
 		if err != nil {
+			return err
+		}
+		if tblOk {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return errors.New("user not found in tables")
+	}
+
+	var lastErr error
+	for _, p := range a.passwd {
+		if err := p.AuthPlain(username, password); err != nil {
 			lastErr = err
 			continue
 		}
-		if len(a.userTbls) == 0 {
-			identities = append(identities, passIDs...)
-		}
-		ok = true
-	}
-	if !ok {
-		return nil, lastErr
-	}
 
-	return identities, nil
+		return nil
+	}
+	return lastErr
 }
 
 func init() {

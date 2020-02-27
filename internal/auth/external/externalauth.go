@@ -71,14 +71,13 @@ func (ea *ExternalAuth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (ea *ExternalAuth) AuthPlain(username, password string) ([]string, error) {
+func (ea *ExternalAuth) AuthPlain(username, password string) error {
 	accountName, ok := auth.CheckDomainAuth(username, ea.perDomain, ea.domains)
 	if !ok {
-		return nil, module.ErrUnknownCredentials
+		return module.ErrUnknownCredentials
 	}
 
-	// TODO: Extend process protocol to support multiple authorization identities.
-	return []string{username}, AuthUsingHelper(ea.helperPath, accountName, password)
+	return AuthUsingHelper(ea.helperPath, accountName, password)
 }
 
 func init() {
