@@ -16,7 +16,8 @@ Most likely, you are going to use these modules with 'auth' directive of IMAP
 sql module described in *maddy-storage*(5) can also be used as a authentication
 backend.
 
-The authorization identtity is the same as authorization identity.
+The authorization identity is required to be a valid RFC 5321 e-mail address.
+It is returned as the authorization identity.
 
 # External authentication module (extauth)
 
@@ -78,13 +79,6 @@ maddy should be built with libpam build tag to use this module without
 go get -tags 'libpam' ...
 ```
 
-By default, when checking with the PAM database, the username provided by
-client is expected to be a RFC 5321 e-mail address and the domain part and
-at-sign is removed. To disable that behavior and pass username as-is to
-libpam, set 'expect_address' to 'no'. Note that currently implemented storage
-backends require full e-mail address as an account name, so this is still not
-possible to use accounts with non-address names.
-
 The authorization identtity is the same as authorization identity.
 
 ```
@@ -125,10 +119,6 @@ chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 
 Implements authentication by reading /etc/shadow. Alternatively it can be
 configured to use helper binary like extauth does.
-
-When checking with the PAM database, the username provided by client is
-expected to be a RFC 5321 e-mail address and the domain part and at-sign is
-removed.
 
 The authorization identtity is the same as authorization identity.
 

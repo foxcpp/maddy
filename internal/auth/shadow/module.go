@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/auth/external"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/log"
@@ -68,16 +67,11 @@ func (a *Auth) Init(cfg *config.Map) error {
 }
 
 func (a *Auth) AuthPlain(username, password string) ([]string, error) {
-	accountName, _, err := address.Split(username)
-	if err != nil {
-		return nil, err
-	}
-
 	if a.useHelper {
-		return []string{username}, external.AuthUsingHelper(a.helperPath, accountName, password)
+		return []string{username}, external.AuthUsingHelper(a.helperPath, username, password)
 	}
 
-	ent, err := Lookup(accountName)
+	ent, err := Lookup(username)
 	if err != nil {
 		return nil, err
 	}

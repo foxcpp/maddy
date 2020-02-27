@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/foxcpp/maddy/internal/address"
 	"github.com/foxcpp/maddy/internal/auth/external"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/log"
@@ -14,10 +13,9 @@ import (
 )
 
 type Auth struct {
-	instName      string
-	useHelper     bool
-	helperPath    string
-	expectAddress bool
+	instName   string
+	useHelper  bool
+	helperPath string
 
 	Log log.Logger
 }
@@ -43,7 +41,6 @@ func (a *Auth) InstanceName() string {
 func (a *Auth) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &a.Log.Debug)
 	cfg.Bool("use_helper", false, false, &a.useHelper)
-	cfg.Bool("expect_address", false, false, &a.expectAddress)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -62,23 +59,12 @@ func (a *Auth) Init(cfg *config.Map) error {
 }
 
 func (a *Auth) AuthPlain(username, password string) ([]string, error) {
-	var accountName string
-	if a.expectAddress {
-		var err error
-		accountName, _, err = address.Split(username)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		accountName = username
-	}
-
 	if a.useHelper {
-		if err := external.AuthUsingHelper(a.helperPath, accountName, password); err != nil {
+		if err := external.AuthUsingHelper(a.helperPath, username, password); err != nil {
 			return nil, err
 		}
 	}
-	err := runPAMAuth(accountName, password)
+	err := runPAMAuth(username, password)
 	if err != nil {
 		return nil, err
 	}
