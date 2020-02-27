@@ -16,10 +16,13 @@ Most likely, you are going to use these modules with 'auth' directive of IMAP
 sql module described in *maddy-storage*(5) can also be used as a authentication
 backend.
 
+The authorization identtity is the same as authorization identity.
+
 # External authentication module (extauth)
 
 Module for authentication using external helper binary. It looks for binary
-named maddy-auth-helper in $PATH and libexecdir and uses it for authentication.
+named maddy-auth-helper in $PATH and libexecdir and uses it for authentication
+using username/password pair.
 
 The protocol is very simple:
 Program is launched for each authentication. Username and password are written
@@ -27,6 +30,8 @@ to stdin, adding \\n to the end. If binary exits with 0 status code -
 authentication is considered successful. If the status code is 1 -
 authentication is failed. If the status code is 2 - another unrelated error has
 happened. Additional information should be written to stderr.
+
+The authorization identtity is the same as authorization identity.
 
 ```
 extauth {
@@ -75,10 +80,12 @@ go get -tags 'libpam' ...
 
 By default, when checking with the PAM database, the username provided by
 client is expected to be a RFC 5321 e-mail address and the domain part and
-at-sign is splitten. To disable that behavior and pass username as-is to
+at-sign is removed. To disable that behavior and pass username as-is to
 libpam, set 'expect_address' to 'no'. Note that currently implemented storage
 backends require full e-mail address as an account name, so this is still not
 possible to use accounts with non-address names.
+
+The authorization identtity is the same as authorization identity.
 
 ```
 pam {
@@ -123,6 +130,8 @@ When checking with the PAM database, the username provided by client is
 expected to be a RFC 5321 e-mail address and the domain part and at-sign is
 removed.
 
+The authorization identtity is the same as authorization identity.
+
 ```
 shadow {
     debug no
@@ -153,3 +162,53 @@ TL;DR (assuming you have maddy group):
 chown root:maddy /usr/lib/maddy/maddy-shadow-helper
 chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
 ```
+
+# Separate username and password lookup (plain_separate)
+
+This modules implements authentication using username:password pairs but can
+use zero or more "table modules" (maddy-tables(5)) and one or more
+authentication providers to verify credentials.
+
+```
+plain_separate {
+	user ...
+	user ...
+	...
+	pass ...
+	pass ...
+	...
+}
+```
+
+How it works:
+1. Initial username input is normalized using PRECIS UsernameCaseMapped profile.
+2. Each table specified with the 'user' directive looked up using normalized
+   username. If match is not found in any table, authentication fails.
+3. Each authentication provider specified with the 'pass' directive is tried.
+   First match wins same as in step 2.
+
+The set of authorization identities estabilished by plain_separate is the list of
+strings found in 'user' tables. If there are no 'user' tables (only 'pass'
+directives are specified), the list of authorization identities returned by
+auth. providers is used.
+*Note*: If a username table returns empty string, the authorization identity is
+assumed to be the same as authentication identity.
+
+## Configuration directives
+
+**Syntax:** user _table module_
+
+Configuration block for any module from maddy-tables(5) can be used here.
+
+Example:
+```
+user file_table /etc/maddy/allowed_users
+```
+
+**Syntax:** pass _auth provider_
+
+Configuration block for any auth. provider module can be used here, even
+'plain_split' itself.
+
+The used auth. provider must provide username:password pair-based
+authentication.
