@@ -19,6 +19,8 @@ type matcher struct {
 	defaultVal    func() (interface{}, error)
 	mapper        func(*Map, *Node) (interface{}, error)
 	store         *reflect.Value
+
+	customCallback func(*Map, *Node) error
 }
 
 func (m *matcher) assign(val interface{}) {
@@ -556,6 +558,28 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 	}
 }
 
+// Callback creates mapping that will call mapper() function for each
+// directive with the specified name. No further processing is done.
+//
+// Directives with the specified name will not be returned by Process if
+// AllowUnknown is used.
+//
+// It is intended to permit multiple independent values of directive with
+// implementation-defined handling.
+func (m *Map) Callback(name string, mapper func(*Map, *Node) error) {
+	if m.entries == nil {
+		m.entries = make(map[string]matcher)
+	}
+	if _, ok := m.entries[name]; ok {
+		panic("Map.Custom: duplicate matcher")
+	}
+
+	m.entries[name] = matcher{
+		name:           name,
+		customCallback: mapper,
+	}
+}
+
 // Process maps variables from global configuration and block passed in NewMap.
 //
 // If Map instance was not created using NewMap - Process panics.
@@ -574,10 +598,6 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 		subnode := subnode
 		m.curNode = &subnode
 
-		if matched[subnode.Name] {
-			return nil, m.MatchErr("duplicate directive: %s", subnode.Name)
-		}
-
 		matcher, ok := m.entries[subnode.Name]
 		if !ok {
 			if !m.allowUnknown {
@@ -587,6 +607,19 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 			continue
 		}
 
+		if matcher.customCallback != nil {
+			if err := matcher.customCallback(m, &subnode); err != nil {
+				return nil, err
+			}
+			matched[subnode.Name] = true
+			continue
+		}
+
+		if matched[subnode.Name] {
+			return nil, m.MatchErr("duplicate directive: %s", subnode.Name)
+		}
+		matched[subnode.Name] = true
+
 		val, err := matcher.mapper(m, &subnode)
 		if err != nil {
 			return nil, err
@@ -595,12 +628,14 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 		if matcher.store != nil {
 			matcher.assign(val)
 		}
-		matched[subnode.Name] = true
 	}
 	m.curNode = block
 
 	for _, matcher := range m.entries {
 		if matched[matcher.name] {
+			continue
+		}
+		if matcher.mapper == nil {
 			continue
 		}
 

@@ -411,3 +411,67 @@ func TestParseDataSize(t *testing.T) {
 	check("", false, 0)
 	check("-5M", false, 0)
 }
+
+func TestMap_Callback(t *testing.T) {
+	called := map[string]int{}
+
+	cfg := Node{
+		Children: []Node{
+			{
+				Name: "test2",
+				Args: []string{"a"},
+			},
+			{
+				Name: "test3",
+				Args: []string{"b"},
+			},
+			{
+				Name: "test3",
+				Args: []string{"b"},
+			},
+			{
+				Name: "unrelated",
+				Args: []string{"b"},
+			},
+		},
+	}
+	m := NewMap(nil, &cfg)
+	m.Callback("test1", func(*Map, *Node) error {
+		called["test1"]++
+		return nil
+	})
+	m.Callback("test2", func(_ *Map, n *Node) error {
+		called["test2"]++
+		if n.Args[0] != "a" {
+			t.Fatal("Wrong n.Args[0] for test2:", n.Args[0])
+		}
+		return nil
+	})
+	m.Callback("test3", func(_ *Map, n *Node) error {
+		called["test3"]++
+		if n.Args[0] != "b" {
+			t.Fatal("Wrong n.Args[0] for test2:", n.Args[0])
+		}
+		return nil
+	})
+	m.AllowUnknown()
+	others, err := m.Process()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+	if called["test1"] != 0 {
+		t.Error("test1 CB was called when it should not")
+	}
+	if called["test2"] != 1 {
+		t.Error("test2 CB was not called when it should")
+	}
+	if called["test3"] != 2 {
+		t.Error("test3 CB was not called when it should")
+	}
+	if len(others) != 1 {
+		t.Error("Wrong amount of unmatched directives")
+	}
+	if others[0].Name != "unrelated" {
+		t.Error("Wrong directive returned in unmatched slice:", others[0].Name)
+	}
+}
