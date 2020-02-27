@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/module"
@@ -27,7 +28,7 @@ const testMsg = "From: <sender@example.org>\r\n" +
 	"\r\n" +
 	"foobar\r\n"
 
-func testEndpoint(t *testing.T, modName string, auth module.PlainAuth, tgt module.DeliveryTarget, checks []module.Check, cfg []config.Node) *Endpoint {
+func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt module.DeliveryTarget, checks []module.Check, cfg []config.Node) *Endpoint {
 	t.Helper()
 
 	mod, err := New(modName, []string{"tcp://127.0.0.1:" + testPort})
@@ -63,7 +64,7 @@ func testEndpoint(t *testing.T, modName string, auth module.PlainAuth, tgt modul
 		},
 	)
 
-	if auth != nil {
+	if authMod != nil {
 		cfg = append(cfg, config.Node{
 			Name: "auth",
 			Args: []string{"dummy"},
@@ -77,7 +78,10 @@ func testEndpoint(t *testing.T, modName string, auth module.PlainAuth, tgt modul
 		t.Fatal(err)
 	}
 
-	endp.Auth = auth
+	endp.saslAuth = auth.SASLAuth{
+		Log:   testutils.Logger(t, "smtp/saslauth"),
+		Plain: []module.PlainAuth{authMod},
+	}
 
 	endp.pipeline = msgpipeline.Mock(tgt, checks)
 	endp.pipeline.Hostname = "mx.example.com"

@@ -14,3 +14,21 @@ var (
 type PlainAuth interface {
 	AuthPlain(username, password string) ([]string, error)
 }
+
+// SASLProvider is the interface implemented by modules and used by protocol
+// endpoints that rely on SASL framework for user authentication.
+//
+// This actual interface is only used to indicate that the module is a
+// SASL-compatible auth. provider. For each unique value returned by
+// SASLMechanisms, the module object should also implement the coresponding
+// mechanism-specific interface.
+//
+// *Rationale*: There is no single generic interface that would handle any SASL
+// mechanism while permiting the use of a credentials set estabilished once with
+// multiple auth. providers at once.
+//
+// Per-mechanism interfaces:
+// - PLAIN => PlainAuth
+type SASLProvider interface {
+	SASLMechanisms() []string
+}

@@ -5,8 +5,8 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 )
 
-func AuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
-	var provider module.PlainAuth
+func SASLAuthDirective(m *config.Map, node *config.Node) (interface{}, error) {
+	var provider module.SASLProvider
 	if err := ModuleFromNode(node.Args, node, m.Globals, &provider); err != nil {
 		return nil, err
 	}

@@ -19,8 +19,10 @@ import (
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/go-message"
 	_ "github.com/emersion/go-message/charset"
+	"github.com/emersion/go-sasl"
 	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
 	"github.com/foxcpp/go-imap-sql/children"
+	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/config"
 	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/log"
@@ -32,12 +34,13 @@ type Endpoint struct {
 	addrs     []string
 	serv      *imapserver.Server
 	listeners []net.Listener
-	Auth      module.PlainAuth
 	Store     module.Storage
 
 	updater     imapbackend.BackendUpdater
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
+
+	saslAuth auth.SASLAuth
 
 	Log log.Logger
 }
@@ -46,6 +49,9 @@ func New(modName string, addrs []string) (module.Module, error) {
 	endp := &Endpoint{
 		addrs: addrs,
 		Log:   log.Logger{Name: "imap"},
+		saslAuth: auth.SASLAuth{
+			Log: log.Logger{Name: "imap/saslauth"},
+		},
 	}
 
 	return endp, nil
@@ -58,7 +64,9 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		ioErrors     bool
 	)
 
-	cfg.Custom("auth", false, true, nil, modconfig.AuthDirective, &endp.Auth)
+	cfg.Callback("auth", func(m *config.Map, node *config.Node) error {
+		return endp.saslAuth.AddProvider(m, node)
+	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
@@ -111,6 +119,14 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 	if err := endp.enableExtensions(); err != nil {
 		return err
+	}
+
+	for _, mech := range endp.saslAuth.SASLMechanisms() {
+		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
+			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(ids []string) error {
+				return endp.openAccount(c, ids)
+			})
+		})
 	}
 
 	if err := endp.setupListeners(addresses); err != nil {
@@ -183,8 +199,19 @@ func (endp *Endpoint) Close() error {
 	return nil
 }
 
+func (endp *Endpoint) openAccount(c imapserver.Conn, identities []string) error {
+	u, err := endp.Store.GetOrCreateUser(identities[0])
+	if err != nil {
+		return err
+	}
+	ctx := c.Context()
+	ctx.State = imap.AuthenticatedState
+	ctx.User = u
+	return nil
+}
+
 func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
-	_, err := endp.Auth.AuthPlain(username, password)
+	_, err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
