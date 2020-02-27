@@ -592,50 +592,64 @@ modify {
 }
 ```
 
-# File-based recipient aliases (alias_file)
+# Recipient aliases (alias_file)
 
 This module replaces recipient addresses based on the mapping defined
-in the text file. Currently, only 1:1 mappings are supported (that is, it is
-not possible to specify multiple replacements for a single address).
+by the table module (maddy-tables(5)). Currently, only 1:1 mappings are
+supported (that is, it is not possible to specify multiple replacement for a
+single address).
 
 Matching is done case-insensitively. Name without '@' matches local-part with
 any domain. Replacements are not applied recursively.
-Rules for handling of quoted local-part are a bit tricky, see examples in the
-File format section below.
 
 Recipients are not deduplicated after expansion, so message may be delivered
 multiple times to a single recipient. However, used delivery target can apply
-such deduplication (sql does it).
+such deduplication (sql storage does it).
+
+Definition:
+```
+alias <table> [table arguments] {
+	[extended table config]
+}
+
+alias <top-level block name> {
+	table <table> [table arguments]
+}
+```
+
+Use examples:
+```
+modify {
+	alias file_map /etc/maddy/aliases
+}
+```
 
 ```
-alias_file {
-    files ...
+file_map shared_table {
+	file /etc/maddy/aliases
+}
+
+# ...
+modify {
+	alias &shared_table
 }
 ```
 
 ## Arguments
 
-Specify the list of files to load aliases from.
+When used inline, arguments and the configuration block is processes as inline
+config for a table module.
 
-## Auto-reloading
+## Table usage
 
-The module checks used files for changes every 15 seconds, if changes are
-detected - all files are reloaded.
+The address is normalized before lookup (Punycode in domain-part is decoded,
+Unicode is normalized to NFC, the whole string is case-folded).
 
-No changes are applied if any file contains syntax errors.
+Then first the full address is looked up, if there is a replacement, it is
+used. Otherwise, only local-part is looked up and only it is replaced in the
+original address.
 
-## File format
-
-Similar to the format used by popular MTAs.
-
-- Entry in the format:
-  ```
-  name: value
-  ```
-
-- Lines starting with '#', empty and whitespace-only lines are ignored.
-
-Example:
+Here are examples using syntax of file_map table module:
 ```
 # Replaces dog@domain to cat@domain for any domain.
 dog: cat
@@ -658,28 +672,6 @@ postmaster: foobar@example.org
 # Not allowed:
 #postmaster: foobar
 ```
-
-Following features usually implemented in other MTAs are currently not
-supported in maddy:
-```
-cat: |command
-cat: /file
-cat: :include:file
-```
-
-## Configuration directives
-
-*Syntax*: debug _boolean_ ++
-*Default*: global directive value
-
-Enable verbose log.
-
-*Syntax*: files _path..._ ++
-*Default*: not specified
-
-List of files to read aliases from. Non-existent files are skipped.
-
-At least one file should be specified either via directive or arguments.
 
 # System command filter (command)
 

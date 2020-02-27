@@ -23,7 +23,7 @@ file_table {
 This module build string-string mapping from a text file.
 
 File is reloaded every 15 seconds if there are any changes (detected using
-modification time).
+modification time). No changes are applied if file contains syntax errors.
 
 ## Syntax
 
