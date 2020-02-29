@@ -143,12 +143,14 @@ func TestFileReload_Broken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// This delay is somehow important. Not sure why.
-	time.Sleep(250 * time.Millisecond)
-
-	if err := ioutil.WriteFile(f.Name(), []byte(":"), os.ModePerm); err != nil {
+	f2, err := os.OpenFile(f.Name(), os.O_WRONLY|os.O_SYNC, os.ModePerm)
+	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := f2.WriteString(":"); err != nil {
+		t.Fatal(err)
+	}
+	defer f2.Close()
 
 	time.Sleep(3 * reloadInterval)
 
