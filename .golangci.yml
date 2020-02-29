@@ -18,4 +18,3 @@ linters:
   - nakedret
   - dogsled
   - godox
-  - dupl

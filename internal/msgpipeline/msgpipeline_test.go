@@ -124,37 +124,36 @@ func TestMsgPipeline_PerRcptAddrSplit(t *testing.T) {
 	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
 	d := MsgPipeline{
 		msgpipelineCfg: msgpipelineCfg{
-			perSource: map[string]sourceBlock{
-				"sender1@example.com": {
-					perRcpt: map[string]*rcptBlock{},
-					defaultRcpt: &rcptBlock{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				perRcpt: map[string]*rcptBlock{
+					"rcpt1@example.com": {
 						targets: []module.DeliveryTarget{&target1},
 					},
-				},
-				"sender2@example.com": {
-					perRcpt: map[string]*rcptBlock{},
-					defaultRcpt: &rcptBlock{
+					"rcpt2@example.com": {
 						targets: []module.DeliveryTarget{&target2},
 					},
 				},
+				defaultRcpt: &rcptBlock{
+					rejectErr: errors.New("defaultRcpt block used"),
+				},
 			},
-			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
 		},
 		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
-	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
-	testutils.DoTestDelivery(t, &d, "sender2@example.com", []string{"rcpt@example.com"})
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com"})
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt2@example.com"})
 
 	if len(target1.Messages) != 1 {
 		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 1, len(target1.Messages))
 	}
-	testutils.CheckTestMessage(t, &target1, 0, "sender1@example.com", []string{"rcpt@example.com"})
+	testutils.CheckTestMessage(t, &target1, 0, "sender@example.com", []string{"rcpt1@example.com"})
 
 	if len(target2.Messages) != 1 {
 		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 1, len(target2.Messages))
 	}
-	testutils.CheckTestMessage(t, &target2, 0, "sender2@example.com", []string{"rcpt@example.com"})
+	testutils.CheckTestMessage(t, &target2, 0, "sender@example.com", []string{"rcpt2@example.com"})
 }
 
 func TestMsgPipeline_PerRcptDomainSplit(t *testing.T) {
