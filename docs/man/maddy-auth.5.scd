@@ -163,11 +163,11 @@ plain_separate {
 ```
 
 How it works:
-1. Initial username input is normalized using PRECIS UsernameCaseMapped profile.
-2. Each table specified with the 'user' directive looked up using normalized
-   username. If match is not found in any table, authentication fails.
-3. Each authentication provider specified with the 'pass' directive is tried.
-   If authentication with all providers fails - an error is returned.
+- Initial username input is normalized using PRECIS UsernameCaseMapped profile.
+- Each table specified with the 'user' directive looked up using normalized
+	username. If match is not found in any table, authentication fails.
+- Each authentication provider specified with the 'pass' directive is tried.
+	If authentication with all providers fails - an error is returned.
 
 ## Configuration directives
 
