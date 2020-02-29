@@ -1,4 +1,4 @@
-package maps
+package table
 
 import (
 	"bufio"
