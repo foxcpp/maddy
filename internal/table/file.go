@@ -77,7 +77,7 @@ func (f *File) Init(cfg *config.Map) error {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		f.log.Printf("ignoring non-existent file: %s", file)
+		f.log.Printf("ignoring non-existent file: %s", f.file)
 	}
 
 	go f.reloader()
