@@ -145,9 +145,40 @@ chown root:maddy /usr/lib/maddy/maddy-shadow-helper
 chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
 ```
 
+# Table-based password hash lookup (pass_table)
+
+This module implements username:password authentication by looking up the
+password hash using a table module (maddy-tables(5)). It can be used
+to load user credentials from text file (file_table module) or SQL query
+(sql_table module).
+
+
+Definition:
+```
+pass_table <table> [table arguments] {
+	[additional table config]
+}
+```
+
+Example, read username:password pair from the text file:
+```
+smtp tcp://0.0.0.0:587 {
+	auth pass_table file_table /etc/maddy/smtp_passwd
+	...
+}
+```
+
+## Password hashes
+
+pass_table expects the used table to contain certain structured values with
+hash algorithm name, salt and other necessary parameters.
+
+You should use 'maddyctl hash' command to generate suitable values.
+See 'maddyctl hash --help' for details.
+
 # Separate username and password lookup (plain_separate)
 
-This modules implements authentication using username:password pairs but can
+This module implements authentication using username:password pairs but can
 use zero or more "table modules" (maddy-tables(5)) and one or more
 authentication providers to verify credentials.
 

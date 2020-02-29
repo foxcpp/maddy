@@ -558,6 +558,42 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:   "hash",
+			Usage:  "Generate password hashes for use with pass_table",
+			Action: hashCommand,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "password,p",
+					Usage: "Use `PASSWORD instead of reading password from stdin\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
+				},
+				cli.StringFlag{
+					Name:  "hash",
+					Usage: "Use specified hash algorithm",
+					Value: "bcrypt",
+				},
+				cli.IntFlag{
+					Name:  "bcrypt-cost",
+					Usage: "Specify bcrypt cost value",
+					Value: bcrypt.DefaultCost,
+				},
+				cli.IntFlag{
+					Name:  "argon2-time",
+					Usage: "Time factor for Argon2id",
+					Value: 3,
+				},
+				cli.IntFlag{
+					Name:  "argon2-memory",
+					Usage: "Memory in KiB to use for Argon2id",
+					Value: 1024,
+				},
+				cli.IntFlag{
+					Name:  "argon2-threads",
+					Usage: "Threads to use for Argon2id",
+					Value: 1,
+				},
+			},
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {

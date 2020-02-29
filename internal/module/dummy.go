@@ -19,6 +19,10 @@ func (d *Dummy) AuthPlain(username, _ string) error {
 	return nil
 }
 
+func (d *Dummy) Lookup(_ string) (string, bool, error) {
+	return "", false, nil
+}
+
 func (d *Dummy) Name() string {
 	return "dummy"
 }

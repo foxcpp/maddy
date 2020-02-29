@@ -21,6 +21,8 @@ import (
 	// Import packages for side-effect of module registration.
 	_ "github.com/foxcpp/maddy/internal/auth/external"
 	_ "github.com/foxcpp/maddy/internal/auth/pam"
+	_ "github.com/foxcpp/maddy/internal/auth/pass_table"
+	_ "github.com/foxcpp/maddy/internal/auth/plain_separate"
 	_ "github.com/foxcpp/maddy/internal/auth/shadow"
 	_ "github.com/foxcpp/maddy/internal/check/command"
 	_ "github.com/foxcpp/maddy/internal/check/dkim"
@@ -33,6 +35,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/modify"
 	_ "github.com/foxcpp/maddy/internal/modify/dkim"
 	_ "github.com/foxcpp/maddy/internal/storage/sql"
+	_ "github.com/foxcpp/maddy/internal/table"
 	_ "github.com/foxcpp/maddy/internal/target/queue"
 	_ "github.com/foxcpp/maddy/internal/target/remote"
 	_ "github.com/foxcpp/maddy/internal/target/smtp_downstream"
