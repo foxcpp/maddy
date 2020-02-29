@@ -162,7 +162,6 @@ func (c *Conn) log(direction rune, f string, args ...interface{}) {
 		} else {
 			msg.WriteString(strconv.Itoa(remote.Port))
 		}
-
 	} else {
 		msg.WriteString(local.String())
 	}

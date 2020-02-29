@@ -44,7 +44,6 @@ func TestFuture_Wait(t *testing.T) {
 	if err.Error() != "1" {
 		t.Error("Wrong error:", err)
 	}
-
 }
 
 func TestFuture_WaitCtx(t *testing.T) {

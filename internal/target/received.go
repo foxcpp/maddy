@@ -29,7 +29,6 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 
 	if !msgMeta.DontTraceSender && (strings.Contains(msgMeta.Conn.Proto, "SMTP") ||
 		strings.Contains(msgMeta.Conn.Proto, "LMTP")) {
-
 		// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
 		hostname, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, msgMeta.Conn.Hostname)
 		if err == nil {
@@ -49,7 +48,6 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 						builder.WriteRune(' ')
 					}
 				}
-
 			}
 			builder.WriteRune('[')
 			builder.WriteString(tcpAddr.IP.String())

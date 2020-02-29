@@ -158,7 +158,6 @@ func (c *mtastsPolicy) StartUpdater() {
 }
 
 func (c *mtastsPolicy) updater() {
-
 	// Always update cache on start-up since we may have been down for some
 	// time.
 	c.log.Debugln("updating MTA-STS cache...")

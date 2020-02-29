@@ -257,7 +257,6 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 			}
 		}
 		return s.errorRes(err, res, cmd.String())
-
 	}
 	return res
 }

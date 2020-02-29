@@ -39,7 +39,6 @@ func TestTimeWheelAdd_Ordering(t *testing.T) {
 	slot := <-called
 	if val, _ := slot.Value.(int); val != 1 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
-
 	}
 	slot = <-called
 	if val, _ := slot.Value.(int); val != 2 {
@@ -63,7 +62,6 @@ func TestTimeWheelAdd_Restart(t *testing.T) {
 	slot := <-called
 	if val, _ := slot.Value.(int); val != 2 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
-
 	}
 	slot = <-called
 	if val, _ := slot.Value.(int); val != 1 {
@@ -87,7 +85,6 @@ func TestTimeWheelAdd_MissingGotoBug(t *testing.T) {
 	slot := <-called
 	if val, _ := slot.Value.(int); val != 2 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
-
 	}
 }
 

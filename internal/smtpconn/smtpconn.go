@@ -106,7 +106,6 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 				Reason:       reason,
 				Misc:         misc,
 			}
-
 		}
 		return &exterrors.SMTPError{
 			Code:         450,

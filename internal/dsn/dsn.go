@@ -187,7 +187,6 @@ func GenerateDSN(utf8 bool, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsIn
 		return textproto.Header{}, err
 	}
 	return reportHeader, writeHeader(utf8, partWriter, failedHeader)
-
 }
 
 func writeHeader(utf8 bool, w *textproto.MultipartWriter, header textproto.Header) error {

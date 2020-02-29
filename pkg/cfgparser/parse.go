@@ -68,7 +68,6 @@ func validateNodeName(s string) error {
 		if !unicode.IsLetter(ch) &&
 			!unicode.IsDigit(ch) &&
 			!allowedPunct[ch] {
-
 			return errors.New("character not allowed in directive name: " + string(ch))
 		}
 	}
