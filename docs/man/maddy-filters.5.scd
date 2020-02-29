@@ -592,7 +592,7 @@ modify {
 }
 ```
 
-# Recipient aliases (alias_file)
+# Recipient aliases (alias)
 
 This module replaces recipient addresses based on the mapping defined
 by the table module (maddy-tables(5)). Currently, only 1:1 mappings are
