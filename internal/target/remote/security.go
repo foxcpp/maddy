@@ -764,7 +764,7 @@ func (l localPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TL
 	return TLSNone, nil
 }
 
-func policyFromNode(debugLog bool, m *config.Map, node *config.Node) (Policy, error) {
+func policyFromNode(debugLog bool, m *config.Map, node config.Node) (Policy, error) {
 	if len(node.Args) != 0 {
 		return nil, m.MatchErr("no arguments allowed")
 	}

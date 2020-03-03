@@ -18,7 +18,7 @@ import (
 )
 
 type TLSConfig struct {
-	initCfg *Node
+	initCfg Node
 
 	l   sync.Mutex
 	cfg *tls.Config
@@ -33,7 +33,7 @@ func (cfg *TLSConfig) Get() *tls.Config {
 	return cfg.cfg.Clone()
 }
 
-func (cfg *TLSConfig) read(m *Map, node *Node, generateSelfSig bool) error {
+func (cfg *TLSConfig) read(m *Map, node Node, generateSelfSig bool) error {
 	cfg.l.Lock()
 	defer cfg.l.Unlock()
 
@@ -79,7 +79,7 @@ func (cfg *TLSConfig) read(m *Map, node *Node, generateSelfSig bool) error {
 //
 // The returned value is *tls.TLSConfig with GetConfigForClient set.
 // If the 'tls off' is used, returned value is nil.
-func TLSDirective(m *Map, node *Node) (interface{}, error) {
+func TLSDirective(m *Map, node Node) (interface{}, error) {
 	cfg := TLSConfig{
 		initCfg: node,
 	}
@@ -115,7 +115,7 @@ func TLSDirective(m *Map, node *Node) (interface{}, error) {
 	}, nil
 }
 
-func readTLSBlock(m *Map, blockNode *Node) (*tls.Config, error) {
+func readTLSBlock(m *Map, blockNode Node) (*tls.Config, error) {
 	cfg := tls.Config{
 		PreferServerCipherSuites: true,
 	}

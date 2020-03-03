@@ -245,7 +245,7 @@ func ensureDirectoryWritable(path string) error {
 }
 
 func moduleMain(cfg []config.Node) error {
-	globals := config.NewMap(nil, &config.Node{Children: cfg})
+	globals := config.NewMap(nil, config.Node{Children: cfg})
 	globals.String("state_dir", false, false, DefaultStateDirectory, &config.StateDirectory)
 	globals.String("runtime_dir", false, false, DefaultRuntimeDirectory, &config.RuntimeDirectory)
 	globals.String("hostname", false, false, "", nil)
@@ -322,11 +322,11 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 
 		factory := module.Get(modName)
 		if factory == nil {
-			return nil, config.NodeErr(&block, "unknown module or global directive: %s", modName)
+			return nil, config.NodeErr(block, "unknown module or global directive: %s", modName)
 		}
 
 		if module.HasInstance(instName) {
-			return nil, config.NodeErr(&block, "config block named %s already exists", instName)
+			return nil, config.NodeErr(block, "config block named %s already exists", instName)
 		}
 
 		inst, err := factory(modName, instName, modAliases, nil)
@@ -335,10 +335,10 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 		}
 
 		block := block
-		module.RegisterInstance(inst, config.NewMap(globals, &block))
+		module.RegisterInstance(inst, config.NewMap(globals, block))
 		for _, alias := range modAliases {
 			if module.HasInstance(alias) {
-				return nil, config.NodeErr(&block, "config block named %s already exists", alias)
+				return nil, config.NodeErr(block, "config block named %s already exists", alias)
 			}
 			module.RegisterAlias(alias, instName)
 		}
@@ -350,7 +350,7 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 	}
 
 	for _, endp := range endpoints {
-		if err := endp.instance.Init(config.NewMap(globals, &endp.cfg)); err != nil {
+		if err := endp.instance.Init(config.NewMap(globals, endp.cfg)); err != nil {
 			return nil, err
 		}
 

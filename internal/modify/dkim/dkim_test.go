@@ -29,7 +29,7 @@ func newTestModifier(t *testing.T, dir, keyAlgo string) *Modifier {
 	m := mod.(*Modifier)
 	m.log = testutils.Logger(t, m.Name())
 
-	err = m.Init(config.NewMap(nil, &config.Node{
+	err = m.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "domain",

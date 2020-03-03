@@ -7,18 +7,19 @@ import (
 	"strings"
 )
 
-func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
+func (ctx *parseContext) expandImports(node Node, expansionDepth int) (Node, error) {
 	// Leave nil value as is because it is used as non-existent block indicator
 	// (vs empty slice - empty block).
 	if node.Children == nil {
-		return nil
+		return node, nil
 	}
 
 	newChildrens := make([]Node, 0, len(node.Children))
 	containsImports := false
 	for _, child := range node.Children {
-		if err := ctx.expandImports(&child, expansionDepth+1); err != nil {
-			return err
+		child, err := ctx.expandImports(child, expansionDepth+1)
+		if err != nil {
+			return node, err
 		}
 
 		if child.Name == "import" {
@@ -26,17 +27,17 @@ func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
 			// use line information from import directive that is likely
 			// caused this error.
 			if expansionDepth > 255 {
-				return NodeErr(&child, "hit import expansion limit")
+				return node, NodeErr(child, "hit import expansion limit")
 			}
 
 			containsImports = true
 			if len(child.Args) != 1 {
-				return ctx.Err("import directive requires exactly 1 argument")
+				return node, ctx.Err("import directive requires exactly 1 argument")
 			}
 
-			subtree, err := ctx.resolveImport(&child, child.Args[0], expansionDepth)
+			subtree, err := ctx.resolveImport(child, child.Args[0], expansionDepth)
 			if err != nil {
-				return err
+				return node, err
 			}
 
 			newChildrens = append(newChildrens, subtree...)
@@ -49,15 +50,13 @@ func (ctx *parseContext) expandImports(node *Node, expansionDepth int) error {
 	// We need to do another pass to expand any imports added by snippets we
 	// just expanded.
 	if containsImports {
-		if err := ctx.expandImports(node, expansionDepth+1); err != nil {
-			return err
-		}
+		return ctx.expandImports(node, expansionDepth+1)
 	}
 
-	return nil
+	return node, nil
 }
 
-func (ctx *parseContext) resolveImport(node *Node, name string, expansionDepth int) ([]Node, error) {
+func (ctx *parseContext) resolveImport(node Node, name string, expansionDepth int) ([]Node, error) {
 	if subtree, ok := ctx.snippets[name]; ok {
 		return subtree, nil
 	}

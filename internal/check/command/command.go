@@ -99,20 +99,20 @@ func (c *Check) Init(cfg *config.Map) error {
 		switch node.Name {
 		case "code":
 			if len(node.Args) < 2 {
-				return config.NodeErr(&node, "at least two arguments are required: <code> <action>")
+				return config.NodeErr(node, "at least two arguments are required: <code> <action>")
 			}
 			exitCode, err := strconv.Atoi(node.Args[0])
 			if err != nil {
-				return config.NodeErr(&node, "%v", err)
+				return config.NodeErr(node, "%v", err)
 			}
 			action, err := check.ParseActionDirective(node.Args[1:])
 			if err != nil {
-				return config.NodeErr(&node, "%v", err)
+				return config.NodeErr(node, "%v", err)
 			}
 
 			c.actions[exitCode] = action
 		default:
-			return config.NodeErr(&node, "unexpected directive: %v", node.Name)
+			return config.NodeErr(node, "unexpected directive: %v", node.Name)
 		}
 	}
 

@@ -151,7 +151,7 @@ func (ctx *parseContext) readNode() (Node, error) {
 	return node, nil
 }
 
-func NodeErr(node *Node, f string, args ...interface{}) error {
+func NodeErr(node Node, f string, args ...interface{}) error {
 	if node.File == "" {
 		return fmt.Errorf(f, args...)
 	}
@@ -314,7 +314,8 @@ func readTree(r io.Reader, location string, expansionDepth int) (nodes []Node, s
 		return root.Children, ctx.snippets, ctx.macros, ctx.Err("unexpected EOF when looking for }")
 	}
 
-	if err := ctx.expandImports(&root, expansionDepth); err != nil {
+	root, err = ctx.expandImports(root, expansionDepth)
+	if err != nil {
 		return root.Children, ctx.snippets, ctx.macros, err
 	}
 

@@ -8,7 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func sqlFromCfgBlock(root, node *config.Node) (*sql.Storage, error) {
+func sqlFromCfgBlock(root, node config.Node) (*sql.Storage, error) {
 	// Global variables relevant for sql module.
 	globals := config.NewMap(nil, root)
 	// None now...

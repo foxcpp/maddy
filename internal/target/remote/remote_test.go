@@ -49,7 +49,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 }
 
 func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(context.Context, string) (*mtasts.Policy, error)) *mtastsPolicy {
-	p, err := NewMTASTSPolicy(&mockdns.Resolver{Zones: zones}, false, config.NewMap(nil, &config.Node{
+	p, err := NewMTASTSPolicy(&mockdns.Resolver{Zones: zones}, false, config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "cache",
@@ -68,7 +68,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 }
 
 func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
-	p, err := NewSTSPreloadPolicy(false, http.DefaultClient, download, config.NewMap(nil, &config.Node{
+	p, err := NewSTSPreloadPolicy(false, http.DefaultClient, download, config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "source",

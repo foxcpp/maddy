@@ -128,7 +128,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 		// Default is "no policies" to follow the principles of explicit
 		// configuration (if it is not requested - it is not done).
 		return nil, nil
-	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
 		// Module instance is &PolicyGroup.
 		var p *PolicyGroup
 		if err := modconfig.GroupFromNode("mx_auth", n.Args, n, cfg.Globals, &p); err != nil {
@@ -138,7 +138,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	}, &rt.policies)
 	cfg.Custom("limits", false, false, func() (interface{}, error) {
 		return &limits.Group{}, nil
-	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
 		var g *limits.Group
 		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {
 			return nil, err

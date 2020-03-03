@@ -12,7 +12,7 @@ func replaceAddrFromArgs(t *testing.T, modName, from, to string) *replaceAddr {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Init(&config.Map{Block: &config.Node{}}); err != nil {
+	if err := r.Init(&config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
 	}
 

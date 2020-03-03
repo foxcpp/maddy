@@ -71,7 +71,7 @@ func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt mo
 		})
 	}
 
-	err = endp.Init(config.NewMap(nil, &config.Node{
+	err = endp.Init(config.NewMap(nil, config.Node{
 		Children: cfg,
 	}))
 	if err != nil {

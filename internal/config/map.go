@@ -17,10 +17,10 @@ type matcher struct {
 	required      bool
 	inheritGlobal bool
 	defaultVal    func() (interface{}, error)
-	mapper        func(*Map, *Node) (interface{}, error)
+	mapper        func(*Map, Node) (interface{}, error)
 	store         *reflect.Value
 
-	customCallback func(*Map, *Node) error
+	customCallback func(*Map, Node) error
 }
 
 func (m *matcher) assign(val interface{}) {
@@ -50,10 +50,10 @@ type Map struct {
 	// Values used by Process as default values if inheritGlobal is true.
 	Globals map[string]interface{}
 	// Config block used by Process.
-	Block *Node
+	Block Node
 }
 
-func NewMap(globals map[string]interface{}, block *Node) *Map {
+func NewMap(globals map[string]interface{}, block Node) *Map {
 	return &Map{Globals: globals, Block: block}
 }
 
@@ -62,7 +62,7 @@ func NewMap(globals map[string]interface{}, block *Node) *Map {
 // processed config node.
 func (m *Map) MatchErr(format string, args ...interface{}) error {
 	if m.curNode != nil {
-		return parser.NodeErr(m.curNode, format, args...)
+		return parser.NodeErr(*m.curNode, format, args...)
 	} else {
 		return fmt.Errorf(format, args...)
 	}
@@ -83,7 +83,7 @@ func (m *Map) AllowUnknown() {
 func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []string, defaultVal []string, store *[]string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare a block here")
 		}
@@ -116,7 +116,7 @@ func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []stri
 func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, defaultVal string, store *string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare a block here")
 		}
@@ -148,7 +148,7 @@ func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, 
 func (m *Map) Duration(name string, inheritGlobal, required bool, defaultVal time.Duration, store *time.Duration) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare block here")
 		}
@@ -234,7 +234,7 @@ func ParseDataSize(s string) (int, error) {
 func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int, store *int) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare block here")
 		}
@@ -262,7 +262,7 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, m.MatchErr("can't declare block here")
 		}
@@ -295,7 +295,7 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal []string, store *[]string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) == 0 {
 			return nil, m.MatchErr("expected at least one argument")
 		}
@@ -317,7 +317,7 @@ func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal [
 func (m *Map) String(name string, inheritGlobal, required bool, defaultVal string, store *string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -339,7 +339,7 @@ func (m *Map) String(name string, inheritGlobal, required bool, defaultVal strin
 func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, store *int) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -365,7 +365,7 @@ func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, sto
 func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, store *uint) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -391,7 +391,7 @@ func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, s
 func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32, store *int32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -417,7 +417,7 @@ func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32,
 func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint32, store *uint32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -443,7 +443,7 @@ func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint3
 func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64, store *int64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -469,7 +469,7 @@ func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64,
 func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint64, store *uint64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -495,7 +495,7 @@ func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint6
 func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float64, store *float64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node *Node) (interface{}, error) {
+	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 1 argument")
 		}
@@ -530,7 +530,7 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 //
 // store is where the value returned by mapper should be stored. Can be nil
 // (value will be saved only in Map.Values).
-func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func() (interface{}, error), mapper func(*Map, *Node) (interface{}, error), store interface{}) {
+func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func() (interface{}, error), mapper func(*Map, Node) (interface{}, error), store interface{}) {
 	if m.entries == nil {
 		m.entries = make(map[string]matcher)
 	}
@@ -566,7 +566,7 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 //
 // It is intended to permit multiple independent values of directive with
 // implementation-defined handling.
-func (m *Map) Callback(name string, mapper func(*Map, *Node) error) {
+func (m *Map) Callback(name string, mapper func(*Map, Node) error) {
 	if m.entries == nil {
 		m.entries = make(map[string]matcher)
 	}
@@ -588,14 +588,12 @@ func (m *Map) Process() (unknown []Node, err error) {
 }
 
 // Process maps variables from global configuration and block passed in arguments.
-func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknown []Node, err error) {
+func (m *Map) ProcessWith(globalCfg map[string]interface{}, block Node) (unknown []Node, err error) {
 	unknown = make([]Node, 0, len(block.Children))
 	matched := make(map[string]bool)
 	m.Values = make(map[string]interface{})
 
 	for _, subnode := range block.Children {
-		// Copy node in case mapper wants to keep it for something.
-		subnode := subnode
 		m.curNode = &subnode
 
 		matcher, ok := m.entries[subnode.Name]
@@ -608,7 +606,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 		}
 
 		if matcher.customCallback != nil {
-			if err := matcher.customCallback(m, &subnode); err != nil {
+			if err := matcher.customCallback(m, subnode); err != nil {
 				return nil, err
 			}
 			matched[subnode.Name] = true
@@ -620,7 +618,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 		}
 		matched[subnode.Name] = true
 
-		val, err := matcher.mapper(m, &subnode)
+		val, err := matcher.mapper(m, subnode)
 		if err != nil {
 			return nil, err
 		}
@@ -629,7 +627,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block *Node) (unknow
 			matcher.assign(val)
 		}
 	}
-	m.curNode = block
+	m.curNode = &block
 
 	for _, matcher := range m.entries {
 		if matched[matcher.name] {

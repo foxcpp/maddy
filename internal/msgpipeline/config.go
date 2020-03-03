@@ -31,14 +31,14 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			globalChecks, err := parseChecksGroup(globals, &node)
+			globalChecks, err := parseChecksGroup(globals, node)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
 
 			cfg.globalChecks = append(cfg.globalChecks, globalChecks...)
 		case "modify":
-			globalModifiers, err := parseModifiersGroup(globals, &node)
+			globalModifiers, err := parseModifiersGroup(globals, node)
 			if err != nil {
 				return msgpipelineCfg{}, err
 			}
@@ -51,7 +51,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			}
 
 			if len(node.Args) == 0 {
-				return msgpipelineCfg{}, config.NodeErr(&node, "expected at least one source matching rule")
+				return msgpipelineCfg{}, config.NodeErr(node, "expected at least one source matching rule")
 			}
 
 			for _, rule := range node.Args {
@@ -61,22 +61,22 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 					rule, err = dns.ForLookup(rule)
 				}
 				if err != nil {
-					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source match rule: %v: %v", rule, err)
+					return msgpipelineCfg{}, config.NodeErr(node, "invalid source match rule: %v: %v", rule, err)
 				}
 
 				if !validMatchRule(rule) {
-					return msgpipelineCfg{}, config.NodeErr(&node, "invalid source routing rule: %v", rule)
+					return msgpipelineCfg{}, config.NodeErr(node, "invalid source routing rule: %v", rule)
 				}
 
 				if _, ok := cfg.perSource[rule]; ok {
-					return msgpipelineCfg{}, config.NodeErr(&node, "duplicate source routing rule: %v", rule)
+					return msgpipelineCfg{}, config.NodeErr(node, "duplicate source routing rule: %v", rule)
 				}
 
 				cfg.perSource[rule] = srcBlock
 			}
 		case "default_source":
 			if defaultSrcRaw != nil {
-				return msgpipelineCfg{}, config.NodeErr(&node, "duplicate 'default_source' block")
+				return msgpipelineCfg{}, config.NodeErr(node, "duplicate 'default_source' block")
 			}
 			defaultSrcRaw = node.Children
 		case "dmarc":
@@ -87,7 +87,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 					cfg.doDMARC = true
 				case "no":
 				default:
-					return msgpipelineCfg{}, config.NodeErr(&node, "invalid argument for dmarc")
+					return msgpipelineCfg{}, config.NodeErr(node, "invalid argument for dmarc")
 				}
 			case 0:
 				cfg.doDMARC = true
@@ -95,7 +95,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 		case "deliver_to", "reroute", "destination", "default_destination", "reject":
 			othersRaw = append(othersRaw, node)
 		default:
-			return msgpipelineCfg{}, config.NodeErr(&node, "unknown pipeline directive: %s", node.Name)
+			return msgpipelineCfg{}, config.NodeErr(node, "unknown pipeline directive: %s", node.Name)
 		}
 	}
 
@@ -108,11 +108,11 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 		cfg.defaultSource, err = parseMsgPipelineSrcCfg(globals, othersRaw)
 		return cfg, err
 	} else if len(othersRaw) != 0 {
-		return msgpipelineCfg{}, config.NodeErr(&othersRaw[0], "can't put handling directives together with source rules, did you mean to put it into 'default_source' block or into all source blocks?")
+		return msgpipelineCfg{}, config.NodeErr(othersRaw[0], "can't put handling directives together with source rules, did you mean to put it into 'default_source' block or into all source blocks?")
 	}
 
 	if len(defaultSrcRaw) == 0 {
-		return msgpipelineCfg{}, config.NodeErr(&nodes[0], "missing or empty default source block, use default_source { reject } to reject messages")
+		return msgpipelineCfg{}, config.NodeErr(nodes[0], "missing or empty default source block, use default_source { reject } to reject messages")
 	}
 
 	var err error
@@ -129,14 +129,14 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			checks, err := parseChecksGroup(globals, &node)
+			checks, err := parseChecksGroup(globals, node)
 			if err != nil {
 				return sourceBlock{}, err
 			}
 
 			src.checks = append(src.checks, checks...)
 		case "modify":
-			modifiers, err := parseModifiersGroup(globals, &node)
+			modifiers, err := parseModifiersGroup(globals, node)
 			if err != nil {
 				return sourceBlock{}, err
 			}
@@ -149,7 +149,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 			}
 
 			if len(node.Args) == 0 {
-				return sourceBlock{}, config.NodeErr(&node, "expected at least one destination match rule")
+				return sourceBlock{}, config.NodeErr(node, "expected at least one destination match rule")
 			}
 
 			for _, rule := range node.Args {
@@ -159,28 +159,28 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 					rule, err = dns.ForLookup(rule)
 				}
 				if err != nil {
-					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v: %v", rule, err)
+					return sourceBlock{}, config.NodeErr(node, "invalid destination match rule: %v: %v", rule, err)
 				}
 
 				if !validMatchRule(rule) {
-					return sourceBlock{}, config.NodeErr(&node, "invalid destination match rule: %v", rule)
+					return sourceBlock{}, config.NodeErr(node, "invalid destination match rule: %v", rule)
 				}
 
 				if _, ok := src.perRcpt[rule]; ok {
-					return sourceBlock{}, config.NodeErr(&node, "duplicate destination match rule: %v", rule)
+					return sourceBlock{}, config.NodeErr(node, "duplicate destination match rule: %v", rule)
 				}
 
 				src.perRcpt[rule] = rcptBlock
 			}
 		case "default_destination":
 			if defaultRcptRaw != nil {
-				return sourceBlock{}, config.NodeErr(&node, "duplicate 'default_destination' block")
+				return sourceBlock{}, config.NodeErr(node, "duplicate 'default_destination' block")
 			}
 			defaultRcptRaw = node.Children
 		case "deliver_to", "reroute", "reject":
 			othersRaw = append(othersRaw, node)
 		default:
-			return sourceBlock{}, config.NodeErr(&node, "unknown pipeline directive: %s", node.Name)
+			return sourceBlock{}, config.NodeErr(node, "unknown pipeline directive: %s", node.Name)
 		}
 	}
 
@@ -193,11 +193,11 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 		src.defaultRcpt, err = parseMsgPipelineRcptCfg(globals, othersRaw)
 		return src, err
 	} else if len(othersRaw) != 0 {
-		return sourceBlock{}, config.NodeErr(&othersRaw[0], "can't put handling directives together with destination rules, did you mean to put it into 'default' block or into all recipient blocks?")
+		return sourceBlock{}, config.NodeErr(othersRaw[0], "can't put handling directives together with destination rules, did you mean to put it into 'default' block or into all recipient blocks?")
 	}
 
 	if len(defaultRcptRaw) == 0 {
-		return sourceBlock{}, config.NodeErr(&nodes[0], "missing or empty default destination block, use default_destination { reject } to reject messages")
+		return sourceBlock{}, config.NodeErr(nodes[0], "missing or empty default destination block, use default_destination { reject } to reject messages")
 	}
 
 	var err error
@@ -210,14 +210,14 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 	for _, node := range nodes {
 		switch node.Name {
 		case "check":
-			checks, err := parseChecksGroup(globals, &node)
+			checks, err := parseChecksGroup(globals, node)
 			if err != nil {
 				return nil, err
 			}
 
 			rcpt.checks = append(rcpt.checks, checks...)
 		case "modify":
-			modifiers, err := parseModifiersGroup(globals, &node)
+			modifiers, err := parseModifiersGroup(globals, node)
 			if err != nil {
 				return nil, err
 			}
@@ -225,13 +225,13 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 			rcpt.modifiers.Modifiers = append(rcpt.modifiers.Modifiers, modifiers.Modifiers...)
 		case "deliver_to":
 			if rcpt.rejectErr != nil {
-				return nil, config.NodeErr(&node, "can't use 'reject' and 'deliver_to' together")
+				return nil, config.NodeErr(node, "can't use 'reject' and 'deliver_to' together")
 			}
 
 			if len(node.Args) == 0 {
-				return nil, config.NodeErr(&node, "required at least one argument")
+				return nil, config.NodeErr(node, "required at least one argument")
 			}
-			mod, err := modconfig.DeliveryTarget(globals, node.Args, &node)
+			mod, err := modconfig.DeliveryTarget(globals, node.Args, node)
 			if err != nil {
 				return nil, err
 			}
@@ -239,7 +239,7 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 			rcpt.targets = append(rcpt.targets, mod)
 		case "reroute":
 			if len(node.Children) == 0 {
-				return nil, config.NodeErr(&node, "missing or empty reroute pipeline configuration")
+				return nil, config.NodeErr(node, "missing or empty reroute pipeline configuration")
 			}
 
 			pipeline, err := New(globals, node.Children)
@@ -250,7 +250,7 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 			rcpt.targets = append(rcpt.targets, pipeline)
 		case "reject":
 			if len(rcpt.targets) != 0 {
-				return nil, config.NodeErr(&node, "can't use 'reject' and 'deliver_to' together")
+				return nil, config.NodeErr(node, "can't use 'reject' and 'deliver_to' together")
 			}
 
 			var err error
@@ -259,7 +259,7 @@ func parseMsgPipelineRcptCfg(globals map[string]interface{}, nodes []config.Node
 				return nil, err
 			}
 		default:
-			return nil, config.NodeErr(&node, "invalid directive")
+			return nil, config.NodeErr(node, "invalid directive")
 		}
 	}
 	return &rcpt, nil
@@ -274,29 +274,29 @@ func parseRejectDirective(node config.Node) (*exterrors.SMTPError, error) {
 	case 3:
 		msg = node.Args[2]
 		if msg == "" {
-			return nil, config.NodeErr(&node, "message can't be empty")
+			return nil, config.NodeErr(node, "message can't be empty")
 		}
 		fallthrough
 	case 2:
 		enchCode, err = parseEnhancedCode(node.Args[1])
 		if err != nil {
-			return nil, config.NodeErr(&node, "%v", err)
+			return nil, config.NodeErr(node, "%v", err)
 		}
 		if enchCode[0] != 4 && enchCode[0] != 5 {
-			return nil, config.NodeErr(&node, "enhanced code should use either 4 or 5 as a first number")
+			return nil, config.NodeErr(node, "enhanced code should use either 4 or 5 as a first number")
 		}
 		fallthrough
 	case 1:
 		code, err = strconv.Atoi(node.Args[0])
 		if err != nil {
-			return nil, config.NodeErr(&node, "invalid error code integer: %v", err)
+			return nil, config.NodeErr(node, "invalid error code integer: %v", err)
 		}
 		if (code/100) != 4 && (code/100) != 5 {
-			return nil, config.NodeErr(&node, "error code should start with either 4 or 5")
+			return nil, config.NodeErr(node, "error code should start with either 4 or 5")
 		}
 	case 0:
 	default:
-		return nil, config.NodeErr(&node, "invalid count of arguments")
+		return nil, config.NodeErr(node, "invalid count of arguments")
 	}
 	return &exterrors.SMTPError{
 		Code:         code,
@@ -323,7 +323,7 @@ func parseEnhancedCode(s string) (exterrors.EnhancedCode, error) {
 	return code, nil
 }
 
-func parseChecksGroup(globals map[string]interface{}, node *config.Node) ([]module.Check, error) {
+func parseChecksGroup(globals map[string]interface{}, node config.Node) ([]module.Check, error) {
 	var cg *CheckGroup
 	err := modconfig.GroupFromNode("checks", node.Args, node, globals, &cg)
 	if err != nil {
@@ -332,7 +332,7 @@ func parseChecksGroup(globals map[string]interface{}, node *config.Node) ([]modu
 	return cg.L, nil
 }
 
-func parseModifiersGroup(globals map[string]interface{}, node *config.Node) (modify.Group, error) {
+func parseModifiersGroup(globals map[string]interface{}, node config.Node) (modify.Group, error) {
 	// Module object is *modify.Group, not modify.Group.
 	var mg *modify.Group
 	err := modconfig.GroupFromNode("modifiers", node.Args, node, globals, &mg)

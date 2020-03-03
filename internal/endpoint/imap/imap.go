@@ -64,7 +64,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		ioErrors     bool
 	)
 
-	cfg.Callback("auth", func(m *config.Map, node *config.Node) error {
+	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)

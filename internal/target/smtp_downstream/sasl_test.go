@@ -10,7 +10,7 @@ import (
 )
 
 func testSaslFactory(t *testing.T, args ...string) saslClientFactory {
-	factory, err := saslAuthDirective(&config.Map{}, &config.Node{
+	factory, err := saslAuthDirective(&config.Map{}, config.Node{
 		Name: "auth",
 		Args: args,
 	})

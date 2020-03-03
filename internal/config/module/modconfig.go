@@ -35,7 +35,7 @@ func createInlineModule(modName string, args []string) (module.Module, error) {
 // Init function to make it look like it is defined at top-level.
 //
 // args must contain at least one argument, otherwise initInlineModule panics.
-func initInlineModule(modObj module.Module, globals map[string]interface{}, block *config.Node) error {
+func initInlineModule(modObj module.Module, globals map[string]interface{}, block config.Node) error {
 	err := modObj.Init(config.NewMap(globals, block))
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func initInlineModule(modObj module.Module, globals map[string]interface{}, bloc
 // pointer (e.g. it implements all necessary interfaces) and stores it if everything is fine.
 // If module object doesn't implement necessary module interfaces - error is returned.
 // If modObj is not a pointer, ModuleFromNode panics.
-func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]interface{}, moduleIface interface{}) error {
+func ModuleFromNode(args []string, inlineCfg config.Node, globals map[string]interface{}, moduleIface interface{}) error {
 	if len(args) == 0 {
 		return parser.NodeErr(inlineCfg, "at least one argument is required")
 	}
@@ -118,7 +118,7 @@ func ModuleFromNode(args []string, inlineCfg *config.Node, globals map[string]in
 // GroupFromNode provides a special kind of ModuleFromNode syntax that allows
 // to omit the module name when defining inine configuration.  If it is not
 // present, name in defaultModule is used.
-func GroupFromNode(defaultModule string, args []string, inlineCfg *config.Node, globals map[string]interface{}, moduleIface interface{}) error {
+func GroupFromNode(defaultModule string, args []string, inlineCfg config.Node, globals map[string]interface{}, moduleIface interface{}) error {
 	if len(args) == 0 {
 		args = append(args, defaultModule)
 	}

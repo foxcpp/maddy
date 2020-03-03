@@ -17,7 +17,7 @@ func TestSQL(t *testing.T) {
 		t.Fatal("Module create failed:", err)
 	}
 	tbl := mod.(*SQL)
-	err = tbl.Init(config.NewMap(nil, &config.Node{
+	err = tbl.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "driver",

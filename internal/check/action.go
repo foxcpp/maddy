@@ -38,7 +38,7 @@ type FailAction struct {
 	ReasonOverride *exterrors.SMTPError
 }
 
-func FailActionDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func FailActionDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Children) != 0 {
 		return nil, m.MatchErr("can't declare block here")
 	}

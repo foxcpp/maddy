@@ -14,7 +14,7 @@ func TestAuth_AuthPlain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = mod.Init(config.NewMap(nil, &config.Node{
+	err = mod.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{},
 	}))
 	if err != nil {

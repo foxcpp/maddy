@@ -38,7 +38,7 @@ func (pg *PolicyGroup) Init(cfg *config.Map) error {
 			return cfg.MatchErr("duplicate policy block: %v", block.Name)
 		}
 
-		policy, err := policyFromNode(debugLog, cfg, &block)
+		policy, err := policyFromNode(debugLog, cfg, block)
 		if err != nil {
 			return err
 		}

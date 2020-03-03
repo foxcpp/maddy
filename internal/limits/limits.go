@@ -44,7 +44,7 @@ func (g *Group) Init(cfg *config.Map) error {
 
 	for _, child := range cfg.Block.Children {
 		if len(child.Args) < 1 {
-			return config.NodeErr(&child, "at least two arguments are required")
+			return config.NodeErr(child, "at least two arguments are required")
 		}
 
 		var (
@@ -57,7 +57,7 @@ func (g *Group) Init(cfg *config.Map) error {
 		case "concurrency":
 			ctor, err = concurrencyCtor(cfg, child.Args[1:])
 		default:
-			return config.NodeErr(&child, "unknown limit kind: %v", kind)
+			return config.NodeErr(child, "unknown limit kind: %v", kind)
 		}
 		if err != nil {
 			return err
@@ -73,7 +73,7 @@ func (g *Group) Init(cfg *config.Map) error {
 		case "destination":
 			destL = append(destL, ctor)
 		default:
-			return config.NodeErr(&child, "unknown limit scope: %v", scope)
+			return config.NodeErr(child, "unknown limit scope: %v", scope)
 		}
 	}
 

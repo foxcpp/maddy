@@ -22,7 +22,7 @@ type logOut struct {
 	log.Output
 }
 
-func logOutput(m *config.Map, node *config.Node) (interface{}, error) {
+func logOutput(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, m.MatchErr("expected at least 1 argument")
 	}

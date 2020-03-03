@@ -16,7 +16,7 @@ func TestDownstreamDelivery_EHLO_ALabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mod.Init(config.NewMap(nil, &config.Node{
+	if err := mod.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "hostname",

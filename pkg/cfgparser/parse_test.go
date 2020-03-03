@@ -569,10 +569,10 @@ var cases = []struct {
 	},
 }
 
-func printTree(t *testing.T, root *Node, indent int) {
+func printTree(t *testing.T, root Node, indent int) {
 	t.Log(strings.Repeat(" ", indent)+root.Name, root.Args)
 	for _, child := range root.Children {
-		t.Log(&child, indent+1)
+		t.Log(child, indent+1)
 	}
 }
 
@@ -581,6 +581,7 @@ func TestRead(t *testing.T) {
 	os.Setenv("TESTING_VARIABLE2", "ABC2 DEF2")
 
 	for _, case_ := range cases {
+		case_ := case_
 		t.Run(case_.name, func(t *testing.T) {
 			tree, err := Read(strings.NewReader(case_.cfg), "test")
 			if !case_.fail && err != nil {
@@ -593,7 +594,7 @@ func TestRead(t *testing.T) {
 					t.Log("got tree:")
 					t.Logf("%+v", tree)
 					for _, node := range tree {
-						printTree(t, &node, 0)
+						printTree(t, node, 0)
 					}
 					t.Fail()
 					return
@@ -606,12 +607,12 @@ func TestRead(t *testing.T) {
 				t.Log("expected:")
 				t.Logf("%+#v", case_.tree)
 				for _, node := range case_.tree {
-					printTree(t, &node, 0)
+					printTree(t, node, 0)
 				}
 				t.Log("actual:")
 				t.Logf("%+#v", tree)
 				for _, node := range tree {
-					printTree(t, &node, 0)
+					printTree(t, node, 0)
 				}
 				t.Fail()
 			}

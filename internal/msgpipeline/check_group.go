@@ -24,7 +24,7 @@ func (cg *CheckGroup) Init(cfg *config.Map) error {
 		// Prevent aliasing TODO: Get rid of pointer arguments for config.Node.
 		node := node
 
-		chk, err := modconfig.MessageCheck(cfg.Globals, append([]string{node.Name}, node.Args...), &node)
+		chk, err := modconfig.MessageCheck(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {
 			return err
 		}

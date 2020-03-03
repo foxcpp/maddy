@@ -10,7 +10,7 @@ type (
 	Node = parser.Node
 )
 
-func NodeErr(node *Node, f string, args ...interface{}) error {
+func NodeErr(node Node, f string, args ...interface{}) error {
 	if node.File == "" {
 		return fmt.Errorf(f, args...)
 	}

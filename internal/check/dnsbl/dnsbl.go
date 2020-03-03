@@ -102,7 +102,7 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 		responseNets []string
 	)
 
-	cfg := config.NewMap(nil, &node)
+	cfg := config.NewMap(nil, node)
 	cfg.Bool("client_ipv4", false, defaultBL.ClientIPv4, &listCfg.ClientIPv4)
 	cfg.Bool("client_ipv6", false, defaultBL.ClientIPv4, &listCfg.ClientIPv6)
 	cfg.Bool("ehlo", false, defaultBL.EHLO, &listCfg.EHLO)

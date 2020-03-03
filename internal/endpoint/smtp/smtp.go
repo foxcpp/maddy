@@ -147,7 +147,7 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 	}
 }
 
-func bufferModeDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) < 1 {
 		return nil, m.MatchErr("at least one argument required")
 	}
@@ -204,7 +204,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		ioDebug bool
 	)
 
-	cfg.Callback("auth", func(m *config.Map, node *config.Node) error {
+	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.String("hostname", true, true, "", &endp.hostname)
@@ -228,7 +228,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
 	cfg.Custom("limits", false, false, func() (interface{}, error) {
 		return &limits.Group{}, nil
-	}, func(cfg *config.Map, n *config.Node) (interface{}, error) {
+	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
 		var g *limits.Group
 		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {
 			return nil, err

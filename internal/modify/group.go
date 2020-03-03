@@ -30,7 +30,7 @@ func (g *Group) Init(cfg *config.Map) error {
 		// Prevent aliasing TODO: Get rid of pointer arguments for config.Node.
 		node := node
 
-		mod, err := modconfig.MsgModifier(cfg.Globals, append([]string{node.Name}, node.Args...), &node)
+		mod, err := modconfig.MsgModifier(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {
 			return err
 		}

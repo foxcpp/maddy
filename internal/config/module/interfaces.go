@@ -5,7 +5,7 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 )
 
-func MessageCheck(globals map[string]interface{}, args []string, block *config.Node) (module.Check, error) {
+func MessageCheck(globals map[string]interface{}, args []string, block config.Node) (module.Check, error) {
 	var check module.Check
 	if err := ModuleFromNode(args, block, globals, &check); err != nil {
 		return nil, err
@@ -23,11 +23,11 @@ func MessageCheck(globals map[string]interface{}, args []string, block *config.N
 //
 // Note that if used configuration structure lacks directive_name before mod_name - this function
 // should not be used (call DeliveryTarget directly).
-func DeliveryDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func DeliveryDirective(m *config.Map, node config.Node) (interface{}, error) {
 	return DeliveryTarget(m.Globals, node.Args, node)
 }
 
-func DeliveryTarget(globals map[string]interface{}, args []string, block *config.Node) (module.DeliveryTarget, error) {
+func DeliveryTarget(globals map[string]interface{}, args []string, block config.Node) (module.DeliveryTarget, error) {
 	var target module.DeliveryTarget
 	if err := ModuleFromNode(args, block, globals, &target); err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func DeliveryTarget(globals map[string]interface{}, args []string, block *config
 	return target, nil
 }
 
-func MsgModifier(globals map[string]interface{}, args []string, block *config.Node) (module.Modifier, error) {
+func MsgModifier(globals map[string]interface{}, args []string, block config.Node) (module.Modifier, error) {
 	var check module.Modifier
 	if err := ModuleFromNode(args, block, globals, &check); err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func MsgModifier(globals map[string]interface{}, args []string, block *config.No
 	return check, nil
 }
 
-func StorageDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 	var backend module.Storage
 	if err := ModuleFromNode(node.Args, node, m.Globals, &backend); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func StorageDirective(m *config.Map, node *config.Node) (interface{}, error) {
 	return backend, nil
 }
 
-func TableDirective(m *config.Map, node *config.Node) (interface{}, error) {
+func TableDirective(m *config.Map, node config.Node) (interface{}, error) {
 	var tbl module.Table
 	if err := ModuleFromNode(node.Args, node, m.Globals, &tbl); err != nil {
 		return nil, err

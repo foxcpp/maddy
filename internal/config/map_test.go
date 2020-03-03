@@ -14,10 +14,10 @@ func TestMapProcess(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := ""
-	m.Custom("foo", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -36,10 +36,10 @@ func TestMapProcess_MissingRequired(t *testing.T) {
 		Children: []Node{},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := ""
-	m.Custom("foo", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -54,10 +54,10 @@ func TestMapProcess_InheritGlobal(t *testing.T) {
 		Children: []Node{},
 	}
 
-	m := NewMap(map[string]interface{}{"foo": "bar"}, &cfg)
+	m := NewMap(map[string]interface{}{"foo": "bar"}, cfg)
 
 	foo := ""
-	m.Custom("foo", true, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", true, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -76,10 +76,10 @@ func TestMapProcess_InheritGlobal_MissingRequired(t *testing.T) {
 		Children: []Node{},
 	}
 
-	m := NewMap(map[string]interface{}{}, &cfg)
+	m := NewMap(map[string]interface{}{}, cfg)
 
 	foo := ""
-	m.Custom("foo", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -99,10 +99,10 @@ func TestMapProcess_InheritGlobal_Override(t *testing.T) {
 		},
 	}
 
-	m := NewMap(map[string]interface{}{}, &cfg)
+	m := NewMap(map[string]interface{}{}, cfg)
 
 	foo := ""
-	m.Custom("foo", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -121,12 +121,12 @@ func TestMapProcess_DefaultValue(t *testing.T) {
 		Children: []Node{},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := ""
 	m.Custom("foo", false, false, func() (interface{}, error) {
 		return "bar", nil
-	}, func(_ *Map, n *Node) (interface{}, error) {
+	}, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -145,12 +145,12 @@ func TestMapProcess_InheritGlobal_DefaultValue(t *testing.T) {
 		Children: []Node{},
 	}
 
-	m := NewMap(map[string]interface{}{"foo": "baz"}, &cfg)
+	m := NewMap(map[string]interface{}{"foo": "baz"}, cfg)
 
 	foo := ""
 	m.Custom("foo", true, false, func() (interface{}, error) {
 		return "bar", nil
-	}, func(_ *Map, n *Node) (interface{}, error) {
+	}, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -164,7 +164,7 @@ func TestMapProcess_InheritGlobal_DefaultValue(t *testing.T) {
 	}
 
 	t.Run("no global", func(t *testing.T) {
-		_, err := m.ProcessWith(map[string]interface{}{}, &cfg)
+		_, err := m.ProcessWith(map[string]interface{}{}, cfg)
 		if err != nil {
 			t.Fatalf("Unexpected failure: %v", err)
 		}
@@ -189,10 +189,10 @@ func TestMapProcess_Duplicate(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := ""
-	m.Custom("foo", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("foo", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -216,10 +216,10 @@ func TestMapProcess_Unexpected(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := ""
-	m.Custom("bar", false, true, nil, func(_ *Map, n *Node) (interface{}, error) {
+	m.Custom("bar", false, true, nil, func(_ *Map, n Node) (interface{}, error) {
 		return n.Args[0], nil
 	}, &foo)
 
@@ -254,7 +254,7 @@ func TestMapInt(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := 0
 	m.Int("foo", false, true, 0, &foo)
@@ -279,7 +279,7 @@ func TestMapInt_Invalid(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := 0
 	m.Int("foo", false, true, 0, &foo)
@@ -300,7 +300,7 @@ func TestMapFloat(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := 0.0
 	m.Float("foo", false, true, 0, &foo)
@@ -325,7 +325,7 @@ func TestMapFloat_Invalid(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo := 0.0
 	m.Float("foo", false, true, 0, &foo)
@@ -353,7 +353,7 @@ func TestMapBool(t *testing.T) {
 		},
 	}
 
-	m := NewMap(nil, &cfg)
+	m := NewMap(nil, cfg)
 
 	foo, bar, baz, boo := false, false, false, false
 	m.Bool("foo", false, false, &foo)
@@ -435,19 +435,19 @@ func TestMap_Callback(t *testing.T) {
 			},
 		},
 	}
-	m := NewMap(nil, &cfg)
-	m.Callback("test1", func(*Map, *Node) error {
+	m := NewMap(nil, cfg)
+	m.Callback("test1", func(*Map, Node) error {
 		called["test1"]++
 		return nil
 	})
-	m.Callback("test2", func(_ *Map, n *Node) error {
+	m.Callback("test2", func(_ *Map, n Node) error {
 		called["test2"]++
 		if n.Args[0] != "a" {
 			t.Fatal("Wrong n.Args[0] for test2:", n.Args[0])
 		}
 		return nil
 	})
-	m.Callback("test3", func(_ *Map, n *Node) error {
+	m.Callback("test3", func(_ *Map, n Node) error {
 		called["test3"]++
 		if n.Args[0] != "b" {
 			t.Fatal("Wrong n.Args[0] for test2:", n.Args[0])

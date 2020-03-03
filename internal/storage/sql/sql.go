@@ -219,7 +219,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.StringList("dsn", false, false, store.dsn, &dsn)
 	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
 		return "messages", nil
-	}, func(m *config.Map, node *config.Node) (interface{}, error) {
+	}, func(m *config.Map, node config.Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, m.MatchErr("expected 0 or 1 arguments")
 		}
