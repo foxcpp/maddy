@@ -263,6 +263,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 			continue
 		}
 
+		mech := mech
+
 		endp.serv.EnableAuth(mech, func(c *smtp.Conn) sasl.Server {
 			state := c.State()
 			if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {

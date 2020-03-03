@@ -122,6 +122,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	}
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
+		mech := mech
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
 			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string) error {
 				return endp.openAccount(c, identity)
