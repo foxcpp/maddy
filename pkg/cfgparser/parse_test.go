@@ -276,27 +276,11 @@ var cases = []struct {
 		true,
 	},
 	{
-		// TODO: Should we make it fail?
 		"closing brace in next block header",
 		`a {
 		} b b1`,
-		[]Node{
-			{
-				Name:     "a",
-				Args:     []string{},
-				Children: []Node{},
-				File:     "test",
-				Line:     1,
-			},
-			{
-				Name:     "b",
-				Args:     []string{"b1"},
-				Children: nil,
-				File:     "test",
-				Line:     2,
-			},
-		},
-		false,
+		nil,
+		true,
 	},
 	{
 		"environment variable expansion",

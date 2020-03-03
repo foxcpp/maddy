@@ -120,6 +120,11 @@ func (ctx *parseContext) readNode() (Node, error) {
 
 			node.Args = append(node.Args, ctx.Val())
 		}
+
+		// Continue reading the same Node if the \ was used to escape the newline.
+		// E.g.
+		//   name arg0 arg1 \
+		//	   arg2 arg3
 		if len(node.Args) != 0 && node.Args[len(node.Args)-1] == `\` {
 			last := len(node.Args) - 1
 			node.Args[last] = node.Args[last][:len(node.Args[last])-1]
@@ -197,14 +202,53 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 	// but non-nil Children slice for empty braces.
 	res := []Node{}
 
-	// Refuse to continue is nesting is too big.
 	if ctx.nesting > 255 {
 		return res, ctx.Err("nesting limit reached")
 	}
 
 	ctx.nesting++
 
-	for ctx.Next() {
+	var requireNewLine bool
+	// This loop iterates over logical lines.
+	// Here are some examples, '#' is placed before token where cursor is when
+	// another iteration of this loop starts.
+	//
+	// #a
+	// #a b
+	// #a b {
+	//   #ac aa
+	// #}
+	// #aa bbb bbb \
+	//    ccc ccc
+	// #a b { #ac aa }
+	//
+	// As can be seen by the latest example, sometimes such logical line might
+	// not be terminated by an actual LF character and so this needs to be
+	// handled carefully.
+	//
+	// Note that if the '}' is on the same physical line, it is currently
+	// included as the part of the logical line, that is:
+	// #a b { #ac aa }
+	//        ^------- that's the logical line
+	// #c d
+	// ^--- that's the next logical line
+	// This is handled by the "edge case" branch inside the loop.
+	for {
+		if requireNewLine {
+			if !ctx.NextLine() {
+				// If we can't advance cursor even without Line constraint -
+				// that's EOF.
+				if !ctx.Next() {
+					return res, nil
+				}
+				return res, ctx.Err("newline is required after closing brace")
+			}
+		} else if !ctx.Next() {
+			break
+		}
+
+		requireNewLine = false
+
 		// name arg0 arg1 {
 		//   c0
 		//   c1
@@ -230,6 +274,7 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 		if err != nil {
 			return res, err
 		}
+		requireNewLine = true
 
 		shouldStop := false
 
