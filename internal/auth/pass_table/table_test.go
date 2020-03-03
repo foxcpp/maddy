@@ -10,18 +10,12 @@ import (
 func TestAuth_AuthPlain(t *testing.T) {
 	addSHA256()
 
-	mod, err := New("pass_table", "", nil, nil)
+	mod, err := New("pass_table", "", nil, []string{"dummy"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = mod.Init(config.NewMap(nil, &config.Node{
-		Children: []config.Node{
-			{
-				// We replace it later with our mock.
-				Name: "table",
-				Args: []string{"dummy"},
-			},
-		},
+		Children: []config.Node{},
 	}))
 	if err != nil {
 		t.Fatal(err)
