@@ -35,7 +35,7 @@ func (pg *PolicyGroup) Init(cfg *config.Map) error {
 
 	for _, block := range other {
 		if _, ok := pg.pols[block.Name]; ok {
-			return cfg.MatchErr("duplicate policy block: %v", block.Name)
+			return config.NodeErr(block, "duplicate policy block: %v", block.Name)
 		}
 
 		policy, err := policyFromNode(debugLog, cfg, block)

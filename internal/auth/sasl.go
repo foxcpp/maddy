@@ -104,7 +104,7 @@ func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 	}
 
 	if !hasAny {
-		return m.MatchErr("auth: specified module does not provide any SASL mechanism")
+		return config.NodeErr(node, "auth: specified module does not provide any SASL mechanism")
 	}
 	return nil
 }

@@ -53,9 +53,9 @@ func (g *Group) Init(cfg *config.Map) error {
 		)
 		switch kind := child.Args[0]; kind {
 		case "rate":
-			ctor, err = rateCtor(cfg, child.Args[1:])
+			ctor, err = rateCtor(child, child.Args[1:])
 		case "concurrency":
-			ctor, err = concurrencyCtor(cfg, child.Args[1:])
+			ctor, err = concurrencyCtor(child, child.Args[1:])
 		default:
 			return config.NodeErr(child, "unknown limit kind: %v", kind)
 		}
@@ -111,7 +111,7 @@ func (g *Group) Init(cfg *config.Map) error {
 	return nil
 }
 
-func rateCtor(cfg *config.Map, args []string) (func() limiters.L, error) {
+func rateCtor(node config.Node, args []string) (func() limiters.L, error) {
 	period := 1 * time.Second
 	burst := 0
 
@@ -120,16 +120,16 @@ func rateCtor(cfg *config.Map, args []string) (func() limiters.L, error) {
 		var err error
 		period, err = time.ParseDuration(args[1])
 		if err != nil {
-			return nil, cfg.MatchErr("%v", err)
+			return nil, config.NodeErr(node, "%v", err)
 		}
 	case 1:
 		var err error
 		burst, err = strconv.Atoi(args[0])
 		if err != nil {
-			return nil, cfg.MatchErr("%v", err)
+			return nil, config.NodeErr(node, "%v", err)
 		}
 	case 0:
-		return nil, cfg.MatchErr("at least burst size is needed")
+		return nil, config.NodeErr(node, "at least burst size is needed")
 	}
 
 	return func() limiters.L {
@@ -137,13 +137,13 @@ func rateCtor(cfg *config.Map, args []string) (func() limiters.L, error) {
 	}, nil
 }
 
-func concurrencyCtor(cfg *config.Map, args []string) (func() limiters.L, error) {
+func concurrencyCtor(node config.Node, args []string) (func() limiters.L, error) {
 	if len(args) != 1 {
-		return nil, cfg.MatchErr("max concurrency value is needed")
+		return nil, config.NodeErr(node, "max concurrency value is needed")
 	}
 	max, err := strconv.Atoi(args[0])
 	if err != nil {
-		return nil, cfg.MatchErr("%v", err)
+		return nil, config.NodeErr(node, "%v", err)
 	}
 	return func() limiters.L {
 		return limiters.NewSemaphore(max)

@@ -221,7 +221,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return "messages", nil
 	}, func(m *config.Map, node config.Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 0 or 1 arguments")
+			return nil, config.NodeErr(node, "expected 0 or 1 arguments")
 		}
 		return node.Args[0], nil
 	}, &fsstoreLocation)

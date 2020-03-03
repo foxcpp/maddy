@@ -2,14 +2,11 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
-
-	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 )
 
 type matcher struct {
@@ -38,10 +35,6 @@ func (m *matcher) assign(val interface{}) {
 type Map struct {
 	allowUnknown bool
 
-	// Set to currently processed node when defaultVal or mapper functions are
-	// called.
-	curNode *Node
-
 	// All values saved by Map during processing.
 	Values map[string]interface{}
 
@@ -55,17 +48,6 @@ type Map struct {
 
 func NewMap(globals map[string]interface{}, block Node) *Map {
 	return &Map{Globals: globals, Block: block}
-}
-
-// MatchErr returns error with formatted message, if called from defaultVal or
-// mapper functions - message will be prepended with information about
-// processed config node.
-func (m *Map) MatchErr(format string, args ...interface{}) error {
-	if m.curNode != nil {
-		return parser.NodeErr(*m.curNode, format, args...)
-	} else {
-		return fmt.Errorf(format, args...)
-	}
 }
 
 // AllowUnknown makes config.Map skip unknown configuration directives instead
@@ -85,10 +67,10 @@ func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []stri
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare a block here")
+			return nil, NodeErr(node, "can't declare a block here")
 		}
 		if len(node.Args) == 0 {
-			return nil, m.MatchErr("expected at least one argument")
+			return nil, NodeErr(node, "expected at least one argument")
 		}
 
 		for _, arg := range node.Args {
@@ -99,7 +81,7 @@ func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []stri
 				}
 			}
 			if !isAllowed {
-				return nil, m.MatchErr("invalid argument, valid values are: %v", allowed)
+				return nil, NodeErr(node, "invalid argument, valid values are: %v", allowed)
 			}
 		}
 
@@ -118,10 +100,10 @@ func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, 
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare a block here")
+			return nil, NodeErr(node, "can't declare a block here")
 		}
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected exactly one argument")
+			return nil, NodeErr(node, "expected exactly one argument")
 		}
 
 		for _, str := range allowed {
@@ -130,7 +112,7 @@ func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, 
 			}
 		}
 
-		return nil, m.MatchErr("invalid argument, valid values are: %v", allowed)
+		return nil, NodeErr(node, "invalid argument, valid values are: %v", allowed)
 	}, store)
 }
 
@@ -150,20 +132,20 @@ func (m *Map) Duration(name string, inheritGlobal, required bool, defaultVal tim
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 		if len(node.Args) == 0 {
-			return nil, m.MatchErr("at least one argument is required")
+			return nil, NodeErr(node, "at least one argument is required")
 		}
 
 		durationStr := strings.Join(node.Args, "")
 		dur, err := time.ParseDuration(durationStr)
 		if err != nil {
-			return nil, m.MatchErr("%v", err)
+			return nil, NodeErr(node, "%v", err)
 		}
 
 		if dur < 0 {
-			return nil, m.MatchErr("duration must not be negative")
+			return nil, NodeErr(node, "duration must not be negative")
 		}
 
 		return dur, nil
@@ -236,16 +218,16 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 		if len(node.Args) == 0 {
-			return nil, m.MatchErr("at least one argument is required")
+			return nil, NodeErr(node, "at least one argument is required")
 		}
 
 		durationStr := strings.Join(node.Args, " ")
 		dur, err := ParseDataSize(durationStr)
 		if err != nil {
-			return nil, m.MatchErr("%v", err)
+			return nil, NodeErr(node, "%v", err)
 		}
 
 		return dur, nil
@@ -264,14 +246,14 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		if len(node.Args) == 0 {
 			return true, nil
 		}
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected exactly 1 argument")
+			return nil, NodeErr(node, "expected exactly 1 argument")
 		}
 
 		switch strings.ToLower(node.Args[0]) {
@@ -280,7 +262,7 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 		case "0", "false", "off", "no":
 			return false, nil
 		}
-		return nil, m.MatchErr("bool argument should be 'yes' or 'no'")
+		return nil, NodeErr(node, "bool argument should be 'yes' or 'no'")
 	}, store)
 }
 
@@ -297,10 +279,10 @@ func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal [
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) == 0 {
-			return nil, m.MatchErr("expected at least one argument")
+			return nil, NodeErr(node, "expected at least one argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		return node.Args, nil
@@ -319,10 +301,10 @@ func (m *Map) String(name string, inheritGlobal, required bool, defaultVal strin
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		return node.Args[0], nil
@@ -341,15 +323,15 @@ func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, sto
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.Atoi(node.Args[0])
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return i, nil
 	}, store)
@@ -367,15 +349,15 @@ func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, s
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.ParseUint(node.Args[0], 10, 32)
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return uint(i), nil
 	}, store)
@@ -393,15 +375,15 @@ func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32,
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.ParseInt(node.Args[0], 10, 32)
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return int32(i), nil
 	}, store)
@@ -419,15 +401,15 @@ func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint3
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.ParseUint(node.Args[0], 10, 32)
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return uint32(i), nil
 	}, store)
@@ -445,15 +427,15 @@ func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64,
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.ParseInt(node.Args[0], 10, 64)
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return i, nil
 	}, store)
@@ -471,15 +453,15 @@ func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint6
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 		if len(node.Children) != 0 {
-			return nil, m.MatchErr("can't declare block here")
+			return nil, NodeErr(node, "can't declare block here")
 		}
 
 		i, err := strconv.ParseUint(node.Args[0], 10, 64)
 		if err != nil {
-			return nil, m.MatchErr("invalid integer: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid integer: %s", node.Args[0])
 		}
 		return i, nil
 	}, store)
@@ -497,12 +479,12 @@ func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float6
 		return defaultVal, nil
 	}, func(m *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
-			return nil, m.MatchErr("expected 1 argument")
+			return nil, NodeErr(node, "expected 1 argument")
 		}
 
 		f, err := strconv.ParseFloat(node.Args[0], 64)
 		if err != nil {
-			return nil, m.MatchErr("invalid float: %s", node.Args[0])
+			return nil, NodeErr(node, "invalid float: %s", node.Args[0])
 		}
 		return f, nil
 	}, store)
@@ -594,12 +576,10 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block Node) (unknown
 	m.Values = make(map[string]interface{})
 
 	for _, subnode := range block.Children {
-		m.curNode = &subnode
-
 		matcher, ok := m.entries[subnode.Name]
 		if !ok {
 			if !m.allowUnknown {
-				return nil, m.MatchErr("unexpected directive: %s", subnode.Name)
+				return nil, NodeErr(subnode, "unexpected directive: %s", subnode.Name)
 			}
 			unknown = append(unknown, subnode)
 			continue
@@ -614,7 +594,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block Node) (unknown
 		}
 
 		if matched[subnode.Name] {
-			return nil, m.MatchErr("duplicate directive: %s", subnode.Name)
+			return nil, NodeErr(subnode, "duplicate directive: %s", subnode.Name)
 		}
 		matched[subnode.Name] = true
 
@@ -627,7 +607,6 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block Node) (unknown
 			matcher.assign(val)
 		}
 	}
-	m.curNode = &block
 
 	for _, matcher := range m.entries {
 		if matched[matcher.name] {
@@ -651,7 +630,7 @@ func (m *Map) ProcessWith(globalCfg map[string]interface{}, block Node) (unknown
 				return nil, err
 			}
 		} else {
-			return nil, m.MatchErr("missing required directive: %s", matcher.name)
+			return nil, NodeErr(block, "missing required directive: %s", matcher.name)
 		}
 
 		// If we put zero values into map then code that checks globalCfg

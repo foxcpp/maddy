@@ -24,10 +24,10 @@ type logOut struct {
 
 func logOutput(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
-		return nil, m.MatchErr("expected at least 1 argument")
+		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
 	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
+		return nil, config.NodeErr(node, "can't declare block here")
 	}
 
 	return LogOutputOption(node.Args)

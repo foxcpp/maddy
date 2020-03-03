@@ -60,7 +60,7 @@ func (cfg *TLSConfig) read(m *Map, node Node, generateSelfSig bool) error {
 			return nil
 		default:
 			log.Println(node.Name, node.Args)
-			return m.MatchErr("unexpected argument (%s), want 'off' or 'self_signed'", node.Args[0])
+			return NodeErr(node, "unexpected argument (%s), want 'off' or 'self_signed'", node.Args[0])
 		}
 	case 2:
 		tlsCfg, err := readTLSBlock(m, node)
@@ -70,7 +70,7 @@ func (cfg *TLSConfig) read(m *Map, node Node, generateSelfSig bool) error {
 		cfg.cfg = tlsCfg
 		return nil
 	default:
-		return m.MatchErr("expected 1 or 2 arguments")
+		return NodeErr(node, "expected 1 or 2 arguments")
 	}
 }
 
@@ -124,7 +124,7 @@ func readTLSBlock(m *Map, blockNode Node) (*tls.Config, error) {
 	var tlsVersions [2]uint16
 
 	if len(blockNode.Args) != 2 {
-		return nil, m.MatchErr("two arguments required")
+		return nil, NodeErr(blockNode, "two arguments required")
 	}
 	certPath := blockNode.Args[0]
 	keyPath := blockNode.Args[1]

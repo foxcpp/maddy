@@ -40,12 +40,12 @@ type FailAction struct {
 
 func FailActionDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Children) != 0 {
-		return nil, m.MatchErr("can't declare block here")
+		return nil, config.NodeErr(node, "can't declare block here")
 	}
 
 	val, err := ParseActionDirective(node.Args)
 	if err != nil {
-		return nil, m.MatchErr("%v", err)
+		return nil, config.NodeErr(node, "%v", err)
 	}
 	return val, nil
 }

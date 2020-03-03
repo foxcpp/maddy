@@ -766,7 +766,7 @@ func (l localPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TL
 
 func policyFromNode(debugLog bool, m *config.Map, node config.Node) (Policy, error) {
 	if len(node.Args) != 0 {
-		return nil, m.MatchErr("no arguments allowed")
+		return nil, config.NodeErr(node, "no arguments allowed")
 	}
 
 	var (
@@ -778,12 +778,12 @@ func policyFromNode(debugLog bool, m *config.Map, node config.Node) (Policy, err
 		policy, err = NewMTASTSPolicy(net.DefaultResolver, log.DefaultLogger.Debug, config.NewMap(m.Globals, node))
 	case "dane":
 		if node.Children != nil {
-			return nil, m.MatchErr("policy offers no additional configuration")
+			return nil, config.NodeErr(node, "policy offers no additional configuration")
 		}
 		policy = NewDANEPolicy(debugLog)
 	case "dnssec":
 		if node.Children != nil {
-			return nil, m.MatchErr("policy offers no additional configuration")
+			return nil, config.NodeErr(node, "policy offers no additional configuration")
 		}
 		policy = &dnssecPolicy{}
 	case "sts_preload":
@@ -792,7 +792,7 @@ func policyFromNode(debugLog bool, m *config.Map, node config.Node) (Policy, err
 	case "local_policy":
 		policy, err = NewLocalPolicy(config.NewMap(m.Globals, node))
 	default:
-		return nil, m.MatchErr("unknown policy module: %v", node.Name)
+		return nil, config.NodeErr(node, "unknown policy module: %v", node.Name)
 	}
 	if err != nil {
 		return nil, err

@@ -149,12 +149,12 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 
 func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) < 1 {
-		return nil, m.MatchErr("at least one argument required")
+		return nil, config.NodeErr(node, "at least one argument required")
 	}
 	switch node.Args[0] {
 	case "ram":
 		if len(node.Args) > 1 {
-			return nil, m.MatchErr("no additional arguments for 'ram' mode")
+			return nil, config.NodeErr(node, "no additional arguments for 'ram' mode")
 		}
 		return buffer.BufferInMemory, nil
 	case "fs":
@@ -168,7 +168,7 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 				return buffer.BufferInFile(r, path)
 			}, nil
 		default:
-			return nil, m.MatchErr("too many arguments for 'fs' mode")
+			return nil, config.NodeErr(node, "too many arguments for 'fs' mode")
 		}
 	case "auto":
 		path := filepath.Join(config.StateDirectory, "buffer")
@@ -185,16 +185,16 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 			var err error
 			maxSize, err = config.ParseDataSize(node.Args[1])
 			if err != nil {
-				return nil, m.MatchErr("%v", err)
+				return nil, config.NodeErr(node, "%v", err)
 			}
 			fallthrough
 		case 1:
 			return autoBufferMode(maxSize, path), nil
 		default:
-			return nil, m.MatchErr("too many arguments for 'auto' mode")
+			return nil, config.NodeErr(node, "too many arguments for 'auto' mode")
 		}
 	default:
-		return nil, m.MatchErr("unknown buffer mode: %v", node.Args[0])
+		return nil, config.NodeErr(node, "unknown buffer mode: %v", node.Args[0])
 	}
 }
 
