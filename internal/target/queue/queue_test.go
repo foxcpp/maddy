@@ -231,12 +231,6 @@ func TestQueueDelivery(t *testing.T) {
 
 	testutils.DoTestDelivery(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
 
-	// This is far from being a proper blackbox testing.
-	// But I can't come up with a better way to inspect the Queue state.
-	// This probably will be improved when bounce messages will be implemented.
-	// For now, this is a dirty hack. Close the Queue and inspect serialized state.
-	// FIXME.
-
 	// Wait for the delivery to complete and stop processing.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	q.Close()

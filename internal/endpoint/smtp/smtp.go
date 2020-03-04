@@ -257,7 +257,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		}
 	}
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		// TODO: The code below lacks handling to set AuthPassword. Don't
+		// The code below lacks handling to set AuthPassword. Don't
 		// override sasl.Plain handler so Login() will be called as usual.
 		if mech == sasl.Plain {
 			continue
@@ -336,7 +336,7 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
-		// TODO: Update fail2ban filters.
+		// TODO(GH #208): Update fail2ban filters
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
 		return nil, errors.New("Invalid credentials")
 	}

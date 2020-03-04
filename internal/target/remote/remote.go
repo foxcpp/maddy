@@ -188,7 +188,6 @@ type remoteDelivery struct {
 }
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	// TODO: Consider using sync.Pool?
 	policies := make([]DeliveryPolicy, 0, len(rt.policies))
 	for _, p := range rt.policies {
 		policies = append(policies, p.Start(msgMeta))

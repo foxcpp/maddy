@@ -277,7 +277,7 @@ var (
 
 	// Minimal time between preload list update attempts.
 	//
-	// This is adjusted for preloadUpdateGrace so we will the chance to make 10
+	// This is adjusted for preloadUpdateGrace so we will have the chance to make 10
 	// attempts to update list before it expires.
 	preloadUpdateCooldown = 30 * time.Second
 )
@@ -352,14 +352,11 @@ func (p *stsPreloadPolicy) load(client *http.Client, listDownload FuncPreloadLis
 	case sourcePath == "eff":
 		src = preload.STARTTLSEverywhere
 		fallthrough
-	case strings.HasPrefix(sourcePath, "http://"):
-		// XXX: Only for testing, remove later.
-		fallthrough
 	case strings.HasPrefix(sourcePath, "https://"):
 		// Download list using HTTPS.
-		// TODO: Cache on disk and update it asynchronously to reduce start-up
+		// TODO(GH #207): Cache on disk and update it asynchronously to reduce start-up
 		// time. This will also reduce persistent attacker ability to prevent
-		// list (re-)discovery.
+		// list (re-)discovery
 		p.log.DebugMsg("downloading list", "uri", sourcePath)
 
 		l, err = listDownload(client, src)
@@ -390,7 +387,7 @@ func (p *stsPreloadPolicy) updater() {
 		if updateDelay <= 0 {
 			updateDelay = preloadUpdateCooldown
 		}
-		// TODO: Increase update delay for multiple failures.
+		// TODO(GH #210): Increase update delay for multiple failures.
 
 		t := time.NewTimer(updateDelay)
 

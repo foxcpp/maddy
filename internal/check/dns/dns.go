@@ -122,6 +122,19 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 		}
 	}
 
+	for _, mx := range srcMx {
+		if mx.Host == "." {
+			return module.CheckResult{
+				Reason: &exterrors.SMTPError{
+					Code:         501,
+					EnhancedCode: exterrors.EnhancedCode{5, 7, 27},
+					Message:      "Domain in MAIL FROM has null MX record",
+					CheckName:    "require_mx_record",
+				},
+			}
+		}
+	}
+
 	return module.CheckResult{}
 }
 

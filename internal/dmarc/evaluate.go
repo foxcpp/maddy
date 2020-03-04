@@ -201,7 +201,7 @@ func isAligned(fromDomain, authDomain string, mode AlignmentMode) bool {
 }
 
 func ExtractFromDomain(hdr textproto.Header) (string, error) {
-	// TODO: Add textproto.Header.Count method.
+	// TODO(GH emersion/go-message#75): Add textproto.Header.Count method.
 	var firstFrom string
 	for fields := hdr.FieldsByKey("From"); fields.Next(); {
 		if firstFrom == "" {

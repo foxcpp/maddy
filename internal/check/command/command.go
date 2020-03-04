@@ -313,8 +313,7 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	// TODO: It is not possible to distinguish different commands.
-	defer trace.StartRegion(ctx, "command/CheckConnection").End()
+	defer trace.StartRegion(ctx, "command/CheckConnection-"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand("")
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
@@ -327,7 +326,7 @@ func (s *state) CheckSender(ctx context.Context, addr string) module.CheckResult
 		return module.CheckResult{}
 	}
 
-	defer trace.StartRegion(ctx, "command/CheckSender").End()
+	defer trace.StartRegion(ctx, "command/CheckSender"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand(addr)
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
@@ -339,7 +338,7 @@ func (s *state) CheckRcpt(ctx context.Context, addr string) module.CheckResult {
 	if s.c.stage != StageRcpt {
 		return module.CheckResult{}
 	}
-	defer trace.StartRegion(ctx, "command/CheckRcpt").End()
+	defer trace.StartRegion(ctx, "command/CheckRcpt"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand(addr)
 	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
@@ -350,7 +349,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 		return module.CheckResult{}
 	}
 
-	defer trace.StartRegion(ctx, "command/CheckBody").End()
+	defer trace.StartRegion(ctx, "command/CheckBody"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand("")
 

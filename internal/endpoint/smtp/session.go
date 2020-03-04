@@ -19,7 +19,6 @@ import (
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
-	"github.com/foxcpp/maddy/internal/msgpipeline"
 )
 
 type Session struct {
@@ -116,7 +115,7 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		}
 	}
 
-	msgMeta.ID, err = msgpipeline.GenerateMsgID()
+	msgMeta.ID, err = module.GenerateMsgID()
 	if err != nil {
 		return "", err
 	}

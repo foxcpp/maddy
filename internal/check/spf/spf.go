@@ -226,7 +226,9 @@ func (s *state) relyOnDMARC(ctx context.Context, hdr textproto.Header) bool {
 	}
 
 	policy := record.Policy
-	// TODO: Is it ok to use EqualFold for subdomain check?
+	// We check for subdomain using non-equality since fromDomain is either the
+	// subdomain of policyDomain or policyDomain itself (due to the way
+	// FetchRecord handles it).
 	if !dns.Equal(policyDomain, fromDomain) && record.SubdomainPolicy != "" {
 		policy = record.SubdomainPolicy
 	}

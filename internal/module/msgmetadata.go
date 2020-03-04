@@ -1,6 +1,10 @@
 package module
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"io"
+
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/future"
 )
@@ -114,4 +118,11 @@ func (msgMeta *MsgMetadata) DeepCopy() *MsgMetadata {
 	// There is no good way to copy net.Addr, but it should not be
 	// modified by anything anyway so we are safe.
 	return &cpy
+}
+
+// GenerateMsgID generates a string usable as MsgID field in module.MsgMeta.
+func GenerateMsgID() (string, error) {
+	rawID := make([]byte, 4)
+	_, err := io.ReadFull(rand.Reader, rawID)
+	return hex.EncodeToString(rawID), err
 }

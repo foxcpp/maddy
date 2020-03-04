@@ -98,7 +98,6 @@ func (f *File) reloader() {
 		}
 	}()
 
-	// TODO: Review the possibility of using inotify or similar mechanisms.
 	t := time.NewTicker(reloadInterval)
 
 	for {

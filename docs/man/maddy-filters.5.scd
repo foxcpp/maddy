@@ -65,7 +65,8 @@ EHLO hostname, use 'fail_action' directive to change that.
 
 ## require_mx_record
 
-Check that domain in MAIL FROM command does have a MX record.
+Check that domain in MAIL FROM command does have a MX record and none of them
+are "null" (contain a single dot as the host).
 
 By default, quarantines messages coming from servers missing MX records,
 use 'fail_action' directive to change that.

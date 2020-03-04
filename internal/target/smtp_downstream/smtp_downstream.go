@@ -67,11 +67,6 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	cfg.Bool("attempt_starttls", false, true, &u.attemptStartTLS)
 	cfg.String("hostname", true, true, "", &u.hostname)
 	cfg.StringList("targets", false, false, nil, &targetsArg)
-	// TODO: Support basic load-balancing.
-	// - ordered
-	//   Current behavior
-	// - roundrobin
-	//   Pick next server from list each time.
 	cfg.Custom("auth", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, saslAuthDirective, &u.saslFactory)

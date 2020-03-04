@@ -445,10 +445,11 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 	// weird race conditions when test completes before go-smtp has the
 	// chance to fully initialize itself (Serve is still at the conn.listeners
 	// assignment when Close is called).
-	// There is a workaround in SMTPServerSTARTTLS function but it does not
-	// seem to work correctly.
-	// FIXME: This also affects many other tests here where go-smtp server is
-	// replaced with "tarpit" instance.
+	//
+	// The issue was resolved upstream by introducing locking around internal
+	// listeners slice use. Uses of FailOnConn remain since they pretty much do
+	// not hurt.
+	//
 	// https://builds.sr.ht/~emersion/job/147975
 	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
 	defer tarpit.Close()

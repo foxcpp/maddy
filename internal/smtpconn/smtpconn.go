@@ -126,7 +126,6 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 
 // Connect actually estabilishes the network connection with the remote host.
 func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
-	// TODO: Helper function to try multiple endpoints?
 	didTLS, cl, err := c.attemptConnect(ctx, endp, starttls, tlsConfig)
 	if err != nil {
 		return false, c.wrapClientErr(err, endp.Host)

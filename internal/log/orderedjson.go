@@ -14,8 +14,6 @@ import (
 // other.
 
 func marshalOrderedJSON(output *strings.Builder, m map[string]interface{}) error {
-	// TODO: Consider making maps used for error tracing and logging ordered in
-	// the first place to avoid sorting overhead.
 	order := make([]string, 0, len(m))
 	for k := range m {
 		order = append(order, k)

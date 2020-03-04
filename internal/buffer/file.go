@@ -59,7 +59,6 @@ func BufferInFile(r io.Reader, dir string) (Buffer, error) {
 	if _, err = io.Copy(f, r); err != nil {
 		return nil, fmt.Errorf("buffer: failed to write file: %v", err)
 	}
-	// TODO: Consider caching an *os.File object for faster first Open().
 	if err := f.Close(); err != nil {
 		return nil, fmt.Errorf("buffer: failed to close file: %v", err)
 	}

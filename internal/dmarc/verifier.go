@@ -39,7 +39,7 @@ type Verifier struct {
 
 	resolver Resolver
 
-	// TODO
+	// TODO(GH #206): DMARC reporting
 	// FailureReportFunc is the callback that is called when a failure report
 	// is generated. If it is nil - failure reports generation is disabled.
 	//FailureReportFunc func(textproto.Header, io.Reader)

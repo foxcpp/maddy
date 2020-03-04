@@ -99,9 +99,7 @@ func TestRequireMXRecord(t *testing.T) {
 	test("foo@example.org", "example.org", []net.MX{{Host: "a.com"}}, false)
 	test("foo@", "", nil, true)
 	test("", "", nil, false) // Permit <> for bounces.
-
-	// TODO: Deny this.
-	test("foo@example.org", "example.org", []net.MX{{Host: "."}}, false)
+	test("foo@example.org", "example.org", []net.MX{{Host: "."}}, true)
 }
 
 func TestMatchingEHLO(t *testing.T) {

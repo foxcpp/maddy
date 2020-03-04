@@ -86,8 +86,6 @@ func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
 }
 
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
-	// FIXME: This will print a warning on Windows to global logger about
-	// missing EDNS support even though we can actually run tests.
 	p := NewDANEPolicy(false)
 	p.extResolver = extR
 	p.log = testutils.Logger(t, "remote/dane")

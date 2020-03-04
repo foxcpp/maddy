@@ -625,7 +625,7 @@ func (q *Queue) readDiskQueue() error {
 		return err
 	}
 
-	// TODO: Rewrite this function to pass all sub-tests in TestQueueDelivery_DeserializationCleanUp/NoMeta.
+	// TODO(GH #209): Rewrite this function to pass all sub-tests in TestQueueDelivery_DeserializationCleanUp/NoMeta.
 
 	loadedCount := 0
 	for _, entry := range dirInfo {
@@ -864,7 +864,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 		return
 	}
 
-	dsnID, err := msgpipeline.GenerateMsgID()
+	dsnID, err := module.GenerateMsgID()
 	if err != nil {
 		q.Log.Error("rand.Rand error", err)
 		return

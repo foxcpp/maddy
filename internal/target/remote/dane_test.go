@@ -265,4 +265,4 @@ func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
 	}
 }
 
-// TODO: Test other matching types, etc.
+// TODO(GH #90): Test other matching types, etc

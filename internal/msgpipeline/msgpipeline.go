@@ -14,6 +14,7 @@ import (
 	"github.com/foxcpp/maddy/internal/modify"
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/target"
+	"golang.org/x/sync/errgroup"
 )
 
 // MsgPipeline is a object that is responsible for selecting delivery targets
@@ -40,8 +41,6 @@ type MsgPipeline struct {
 	// At the moment, the only such operation is the addition of the Received
 	// header field. See where it happens for explanation on why it is done
 	// exactly in this place.
-	//
-	// FIXME: Get rid of that hack.
 	FirstPipeline bool
 
 	Log log.Logger
@@ -71,6 +70,8 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 }
 
 func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *smtp.ConnectionState) error {
+	eg, checkCtx := errgroup.WithContext(ctx)
+
 	// TODO: See if there is some point in parallelization of this
 	// function.
 	for _, check := range d.globalChecks {
@@ -79,11 +80,11 @@ func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *smtp.Connection
 			continue
 		}
 
-		if err := earlyCheck.CheckConnection(ctx, state); err != nil {
-			return err
-		}
+		eg.Go(func() error {
+			return earlyCheck.CheckConnection(checkCtx, state)
+		})
 	}
-	return nil
+	return eg.Wait()
 }
 
 // Start starts new message delivery, runs connection and sender checks, sender modifiers

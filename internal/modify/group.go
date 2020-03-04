@@ -27,9 +27,6 @@ type (
 
 func (g *Group) Init(cfg *config.Map) error {
 	for _, node := range cfg.Block.Children {
-		// Prevent aliasing TODO: Get rid of pointer arguments for config.Node.
-		node := node
-
 		mod, err := modconfig.MsgModifier(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {
 			return err

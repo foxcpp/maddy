@@ -37,7 +37,6 @@ func saslAuthDirective(m *config.Map, node config.Node) (interface{}, error) {
 					Reason:       "Credentials forwarding is requested but the client is not authenticated",
 				}
 			}
-			// TODO: See if it is useful to support custom identity argument.
 			return sasl.NewPlainClient("", msgMeta.Conn.AuthUser, msgMeta.Conn.AuthPassword), nil
 		}, nil
 	case "plain":

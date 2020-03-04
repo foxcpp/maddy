@@ -4,11 +4,6 @@ import (
 	"bytes"
 )
 
-// TODO: Remove this interface from here, it is no longer necessary.
-type Byter interface {
-	Bytes() []byte
-}
-
 // BytesReader is a wrapper for bytes.Reader that stores the original []byte
 // value and allows to retrieve it.
 //

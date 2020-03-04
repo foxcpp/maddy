@@ -39,7 +39,6 @@ func TestSplit(t *testing.T) {
 	test("", "", "", true)
 
 	// A special SMTP value too, but permitted now.
-	// TODO: Perhaps it should be changed.
 	test("postmaster", "postmaster", "", false)
 }
 

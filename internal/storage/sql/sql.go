@@ -434,7 +434,7 @@ func (store *Storage) AuthPlain(username, password string) error {
 		return err
 	}
 
-	// TODO: Make go-imap-sql CheckPlain return an actual error.
+	// TODO(GH foxcpp/go-imap-sql#30): Make go-imap-sql CheckPlain return an actual error.
 	if !store.Back.CheckPlain(accountName, password) {
 		return module.ErrUnknownCredentials
 	}

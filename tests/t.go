@@ -202,9 +202,6 @@ func (t *T) Run(waitListeners int) {
 		t.Fatal("Test configuration failed:", err)
 	}
 
-	// TODO: Mock the systemd notify socket and use it to detect start-up errors
-	// and other problems (?). Though, it would be Linux-specific.
-
 	// Log scanning goroutine checks for the "listening" messages and sends 'true'
 	// on the channel each time.
 	listeningMsg := make(chan bool)
