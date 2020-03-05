@@ -464,13 +464,6 @@ run() {
     export PKGDIR="$BUILDDIR/pkg"
     set -euo pipefail
 
-    # Avoid leaving stale artifacts around so the following command, for
-    # example, will install only executables for sure.
-    #   ./build.sh compile_binaries install_pkg
-    if [ -e "$PKGDIR" ]; then
-        echo '--- Clearing package directory...' >&2
-        rm -rf "$PKGDIR"
-    fi
     mkdir -p "$BUILDDIR" "$PKGDIR"
 
     if [ ${#positional[@]} -ne 0 ]; then
