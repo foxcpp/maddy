@@ -8,7 +8,7 @@ string. They are commonly called "table modules" or just "tables".
 
 # File mapping (file_table)
 
-This module build string-string mapping from a text file.
+This module builds string-string mapping from a text file.
 
 File is reloaded every 15 seconds if there are any changes (detected using
 modification time). No changes are applied if file contains syntax errors.
@@ -118,4 +118,81 @@ sql_table {
 		"PRAGMA synchronous=NORMAL"
 	lookup "SELECT alias FROM aliases WHERE address = $1"
 }
+```
+
+# Static table (static)
+
+The 'static' module implements table lookups using key-value pairs in its
+configuration.
+
+```
+static {
+	entry KEY1 VALUE1
+	entry KEY2 VALUE2
+	...
+}
+```
+
+## Configuration directives
+
+**Syntax**: entry _key_ _value_
+
+Add an entry to the table.
+
+If the same key is used multiple times, the last one takes effect.
+
+# Regexp rewrite table (regexp)
+
+The 'regexp' module implements table lookups by applying a regular expression
+to the key value. If it matches - 'replacement' value is returned with $N
+placeholders being replaced with corresponding capture groups from the match.
+Otherwise, no value is returned.
+
+The regular expression syntax is the subset of PCRE. See
+https://golang.org/pkg/regexp/syntax/ for details.
+
+```
+regexp <regexp> <replacement> {
+	full_match yes
+	case_insensitive yes
+	expand_placeholders yes
+}
+```
+
+## Configuration directives
+
+**Syntax**: full_match _boolean_ ++
+**Default**: yes
+
+Whether to implicitly add start/end anchors to the regular expression.
+That is, if 'full_match' is yes, then the provided regular expression should
+match the whole string. With no - partial match is enough.
+
+**Syntax**: case_insensitive _boolean_ ++
+**Default**: yes
+
+Whether to make matching case-insensitive.
+
+**Syntax**: expand_placeholders _boolean_ ++
+**Default**: yes
+
+Replace '$name' and '${name}' in the replacement string with contents of
+corresponding capture groups from the match.
+
+To insert a literal $ in the output, use $$ in the template.
+
+# Identity table (identity)
+
+The module 'identity' is a table module that just returns the key looked up.
+
+```
+identity { }
+```
+
+# No-op table (dummy)
+
+The module 'dummy' represents an empty table.
+
+```
+dummy { }
 ```
