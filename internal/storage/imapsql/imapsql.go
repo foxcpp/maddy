@@ -1,11 +1,11 @@
-// Package sql implements SQL-based storage module
+// Package imapsql implements SQL-based storage module
 // using go-imap-sql library (github.com/foxcpp/go-imap-sql).
 //
 // Interfaces implemented:
 // - module.StorageBackend
 // - module.PlainAuth
 // - module.DeliveryTarget
-package sql
+package imapsql
 
 import (
 	"context"
@@ -187,12 +187,12 @@ func (store *Storage) InstanceName() string {
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	store := &Storage{
 		instName: instName,
-		Log:      log.Logger{Name: "sql"},
+		Log:      log.Logger{Name: "imapsql"},
 		resolver: dns.DefaultResolver(),
 	}
 	if len(inlineArgs) != 0 {
 		if len(inlineArgs) == 1 {
-			return nil, errors.New("sql: expected at least 2 arguments")
+			return nil, errors.New("imapsql: expected at least 2 arguments")
 		}
 
 		store.driver = inlineArgs[0]
@@ -238,10 +238,10 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 
 	if dsn == nil {
-		return errors.New("sql: dsn is required")
+		return errors.New("imapsql: dsn is required")
 	}
 	if driver == "" {
-		return errors.New("sql: driver is required")
+		return errors.New("imapsql: driver is required")
 	}
 
 	opts.Log = &store.Log
@@ -252,7 +252,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		// int is 32-bit on some platforms, so cut off values we can't actually
 		// use.
 		if int(uint32(appendlimitVal)) != appendlimitVal {
-			return errors.New("sql: appendlimit value is too big")
+			return errors.New("imapsql: appendlimit value is too big")
 		}
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
@@ -273,24 +273,24 @@ func (store *Storage) Init(cfg *config.Map) error {
 			if len(compression) == 2 {
 				opts.CompressAlgoParams = compression[1]
 				if _, err := strconv.Atoi(compression[1]); err != nil {
-					return errors.New("sql: first argument for lz4 and zstd is compression level")
+					return errors.New("imapsql: first argument for lz4 and zstd is compression level")
 				}
 			}
 			if len(compression) > 2 {
-				return errors.New("sql: expected at most 2 arguments")
+				return errors.New("imapsql: expected at most 2 arguments")
 			}
 		case "off":
 			if len(compression) > 1 {
-				return errors.New("sql: expected at most 1 arguments")
+				return errors.New("imapsql: expected at most 1 arguments")
 			}
 		default:
-			return errors.New("sql: unknown compression algorithm")
+			return errors.New("imapsql: unknown compression algorithm")
 		}
 	}
 
 	store.Back, err = imapsql.New(driver, dsnStr, extStore, opts)
 	if err != nil {
-		return fmt.Errorf("sql: %s", err)
+		return fmt.Errorf("imapsql: %s", err)
 	}
 
 	store.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
@@ -306,7 +306,7 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 		return nil
 	}
 	if store.updates != nil {
-		panic("sql: EnableUpdatePipe called after Updates")
+		panic("imapsql: EnableUpdatePipe called after Updates")
 	}
 
 	upds := store.Back.Updates()
@@ -321,7 +321,7 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 			Log: log.Logger{Name: "sql/updpipe", Debug: store.Log.Debug},
 		}
 	default:
-		return errors.New("sql: driver does not have an update pipe implementation")
+		return errors.New("imapsql: driver does not have an update pipe implementation")
 	}
 
 	wrapped := make(chan backend.Update, cap(upds)*2)
@@ -397,7 +397,7 @@ func (store *Storage) EnableChildrenExt() bool {
 func prepareUsername(username string) (string, error) {
 	mbox, domain, err := address.Split(username)
 	if err != nil {
-		return "", fmt.Errorf("sql: username prepare: %w", err)
+		return "", fmt.Errorf("imapsql: username prepare: %w", err)
 	}
 
 	// PRECIS is not included in the regular address.ForLookup since it reduces
@@ -409,12 +409,12 @@ func prepareUsername(username string) (string, error) {
 	// CompareKey and String.
 	mbox, err = precis.UsernameCaseMapped.CompareKey(mbox)
 	if err != nil {
-		return "", fmt.Errorf("sql: username prepare: %w", err)
+		return "", fmt.Errorf("imapsql: username prepare: %w", err)
 	}
 
 	domain, err = dns.ForLookup(domain)
 	if err != nil {
-		return "", fmt.Errorf("sql: username prepare: %w", err)
+		return "", fmt.Errorf("imapsql: username prepare: %w", err)
 	}
 
 	return mbox + "@" + domain, nil
@@ -422,7 +422,7 @@ func prepareUsername(username string) (string, error) {
 
 func (store *Storage) AuthPlain(username, password string) error {
 	// TODO: Pass session context there.
-	defer trace.StartRegion(context.Background(), "sql/AuthPlain").End()
+	defer trace.StartRegion(context.Background(), "imapsql/AuthPlain").End()
 
 	accountName, err := prepareUsername(username)
 	if err != nil {
@@ -468,5 +468,5 @@ func (store *Storage) Close() error {
 }
 
 func init() {
-	module.Register("sql", New)
+	module.Register("imapsql", New)
 }

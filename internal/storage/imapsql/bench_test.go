@@ -1,4 +1,4 @@
-package sql
+package imapsql
 
 import (
 	"flag"

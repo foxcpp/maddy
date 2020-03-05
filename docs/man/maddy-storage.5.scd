@@ -9,30 +9,34 @@ flags, message UIDs, etc defined as in RFC 3501.
 This man page lists supported storage backends along with supported
 configuration directives for each.
 
-Most likely, you are going to modules listed here in 'storage' directive for
-IMAP endpoint module (see *maddy-imap*(5)).
+Most likely, you are going to use modules listed here in 'storage' directive
+for IMAP endpoint module (see *maddy-imap*(5)).
 
-# SQL-based database module (sql)
+# SQL-based database module (imapsql)
 
-Module that stores message metadata and indexes in a SQL-based relational
-database.
+The 'imapsql' module implements unified database for IMAP index and the user
+credentials using SQL-based relational database. This allows easier management
+as there is no storage accounts and no authentication accounts. There are just
+accounts that can be created and removed using 'maddyctl' command.
 
 Message contents are stored in an "external store", currently the only
 supported "external store" is a filesystem directory, used by default.
-All messages are stored in StateDirectory/messages under random IDs.
+By default, all messages are stored in StateDirectory/messages under random IDs.
 
 Supported RDBMS:
 - SQLite 3.25.0
 - PostgreSQL 9.6 or newer
 
-Can be used as a storage backend (for IMAP), authentication backend (IMAP &
-SMTP) or delivery target (SMTP).
-
 Account names are required to have the form of a email address and are
 case-insensitive. UTF-8 names are supported with restrictions defined in the
 PRECIS UsernameCaseMapped profile.
 
-The database can be managed using the maddyctl utility.
+```
+imapsql {
+	driver sqlite3
+	dsn imapsql.db
+}
+```
 
 ## Arguments
 

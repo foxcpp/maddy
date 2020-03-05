@@ -1,5 +1,5 @@
 // +build !nosqlite3,cgo
 
-package sql
+package imapsql
 
 import _ "github.com/mattn/go-sqlite3"
