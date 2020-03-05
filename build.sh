@@ -189,10 +189,13 @@ ensure_go() {
     if ! command -v go >/dev/null; then
         downloadgo=1
     else
-        SYSGOVERSION=$(go version | cut -f3 -d ' ' | grep -Eo "([0-9]+\.){2}[0-9]+")
+        SYSGOVERSION=$(go version | cut -f3 -d ' ' | grep -Eo "([0-9]+\.?)+")
         SYSGOMAJOR=$(cut -f1 -d. <<<"$SYSGOVERSION")
         SYSGOMINOR=$(cut -f2 -d. <<<"$SYSGOVERSION")
         SYSGOPATCH=$(cut -f3 -d. <<<"$SYSGOVERSION")
+        if [ "$SYSGOPATCH" == "" ]; then
+            SYSGOPATCH=0
+        fi
         WANTEDGOMAJOR=$(cut -f1 -d. <<<$REQUIRED_GOVERSION)
         WANTEDGOMINOR=$(cut -f2 -d. <<<$REQUIRED_GOVERSION)
         WANTEDGOPATCH=$(cut -f3 -d. <<<$REQUIRED_GOVERSION)
