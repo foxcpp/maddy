@@ -1,6 +1,5 @@
-# maddy
-
-[![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
+maddy [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?) [![codecov](https://img.shields.io/codecov/c/github/foxcpp/maddy)](https://codecov.io/gh/foxcpp/maddy)
+=====================
 
 Composable all-in-one mail server.
 
