@@ -247,8 +247,6 @@ func (ctx *parseContext) readNodes() ([]Node, error) {
 			break
 		}
 
-		requireNewLine = false
-
 		// name arg0 arg1 {
 		//   c0
 		//   c1
