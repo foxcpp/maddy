@@ -273,9 +273,35 @@ ensure_source_tree() {
         git checkout --quiet "$GITVERSION"
     fi
 
-    MADDY_VER=$(git describe --long 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g' ||
-        printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)")
+    # Turn vVERSION-COMMITS-HASH into VERSION-devCOMMITS+HASH with minor
+    # component of VERSION increased by one if the amount of commits since last
+    # tag is more than one.
+    set +e
+    DESCR=$(git describe --long 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        if [ "$MADDY_VER" == "unknown" ]; then
+            echo '--- WARNING: No Git tags found and no version specified.' >&2
+        fi
+        popd >/dev/null
+        return
+    fi
+    set -e
+
+    MADDY_MAJOR=$(sed 's/^v//' <<<$DESCR | cut -f1 -d '.')
+    MADDY_MINOR=$(cut -f2 -d '.' <<<$DESCR )
+    MADDY_PATCH=$(cut -f1 -d '-' <<<$DESCR | sed 's/-.+//' | cut -f3 -d '.')
+    MADDY_SNAPSHOT=$(cut -f2 -d '-' <<<$DESCR)
+    MADDY_COMMIT=$(cut -f3 -d '-' <<<$DESCR)
+
+    if [ $MADDY_SNAPSHOT -ne 0 ]; then
+        (( MADDY_MINOR++ ))
+        MADDY_VER="$MADDY_MAJOR.$MADDY_MINOR.$MADDY_PATCH-dev$MADDY_SNAPSHOT+$MADDY_COMMIT"
+    else
+        MADDY_VER="$MADDY_MAJOR.$MADDY_MINOR.$MADDY_PATCH+$MADDY_COMMIT"
+    fi
     export MADDY_VER
+
+    echo "--- maddy $MADDY_VER" >&2
 
     popd >/dev/null
 }
