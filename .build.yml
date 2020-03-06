@@ -19,10 +19,10 @@ tasks:
   - lint: |
       curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.8
       cd maddy/
-      golangci-lint || true
+      $(go env GOPATH)/bin/golangci-lint || true
   - build-man-pages: |
       cd maddy/docs/man
-      for f in *.scd; do; scdoc < $f > /dev/null; done
+      for f in *.scd; do scdoc < $f > /dev/null; done
   - upload-coverage: |
       export CODECOV_TOKEN=a4598288-4c29-4da7-87cf-64a36e23d245
       cd maddy/
