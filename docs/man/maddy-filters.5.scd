@@ -560,118 +560,55 @@ Valid values:
 Allow multiple addresses in From header field for purposes of
 require_sender_match checks. Only first address will be checked, however.
 
-# Sender/recipient replacement modules (replace_sender, replace_rcpt)
+# Envelope sender / recipient rewriting (replace_sender, replace_rcpt)
 
-These are modules that simply replace matching address value(s) with another
-in either MAIL FROM or RCPT TO.
+'replace_sender' and 'replace_rcpt' modules replace SMTP envelope addresses
+based on the mapping defined by the table module (maddy-tables(5)). Currently,
+only 1:1 mappings are supported (that is, it is not possible to specify
+multiple replacements for a single address).
 
-Matching is done either by full address string or regexp that should match
-entire address (it is implicitly wrapped with ^ and $). In either case,
-matching is case-insensitive.
+The address is normalized before lookup (Punycode in domain-part is decoded,
+Unicode is normalized to NFC, the whole string is case-folded).
 
-Configuration is done using arguments or 'from' and 'to'
-directives. See below for examples.
-
-```
-modify {
-    # Replace addr@example.com with addr@example.org in MAIL FROM (message
-    # sender).
-    replace_sender addr@example.com addr@example.org
-
-    # Replace addr@example.com with addr@example.org in RCPT TO (message
-    # recipient).
-    replace_rcpt addr@example.com addr@example.org
-
-    # Examples below use replace_sender but work exactly the same way for
-    # replace_rcpt.
-
-    # Replace any address matching /-enclosed regexp with com@example.org.
-    replace_sender /(.+)@example.com/ com@example.org
-
-    # You can also reference capture groups in the second argument.
-    replace_sender /(.+)@example.com/ $1@example.org
-}
-```
-
-# Recipient aliases (alias)
-
-This module replaces recipient addresses based on the mapping defined
-by the table module (maddy-tables(5)). Currently, only 1:1 mappings are
-supported (that is, it is not possible to specify multiple replacement for a
-single address).
-
-Matching is done case-insensitively. Name without '@' matches local-part with
-any domain. Replacements are not applied recursively.
+First, the whole address is looked up. If there is no replacement, local-part
+of the address is looked up separately and is replaced in the address while
+keeping the domain part intact. Replacements are not applied recursively, that
+is, lookup is not repeated for the replacement.
 
 Recipients are not deduplicated after expansion, so message may be delivered
 multiple times to a single recipient. However, used delivery target can apply
-such deduplication (sql storage does it).
+such deduplication (imapsql storage does it).
 
 Definition:
 ```
-alias <table> [table arguments] {
+replace_rcpt <table> [table arguments] {
 	[extended table config]
 }
-
-alias <top-level block name> {
-	table <table> [table arguments]
+replace_sender <table> [table arguments] {
+	[extended table config]
 }
 ```
 
 Use examples:
 ```
 modify {
-	alias file_map /etc/maddy/aliases
+	replace_rcpt file_map /etc/maddy/aliases
+	replace_rcpt static {
+		entry a@example.org b@example.org
+	}
+	replace_rcpt regexp "(.+)@example.net" "$1@example.org"
 }
 ```
 
+Possible contents of /etc/maddy/aliases in the example above:
 ```
-file_map shared_table {
-	file /etc/maddy/aliases
-}
+# Replace 'cat' with any domain to 'dog'.
+# E.g. cat@example.net -> dog@example.net
+cat: dog
 
-# ...
-modify {
-	alias &shared_table
-}
-```
-
-## Arguments
-
-When used inline, arguments and the configuration block is processes as inline
-config for a table module.
-
-## Table usage
-
-The address is normalized before lookup (Punycode in domain-part is decoded,
-Unicode is normalized to NFC, the whole string is case-folded).
-
-Then first the full address is looked up, if there is a replacement, it is
-used. Otherwise, only local-part is looked up and only it is replaced in the
-original address.
-
-Here are examples using syntax of file_map table module:
-```
-# Replaces dog@domain to cat@domain for any domain.
-dog: cat
-
-# Replaces dog@domain to dog@example.com for any domain.
-cat: dog@example.com
-
-# Replaces cat@example.org to dog@example.org.
-# Takes preference over any-domain alias above.
-cat@example.org: dog@example.org
-
-# Crazy madness with quoted local-part.
-"a @ b"@example.org: "b @ a"@example.org
-"a @ b": "b @ a"
-
-# Postmaster alias is a special case, it should
-# always use a full address as a replacement.
-postmaster: foobar@example.org
-
-# Not allowed:
-#postmaster: foobar
+# Replace cat@example.org with cat@example.com.
+# Takes priority over the previous line.
+cat@example.org: cat@example.com
 ```
 
 # System command filter (command)
