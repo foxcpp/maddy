@@ -174,7 +174,7 @@ func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error)
 	q := &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,
-		retryTimeScale:   0.25,
+		retryTimeScale:   1.25,
 		postInitDelay:    10 * time.Second,
 		Log:              log.Logger{Name: "queue"},
 	}
@@ -396,7 +396,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		newRcpts = append(newRcpts, rcpt)
 
 		// See smallestTriesCount comment.
-		if count := meta.TriesCount[rcpt]; count > smallestTriesCount {
+		if count := meta.TriesCount[rcpt]; count < smallestTriesCount {
 			smallestTriesCount = count
 		}
 	}
@@ -421,6 +421,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	nextTryTime := time.Now()
 	// Delay between retries grows exponentally, the formula is:
 	// initialRetryTime * retryTimeScale ^ (smallestTriesCount - 1)
+	dl.Debugf("delay: %v * %v ^ (%v - 1)", q.initialRetryTime, q.retryTimeScale, smallestTriesCount)
 	scaleFactor := time.Duration(math.Pow(q.retryTimeScale, float64(smallestTriesCount-1)))
 	nextTryTime = nextTryTime.Add(q.initialRetryTime * scaleFactor)
 	dl.Msg("will retry",
