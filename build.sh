@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
+options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
 eval set -- "$options"
 print_help() {
     cat >&2 <<EOF
@@ -20,6 +20,10 @@ Options:
                                (default: \$PREFIX/lib/systemd, \$SYSTEMDUNITS)
     --configdir <path>        directory to install configuration files to
                                (default: /etc/maddy/, \$CONFDIR)
+    --statedir <path>         default state directory location
+                               (default: /var/lib/maddy, \$STATEDIR)
+    --runtimedir <path>       default runtime directory location
+                               (default: /run/maddy, \$RUNTIMEDIR)
     --fail2bandir <path>      directory to install fail2ban configuration to
                                (default: /etc/fail2ban, \$FAIL2BANDIR)
     --gitversion <revision>   git commit or tag to checkout if not building inside
@@ -93,6 +97,12 @@ read_config() {
     if [ -z "$CONFDIR" ]; then
         export CONFDIR=/etc/maddy
     fi
+    if [ -z "$STATEDIR" ]; then
+        export STATEDIR=/var/lib/maddy
+    fi
+    if [ -z "$RUNTIMEDIR" ]; then
+        export RUNTIMEDIR=/run/maddy
+    fi
     if [ -z "$FAIL2BANDIR" ]; then
         export FAIL2BANDIR=/etc/fail2ban
     fi
@@ -136,6 +146,14 @@ read_config() {
             --configdir)
                 shift
                 export CONFDIR="$1"
+                ;;
+            --statedir)
+                shift
+                export STATEDIR="$1"
+                ;;
+            --runtimedir)
+                shift
+                export RUNTIMEDIR="$1"
                 ;;
             --fail2bandir)
                 shift
@@ -255,6 +273,10 @@ ensure_source_tree() {
         pushd "$MADDY_SRC" >/dev/null
         git stash push --quiet --all
         git fetch origin master
+
+        if [ "$GITVERSION" != "" ]; then
+            git checkout --quiet "$GITVERSION"
+        fi
     else
         MADDY_SRC="$(dirname "$gomod")"
         export MADDY_SRC
@@ -267,10 +289,6 @@ ensure_source_tree() {
         fi
         popd >/dev/null
         return
-    fi
-
-    if [ "$GITVERSION" != "" ]; then
-        git checkout --quiet "$GITVERSION"
     fi
 
     # Turn vVERSION-COMMITS-HASH into VERSION-devCOMMITS+HASH with minor
@@ -317,6 +335,8 @@ compile_binaries() {
     go build -trimpath -buildmode=pie \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
+            -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
+            -X \"github.com/foxcpp/maddy.DefaultRuntimeDirectory=$RUNTIMEDIR\" \
             -X \"github.com/foxcpp/maddy.ConfigDirectory=$CONFDIR\" \
             -X \"github.com/foxcpp/maddy.Version=$MADDY_VER\"" \
         -o "$PKGDIR/$PREFIX/bin/maddy" ./cmd/maddy
@@ -325,6 +345,8 @@ compile_binaries() {
     go build -trimpath -buildmode=pie \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
+            -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
+            -X \"github.com/foxcpp/maddy.DefaultRuntimeDirectory=$RUNTIMEDIR\" \
             -X \"github.com/foxcpp/maddy.ConfigDirectory=$CONFDIR\" \
             -X \"github.com/foxcpp/maddy.Version=$MADDY_VER\"" \
         -o "$PKGDIR/$PREFIX/bin/maddyctl" ./cmd/maddyctl
