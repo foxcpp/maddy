@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strconv"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
@@ -21,7 +20,7 @@ import (
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
-func newTestModifier(t *testing.T, dir, keyAlgo string) *Modifier {
+func newTestModifier(t *testing.T, dir, keyAlgo string, domains []string) *Modifier {
 	mod, err := New("", "test", nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +31,8 @@ func newTestModifier(t *testing.T, dir, keyAlgo string) *Modifier {
 	err = m.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
-				Name: "domain",
-				Args: []string{"maddy.test"},
+				Name: "domains",
+				Args: domains,
 			},
 			{
 				Name: "selector",
@@ -41,7 +40,7 @@ func newTestModifier(t *testing.T, dir, keyAlgo string) *Modifier {
 			},
 			{
 				Name: "key_path",
-				Args: []string{filepath.Join(dir, "testkey.key")},
+				Args: []string{filepath.Join(dir, "{domain}.key")},
 			},
 			{
 				Name: "require_sender_match",
@@ -60,7 +59,9 @@ func newTestModifier(t *testing.T, dir, keyAlgo string) *Modifier {
 	return m
 }
 
-func signTestMsg(t *testing.T, m *Modifier) (textproto.Header, []byte) {
+func signTestMsg(t *testing.T, m *Modifier, envelopeFrom string) (textproto.Header, []byte) {
+	t.Helper()
+
 	state, err := m.ModStateForMsg(context.Background(), &module.MsgMetadata{})
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +73,9 @@ func signTestMsg(t *testing.T, m *Modifier) (textproto.Header, []byte) {
 	testHdr.Add("To", "<heya@heya>")
 	body := []byte("hello there\r\n")
 
+	// sign_dkim expects RewriteSender to be called to get envelope sender
+	//  (see module.Modifier docs)
+	state.RewriteSender(context.Background(), envelopeFrom)
 	err = state.RewriteBody(context.Background(), &testHdr, buffer.MemoryBuffer{Slice: body})
 	if err != nil {
 		t.Fatal(err)
@@ -80,20 +84,22 @@ func signTestMsg(t *testing.T, m *Modifier) (textproto.Header, []byte) {
 	return testHdr, body
 }
 
-func verifyTestMsg(t *testing.T, dnsPath string, hdr textproto.Header, body []byte) {
-	dnsRecord, err := ioutil.ReadFile(dnsPath)
-	if err != nil {
-		t.Fatal(err)
+func verifyTestMsg(t *testing.T, keysPath string, expectedDomains []string, hdr textproto.Header, body []byte) {
+	t.Helper()
+
+	domainsMap := make(map[string]bool)
+	zones := map[string]mockdns.Zone{}
+	for _, domain := range expectedDomains {
+		dnsRecord, err := ioutil.ReadFile(filepath.Join(keysPath, domain+".dns"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("DNS record:", string(dnsRecord))
+		zones["default._domainkey."+domain+"."] = mockdns.Zone{TXT: []string{string(dnsRecord)}}
+		domainsMap[domain] = false
 	}
 
-	t.Log("DNS record:", string(dnsRecord))
-
-	zones := map[string]mockdns.Zone{
-		"default._domainkey.maddy.test.": {
-			TXT: []string{string(dnsRecord)},
-		},
-	}
-	t.Log(string(dnsRecord))
 	// dkim.Verify does not allow to override its lookup routine, so we have to
 	// hjack the global resolver object.
 	srv, err := mockdns.NewServer(zones)
@@ -112,15 +118,24 @@ func verifyTestMsg(t *testing.T, dnsPath string, hdr textproto.Header, body []by
 		t.Fatal(err)
 	}
 
-	v, err := dkim.Verify(bytes.NewReader(fullBody.Bytes()))
+	verifs, err := dkim.Verify(bytes.NewReader(fullBody.Bytes()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(v) != 1 {
-		t.Fatal("Expected exactly one verification")
+	for _, v := range verifs {
+		if v.Err != nil {
+			t.Errorf("Verification error for %s: %v", v.Domain, v.Err)
+		}
+		if _, ok := domainsMap[v.Domain]; !ok {
+			t.Errorf("Unexpected verification for domain %s", v.Domain)
+		}
+
+		domainsMap[v.Domain] = true
 	}
-	if v[0].Err != nil {
-		t.Fatal("Verification error:", v[0].Err)
+	for domain, ok := range domainsMap {
+		if !ok {
+			t.Errorf("Missing verification for domain %s", domain)
+		}
 	}
 }
 
@@ -130,8 +145,10 @@ func TestGenerateSignVerify(t *testing.T) {
 	//
 	// It is a kind of "integration" test for DKIM modifier, as it tests
 	// whether everything works correctly together.
+	//
+	// Additionally it also tests whether key selection works correctly.
 
-	test := func(keyAlgo string, headerCanon, bodyCanon dkim.Canonicalization, reload bool) {
+	test := func(domains []string, envelopeFrom string, expectDomain []string, keyAlgo string, headerCanon, bodyCanon dkim.Canonicalization, reload bool) {
 		t.Helper()
 
 		dir, err := ioutil.TempDir("", "maddy-tests-dkim-")
@@ -140,24 +157,61 @@ func TestGenerateSignVerify(t *testing.T) {
 		}
 		defer os.RemoveAll(dir)
 
-		// Create the key.
-		m := newTestModifier(t, dir, keyAlgo)
+		m := newTestModifier(t, dir, keyAlgo, domains)
 		if reload {
-			m = newTestModifier(t, dir, keyAlgo)
+			m = newTestModifier(t, dir, keyAlgo, domains)
 		}
 
-		testHdr, body := signTestMsg(t, m)
-		verifyTestMsg(t, filepath.Join(dir, "testkey.dns"), testHdr, body)
+		testHdr, body := signTestMsg(t, m, envelopeFrom)
+		verifyTestMsg(t, dir, expectDomain, testHdr, body)
+
 	}
 
 	for _, algo := range [2]string{"rsa2048", "ed25519"} {
 		for _, hdrCanon := range [2]dkim.Canonicalization{dkim.CanonicalizationSimple, dkim.CanonicalizationRelaxed} {
 			for _, bodyCanon := range [2]dkim.Canonicalization{dkim.CanonicalizationSimple, dkim.CanonicalizationRelaxed} {
-				test(algo, hdrCanon, bodyCanon, false)
-				test(algo, hdrCanon, bodyCanon, true)
+				test([]string{"maddy.test"}, "test@maddy.test", []string{"maddy.test"}, algo, hdrCanon, bodyCanon, false)
+				test([]string{"maddy.test"}, "test@maddy.test", []string{"maddy.test"}, algo, hdrCanon, bodyCanon, true)
 			}
 		}
 	}
+
+	// Key selection tests
+	test(
+		[]string{"maddy.test"}, // Generated keys.
+		"test@maddy.test",      // Envelope sender.
+		[]string{"maddy.test"}, // Expected signature domains.
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"maddy.test"},
+		"test@unrelated.maddy.test",
+		[]string{},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"maddy.test", "related.maddy.test"},
+		"test@related.maddy.test",
+		[]string{"related.maddy.test"},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"fallback.maddy.test", "maddy.test"},
+		"postmaster",
+		[]string{"fallback.maddy.test"},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"fallback.maddy.test", "maddy.test"},
+		"",
+		[]string{"fallback.maddy.test"},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"another.maddy.test", "another.maddy.test", "maddy.test"},
+		"test@another.maddy.test",
+		[]string{"another.maddy.test"},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
+	test(
+		[]string{"another.maddy.test", "another.maddy.test", "maddy.test"},
+		"",
+		[]string{"another.maddy.test"},
+		"ed25519", dkim.CanonicalizationRelaxed, dkim.CanonicalizationRelaxed, false)
 }
 
 func TestFieldsToSign(t *testing.T) {
@@ -179,177 +233,5 @@ func TestFieldsToSign(t *testing.T) {
 
 	if !reflect.DeepEqual(fields, expected) {
 		t.Errorf("incorrect set of fields to sign\nwant: %v\ngot:  %v", expected, fields)
-	}
-}
-
-func TestShouldSign(t *testing.T) {
-	type testCase struct {
-		MatchMethods []string
-
-		KeyDomain    string
-		AuthIdentity string
-		MAILFROM     string
-		From         string
-		EAI          bool
-
-		ShouldSign bool
-		ExpectedId string
-	}
-
-	test := func(i int, c testCase) {
-		h := textproto.Header{}
-		h.Add("From", c.From)
-
-		m := Modifier{
-			domain:      c.KeyDomain,
-			senderMatch: make(map[string]struct{}, len(c.MatchMethods)),
-			log:         testutils.Logger(t, "sign_dkim"),
-		}
-		for _, method := range c.MatchMethods {
-			m.senderMatch[method] = struct{}{}
-		}
-
-		id, ok := m.shouldSign(c.EAI, strconv.Itoa(i), &h, c.MAILFROM, c.AuthIdentity)
-		if ok != c.ShouldSign {
-			t.Errorf("%d %+v: expected ShouldSign=%v, got %v", i, c, c.ShouldSign, ok)
-		}
-		if id != c.ExpectedId {
-			t.Errorf("%d %+v: expected id=%v, got %v", i, c, c.ExpectedId, id)
-		}
-	}
-
-	cases := []testCase{
-		{
-			MatchMethods: []string{"off"},
-
-			KeyDomain: "example.org",
-			From:      "foo@example.org",
-
-			ShouldSign: true,
-			ExpectedId: "@example.org",
-		},
-		{
-			MatchMethods: []string{"off"},
-
-			KeyDomain: "ñaca.com",
-			From:      "foo@ñaca.com",
-
-			ShouldSign: true,
-			ExpectedId: "@xn--aca-6ma.com",
-		},
-		{
-			MatchMethods: []string{"off"},
-
-			KeyDomain: "ñaca.com",
-			From:      "foo@ñaca.com",
-			EAI:       true,
-
-			ShouldSign: true,
-			ExpectedId: "@ñaca.com",
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "example.org",
-			From:      "foo@example.org",
-			MAILFROM:  "baz@example.org",
-
-			ShouldSign: false,
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "example.com",
-			From:      "foo@example.org",
-			MAILFROM:  "foo@example.org",
-
-			ShouldSign: false,
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "example.org",
-			From:      "foo@example.org",
-			MAILFROM:  "foo@example.org",
-
-			ShouldSign: true,
-			ExpectedId: "foo@example.org",
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "ñaca.com",
-			From:      "foo@ñaca.com",
-			MAILFROM:  "foo@ñaca.com",
-
-			ShouldSign: true,
-			ExpectedId: "foo@xn--aca-6ma.com",
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "example.com",
-			From:      "ñ@example.com",
-			MAILFROM:  "ñ@example.com",
-
-			ShouldSign: true,
-			ExpectedId: "@example.com",
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "example.com",
-			From:      "ñ@example.com",
-			MAILFROM:  "ñ@example.com",
-			EAI:       true,
-
-			ShouldSign: true,
-			ExpectedId: "ñ@example.com",
-		},
-		{
-			MatchMethods: []string{"envelope"},
-
-			KeyDomain: "ñaca.com",
-			From:      "foo@ñaca.com",
-			MAILFROM:  "foo@ñaca.com",
-			EAI:       true,
-
-			ShouldSign: true,
-			ExpectedId: "foo@ñaca.com",
-		},
-		{
-			MatchMethods: []string{"envelope", "auth"},
-
-			KeyDomain:    "example.org",
-			From:         "foo@example.org",
-			MAILFROM:     "foo@example.org",
-			AuthIdentity: "baz",
-
-			ShouldSign: false,
-		},
-		{
-			MatchMethods: []string{"auth"},
-
-			KeyDomain:    "example.org",
-			From:         "foo@example.org",
-			MAILFROM:     "foo@example.com",
-			AuthIdentity: "foo",
-
-			ShouldSign: true,
-			ExpectedId: "foo@example.org",
-		},
-		{
-			MatchMethods: []string{"envelope", "auth"},
-
-			KeyDomain:    "example.com",
-			From:         "foo@example.com",
-			MAILFROM:     "foo@example.com",
-			AuthIdentity: "foo@example.org",
-
-			ShouldSign: false,
-		},
-	}
-	for i, case_ := range cases {
-		test(i, case_)
 	}
 }

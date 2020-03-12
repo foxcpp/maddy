@@ -395,7 +395,7 @@ protocol (RFC 6376).
 ```
 sign_dkim {
     debug no
-    domain example.org
+    domains example.org example.com
     selector default
     key_path dkim-keys/{domain}-{selector}.key
     oversign_fields ...
@@ -410,7 +410,7 @@ sign_dkim {
 
 ## Arguments
 
-domain and selector can be specified in arguments, so actual sign_dkim use can
+domains and selector can be specified in arguments, so actual sign_dkim use can
 be shortened to the following:
 ```
 modify {
@@ -425,14 +425,20 @@ modify {
 
 Enable verbose logging for sign_dkim.
 
-*Syntax*: domain _string_ ++
+*Syntax*: domains _string list_ ++
 *Default*: not specified
 
 *REQUIRED.*
 
-ADministrative Management Domain (ADMD) taking responsibility for signed
-messages. Should be specified either as a directive or as an
-argument.
+ADministrative Management Domains (ADMDs) taking responsibility for messages.
+
+A key will be generated or read for each domain specified here, the key to use
+for each message will be selected based on the SMTP envelope sender. Exception
+for that is that for domain-less postmaster address and null address, the
+key for the first domain will be used. If domain in envelope sender
+does not match any of loaded keys, message will not be signed.
+
+Should be specified either as a directive or as an argument.
 
 *Syntax*: selector _string_ ++
 *Default*: not specified

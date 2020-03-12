@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"fmt"
 	"io"
-	"net/mail"
 	"path/filepath"
 	"runtime/trace"
 	"strings"
@@ -22,7 +22,6 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
-	"golang.org/x/text/unicode/norm"
 )
 
 const Day = 86400 * time.Second
@@ -79,9 +78,9 @@ var (
 type Modifier struct {
 	instName string
 
-	domain         string
+	domains        []string
 	selector       string
-	signer         crypto.Signer
+	signers        map[string]crypto.Signer
 	oversignHeader []string
 	signHeader     []string
 	headerCanon    dkim.Canonicalization
@@ -97,20 +96,19 @@ type Modifier struct {
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	m := &Modifier{
 		instName: instName,
+		signers:  map[string]crypto.Signer{},
 		log:      log.Logger{Name: "sign_dkim"},
 	}
 
-	switch len(inlineArgs) {
-	case 2:
-		m.domain = inlineArgs[0]
-		m.selector = inlineArgs[1]
-	case 0:
-		// whatever
-	case 1:
-		fallthrough
-	default:
-		return nil, errors.New("sign_dkim: wrong amount of inline arguments")
+	if len(inlineArgs) == 0 {
+		return m, nil
 	}
+	if len(inlineArgs) == 1 {
+		return nil, errors.New("sign_dkim: at least two arguments required")
+	}
+
+	m.domains = inlineArgs[0 : len(inlineArgs)-1]
+	m.selector = inlineArgs[len(inlineArgs)-1]
 
 	return m, nil
 }
@@ -132,7 +130,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	)
 
 	cfg.Bool("debug", true, false, &m.log.Debug)
-	cfg.String("domain", false, false, m.domain, &m.domain)
+	cfg.StringList("domains", false, false, m.domains, &m.domains)
 	cfg.String("selector", false, false, m.selector, &m.selector)
 	cfg.String("key_path", false, false, "dkim_keys/{domain}_{selector}.key", &keyPathTemplate)
 	cfg.StringList("oversign_fields", false, false, oversignDefault, &m.oversignHeader)
@@ -156,8 +154,8 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if m.domain == "" {
-		return errors.New("sign_domain: domain is not specified")
+	if len(m.domains) == 0 {
+		return errors.New("sign_domain: at least one domain is needed")
 	}
 	if m.selector == "" {
 		return errors.New("sign_domain: selector is not specified")
@@ -176,25 +174,35 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		panic("sign_dkim.Init: Hash function allowed by config matcher but not present in hashFuncs")
 	}
 
-	keyValues := strings.NewReplacer("{domain}", m.domain, "{selector}", m.selector)
-	keyPath := keyValues.Replace(keyPathTemplate)
-
-	signer, newKey, err := m.loadOrGenerateKey(keyPath, newKeyAlgo)
-	if err != nil {
-		return err
-	}
-
-	if newKey {
-		dnsPath := keyPath + ".dns"
-		if filepath.Ext(keyPath) == ".key" {
-			dnsPath = keyPath[:len(keyPath)-4] + ".dns"
+	for _, domain := range m.domains {
+		if _, err := idna.ToASCII(domain); err != nil {
+			m.log.Printf("warning: unable to convert domain %s to A-labels form, non-EAI messages will not be signed: %v", domain, err)
 		}
-		m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
-			"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
-			newKeyAlgo, keyPath, dnsPath, m.selector, m.domain)
-	}
 
-	m.signer = signer
+		keyValues := strings.NewReplacer("{domain}", domain, "{selector}", m.selector)
+		keyPath := keyValues.Replace(keyPathTemplate)
+
+		signer, newKey, err := m.loadOrGenerateKey(keyPath, newKeyAlgo)
+		if err != nil {
+			return err
+		}
+
+		if newKey {
+			dnsPath := keyPath + ".dns"
+			if filepath.Ext(keyPath) == ".key" {
+				dnsPath = keyPath[:len(keyPath)-4] + ".dns"
+			}
+			m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
+				"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
+				newKeyAlgo, keyPath, dnsPath, m.selector, domain)
+		}
+
+		normDomain, err := dns.ForLookup(domain)
+		if err != nil {
+			return fmt.Errorf("sign_skim: unable to normalize domain %s: %w", domain, err)
+		}
+		m.signers[normDomain] = signer
+	}
 
 	return nil
 }
@@ -235,101 +243,20 @@ func (m *Modifier) fieldsToSign(h *textproto.Header) []string {
 type state struct {
 	m    *Modifier
 	meta *module.MsgMetadata
+	from string
 	log  log.Logger
 }
 
 func (m *Modifier) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
-	return state{
+	return &state{
 		m:    m,
 		meta: msgMeta,
 		log:  target.DeliveryLogger(m.log, msgMeta),
 	}, nil
 }
 
-func (m *Modifier) shouldSign(eai bool, msgId string, h *textproto.Header, mailFrom string, authName string) (string, bool) {
-	if _, off := m.senderMatch["off"]; off {
-		if !eai {
-			aDomain, err := idna.ToASCII(m.domain)
-			if err != nil {
-				m.log.Msg("not signing, cannot convert key domain domain into A-labels",
-					"from_addr", m.domain, "msg_id", msgId)
-				return "", false
-			}
-
-			return "@" + aDomain, true
-		}
-		return "@" + m.domain, true
-	}
-
-	fromVal := h.Get("From")
-	if fromVal == "" {
-		m.log.Msg("not signing, empty From", "msg_id", msgId)
-		return "", false
-	}
-	fromAddrs, err := mail.ParseAddressList(fromVal)
-	if err != nil {
-		m.log.Msg("not signing, malformed From field", "err", err, "msg_id", msgId)
-		return "", false
-	}
-	if len(fromAddrs) != 1 && !m.multipleFromOk {
-		m.log.Msg("not signing, multiple addresses in From", "msg_id", msgId)
-		return "", false
-	}
-
-	fromAddr := fromAddrs[0].Address
-	fromUser, fromDomain, err := address.Split(fromAddr)
-	if err != nil {
-		m.log.Msg("not signing, malformed address in From",
-			"err", err, "from_addr", fromAddr, "msg_id", msgId)
-		return "", false
-	}
-
-	if !dns.Equal(fromDomain, m.domain) {
-		m.log.Msg("not signing, From domain is not key domain",
-			"from_domain", fromDomain, "key_domain", m.domain, "msg_id", msgId)
-		return "", false
-	}
-
-	if _, do := m.senderMatch["envelope"]; do && !address.Equal(fromAddr, mailFrom) {
-		m.log.Msg("not signing, From address is not envelope address",
-			"from_addr", fromAddr, "envelope", mailFrom, "msg_id", msgId)
-		return "", false
-	}
-
-	if _, do := m.senderMatch["auth"]; do {
-		compareWith := norm.NFC.String(fromUser)
-		authName := norm.NFC.String(authName)
-		if strings.Contains(authName, "@") {
-			compareWith, _ = address.ForLookup(fromAddr)
-		}
-		if !strings.EqualFold(compareWith, authName) {
-			m.log.Msg("not signing, From address is not authenticated identity",
-				"from_addr", fromAddr, "auth_id", authName, "msg_id", msgId)
-			return "", false
-		}
-	}
-
-	// Don't include non-ASCII in the identifier if message is
-	// non-EAI.
-	if !eai {
-		aDomain, err := idna.ToASCII(fromDomain)
-		if err != nil {
-			m.log.Msg("not signing, cannot convert From domain into A-labels",
-				"from_addr", fromAddr, "msg_id", msgId)
-			return "", false
-		}
-
-		if !address.IsASCII(fromUser) {
-			return "@" + aDomain, true
-		}
-
-		return fromUser + "@" + aDomain, true
-	}
-
-	return fromAddr, true
-}
-
-func (s state) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
+func (s *state) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
+	s.from = mailFrom
 	return mailFrom, nil
 }
 
@@ -337,42 +264,54 @@ func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	return rcptTo, nil
 }
 
-func (s state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
+func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
 	defer trace.StartRegion(ctx, "sign_dkim/RewriteBody").End()
 
-	var authUser string
-	if s.meta.Conn != nil {
-		authUser = s.meta.Conn.AuthUser
+	var domain string
+	if s.from != "" {
+		var err error
+		_, domain, err = address.Split(s.from)
+		if err != nil {
+			return err
+		}
 	}
+	// Use first key for null return path (<>) and postmaster (<postmaster>)
+	if domain == "" {
+		domain = s.m.domains[0]
+	}
+	selector := s.m.selector
 
-	id, ok := s.m.shouldSign(s.meta.SMTPOpts.UTF8, s.meta.ID, h, s.meta.OriginalFrom, authUser)
-	if !ok {
+	normDomain, err := dns.ForLookup(domain)
+	if err != nil {
+		s.log.Error("unable to normalize domain from envelope sender", err, "domain", domain)
+		return nil
+	}
+	keySigner := s.m.signers[normDomain]
+	if keySigner == nil {
+		s.log.Msg("no key for domain", "domain", normDomain)
 		return nil
 	}
 
-	domain := s.m.domain
-	selector := s.m.selector
-
-	// If the message is non-EAI, we are not alloed to use domains in U-labels,
+	// If the message is non-EAI, we are not allowed to use domains in U-labels,
 	// attempt to convert.
 	if !s.meta.SMTPOpts.UTF8 {
 		var err error
-		domain, err = idna.ToASCII(s.m.domain)
+		domain, err = idna.ToASCII(domain)
 		if err != nil {
-			return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+			return nil
 		}
 
-		selector, err = idna.ToASCII(s.m.selector)
+		selector, err = idna.ToASCII(selector)
 		if err != nil {
-			return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+			return nil
 		}
 	}
 
 	opts := dkim.SignOptions{
 		Domain:                 domain,
 		Selector:               selector,
-		Identifier:             id,
-		Signer:                 s.m.signer,
+		Identifier:             "@" + domain,
+		Signer:                 keySigner,
 		Hash:                   s.m.hash,
 		HeaderCanonicalization: s.m.headerCanon,
 		BodyCanonicalization:   s.m.bodyCanon,
@@ -405,7 +344,7 @@ func (s state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer
 
 	h.AddRaw([]byte(signer.Signature()))
 
-	s.m.log.DebugMsg("signed", "identifier", id)
+	s.m.log.DebugMsg("signed", "domain", domain)
 
 	return nil
 }

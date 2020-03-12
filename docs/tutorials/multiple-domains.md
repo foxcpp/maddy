@@ -18,48 +18,6 @@ both domains in the name, send and receive messages and so on.  Do not forget
 to configure corresponding SPF, DMARC and MTA-STS records as was
 recommended in the [introduction tutorial](setting-up.md).
 
-### DKIM
-
-However, one thing needs special attention since at the moment maddy lacks the
-ability to automatically select the corresponding DKIM key. Without additional
-changes with the above configuration it will sign all messages using the key
-for the primary domain. So you should configure corresponding mappings to make
-it use the proper key depending on the sender domain.
-
-To do so, open your configuration and look for the `submission` endpoint block.
-Then take a look at `default_destination` directive that is responsible for
-handling deliveries to non-local addresses there.
-
-You will notice it referes to the `local_modifiers` block which uses `sign_dkim
-$(primary_domain) default`. It is kinda obvious what is happening here.
-
-First, remove the `deliver_to &remote_queue` line from here and replace it with
-the following:
-```
-reroute {
-  source example.com {
-    modify { sign_dkim example.com default }
-    deliver_to &remote_queue
-  }
-  source example.org {
-    modify { sign_dkim example.org default }
-    deliver_to &remote_queue
-  }
-  default_source {
-    reject 501 5.1.8 "Non-local sender domain"
-  }
-}
-```
-Replace example.com and example.org with your domains. Add more `source`
-blocks if you need to handle more domains.
-
-This whole block tells maddy to take a look at the sender domain after deciding
-that the message should be sent to the Internet and apply the corresponding set
-of modifiers. Each set of modifiers consequently contains the `sign_dkim`
-module reference that is responsible for DKIM signature creation using
-domain-specific key. After that the message ends up in the outbound queue as
-usual.
-
 ## Single account namespace
 
 Lets say you want to handle messages for domains example.org and example.com
@@ -95,4 +53,3 @@ Note, however, no account credentials aliasing is done. Users should always use
 the account name with the primary domain to access IMAP mailboxes.
 
 **Note 1**: All domains should still be listed in the `$(local_domains)` macro.
-**Note 2**: Section about DKIM key selection still applies.
