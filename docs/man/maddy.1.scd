@@ -37,6 +37,9 @@ necessary to run secure email server implemented in one executable.
 *-debug*
 	Enable debug log. You want to use it when reporting bugs.
 
+*-v*
+	Print version & build metadata.
+
 # Modules
 
 maddy is built of many small components called "modules". Each module does one

@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	Version = "unknown (built from source tree)"
+	Version = "go-build"
 
 	// ConfigDirectory specifies platform-specific value
 	// that should be used as a location of default configuration
@@ -91,13 +91,20 @@ var (
 )
 
 func BuildInfo() string {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		if info.Main.Version == "(devel)" {
-			return Version
-		}
-		return info.Main.Version + " " + info.Main.Sum
+	version := Version
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" {
+		version = info.Main.Version
 	}
-	return Version + " (GOPATH build)"
+
+	return fmt.Sprintf(`%s %s/%s %s
+
+default config: %s
+default state_dir: %s
+default runtime_dir: %s`,
+		version, runtime.GOOS, runtime.GOARCH, runtime.Version(),
+		filepath.Join(ConfigDirectory, "maddy.conf"),
+		DefaultStateDirectory,
+		DefaultRuntimeDirectory)
 }
 
 // Run is the entry point for all maddy code. It takes care of command line arguments parsing,
@@ -110,7 +117,7 @@ func Run() int {
 	var (
 		configPath   = flag.String("config", filepath.Join(ConfigDirectory, "maddy.conf"), "path to configuration file")
 		logTargets   = flag.String("log", "stderr", "default logging target(s)")
-		printVersion = flag.Bool("v", false, "print version and exit")
+		printVersion = flag.Bool("v", false, "print versio, build metadata and exit")
 	)
 
 	if enableDebugFlags {
