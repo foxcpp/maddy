@@ -9,8 +9,8 @@ RUN apk --no-cache add bash git gcc musl-dev
 RUN mkdir /pkg/
 COPY maddy.conf /pkg/data/maddy.conf
 # Monkey-patch config to use environment.
-RUN sed -Ei 's!\$\(hostname\) = .+!$(hostname) = ${env:MADDY_HOSTNAME}!' /pkg/data/maddy.conf
-RUN sed -Ei 's!\$\(primary_domain\) = .+!$(primary_domain) = ${env:MADDY_DOMAIN}!' /pkg/data/maddy.conf
+RUN sed -Ei 's!\$\(hostname\) = .+!$(hostname) = {env:MADDY_HOSTNAME}!' /pkg/data/maddy.conf
+RUN sed -Ei 's!\$\(primary_domain\) = .+!$(primary_domain) = {env:MADDY_DOMAIN}!' /pkg/data/maddy.conf
 RUN sed -Ei 's!^tls .+!tls /data/tls_cert.pem /data/tls_key.pem!' /pkg/data/maddy.conf
 
 RUN ./build.sh --builddir /tmp --destdir /pkg/ --configdir /data --statedir /data --runtimedir /tmp package install_pkg
