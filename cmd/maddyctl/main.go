@@ -619,7 +619,7 @@ func openStorage(ctx *cli.Context) (Storage, error) {
 
 	var store Storage
 	switch node.Name {
-	case "sql":
+	case "imapsql":
 		store, err = sqlFromCfgBlock(root, node)
 		if err != nil {
 			return nil, err
@@ -656,7 +656,7 @@ func openUserDB(ctx *cli.Context) (UserDB, error) {
 	}
 
 	switch node.Name {
-	case "sql":
+	case "imapsql":
 		return sqlFromCfgBlock(root, node)
 	default:
 		return nil, errors.New("Error: Authentication backend is not supported by maddyctl")

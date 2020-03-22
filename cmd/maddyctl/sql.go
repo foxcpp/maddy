@@ -18,12 +18,12 @@ func sqlFromCfgBlock(root, node config.Node) (*imapsql.Storage, error) {
 		return nil, err
 	}
 
-	instName := "sql"
+	instName := "imapsql"
 	if len(node.Args) >= 1 {
 		instName = node.Args[0]
 	}
 
-	mod, err := imapsql.New("sql", instName, nil, nil)
+	mod, err := imapsql.New("imapsql", instName, nil, nil)
 	if err != nil {
 		return nil, err
 	}
