@@ -313,6 +313,8 @@ ensure_source_tree() {
 
     if [ $MADDY_SNAPSHOT -ne 0 ]; then
         (( MADDY_MINOR++ ))
+        MADDY_PATCH=0
+
         MADDY_VER="$MADDY_MAJOR.$MADDY_MINOR.$MADDY_PATCH-dev$MADDY_SNAPSHOT+$MADDY_COMMIT"
     else
         MADDY_VER="$MADDY_MAJOR.$MADDY_MINOR.$MADDY_PATCH+$MADDY_COMMIT"
