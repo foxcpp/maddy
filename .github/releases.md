@@ -20,15 +20,22 @@ cd tests/
 ./run.sh
 ```
 
-4. Use environment configuration from maddy-repro bundle
+4. Write release notes.
+
+5. Create PGP-signed Git tag and push it to GitHub (do not create a "release"
+   yet).
+
+5. Use environment configuration from maddy-repro bundle
    (https://foxcpp.dev/maddy-repro) to build release artifacts.
 
-5. Create detached PGP signatures for artifacts using key
+6. Create detached PGP signatures for artifacts using key
    3197BBD95137E682A59717B434BB2007081396F4.
 
-6. Create sha256sums file for artifacts.
+7. Create sha256sums file for artifacts.
 
-7. Create PGP-signed Git tag and write release notes into its description.
-
-8. Push Git tag to GitHub. Create release on GitHub using the same text for
+8. Create release on GitHub using the same text for
    release notes. Attach signed artifacts and sha256sums file.
+
+9. Build the Docker container and push it to hub.docker.com.
+
+10. Post a message on the sr.ht mailing list.
