@@ -75,7 +75,11 @@ func signTestMsg(t *testing.T, m *Modifier, envelopeFrom string) (textproto.Head
 
 	// sign_dkim expects RewriteSender to be called to get envelope sender
 	//  (see module.Modifier docs)
-	state.RewriteSender(context.Background(), envelopeFrom)
+
+	// RewriteSender does not fail for modify_dkim. It just sets envelopeFrom.
+	if _, err := state.RewriteSender(context.Background(), envelopeFrom); err != nil {
+		panic(err)
+	}
 	err = state.RewriteBody(context.Background(), &testHdr, buffer.MemoryBuffer{Slice: body})
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +168,6 @@ func TestGenerateSignVerify(t *testing.T) {
 
 		testHdr, body := signTestMsg(t, m, envelopeFrom)
 		verifyTestMsg(t, dir, expectDomain, testHdr, body)
-
 	}
 
 	for _, algo := range [2]string{"rsa2048", "ed25519"} {
