@@ -30,7 +30,7 @@ necessary to run secure email server implemented in one executable.
 
 *-log* _targets..._
 	Comma-separated list of logging targets. Valid values are the same as the
-	'log' config directie. Affects logging before configuration parsing
+	'log' config directive. Affects logging before configuration parsing
 	completes and after it, if the different value is not specified in the
 	configuration.
 
