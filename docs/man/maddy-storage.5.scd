@@ -12,12 +12,17 @@ configuration directives for each.
 Most likely, you are going to use modules listed here in 'storage' directive
 for IMAP endpoint module (see *maddy-imap*(5)).
 
+In most cases, local storage modules will auto-create accounts when they are
+accessed via IMAP. This relies on authentication provider used by IMAP endpoint
+to provide what essentially is access control. There is a caveat, however: this
+auto-creation will not happen when delivering incoming messages via SMTP as
+there is no authentication to confirm that this account should indeed be
+created.
+
 # SQL-based database module (imapsql)
 
-The 'imapsql' module implements unified database for IMAP index and the user
-credentials using SQL-based relational database. This allows easier management
-as there is no storage accounts and no authentication accounts. There are just
-accounts that can be created and removed using 'maddyctl' command.
+The imapsql module implements unified database for IMAP index and message
+metadata using SQL-based relational database.
 
 Message contents are stored in an "external store", currently the only
 supported "external store" is a filesystem directory, used by default.

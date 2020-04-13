@@ -6,6 +6,11 @@ Whenever you need to replace one string with another when handling anything in
 maddy, you can use any of the following modules to obtain the replacement
 string. They are commonly called "table modules" or just "tables".
 
+Some table modules implement write options allowing other maddy modules to
+change the source of data, effectively turning the table into a complete
+interface to a key-value store for maddy. Such tables are referred to as
+"mutable tables".
+
 # File mapping (file_table)
 
 This module builds string-string mapping from a text file.
@@ -53,14 +58,23 @@ aaa: bbb
 aaa
 ```
 
-# SQL query mapping (sql_table)
+# SQL query mapping (sql_query)
+
+The sql_query module implements table interface using SQL queries.
 
 Definition:
 ```
-sql_table {
+sql_query {
 	driver <driver name>
 	dsn <data source name>
 	lookup <lookup query>
+
+	# Optional:
+	init <init query list>
+	list <list query>
+	add <add query>
+	del <del query>
+	set <set query>
 }
 ```
 
@@ -68,7 +82,7 @@ Usage example:
 ```
 # Resolve SMTP address aliases using PostgreSQL DB.
 modify {
-	alias sql_table {
+	alias sql_query {
 		driver postgres
 		dsn "dbname=maddy user=maddy"
 		lookup "SELECT alias FROM aliases WHERE address = $1"
@@ -111,7 +125,7 @@ List of queries to execute on initialization. Can be used to configure RDBMS.
 
 Example, to improve SQLite3 performance:
 ```
-sql_table {
+sql_query {
 	driver sqlite3
 	dsn whatever.db
 	init "PRAGMA journal_mode=WAL" \
@@ -119,6 +133,27 @@ sql_table {
 	lookup "SELECT alias FROM aliases WHERE address = $1"
 }
 ```
+
+**Syntax:** add _query_ ++
+**Syntax:** list _query_ ++
+**Syntax:** set _query_ ++
+**Syntax:** del _query_ ++
+**Default:** none
+
+If queries are set to implement corresponding table operations - table becomes
+"mutable" and can be used in contexts that require writable key-value store.
+
+'add' query gets two ordered arguments - key and value strings to store.
+They should be added to the store. The query *should* not add multiple values
+for the same key and *should* fail if the key already exists.
+
+'list' query gets no arguments and should return a column with all keys in
+the store.
+
+'set' query gets two arguments - key and value and should replace the existing
+entry in the database.
+
+'del' query gets one argument - key and should remove it from the database.
 
 # Static table (static)
 

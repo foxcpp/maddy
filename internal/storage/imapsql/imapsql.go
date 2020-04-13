@@ -420,28 +420,7 @@ func prepareUsername(username string) (string, error) {
 	return mbox + "@" + domain, nil
 }
 
-func (store *Storage) AuthPlain(username, password string) error {
-	// TODO: Pass session context there.
-	defer trace.StartRegion(context.Background(), "imapsql/AuthPlain").End()
-
-	accountName, err := prepareUsername(username)
-	if err != nil {
-		return err
-	}
-
-	password, err = precis.OpaqueString.CompareKey(password)
-	if err != nil {
-		return err
-	}
-
-	// TODO(GH foxcpp/go-imap-sql#30): Make go-imap-sql CheckPlain return an actual error.
-	if !store.Back.CheckPlain(accountName, password) {
-		return module.ErrUnknownCredentials
-	}
-	return nil
-}
-
-func (store *Storage) GetOrCreateUser(username string) (backend.User, error) {
+func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error) {
 	accountName, err := prepareUsername(username)
 	if err != nil {
 		return nil, backend.ErrInvalidCredentials

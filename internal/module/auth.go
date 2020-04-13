@@ -14,3 +14,13 @@ var (
 type PlainAuth interface {
 	AuthPlain(username, password string) error
 }
+
+// PlainUserDB is a local credentials store that can be managed using maddyctl
+// utility.
+type PlainUserDB interface {
+	PlainAuth
+	ListUsers() ([]string, error)
+	CreateUser(username, password string) error
+	SetUserPassword(username, password string) error
+	DeleteUser(username string) error
+}

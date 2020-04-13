@@ -2,7 +2,6 @@ package imapsql
 
 import (
 	"flag"
-	"math/rand"
 	"strconv"
 	"testing"
 	"time"
@@ -41,46 +40,34 @@ func createTestDB(tb testing.TB, compAlgo string) *Storage {
 }
 
 func BenchmarkStorage_Delivery(b *testing.B) {
-	randomKey := "rcpt-" + strconv.FormatUint(rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(), 10)
+	randomKey := "rcpt-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "@example.org"
 
 	be := createTestDB(b, "")
-	if u, err := be.GetOrCreateUser(randomKey); err != nil {
+	if err := be.CreateIMAPAcct(randomKey); err != nil {
 		b.Fatal(err)
-	} else {
-		if err := u.Logout(); err != nil {
-			b.Fatal(err)
-		}
 	}
 
-	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
+	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey})
 }
 
 func BenchmarkStorage_DeliveryLZ4(b *testing.B) {
-	randomKey := "rcpt-" + strconv.FormatUint(rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(), 10)
+	randomKey := "rcpt-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "@example.org"
 
 	be := createTestDB(b, "lz4")
-	if u, err := be.GetOrCreateUser(randomKey); err != nil {
+	if err := be.CreateIMAPAcct(randomKey); err != nil {
 		b.Fatal(err)
-	} else {
-		if err := u.Logout(); err != nil {
-			b.Fatal(err)
-		}
 	}
 
-	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
+	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey})
 }
 
 func BenchmarkStorage_DeliveryZstd(b *testing.B) {
-	randomKey := "rcpt-" + strconv.FormatUint(rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(), 10)
+	randomKey := "rcpt-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "@example.org"
 
 	be := createTestDB(b, "zstd")
-	if u, err := be.GetOrCreateUser(randomKey); err != nil {
+	if err := be.CreateIMAPAcct(randomKey); err != nil {
 		b.Fatal(err)
-	} else {
-		if err := u.Logout(); err != nil {
-			b.Fatal(err)
-		}
 	}
 
-	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey + "@example.org"})
+	testutils.BenchDelivery(b, be, "sender@example.org", []string{randomKey})
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 )
 
-const FileModName = "file_table"
+const FileModName = "file"
 
 type File struct {
 	instName string

@@ -11,13 +11,6 @@ That is, they authenticate users.
 Most likely, you are going to use these modules with 'auth' directive of IMAP
 (*maddy-imap*(5)) or SMTP endpoint (*maddy-smtp*(5)).
 
-# SQL module (sql)
-
-sql module described in *maddy-storage*(5) can also be used as a authentication
-backend.
-
-The username is required to be a valid RFC 5321 e-mail address.
-
 # External authentication module (extauth)
 
 Module for authentication using external helper binary. It looks for binary
@@ -155,6 +148,13 @@ to load user credentials from text file (file_table module) or SQL query
 
 Definition:
 ```
+pass_table [block name] {
+	table <table config>
+
+}
+```
+Shortened variant for inline use:
+```
 pass_table <table> [table arguments] {
 	[additional table config]
 }
@@ -175,6 +175,13 @@ hash algorithm name, salt and other necessary parameters.
 
 You should use 'maddyctl hash' command to generate suitable values.
 See 'maddyctl hash --help' for details.
+
+## maddyctl creds
+
+If the underlying table is a "mutable" table (see maddy-tables(5)) then
+the 'maddyctl creds' command can be used to modify the underlying tables
+via pass_table module. It will act a "local credentials store" and will write
+appropriate hash values to the table.
 
 # Separate username and password lookup (plain_separate)
 

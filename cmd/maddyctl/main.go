@@ -3,28 +3,24 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/emersion/go-imap/backend"
 	"github.com/foxcpp/maddy"
+	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/hooks"
+	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
+	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserDB interface {
-	ListUsers() ([]string, error)
-	CreateUser(username, password string) error
-	CreateUserNoPass(username string) error
-	DeleteUser(username string) error
-	SetUserPassword(username, newPassword string) error
-	Close() error
-}
-
-type Storage interface {
-	GetUser(username string) (backend.User, error)
-	Close() error
+func closeIfNeeded(i interface{}) {
+	if c, ok := i.(io.Closer); ok {
+		c.Close()
+	}
 }
 
 func main() {
@@ -44,12 +40,12 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
-			Name:  "users",
-			Usage: "User accounts management",
+			Name:  "creds",
+			Usage: "Local credentials management",
 			Subcommands: []cli.Command{
 				{
 					Name:  "list",
-					Usage: "List created user accounts",
+					Usage: "List created credentials",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:   "cfg-block",
@@ -63,7 +59,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return usersList(be, ctx)
 					},
 				},
@@ -103,7 +99,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return usersCreate(be, ctx)
 					},
 				},
@@ -128,7 +124,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return usersRemove(be, ctx)
 					},
 				},
@@ -148,33 +144,91 @@ func main() {
 							Name:  "password,p",
 							Usage: "Use `PASSWORD` instead of reading password from stdin.\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
 						},
-						cli.BoolFlag{
-							Name:  "null,n",
-							Usage: "Set password to null",
-						},
-						cli.StringFlag{
-							Name:  "hash",
-							Usage: "Use specified hash algorithm for password. Supported values vary depending on storage backend.",
-							Value: "",
-						},
-						cli.IntFlag{
-							Name:  "bcrypt-cost",
-							Usage: "Specify bcrypt cost value",
-							Value: bcrypt.DefaultCost,
-						},
 					},
 					Action: func(ctx *cli.Context) error {
 						be, err := openUserDB(ctx)
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return usersPassword(be, ctx)
 					},
 				},
+			},
+		},
+		{
+			Name:  "imap-acct",
+			Usage: "IMAP storage accounts management",
+			Subcommands: []cli.Command{
 				{
-					Name:      "imap-appendlimit",
-					Usage:     "Query or set user's APPENDLIMIT value",
+					Name:  "list",
+					Usage: "List storage accounts",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "cfg-block",
+							Usage:  "Module configuration block to use",
+							EnvVar: "MADDY_CFGBLOCK",
+							Value:  "local_mailboxes",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return imapAcctList(be, ctx)
+					},
+				},
+				{
+					Name:      "create",
+					Usage:     "Create IMAP storage account",
+					ArgsUsage: "USERNAME",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "cfg-block",
+							Usage:  "Module configuration block to use",
+							EnvVar: "MADDY_CFGBLOCK",
+							Value:  "local_authdb",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return imapAcctCreate(be, ctx)
+					},
+				},
+				{
+					Name:      "remove",
+					Usage:     "Delete IMAP storage account",
+					ArgsUsage: "USERNAME",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "cfg-block",
+							Usage:  "Module configuration block to use",
+							EnvVar: "MADDY_CFGBLOCK",
+							Value:  "local_authdb",
+						},
+						cli.BoolFlag{
+							Name:  "yes,y",
+							Usage: "Don't ask for confirmation",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return imapAcctRemove(be, ctx)
+					},
+				},
+				{
+					Name:      "appendlimit",
+					Usage:     "Query or set accounts's APPENDLIMIT value",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
 						cli.StringFlag{
@@ -193,8 +247,8 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
-						return usersAppendlimit(be, ctx)
+						defer closeIfNeeded(be)
+						return imapAcctAppendlimit(be, ctx)
 					},
 				},
 			},
@@ -224,7 +278,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return mboxesList(be, ctx)
 					},
 				},
@@ -249,7 +303,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return mboxesCreate(be, ctx)
 					},
 				},
@@ -275,7 +329,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return mboxesRemove(be, ctx)
 					},
 				},
@@ -297,7 +351,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return mboxesRename(be, ctx)
 					},
 				},
@@ -333,7 +387,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsAdd(be, ctx)
 					},
 				},
@@ -359,7 +413,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsFlags(be, ctx)
 					},
 				},
@@ -385,7 +439,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsFlags(be, ctx)
 					},
 				},
@@ -411,7 +465,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsFlags(be, ctx)
 					},
 				},
@@ -440,7 +494,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsRemove(be, ctx)
 					},
 				},
@@ -466,7 +520,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsCopy(be, ctx)
 					},
 				},
@@ -496,7 +550,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsMove(be, ctx)
 					},
 				},
@@ -526,7 +580,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsList(be, ctx)
 					},
 				},
@@ -552,7 +606,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						defer be.Close()
+						defer closeIfNeeded(be)
 						return msgsDump(be, ctx)
 					},
 				},
@@ -601,34 +655,70 @@ func main() {
 	}
 }
 
-func openStorage(ctx *cli.Context) (Storage, error) {
+func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo, error) {
 	cfgPath := ctx.GlobalString("config")
 	if cfgPath == "" {
-		return nil, errors.New("Error: config is required")
+		return nil, nil, errors.New("Error: config is required")
 	}
+	cfgFile, err := os.Open(cfgPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error: failed to open config: %w", err)
+	}
+	defer cfgFile.Close()
+	cfgNodes, err := parser.Read(cfgFile, cfgFile.Name())
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error: failed to parse config: %w", err)
+	}
+
+	globals, cfgNodes, err := maddy.ReadGlobals(cfgNodes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := maddy.InitDirs(); err != nil {
+		return nil, nil, err
+	}
+
+	_, mods, err := maddy.RegisterModules(globals, cfgNodes)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer hooks.RunHooks(hooks.EventShutdown)
 
 	cfgBlock := ctx.String("cfg-block")
 	if cfgBlock == "" {
-		return nil, errors.New("Error: cfg-block is required")
+		return nil, nil, errors.New("Error: cfg-block is required")
+	}
+	var mod maddy.ModInfo
+	for _, m := range mods {
+		if m.Instance.InstanceName() == cfgBlock {
+			mod = m
+			break
+		}
+	}
+	if mod.Instance == nil {
+		return nil, nil, fmt.Errorf("Error: unknown configuration block: %s", cfgBlock)
 	}
 
-	root, node, err := findBlockInCfg(cfgPath, cfgBlock)
+	return globals, &mod, nil
+}
+
+func openStorage(ctx *cli.Context) (module.Storage, error) {
+	globals, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var store Storage
-	switch node.Name {
-	case "imapsql":
-		store, err = sqlFromCfgBlock(root, node)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, errors.New("Error: Storage backend is not supported by maddyctl")
+	storage, ok := mod.Instance.(module.Storage)
+	if !ok {
+		return nil, fmt.Errorf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block"))
 	}
 
-	if updStore, ok := store.(updatepipe.Backend); ok {
+	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
+		return nil, fmt.Errorf("Error: module initialization failed: %w", err)
+	}
+
+	if updStore, ok := mod.Instance.(updatepipe.Backend); ok {
 		if err := updStore.EnableUpdatePipe(updatepipe.ModePush); err != nil && !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "Failed to initialize update pipe, do not remove messages from mailboxes open by clients: %v\n", err)
 		}
@@ -636,29 +726,23 @@ func openStorage(ctx *cli.Context) (Storage, error) {
 		fmt.Fprintf(os.Stderr, "No update pipe support, do not remove messages from mailboxes open by clients\n")
 	}
 
-	return store, nil
+	return storage, nil
 }
 
-func openUserDB(ctx *cli.Context) (UserDB, error) {
-	cfgPath := ctx.GlobalString("config")
-	if cfgPath == "" {
-		return nil, errors.New("Error: config is required")
-	}
-
-	cfgBlock := ctx.String("cfg-block")
-	if cfgBlock == "" {
-		return nil, errors.New("Error: cfg-block is required")
-	}
-
-	root, node, err := findBlockInCfg(cfgPath, cfgBlock)
+func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
+	globals, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	switch node.Name {
-	case "imapsql":
-		return sqlFromCfgBlock(root, node)
-	default:
-		return nil, errors.New("Error: Authentication backend is not supported by maddyctl")
+	userDB, ok := mod.Instance.(module.PlainUserDB)
+	if !ok {
+		return nil, fmt.Errorf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block"))
 	}
+
+	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
+		return nil, fmt.Errorf("Error: module initialization failed: %w", err)
+	}
+
+	return userDB, nil
 }

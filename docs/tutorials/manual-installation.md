@@ -57,7 +57,8 @@ basic ideas about how email works.
    zone to make signing work.
 7. Create user accounts you need using `maddyctl`:
    ```
-   maddyctl users create foxcpp@example.org
+   maddyctl creds create foxcpp@example.org
+   maddyctl imap-acct create foxcpp@example.org
    ```
 
 Congratulations, now you have your working mail server.

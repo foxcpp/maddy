@@ -54,10 +54,13 @@ github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe h1:40SWqY0
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200104150404-bd7815ad9f5a h1:0M1igChqRDhGcWrjuAq+BiYC7CdVCsyktmbKWlJeuuo=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200104150404-bd7815ad9f5a/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
+github.com/foxcpp/go-imap-backend-tests v0.0.0-20200411182408-7dae2bf0e51c/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20200215215045-d7d4cb3f7d1d h1:xhC9VM2zgsjtuBHj1Vo9+KCcGZ57uLCcTgkFrEW/p6Y=
 github.com/foxcpp/go-imap-sql v0.3.2-0.20200215215045-d7d4cb3f7d1d/go.mod h1:3hC9ByCxfNVv8jlxIXYsCLb4ylyq4jbBG5COUln3stE=
+github.com/foxcpp/go-imap-sql v0.4.1-0.20200411182958-971cf71cce4f h1:B9z1jQiow9anZnpwDBdJqfSAX340u4+5PHv5gZQnGns=
+github.com/foxcpp/go-imap-sql v0.4.1-0.20200411182958-971cf71cce4f/go.mod h1:EIJTCZYjDmaYB3pquPs+FZcX5YxrLAUZSvwCNLGWblk=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f h1:b/CFmrdqIGU6eV774xeaQwd1VfgiLuR/8jiY3LyLiMc=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe h1:vzxspt1t/cOPBbDoIfVdS+7Ytdb5B5BJN46fDMCTxkY=

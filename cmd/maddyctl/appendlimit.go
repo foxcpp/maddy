@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	appendlimit "github.com/emersion/go-imap-appendlimit"
+	"github.com/foxcpp/maddy/internal/module"
 	"github.com/urfave/cli"
 )
 
@@ -20,19 +21,19 @@ type AppendLimitUser interface {
 	SetMessageLimit(val *uint32) error
 }
 
-func usersAppendlimit(be Storage, ctx *cli.Context) error {
+func imapAcctAppendlimit(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
 	userAL, ok := u.(AppendLimitUser)
 	if !ok {
-		return errors.New("Error: Storage does not support per-user append limit")
+		return errors.New("Error: module.Storage does not support per-user append limit")
 	}
 
 	if ctx.IsSet("value") {

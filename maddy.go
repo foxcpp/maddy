@@ -251,7 +251,7 @@ func ensureDirectoryWritable(path string) error {
 	return nil
 }
 
-func moduleMain(cfg []config.Node) error {
+func ReadGlobals(cfg []config.Node) (map[string]interface{}, []config.Node, error) {
 	globals := config.NewMap(nil, config.Node{Children: cfg})
 	globals.String("state_dir", false, false, DefaultStateDirectory, &config.StateDirectory)
 	globals.String("runtime_dir", false, false, DefaultRuntimeDirectory, &config.RuntimeDirectory)
@@ -265,6 +265,11 @@ func moduleMain(cfg []config.Node) error {
 	globals.Bool("debug", false, log.DefaultLogger.Debug, &log.DefaultLogger.Debug)
 	globals.AllowUnknown()
 	unknown, err := globals.Process()
+	return globals.Values, unknown, err
+}
+
+func moduleMain(cfg []config.Node) error {
+	globals, modBlocks, err := ReadGlobals(cfg)
 	if err != nil {
 		return err
 	}
@@ -277,7 +282,12 @@ func moduleMain(cfg []config.Node) error {
 
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
 
-	_, err = instancesFromConfig(globals.Values, unknown)
+	endpoints, mods, err := RegisterModules(globals, modBlocks)
+	if err != nil {
+		return err
+	}
+
+	err = initModules(globals, endpoints, mods)
 	if err != nil {
 		return err
 	}
@@ -293,16 +303,13 @@ func moduleMain(cfg []config.Node) error {
 	return nil
 }
 
-type modInfo struct {
-	instance module.Module
-	cfg      config.Node
+type ModInfo struct {
+	Instance module.Module
+	Cfg      config.Node
 }
 
-func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([]module.Module, error) {
-	var (
-		endpoints []modInfo
-		mods      = make([]modInfo, 0, len(nodes))
-	)
+func RegisterModules(globals map[string]interface{}, nodes []config.Node) (endpoints, mods []ModInfo, err error) {
+	mods = make([]ModInfo, 0, len(nodes))
 
 	for _, block := range nodes {
 		var instName string
@@ -320,73 +327,70 @@ func instancesFromConfig(globals map[string]interface{}, nodes []config.Node) ([
 		if endpFactory != nil {
 			inst, err := endpFactory(modName, block.Args)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			endpoints = append(endpoints, modInfo{instance: inst, cfg: block})
+			endpoints = append(endpoints, ModInfo{Instance: inst, Cfg: block})
 			continue
 		}
 
 		factory := module.Get(modName)
 		if factory == nil {
-			return nil, config.NodeErr(block, "unknown module or global directive: %s", modName)
+			return nil, nil, config.NodeErr(block, "unknown module or global directive: %s", modName)
 		}
 
 		if module.HasInstance(instName) {
-			return nil, config.NodeErr(block, "config block named %s already exists", instName)
+			return nil, nil, config.NodeErr(block, "config block named %s already exists", instName)
 		}
 
 		inst, err := factory(modName, instName, modAliases, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		block := block
 		module.RegisterInstance(inst, config.NewMap(globals, block))
 		for _, alias := range modAliases {
 			if module.HasInstance(alias) {
-				return nil, config.NodeErr(block, "config block named %s already exists", alias)
+				return nil, nil, config.NodeErr(block, "config block named %s already exists", alias)
 			}
 			module.RegisterAlias(alias, instName)
 		}
-		mods = append(mods, modInfo{instance: inst, cfg: block})
+		mods = append(mods, ModInfo{Instance: inst, Cfg: block})
 	}
 
 	if len(endpoints) == 0 {
-		return nil, fmt.Errorf("at least one endpoint should be configured")
+		return nil, nil, fmt.Errorf("at least one endpoint should be configured")
 	}
 
+	return endpoints, mods, nil
+}
+
+func initModules(globals map[string]interface{}, endpoints, mods []ModInfo) error {
 	for _, endp := range endpoints {
-		if err := endp.instance.Init(config.NewMap(globals, endp.cfg)); err != nil {
-			return nil, err
+		if err := endp.Instance.Init(config.NewMap(globals, endp.Cfg)); err != nil {
+			return err
 		}
 
-		if closer, ok := endp.instance.(io.Closer); ok {
+		if closer, ok := endp.Instance.(io.Closer); ok {
 			endp := endp
 			hooks.AddHook(hooks.EventShutdown, func() {
-				log.Debugf("close %s (%s)", endp.instance.Name(), endp.instance.InstanceName())
+				log.Debugf("close %s (%s)", endp.Instance.Name(), endp.Instance.InstanceName())
 				if err := closer.Close(); err != nil {
-					log.Printf("module %s (%s) close failed: %v", endp.instance.Name(), endp.instance.InstanceName(), err)
+					log.Printf("module %s (%s) close failed: %v", endp.Instance.Name(), endp.Instance.InstanceName(), err)
 				}
 			})
 		}
 	}
 
 	for _, inst := range mods {
-		if module.Initialized[inst.instance.InstanceName()] {
+		if module.Initialized[inst.Instance.InstanceName()] {
 			continue
 		}
 
-		return nil, fmt.Errorf("Unused configuration block at %s:%d - %s (%s)",
-			inst.cfg.File, inst.cfg.Line, inst.instance.InstanceName(), inst.instance.Name())
+		return fmt.Errorf("Unused configuration block at %s:%d - %s (%s)",
+			inst.Cfg.File, inst.Cfg.Line, inst.Instance.InstanceName(), inst.Instance.Name())
 	}
 
-	res := make([]module.Module, 0, len(mods)+len(endpoints))
-	for _, endp := range endpoints {
-		res = append(res, endp.instance)
-	}
-	for _, mod := range mods {
-		res = append(res, mod.instance)
-	}
-	return res, nil
+	return nil
 }

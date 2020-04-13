@@ -201,7 +201,7 @@ func (endp *Endpoint) Close() error {
 }
 
 func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
-	u, err := endp.Store.GetOrCreateUser(identity)
+	u, err := endp.Store.GetOrCreateIMAPAcct(identity)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) 
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
-	return endp.Store.GetOrCreateUser(username)
+	return endp.Store.GetOrCreateIMAPAcct(username)
 }
 
 func (endp *Endpoint) EnableChildrenExt() bool {

@@ -154,24 +154,38 @@ mx: mx1.example.org
 mx: mx2.example.org
 ```
 
-## postmaster and other user accounts
+## User accounts and maddyctl
 
 A mail server is useless without mailboxes, right? Unlike software like postfix
 and dovecot, maddy uses "virtual users" by default, meaning it does not care or
 know about system users.
 
-Here is the command to create virtual 'postmaster' account, it will prompt you
-for a password:
+IMAP mailboxes ("accounts") and authentication credentials are kept separate.
+
+To register user credentials, use `maddyctl creds create` command.
+Like that:
 ```
-$ maddyctl users create postmaster@example.org
+$ maddyctl creds create postmaster@example.org
 ```
 
-Note that account names include the domain. When authenticating in the mail
-client, full address should be specified as a username as well.
+Note the username is a e-mail address. This is required as username is used to
+authorize IMAP and SMTP access (unless you configure custom mappings, not
+described here).
 
-Btw, it is a good idea to learn what else maddyctl can do. Given the
-non-standard structure of messages storage, maddyctl is the only way to
-comfortably inspect it.
+After registering the user credentials, you also need to create a local
+storage account:
+```
+$ maddyctl imap-acct create postmaster@example.org
+``
+
+That is it. Now you have your first e-mail address. when authenticating using
+your e-mail client, do not forget the username is "postmaster@example.org", not
+just "postmaster".
+
+You may find running `maddyctl creds --help` and `maddyctl imap-acct --help`
+useful to learn about other commands. Note that IMAP accounts and credentials
+are managed separately yet usernames should match by default for things to
+work.
 
 ## Optional: Install and use fail2ban
 

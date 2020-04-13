@@ -12,6 +12,7 @@ import (
 	"github.com/emersion/go-imap"
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
+	"github.com/foxcpp/maddy/internal/module"
 	"github.com/urfave/cli"
 )
 
@@ -27,13 +28,13 @@ func FormatAddressList(addrs []*imap.Address) string {
 	return strings.Join(res, ", ")
 }
 
-func mboxesList(be Storage, ctx *cli.Context) error {
+func mboxesList(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func mboxesList(be Storage, ctx *cli.Context) error {
 	return nil
 }
 
-func mboxesCreate(be Storage, ctx *cli.Context) error {
+func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -73,11 +74,12 @@ func mboxesCreate(be Storage, ctx *cli.Context) error {
 		return errors.New("Error: NAME is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
 
+	// TODO: Generalize.
 	if ctx.IsSet("special") {
 		attr := "\\" + strings.Title(ctx.String("special"))
 		return u.(*imapsql.User).CreateMailboxSpecial(name, attr)
@@ -86,7 +88,7 @@ func mboxesCreate(be Storage, ctx *cli.Context) error {
 	return u.CreateMailbox(name)
 }
 
-func mboxesRemove(be Storage, ctx *cli.Context) error {
+func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -96,7 +98,7 @@ func mboxesRemove(be Storage, ctx *cli.Context) error {
 		return errors.New("Error: NAME is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -128,7 +130,7 @@ func mboxesRemove(be Storage, ctx *cli.Context) error {
 	return nil
 }
 
-func mboxesRename(be Storage, ctx *cli.Context) error {
+func mboxesRename(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -142,7 +144,7 @@ func mboxesRename(be Storage, ctx *cli.Context) error {
 		return errors.New("Error: NEWNAME is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -150,7 +152,7 @@ func mboxesRename(be Storage, ctx *cli.Context) error {
 	return u.RenameMailbox(oldName, newName)
 }
 
-func msgsAdd(be Storage, ctx *cli.Context) error {
+func msgsAdd(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -160,7 +162,7 @@ func msgsAdd(be Storage, ctx *cli.Context) error {
 		return errors.New("Error: MAILBOX is required")
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -203,7 +205,7 @@ func msgsAdd(be Storage, ctx *cli.Context) error {
 	return nil
 }
 
-func msgsRemove(be Storage, ctx *cli.Context) error {
+func msgsRemove(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -222,7 +224,7 @@ func msgsRemove(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -246,7 +248,7 @@ func msgsRemove(be Storage, ctx *cli.Context) error {
 	return nil
 }
 
-func msgsCopy(be Storage, ctx *cli.Context) error {
+func msgsCopy(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -269,7 +271,7 @@ func msgsCopy(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -282,7 +284,7 @@ func msgsCopy(be Storage, ctx *cli.Context) error {
 	return srcMbox.CopyMessages(ctx.Bool("uid"), seq, tgtName)
 }
 
-func msgsMove(be Storage, ctx *cli.Context) error {
+func msgsMove(be module.Storage, ctx *cli.Context) error {
 	if ctx.Bool("y,yes") || !clitools.Confirmation("Currently, it is unsafe to remove messages from mailboxes used by connected clients, continue?", false) {
 		return errors.New("Cancelled")
 	}
@@ -309,7 +311,7 @@ func msgsMove(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -324,7 +326,7 @@ func msgsMove(be Storage, ctx *cli.Context) error {
 	return moveMbox.MoveMessages(ctx.Bool("uid"), seq, tgtName)
 }
 
-func msgsList(be Storage, ctx *cli.Context) error {
+func msgsList(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -343,7 +345,7 @@ func msgsList(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -400,7 +402,7 @@ func msgsList(be Storage, ctx *cli.Context) error {
 	return err
 }
 
-func msgsDump(be Storage, ctx *cli.Context) error {
+func msgsDump(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -419,7 +421,7 @@ func msgsDump(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -444,7 +446,7 @@ func msgsDump(be Storage, ctx *cli.Context) error {
 	return err
 }
 
-func msgsFlags(be Storage, ctx *cli.Context) error {
+func msgsFlags(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
 		return errors.New("Error: USERNAME is required")
@@ -463,7 +465,7 @@ func msgsFlags(be Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	u, err := be.GetUser(username)
+	u, err := be.GetIMAPAcct(username)
 	if err != nil {
 		return err
 	}
