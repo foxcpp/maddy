@@ -29,10 +29,10 @@ there are a few things to keep in mind:
 Since there are currently no pre-compiled binaries for maddy, we are going to
 build it from the source. Nothing scary, this is relatively easy to do with Go.
 
-System dependencies you need to have installed is C compiler, Git and curl.
+System dependencies you need to have installed is C toolchain, Git and curl.
 On Debian-based distributions, this should be enough:
 ```
-# apt-get install gcc git curl
+# apt-get install gcc git curl libc6-dev
 ```
 
 If you want manual pages with reference docs, install scdoc too:
@@ -179,10 +179,10 @@ The email world is full of annoying bots just like Web (these annoying scanners
 looking for PhpMyAdmin on your blog). fail2ban can help you get rid of them by
 temporary blocking offending IPs.
 
-1. Install the fail2ban package using your distribution package manager
+1. Install the fail2ban package and the python systemd module using your distribution package manager
 For Debian-based distributions:
 ```
-apt-get install fail2ban
+apt-get install fail2ban python3-systemd
 ```
 
 2. build.sh already installed necessary jail configuration files, but you have to
