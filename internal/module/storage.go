@@ -1,6 +1,8 @@
 package module
 
-import imapbackend "github.com/emersion/go-imap/backend"
+import (
+	imapbackend "github.com/emersion/go-imap/backend"
+)
 
 // Storage interface is a slightly modified go-imap's Backend interface
 // (authentication is removed).
@@ -21,7 +23,7 @@ type Storage interface {
 type ManageableStorage interface {
 	Storage
 
-	ListAccts() ([]string, error)
-	CreateAcct(username string) error
-	DeleteAcct(username string) error
+	ListIMAPAccts() ([]string, error)
+	CreateIMAPAcct(username string) error
+	DeleteIMAPAcct(username string) error
 }

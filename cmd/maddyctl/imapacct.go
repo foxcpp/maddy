@@ -21,7 +21,7 @@ func imapAcctList(be module.Storage, ctx *cli.Context) error {
 		return errors.New("Error: storage backend does not support accounts management using maddyctl")
 	}
 
-	list, err := mbe.ListAccts()
+	list, err := mbe.ListIMAPAccts()
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 		return errors.New("Error: USERNAME is required")
 	}
 
-	if err := mbe.CreateAcct(username); err != nil {
+	if err := mbe.CreateIMAPAcct(username); err != nil {
 		return err
 	}
 
@@ -114,5 +114,5 @@ func imapAcctRemove(be module.Storage, ctx *cli.Context) error {
 		}
 	}
 
-	return mbe.DeleteAcct(username)
+	return mbe.DeleteIMAPAcct(username)
 }
