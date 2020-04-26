@@ -79,10 +79,15 @@ func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	// TODO: Generalize.
 	if ctx.IsSet("special") {
 		attr := "\\" + strings.Title(ctx.String("special"))
-		return u.(*imapsql.User).CreateMailboxSpecial(name, attr)
+
+		suu, ok := u.(SpecialUseUser)
+		if !ok {
+			return errors.New("Error: storage backend does not support SPECIAL-USE IMAP extension")
+		}
+
+		return suu.CreateMailboxSpecial(name, attr)
 	}
 
 	return u.CreateMailbox(name)

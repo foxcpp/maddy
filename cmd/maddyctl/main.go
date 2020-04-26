@@ -191,6 +191,31 @@ func main() {
 							EnvVar: "MADDY_CFGBLOCK",
 							Value:  "local_mailboxes",
 						},
+						cli.StringFlag{
+							Name:  "sent-name",
+							Usage: "Name of special mailbox for sent messages, use empty string to not create any",
+							Value: "Sent",
+						},
+						cli.StringFlag{
+							Name:  "trash-name",
+							Usage: "Name of special mailbox for trash, use empty string to not create any",
+							Value: "Trash",
+						},
+						cli.StringFlag{
+							Name:  "junk-name",
+							Usage: "Name of special mailbox for 'junk' (spam), use empty string to not create any",
+							Value: "Junk",
+						},
+						cli.StringFlag{
+							Name:  "drafts-name",
+							Usage: "Name of special mailbox for drafts, use empty string to not create any",
+							Value: "Drafts",
+						},
+						cli.StringFlag{
+							Name:  "archive-name",
+							Usage: "Name of special mailbox for archive, use empty string to not create any",
+							Value: "Archive",
+						},
 					},
 					Action: func(ctx *cli.Context) error {
 						be, err := openStorage(ctx)
