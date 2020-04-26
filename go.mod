@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8
-	github.com/GehirnInc/crypt v0.0.0-20190301055215-6c0105aabd46
+	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/emersion/go-imap v1.0.4
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
@@ -19,20 +19,20 @@ require (
 	github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a
-	github.com/foxcpp/go-mockdns v0.0.0-20191226172053-3b5a6e57c8fe
+	github.com/foxcpp/go-mockdns v0.0.0-20200218175156-e3faeb733052
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.1
 	github.com/lib/pq v1.4.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/miekg/dns v1.1.27
+	github.com/miekg/dns v1.1.29
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
-	github.com/urfave/cli v1.22.1
-	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
+	github.com/urfave/cli v1.22.4
+	golang.org/x/crypto v0.0.0-20200423211502-4bdfaf469ed5
+	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
 	golang.org/x/text v0.3.2
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
