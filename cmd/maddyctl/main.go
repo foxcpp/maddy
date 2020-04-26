@@ -189,7 +189,7 @@ func main() {
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
 							EnvVar: "MADDY_CFGBLOCK",
-							Value:  "local_authdb",
+							Value:  "local_mailboxes",
 						},
 					},
 					Action: func(ctx *cli.Context) error {
@@ -210,7 +210,7 @@ func main() {
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
 							EnvVar: "MADDY_CFGBLOCK",
-							Value:  "local_authdb",
+							Value:  "local_mailboxes",
 						},
 						cli.BoolFlag{
 							Name:  "yes,y",
