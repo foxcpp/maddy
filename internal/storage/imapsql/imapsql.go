@@ -328,11 +328,13 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 
 	if mode == updatepipe.ModeReplicate {
 		if err := store.updPipe.Listen(wrapped); err != nil {
+			store.updPipe = nil
 			return err
 		}
 	}
 
 	if err := store.updPipe.InitPush(); err != nil {
+		store.updPipe = nil
 		return err
 	}
 
