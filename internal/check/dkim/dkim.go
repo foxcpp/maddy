@@ -15,6 +15,7 @@ import (
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/check"
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/dns"
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
@@ -30,6 +31,8 @@ type Check struct {
 	brokenSigAction check.FailAction
 	noSigAction     check.FailAction
 	failOpen        bool
+
+	resolver dns.Resolver
 }
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
@@ -39,6 +42,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: "verify_dkim"},
+		resolver: dns.DefaultResolver(),
 	}, nil
 }
 
@@ -136,7 +140,11 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 		}
 	}
 
-	verifications, err := dkim.Verify(io.MultiReader(&b, bodyRdr))
+	verifications, err := dkim.VerifyWithOptions(io.MultiReader(&b, bodyRdr), &dkim.VerifyOptions{
+		LookupTXT: func(domain string) ([]string, error) {
+			return d.c.resolver.LookupTXT(ctx, domain)
+		},
+	})
 	if err != nil {
 		return module.CheckResult{
 			Reject: true,
