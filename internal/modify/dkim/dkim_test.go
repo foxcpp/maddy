@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -104,16 +103,6 @@ func verifyTestMsg(t *testing.T, keysPath string, expectedDomains []string, hdr 
 		domainsMap[domain] = false
 	}
 
-	// dkim.Verify does not allow to override its lookup routine, so we have to
-	// hjack the global resolver object.
-	srv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer srv.Close()
-	srv.PatchNet(net.DefaultResolver)
-	defer mockdns.UnpatchNet(net.DefaultResolver)
-
 	var fullBody bytes.Buffer
 	if err := textproto.WriteHeader(&fullBody, hdr); err != nil {
 		t.Fatal(err)
@@ -122,7 +111,12 @@ func verifyTestMsg(t *testing.T, keysPath string, expectedDomains []string, hdr 
 		t.Fatal(err)
 	}
 
-	verifs, err := dkim.Verify(bytes.NewReader(fullBody.Bytes()))
+	resolver := &mockdns.Resolver{Zones: zones}
+	verifs, err := dkim.VerifyWithOptions(bytes.NewReader(fullBody.Bytes()), &dkim.VerifyOptions{
+		LookupTXT: func(domain string) ([]string, error) {
+			return resolver.LookupTXT(context.Background(), domain)
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
