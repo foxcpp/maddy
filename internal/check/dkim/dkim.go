@@ -163,10 +163,10 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 			if !d.c.brokenSigAction.Reject || !d.c.brokenSigAction.Quarantine {
 				d.log.DebugMsg("bad signature", "domain", verif.Domain, "identifier", verif.Identifier)
 			}
-			if dkim.IsPermFail(err) {
+			if dkim.IsPermFail(verif.Err) {
 				val = authres.ResultPermError
 			}
-			if dkim.IsTempFail(err) {
+			if dkim.IsTempFail(verif.Err) {
 				if !d.c.failOpen {
 					return module.CheckResult{
 						Reject: true,
@@ -175,7 +175,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 							EnhancedCode: exterrors.EnhancedCode{4, 7, 20},
 							Message:      "Temporary error during DKIM verification",
 							CheckName:    "verify_dkim",
-							Err:          err,
+							Err:          verif.Err,
 						},
 					}
 				}
@@ -191,9 +191,6 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 			continue
 		}
 
-		goodSigs = true
-		d.log.DebugMsg("good signature", "domain", verif.Domain, "identifier", verif.Identifier)
-
 		signedFields := make(map[string]struct{}, len(verif.HeaderKeys))
 		for _, field := range verif.HeaderKeys {
 			signedFields[nettextproto.CanonicalMIMEHeaderKey(field)] = struct{}{}
@@ -208,6 +205,11 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
 			val = authres.ResultPermError
 			reason = "body limit it used"
+		}
+
+		if val == authres.ResultPass {
+			goodSigs = true
+			d.log.DebugMsg("good signature", "domain", verif.Domain, "identifier", verif.Identifier)
 		}
 
 		res.AuthResult = append(res.AuthResult, &authres.DKIMResult{
