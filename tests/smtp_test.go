@@ -55,6 +55,9 @@ func TestCheckSPF(tt *testing.T) {
 		"none.maddy.test.": {
 			TXT: []string{},
 		},
+		"pass.maddy.test.": {
+			TXT: []string{"v=spf1 +all"},
+		},
 		"neutral.maddy.test.": {
 			TXT: []string{"v=spf1 ?all"},
 		},
@@ -83,6 +86,96 @@ func TestCheckSPF(tt *testing.T) {
 				apply_spf {
 					enforce_early yes
 
+					none_action reject 551
+					neutral_action reject
+					fail_action reject 552
+					softfail_action reject 553
+					permerr_action reject 554
+					temperr_action reject 455
+				}
+			}
+			deliver_to dummy
+		}
+	`)
+	t.Run(1)
+	defer t.Close()
+
+	conn := t.Conn("smtp")
+	defer conn.Close()
+	conn.SMTPNegotation("localhost", nil, nil)
+
+	conn.Writeln("MAIL FROM:<testing@pass.maddy.test>")
+	conn.ExpectPattern("250 *")
+	conn.Writeln("RSET")
+	conn.ExpectPattern("250 *")
+
+	conn.Writeln("MAIL FROM:<testing@none.maddy.test>")
+	conn.ExpectPattern("551 5.7.0 *")
+
+	// Also check the default enhanced code is meaningful.
+	conn.Writeln("MAIL FROM:<testing@neutral.maddy.test>")
+	conn.ExpectPattern("550 5.7.23 *")
+
+	conn.Writeln("MAIL FROM:<testing@fail.maddy.test>")
+	conn.ExpectPattern("552 5.7.0 *")
+
+	conn.Writeln("MAIL FROM:<testing@softfail.maddy.test>")
+	conn.ExpectPattern("553 5.7.0 *")
+
+	conn.Writeln("MAIL FROM:<testing@permerr.maddy.test>")
+	conn.ExpectPattern("554 5.7.0 *")
+
+	conn.Writeln("MAIL FROM:<testing@temperr.maddy.test>")
+	conn.ExpectPattern("455 4.7.0 *")
+
+	conn.Writeln("QUIT")
+	conn.ExpectPattern("221 *")
+}
+
+func TestSPF_DMARCDefer(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(map[string]mockdns.Zone{
+		"subdomain.maddy-dmarc.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"maddy-dmarc.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"_dmarc.maddy-dmarc.test.": {
+			TXT: []string{"v=DMARC1; p=reject; sp=none"},
+		},
+		"subdomain.maddy-dmarc2.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"maddy-dmarc2.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"_dmarc.maddy-dmarc2.test.": {
+			TXT: []string{"v=DMARC1; p=reject"},
+		},
+		"maddy-no-dmarc.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"maddy-dmarc-lookup-fail.test.": {
+			TXT: []string{"v=spf1 -all"},
+		},
+		"_dmarc.maddy-dmarc-lookup-fail.test.": {
+			Err: errors.New("nop"),
+		},
+	})
+	t.Port("smtp")
+	t.Config(`
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname mx.maddy.test
+			tls off
+
+			defer_sender_reject no
+
+			check {
+				apply_spf {
+					enforce_early no
+
 					none_action ignore
 					neutral_action reject
 					fail_action reject
@@ -101,22 +194,34 @@ func TestCheckSPF(tt *testing.T) {
 	defer conn.Close()
 	conn.SMTPNegotation("localhost", nil, nil)
 
-	conn.Writeln("MAIL FROM:<testing@none.maddy.test>")
-	conn.ExpectPattern("250 *")
-	conn.Writeln("RSET")
-	conn.ExpectPattern("250 *")
+	msg := func(fromEnv, fromHdr string, bodyRespPattern string) {
+		tt.Helper()
 
-	conn.Writeln("MAIL FROM:<testing@fail.maddy.test>")
-	conn.ExpectPattern("550 5.7.23 *")
+		conn.Writeln("MAIL FROM:<" + fromEnv + ">")
+		conn.ExpectPattern("250 *")
+		conn.Writeln("RCPT TO:<testing@maddy.test>")
+		conn.ExpectPattern("250 *")
+		conn.Writeln("DATA")
+		conn.ExpectPattern("354 *")
+		conn.Writeln("From: <" + fromHdr + ">")
+		conn.Writeln("")
+		conn.Writeln("Heya!")
+		conn.Writeln(".")
+		conn.ExpectPattern(bodyRespPattern)
+	}
 
-	conn.Writeln("MAIL FROM:<testing@softfail.maddy.test>")
-	conn.ExpectPattern("550 5.7.23 *")
+	msg("test@subdomain.maddy-dmarc.test", "test@subdomain.maddy-dmarc.test", "550 *")
 
-	conn.Writeln("MAIL FROM:<testing@permerr.maddy.test>")
-	conn.ExpectPattern("550 5.7.23 *")
+	// Malformed From domain, DMARC cannot work so use only SPF.
+	msg("test@subdomain.maddy-dmarc.test", "", "550 *")
 
-	conn.Writeln("MAIL FROM:<testing@temperr.maddy.test>")
-	conn.ExpectPattern("451 4.7.23 *")
+	msg("test@subdomain.maddy-dmarc.test", "maddy-dmarc-lookup-fail.test", "550 *")
+
+	// No actual DMARC check is done but SPF check results are not applied.
+	msg("test@maddy-dmarc.test", "test@maddy-dmarc.test", "250 *")
+	msg("test@maddy-dmarc2.test", "test@maddy-dmarc2.test", "250 *")
+
+	msg("test@maddy-no-dmarc.test", "test@maddy-no-dmarc.test", "550 *")
 
 	conn.Writeln("QUIT")
 	conn.ExpectPattern("221 *")
