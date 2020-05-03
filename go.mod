@@ -20,7 +20,7 @@ require (
 	github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a
-	github.com/foxcpp/go-mockdns v0.0.0-20200218175156-e3faeb733052
+	github.com/foxcpp/go-mockdns v0.0.0-20200503193630-ff72b88723f2
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.1
