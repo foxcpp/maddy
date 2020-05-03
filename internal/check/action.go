@@ -100,7 +100,7 @@ func (cfa FailAction) Apply(originalRes module.CheckResult) module.CheckResult {
 
 func ParseRejectDirective(args []string) (*exterrors.SMTPError, error) {
 	code := 554
-	enchCode := exterrors.EnhancedCode{5, 7, 0}
+	enchCode := exterrors.EnhancedCode{0, 7, 0}
 	msg := "Message rejected due to a local policy"
 	var err error
 	switch len(args) {
@@ -127,7 +127,13 @@ func ParseRejectDirective(args []string) (*exterrors.SMTPError, error) {
 		if (code/100) != 4 && (code/100) != 5 {
 			return nil, fmt.Errorf("error code should start with either 4 or 5")
 		}
+		// If enchanced code is not set - set first digit based on provided "basic" code.
+		if enchCode[0] == 0 {
+			enchCode[0] = code / 100
+		}
 	case 0:
+		// If no codes provided at all - use 5.7.0 and 554.
+		enchCode[0] = 5
 	default:
 		return nil, fmt.Errorf("invalid count of arguments")
 	}
