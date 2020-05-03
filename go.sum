@@ -38,6 +38,8 @@ github.com/emersion/go-message v0.11.1/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0
 github.com/emersion/go-message v0.11.2 h1:oxO9SQ+3wgBAQRdk07eqfkCJ26Tl8ZHF7CcpGVoE00o=
 github.com/emersion/go-message v0.11.2/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
+github.com/emersion/go-milter v0.1.0 h1:61u1N/QaHCcQpryDrH5icX2pO1hmU/1g3YID209JKc4=
+github.com/emersion/go-milter v0.1.0/go.mod h1:Ys4s0SSEt4H2jEl3kDbupNQq61wH4ztM9VHZMBfYKqw=
 github.com/emersion/go-msgauth v0.4.0 h1:LM9vNyaecGbhWiwKCAnzql7sVfgL072/QL5ZsIaHSL8=
 github.com/emersion/go-msgauth v0.4.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-msgauth v0.4.1-0.20200429121350-af2e57960c76 h1:lH/JVE7BLxJweku8z15q/w9N4Fk/GYy8NqJy/dCmOfU=
@@ -60,6 +62,9 @@ github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtk
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a h1:7IHua8lv9Qouf/TnjzB/8eYtjzws5zcn8Zxvf49ZJOo=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a/go.mod h1:DISGTnTW4OX3qgG8xP5lI+qYRb97b8NvEHV7TSlUy5g=
+github.com/foxcpp/go-milter v0.1.1-0.20200430224718-2b7763a588dc/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
+github.com/foxcpp/go-milter v0.1.1-0.20200502214548-312001df0b51 h1:njk1z7faETtQRTr+l9kSgXtUoAS6FghmAC7N8SSA3Ac=
+github.com/foxcpp/go-milter v0.1.1-0.20200502214548-312001df0b51/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f h1:b/CFmrdqIGU6eV774xeaQwd1VfgiLuR/8jiY3LyLiMc=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20200218175156-e3faeb733052 h1:a9cMhXBc4p7TUqjHvqUWbhpLmRx+mgpRRPZB7L648GY=

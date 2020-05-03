@@ -14,6 +14,7 @@ require (
 	github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.11.2
+	github.com/emersion/go-milter v0.1.0
 	github.com/emersion/go-msgauth v0.4.1-0.20200429175443-e4c87369d72f
 	github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b
 	github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554
@@ -36,3 +37,5 @@ require (
 	golang.org/x/text v0.3.2
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
+
+replace github.com/emersion/go-milter => github.com/foxcpp/go-milter v0.1.1-0.20200502214548-312001df0b51
