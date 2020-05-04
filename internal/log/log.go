@@ -166,7 +166,7 @@ type LogFormatter interface {
 // to it will be written as a separate log messages.
 // No line-buffering is done.
 func (l Logger) Write(s []byte) (int, error) {
-	l.log(false, string(s))
+	l.log(false, strings.TrimRight(string(s), "\n"))
 	return len(s), nil
 }
 
