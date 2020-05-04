@@ -2,7 +2,9 @@ package dovecotsasld
 
 import (
 	"fmt"
+	stdlog "log"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/emersion/go-sasl"
@@ -52,6 +54,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	}
 
 	endp.srv = dovecotsasl.NewServer()
+	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
@@ -75,13 +78,15 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		if err != nil {
 			return fmt.Errorf("%s: %v", modName, err)
 		}
-		endp.log.Printf("listening on %v", modName, l.Addr())
+		endp.log.Printf("listening on %v", l.Addr())
 
 		endp.listenersWg.Add(1)
 		go func() {
 			defer endp.listenersWg.Done()
 			if err := endp.srv.Serve(l); err != nil {
-				endp.log.Printf("failed to serve %v: %v", modName, l.Addr(), err)
+				if !strings.HasSuffix(err.Error(), "use of closed network connection") {
+					endp.log.Printf("failed to serve %v: %v", l.Addr(), err)
+				}
 			}
 		}()
 	}
