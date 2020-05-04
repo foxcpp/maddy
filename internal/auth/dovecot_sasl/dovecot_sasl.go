@@ -118,6 +118,7 @@ func (a *Auth) AuthPlain(username, password string) error {
 		if err != nil {
 			return err
 		}
+		defer a.returnConn(cl)
 
 		// Pretend it is SMTP even though we really don't know.
 		// We also have no connection information to pass to the server...
@@ -128,6 +129,7 @@ func (a *Auth) AuthPlain(username, password string) error {
 		if err != nil {
 			return err
 		}
+		defer a.returnConn(cl)
 
 		// Pretend it is SMTP even though we really don't know.
 		return cl.Do("SMTP", sasl.NewLoginClient(username, password))
