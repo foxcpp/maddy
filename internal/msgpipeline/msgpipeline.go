@@ -46,10 +46,16 @@ type MsgPipeline struct {
 	Log log.Logger
 }
 
+type rcptIn struct {
+	t     module.Table
+	block *rcptBlock
+}
+
 type sourceBlock struct {
 	checks      []module.Check
 	modifiers   modify.Group
 	rejectErr   error
+	rcptIn      []rcptIn
 	perRcpt     map[string]*rcptBlock
 	defaultRcpt *rcptBlock
 }
@@ -182,6 +188,18 @@ func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, er
 				Err:          err,
 			}
 		}
+	}
+
+	for _, srcIn := range dd.d.sourceIn {
+		_, ok, err := srcIn.t.Lookup(cleanFrom)
+		if err != nil {
+			dd.log.Error("source_in lookup failed", err, "key", cleanFrom)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		return srcIn.block, nil
 	}
 
 	// First try to match against complete address.
@@ -496,6 +514,18 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 			Message:      "Unable to normalize the recipient address",
 			Err:          err,
 		}
+	}
+
+	for _, rcptIn := range dd.sourceBlock.rcptIn {
+		_, ok, err := rcptIn.t.Lookup(cleanRcpt)
+		if err != nil {
+			dd.log.Error("destination_in lookup failed", err, "key", cleanRcpt)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		return rcptIn.block, nil
 	}
 
 	// First try to match against complete address.

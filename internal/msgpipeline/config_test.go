@@ -258,6 +258,48 @@ func TestMsgPipelineCfg(t *testing.T) {
 	}
 }
 
+func TestMsgPipelineCfg_SourceIn(t *testing.T) {
+	str := `
+		source_in dummy {
+			deliver_to dummy
+		}
+		default_source {
+			reject 500
+		}
+	`
+
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if len(parsed.sourceIn) == 0 {
+		t.Fatalf("missing source_in dummy")
+	}
+}
+
+func TestMsgPipelineCfg_DestIn(t *testing.T) {
+	str := `
+		destination_in dummy {
+			deliver_to dummy
+		}
+		default_destination {
+			reject 500
+		}
+	`
+
+	cfg, _ := parser.Read(strings.NewReader(str), "literal")
+	parsed, err := parseMsgPipelineRootCfg(nil, cfg)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if len(parsed.defaultSource.rcptIn) == 0 {
+		t.Fatalf("missing destination_in dummy")
+	}
+}
+
 func TestMsgPipelineCfg_GlobalChecks(t *testing.T) {
 	str := `
 		check {

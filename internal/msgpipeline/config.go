@@ -14,9 +14,15 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 )
 
+type sourceIn struct {
+	t     module.Table
+	block sourceBlock
+}
+
 type msgpipelineCfg struct {
 	globalChecks    []module.Check
 	globalModifiers modify.Group
+	sourceIn        []sourceIn
 	perSource       map[string]sourceBlock
 	defaultSource   sourceBlock
 	doDMARC         bool
@@ -44,6 +50,19 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			}
 
 			cfg.globalModifiers.Modifiers = append(cfg.globalModifiers.Modifiers, globalModifiers.Modifiers...)
+		case "source_in":
+			var tbl module.Table
+			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+				return msgpipelineCfg{}, err
+			}
+			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
+			if err != nil {
+				return msgpipelineCfg{}, err
+			}
+			cfg.sourceIn = append(cfg.sourceIn, sourceIn{
+				t:     tbl,
+				block: srcBlock,
+			})
 		case "source":
 			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
 			if err != nil {
@@ -92,7 +111,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			case 0:
 				cfg.doDMARC = true
 			}
-		case "deliver_to", "reroute", "destination", "default_destination", "reject":
+		case "deliver_to", "reroute", "destination_in", "destination", "default_destination", "reject":
 			othersRaw = append(othersRaw, node)
 		default:
 			return msgpipelineCfg{}, config.NodeErr(node, "unknown pipeline directive: %s", node.Name)
@@ -142,6 +161,19 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 			}
 
 			src.modifiers.Modifiers = append(src.modifiers.Modifiers, modifiers.Modifiers...)
+		case "destination_in":
+			var tbl module.Table
+			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+				return sourceBlock{}, err
+			}
+			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)
+			if err != nil {
+				return sourceBlock{}, err
+			}
+			src.rcptIn = append(src.rcptIn, rcptIn{
+				t:     tbl,
+				block: rcptBlock,
+			})
 		case "destination":
 			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)
 			if err != nil {

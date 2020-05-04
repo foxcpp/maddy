@@ -72,6 +72,60 @@ func TestMsgPipeline_PerSourceDomainSplit(t *testing.T) {
 	testutils.CheckTestMessage(t, &orgTarget, 0, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"})
 }
 
+func TestMsgPipeline_SourceIn(t *testing.T) {
+	tblTarget, comTarget := testutils.Target{InstName: "tblTarget"}, testutils.Target{InstName: "comTarget"}
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
+			sourceIn: []sourceIn{
+				sourceIn{
+					t:     testutils.Table{},
+					block: sourceBlock{rejectErr: errors.New("non-matching block was used")},
+				},
+				sourceIn{
+					t:     testutils.Table{Err: errors.New("this one will fail")},
+					block: sourceBlock{rejectErr: errors.New("failing block was used")},
+				},
+				sourceIn{
+					t: testutils.Table{
+						M: map[string]string{
+							"specific@example.com": "",
+						},
+					},
+					block: sourceBlock{
+						perRcpt: map[string]*rcptBlock{},
+						defaultRcpt: &rcptBlock{
+							targets: []module.DeliveryTarget{&tblTarget},
+						},
+					},
+				},
+			},
+			perSource: map[string]sourceBlock{
+				"example.com": {
+					perRcpt: map[string]*rcptBlock{},
+					defaultRcpt: &rcptBlock{
+						targets: []module.DeliveryTarget{&comTarget},
+					},
+				},
+			},
+			defaultSource: sourceBlock{rejectErr: errors.New("default src block used")},
+		},
+		Log: testutils.Logger(t, "msgpipeline"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt@example.com"})
+	testutils.DoTestDelivery(t, &d, "specific@example.com", []string{"rcpt@example.com"})
+
+	if len(comTarget.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for comTarget, want %d, got %d", 1, len(comTarget.Messages))
+	}
+	testutils.CheckTestMessage(t, &comTarget, 0, "sender@example.com", []string{"rcpt@example.com"})
+
+	if len(tblTarget.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for orgTarget, want %d, got %d", 1, len(tblTarget.Messages))
+	}
+	testutils.CheckTestMessage(t, &tblTarget, 0, "specific@example.com", []string{"rcpt@example.com"})
+}
+
 func TestMsgPipeline_EmptyMAILFROM(t *testing.T) {
 	target := testutils.Target{InstName: "target"}
 	d := MsgPipeline{
@@ -192,6 +246,58 @@ func TestMsgPipeline_PerRcptDomainSplit(t *testing.T) {
 	}
 	testutils.CheckTestMessage(t, &target2, 0, "sender@example.com", []string{"rcpt2@example.org"})
 	testutils.CheckTestMessage(t, &target2, 1, "sender@example.com", []string{"rcpt1@example.org"})
+}
+
+func TestMsgPipeline_DestInSplit(t *testing.T) {
+	target1, target2 := testutils.Target{InstName: "target1"}, testutils.Target{InstName: "target2"}
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{
+				rcptIn: []rcptIn{
+					{
+						t:     testutils.Table{},
+						block: &rcptBlock{rejectErr: errors.New("non-matching block was used")},
+					},
+					{
+						t:     testutils.Table{Err: errors.New("nope")},
+						block: &rcptBlock{rejectErr: errors.New("failing block was used")},
+					},
+					{
+						t: testutils.Table{
+							M: map[string]string{
+								"specific@example.com": "",
+							},
+						},
+						block: &rcptBlock{
+							targets: []module.DeliveryTarget{&target2},
+						},
+					},
+				},
+				perRcpt: map[string]*rcptBlock{
+					"example.com": {
+						targets: []module.DeliveryTarget{&target1},
+					},
+				},
+				defaultRcpt: &rcptBlock{
+					rejectErr: errors.New("defaultRcpt block used"),
+				},
+			},
+		},
+		Log: testutils.Logger(t, "msgpipeline"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt1@example.com", "specific@example.com"})
+
+	if len(target1.Messages) != 1 {
+		t.Errorf("wrong amount of messages received for target1, want %d, got %d", 1, len(target1.Messages))
+	}
+	testutils.CheckTestMessage(t, &target1, 0, "sender@example.com", []string{"rcpt1@example.com"})
+
+	if len(target2.Messages) != 1 {
+		t.Errorf("wrong amount of messages received for target2, want %d, got %d", 1, len(target2.Messages))
+	}
+	testutils.CheckTestMessage(t, &target2, 0, "sender@example.com", []string{"specific@example.com"})
 }
 
 func TestMsgPipeline_PerSourceAddrAndDomainSplit(t *testing.T) {
