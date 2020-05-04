@@ -129,3 +129,7 @@ func (a *Auth) AuthPlain(username, password string) error {
 
 	return auth.ErrUnsupportedMech
 }
+
+func init() {
+	module.Register(modName, New)
+}
