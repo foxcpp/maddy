@@ -475,7 +475,7 @@ Takes precedence over all 'sender' directives.
 
 Example:
 ```
-source_in file_table /etc/maddy/banned_addrs {
+source_in file /etc/maddy/banned_addrs {
 	reject 550 5.7.0 "You are not welcome here"
 }
 source example.org {
@@ -552,7 +552,7 @@ Takes precedence over all 'destination' directives.
 
 Example:
 ```
-destination_in file_table /etc/maddy/remote_addrs {
+destination_in file /etc/maddy/remote_addrs {
 	deliver_to smtp_downstream tcp://10.0.0.7:25
 }
 destination example.com {

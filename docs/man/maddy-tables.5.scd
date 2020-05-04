@@ -11,7 +11,7 @@ change the source of data, effectively turning the table into a complete
 interface to a key-value store for maddy. Such tables are referred to as
 "mutable tables".
 
-# File mapping (file_table)
+# File mapping (file)
 
 This module builds string-string mapping from a text file.
 
@@ -20,11 +20,11 @@ modification time). No changes are applied if file contains syntax errors.
 
 Definition:
 ```
-file_table <file path>
+file <file path>
 ```
 or
 ```
-file_table {
+file {
 	file <file path>
 }
 ```
@@ -33,7 +33,7 @@ Usage example:
 ```
 # Resolve SMTP address aliases using text file mapping.
 modify {
-	alias file_table /etc/maddy/aliases
+	alias file /etc/maddy/aliases
 }
 ```
 

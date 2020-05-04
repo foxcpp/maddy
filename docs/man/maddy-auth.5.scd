@@ -147,7 +147,7 @@ chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
 
 This module implements username:password authentication by looking up the
 password hash using a table module (maddy-tables(5)). It can be used
-to load user credentials from text file (file_table module) or SQL query
+to load user credentials from text file (file module) or SQL query
 (sql_table module).
 
 
@@ -168,7 +168,7 @@ pass_table <table> [table arguments] {
 Example, read username:password pair from the text file:
 ```
 smtp tcp://0.0.0.0:587 {
-	auth pass_table file_table /etc/maddy/smtp_passwd
+	auth pass_table file /etc/maddy/smtp_passwd
 	...
 }
 ```
@@ -220,7 +220,7 @@ Configuration block for any module from maddy-tables(5) can be used here.
 
 Example:
 ```
-user file_table /etc/maddy/allowed_users
+user file /etc/maddy/allowed_users
 ```
 
 **Syntax:** pass _auth provider_
