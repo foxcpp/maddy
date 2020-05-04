@@ -85,7 +85,6 @@ type state struct {
 	session    *milter.ClientSession
 	msgMeta    *module.MsgMetadata
 	skipChecks bool
-	discarded  bool
 	log        log.Logger
 }
 
@@ -309,7 +308,9 @@ func (s *state) CheckSender(ctx context.Context, mailFrom string) module.CheckRe
 	if s.msgMeta.Conn.AuthUser != "" {
 		fields = append(fields, "auth_authen", s.msgMeta.Conn.AuthUser)
 	}
-	s.session.Macros(milter.CodeMail, fields...)
+	if err := s.session.Macros(milter.CodeMail, fields...); err != nil {
+		return s.ioError(err)
+	}
 
 	esmtpArgs := make([]string, 0, 2)
 	if s.msgMeta.SMTPOpts.UTF8 {
