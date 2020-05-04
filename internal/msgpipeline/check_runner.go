@@ -171,7 +171,7 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 			if subCheckRes.Header.Len() != 0 {
 				data.headerLock.Lock()
 				for field := subCheckRes.Header.Fields(); field.Next(); {
-					cr.mergedRes.Header.Add(field.Key(), field.Value())
+					cr.mergedRes.Header.AddRaw(field.Raw())
 				}
 				data.headerLock.Unlock()
 			}
@@ -303,7 +303,7 @@ func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) e
 	}
 
 	for field := cr.mergedRes.Header.Fields(); field.Next(); {
-		header.Add(field.Key(), field.Value())
+		header.AddRaw(field.Raw())
 	}
 	return nil
 }
