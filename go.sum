@@ -62,6 +62,10 @@ github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504173201-4582a99ffc3f h1:eT/8SMQq
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504173201-4582a99ffc3f/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504181415-c4db6731332d h1:R2o7Kw2CJEy2N8ycjDxFTMxU0xp8gsGv7ZjWyR65LQs=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504181415-c4db6731332d/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504192305-6a7652986e8b h1:gx69er1ld3fIIECH3bDqdS5SOHKQ9KwlXrBkE3FGBEY=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504192305-6a7652986e8b/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504194015-e35592c01a2c h1:P47zvAdjLcQU1UouNlJSVWN1Pg0S7QX8pWKFBWKqCCg=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504194015-e35592c01a2c/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200426175250-4110e9b66176 h1:qyze36XjZnwK9geEzr5qlChS8zJgz7L+YZ5O8JNhh90=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200426175250-4110e9b66176/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=
