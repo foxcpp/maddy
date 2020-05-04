@@ -98,7 +98,13 @@ func (a *Auth) Init(cfg *config.Map) error {
 	}
 
 	defer cl.Close()
-	a.mechanisms = cl.ConnInfo().Mechs
+	a.mechanisms = make(map[string]dovecotsasl.Mechanism, len(cl.ConnInfo().Mechs))
+	for name, mech := range cl.ConnInfo().Mechs {
+		if mech.Private {
+			continue
+		}
+		a.mechanisms[name] = mech
+	}
 
 	a.network = endp.Scheme
 	a.addr = endp.Address()
