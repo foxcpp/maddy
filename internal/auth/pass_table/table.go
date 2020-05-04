@@ -45,6 +45,15 @@ func (a *Auth) InstanceName() string {
 	return a.instName
 }
 
+func (a *Auth) Lookup(username string) (string, bool, error) {
+	key, err := precis.UsernameCaseMapped.CompareKey(username)
+	if err != nil {
+		return "", false, nil
+	}
+
+	return a.table.Lookup(key)
+}
+
 func (a *Auth) AuthPlain(username, password string) error {
 	key, err := precis.UsernameCaseMapped.CompareKey(username)
 	if err != nil {

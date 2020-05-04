@@ -2,6 +2,7 @@ package plain_separate
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/log"
@@ -51,6 +52,24 @@ func (a *Auth) Init(cfg *config.Map) error {
 	}
 
 	return nil
+}
+
+func (a *Auth) Lookup(username string) (string, bool, error) {
+	ok := len(a.userTbls) == 0
+	for _, tbl := range a.userTbls {
+		_, tblOk, err := tbl.Lookup(username)
+		if err != nil {
+			return "", false, fmt.Errorf("plain_separate: underlying table error: %w", err)
+		}
+		if tblOk {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return "", false, nil
+	}
+	return "", true, nil
 }
 
 func (a *Auth) AuthPlain(username, password string) error {

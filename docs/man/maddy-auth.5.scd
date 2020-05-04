@@ -11,6 +11,11 @@ That is, they authenticate users.
 Most likely, you are going to use these modules with 'auth' directive of IMAP
 (*maddy-imap*(5)) or SMTP endpoint (*maddy-smtp*(5)).
 
+Most modules listed here are also usable as a table (see *maddy-tables*(5))
+that contains all usernames known to the module. Exceptions are extauth and
+pam as underlying interfaces do not define a way to check credentials
+existence.
+
 # External authentication module (extauth)
 
 Module for authentication using external helper binary. It looks for binary

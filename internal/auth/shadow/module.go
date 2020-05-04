@@ -66,6 +66,23 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
+func (a *Auth) Lookup(username string) (string, bool, error) {
+	if a.useHelper {
+		return "", false, fmt.Errorf("shadow: table lookup are not possible when using a helper")
+	}
+
+	ent, err := Lookup(username)
+	if err != nil {
+		return "", false, nil
+	}
+
+	if !ent.IsAccountValid() {
+		return "", false, nil
+	}
+
+	return "", true, nil
+}
+
 func (a *Auth) AuthPlain(username, password string) error {
 	if a.useHelper {
 		return external.AuthUsingHelper(a.helperPath, username, password)
