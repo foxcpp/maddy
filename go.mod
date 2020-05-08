@@ -18,23 +18,23 @@ require (
 	github.com/emersion/go-msgauth v0.4.1-0.20200429175443-e4c87369d72f
 	github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b
 	github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554
-	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200504220435-157663724e61
+	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200505180305-0bead5af2e8a
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a
 	github.com/foxcpp/go-mockdns v0.0.0-20200503193630-ff72b88723f2
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.1
-	github.com/lib/pq v1.4.0
+	github.com/lib/pq v1.5.2
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/miekg/dns v1.1.29
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/cli v1.22.4
-	golang.org/x/crypto v0.0.0-20200423211502-4bdfaf469ed5
-	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0
+	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79
+	golang.org/x/net v0.0.0-20200506145744-7e3656a0809f
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
-	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
+	golang.org/x/sys v0.0.0-20200508214444-3aab700007d7 // indirect
 	golang.org/x/text v0.3.2
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
