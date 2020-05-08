@@ -50,7 +50,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 		addrs: addrs,
 		Log:   log.Logger{Name: "imap"},
 		saslAuth: auth.SASLAuth{
-			Log: log.Logger{Name: "imap/saslauth"},
+			Log: log.Logger{Name: "imap/sasl"},
 		},
 	}
 

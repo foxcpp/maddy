@@ -72,6 +72,9 @@ func New(modName string, addrs []string) (module.Module, error) {
 		resolver:   dns.DefaultResolver(),
 		buffer:     buffer.BufferInMemory,
 		Log:        log.Logger{Name: modName},
+		saslAuth: auth.SASLAuth{
+			Log: log.Logger{Name: modName + "/sasl"},
+		},
 	}
 	return endp, nil
 }
