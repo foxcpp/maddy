@@ -67,6 +67,8 @@ github.com/foxcpp/go-mockdns v0.0.0-20200503193630-ff72b88723f2 h1:+xUiMsWotkwSj
 github.com/foxcpp/go-mockdns v0.0.0-20200503193630-ff72b88723f2/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8 h1:k8w0iy6GP9oeSZWUH3p2DqZHaXDKZGNs3NZGZMGfQHc=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8/go.mod h1:HO1YOCbBM8KjpgThMMFejHx6K/UsnEv2Oh9YGtBIlOU=
+github.com/foxcpp/go-smtp v0.9.1-0.20200426194559-69676b10bfea h1:/8P/43IdhRzNxtqPRU6l6YnwNWxJQjCx6E9sjWoCoxA=
+github.com/foxcpp/go-smtp v0.9.1-0.20200426194559-69676b10bfea/go.mod h1:SD9V/xa4ndMw77lR3Mf7htkp8RBNYuPh9UeuBs9tpUQ=
 github.com/frankban/quicktest v1.5.0 h1:Tb4jWdSpdjKzTUicPnY61PZxKbDoGa7ABbrReT3gQVY=
 github.com/frankban/quicktest v1.5.0/go.mod h1:jaStnuzAqU1AJdCO0l53JDCJrVDKcS03DbaAcR7Ks/o=
 github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=

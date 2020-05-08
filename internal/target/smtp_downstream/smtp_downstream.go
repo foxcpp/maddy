@@ -13,11 +13,11 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"runtime/trace"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/buffer"
 	"github.com/foxcpp/maddy/internal/config"
 	"github.com/foxcpp/maddy/internal/exterrors"
@@ -28,18 +28,10 @@ import (
 	"golang.org/x/net/idna"
 )
 
-func moduleError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	return exterrors.WithFields(err, map[string]interface{}{
-		"target": "smtp_downstream",
-	})
-}
-
 type Downstream struct {
+	modName    string
 	instName   string
+	lmtp       bool
 	targetsArg []string
 
 	requireTLS      bool
@@ -52,11 +44,29 @@ type Downstream struct {
 	log log.Logger
 }
 
-func NewDownstream(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func (u *Downstream) moduleError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if u.lmtp {
+		return exterrors.WithFields(err, map[string]interface{}{
+			"target": u.modName,
+		})
+	}
+
+	return exterrors.WithFields(err, map[string]interface{}{
+		"target": u.modName,
+	})
+}
+
+func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Module, error) {
 	return &Downstream{
+		modName:    modName,
 		instName:   instName,
+		lmtp:       modName == "lmtp_downstream",
 		targetsArg: inlineArgs,
-		log:        log.Logger{Name: "smtp_downstream"},
+		log:        log.Logger{Name: modName},
 	}, nil
 }
 
@@ -82,7 +92,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	var err error
 	u.hostname, err = idna.ToASCII(u.hostname)
 	if err != nil {
-		return fmt.Errorf("smtp_downstream: cannot represent the hostname as an A-label name: %w", err)
+		return fmt.Errorf("%s: cannot represent the hostname as an A-label name: %w", u.modName, err)
 	}
 
 	u.targetsArg = append(u.targetsArg, targetsArg...)
@@ -96,14 +106,14 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	}
 
 	if len(u.endpoints) == 0 {
-		return fmt.Errorf("smtp_downstream: at least one target endpoint is required")
+		return fmt.Errorf("%s: at least one target endpoint is required", u.modName)
 	}
 
 	return nil
 }
 
 func (u *Downstream) Name() string {
-	return "smtp_downstream"
+	return u.modName
 }
 
 func (u *Downstream) InstanceName() string {
@@ -116,10 +126,14 @@ type delivery struct {
 
 	msgMeta  *module.MsgMetadata
 	mailFrom string
-	body     io.ReadCloser
-	hdr      textproto.Header
+	rcpts    []string
 
 	conn *smtpconn.C
+}
+
+// lmtpDelivery implements module.PartialDelivery
+type lmtpDelivery struct {
+	*delivery
 }
 
 func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
@@ -139,6 +153,11 @@ func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mai
 		d.conn.Close()
 		return nil, err
 	}
+
+	if u.lmtp {
+		return &lmtpDelivery{delivery: d}, nil
+	}
+
 	return d, nil
 }
 
@@ -152,7 +171,15 @@ func (d *delivery) connect(ctx context.Context) error {
 	conn.AddrInSMTPMsg = false
 
 	for _, endp := range d.u.endpoints {
-		didTLS, err := conn.Connect(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
+		var (
+			didTLS bool
+			err    error
+		)
+		if d.u.lmtp {
+			didTLS, err = conn.ConnectLMTP(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
+		} else {
+			didTLS, err = conn.Connect(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
+		}
 		if err != nil {
 			if len(d.u.endpoints) != 1 {
 				d.log.Msg("connect error", err, "downstream_server", net.JoinHostPort(endp.Host, endp.Port))
@@ -173,7 +200,7 @@ func (d *delivery) connect(ctx context.Context) error {
 		break
 	}
 	if lastErr != nil {
-		return moduleError(lastErr)
+		return d.u.moduleError(lastErr)
 	}
 
 	if d.u.saslFactory != nil {
@@ -195,35 +222,69 @@ func (d *delivery) connect(ctx context.Context) error {
 }
 
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
-	return moduleError(d.conn.Rcpt(ctx, rcptTo))
+	err := d.conn.Rcpt(ctx, rcptTo)
+
+	if err != nil {
+		return d.u.moduleError(err)
+	}
+
+	d.rcpts = append(d.rcpts, rcptTo)
+	return nil
 }
 
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	r, err := body.Open()
 	if err != nil {
-		return exterrors.WithFields(err, map[string]interface{}{"target": "smtp_downstream"})
+		return exterrors.WithFields(err, map[string]interface{}{"target": d.u.modName})
 	}
 
-	d.body = r
-	d.hdr = header
-	return nil
+	defer r.Close()
+	return d.u.moduleError(d.conn.Data(ctx, header, r))
+}
+
+func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollector, header textproto.Header, body buffer.Buffer) {
+	r, err := body.Open()
+	if err != nil {
+		modErr := d.u.moduleError(err)
+		for _, rcpt := range d.rcpts {
+			sc.SetStatus(rcpt, modErr)
+		}
+	}
+	defer r.Close()
+
+	rcptIndx := 0
+	err = d.conn.LMTPData(ctx, header, r, func(err *smtp.SMTPError) {
+		if err == nil {
+			sc.SetStatus(d.rcpts[rcptIndx], nil)
+		} else {
+			sc.SetStatus(d.rcpts[rcptIndx], &exterrors.SMTPError{
+				Code:         err.Code,
+				EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
+				Message:      err.Message,
+				TargetName:   d.u.modName,
+				Err:          err,
+			})
+		}
+		rcptIndx++
+	})
+	if err != nil {
+		modErr := d.u.moduleError(err)
+		for _, rcpt := range d.rcpts[rcptIndx:] {
+			sc.SetStatus(rcpt, modErr)
+		}
+	}
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
-	if d.body != nil {
-		d.body.Close()
-	}
 	d.conn.Close()
 	return nil
 }
 
 func (d *delivery) Commit(ctx context.Context) error {
-	defer d.conn.Close()
-	defer d.body.Close()
-
-	return moduleError(d.conn.Data(ctx, d.hdr, d.body))
+	return d.conn.Close()
 }
 
 func init() {
 	module.Register("smtp_downstream", NewDownstream)
+	module.Register("lmtp_downstream", NewDownstream)
 }

@@ -40,3 +40,5 @@ require (
 )
 
 replace github.com/emersion/go-milter => github.com/foxcpp/go-milter v0.1.1-0.20200502214548-312001df0b51
+
+replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v0.9.1-0.20200426194559-69676b10bfea

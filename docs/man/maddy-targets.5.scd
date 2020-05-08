@@ -400,3 +400,8 @@ TLS).
 
 Multiple addresses can be specified, they will be tried in order until connection to
 one succeeds (including TLS handshake if TLS is required).
+
+# LMTP transparent forwarding module (lmtp_downstream)
+
+The 'lmtp_downstream' module is similar to 'smtp_downstream' and supports all
+its options and syntax but speaks LMTP instead of SMTP.

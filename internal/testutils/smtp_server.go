@@ -29,10 +29,11 @@ type SMTPBackend struct {
 	Messages        []*SMTPMessage
 	MailFromCounter int
 
-	AuthErr error
-	MailErr error
-	RcptErr map[string]error
-	DataErr error
+	AuthErr     error
+	MailErr     error
+	RcptErr     map[string]error
+	DataErr     error
+	LMTPDataErr []error
 }
 
 func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
@@ -127,6 +128,28 @@ func (s *session) Data(r io.Reader) error {
 	s.msg.AuthUser = s.user
 	s.msg.AuthPass = s.password
 	s.backend.Messages = append(s.backend.Messages, s.msg)
+	return nil
+}
+
+func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
+	if s.backend.DataErr != nil {
+		return s.backend.DataErr
+	}
+
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	s.msg.Data = b
+	s.msg.State = s.state
+	s.msg.AuthUser = s.user
+	s.msg.AuthPass = s.password
+	s.backend.Messages = append(s.backend.Messages, s.msg)
+
+	for i, rcpt := range s.msg.To {
+		status.SetStatus(rcpt, s.backend.LMTPDataErr[i])
+	}
+
 	return nil
 }
 

@@ -124,9 +124,23 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 	}
 }
 
-// Connect actually estabilishes the network connection with the remote host.
+// Connect actually estabilishes the network connection with the remote host,
+// executes HELO/EHLO and optionally STARTTLS command.
 func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
-	didTLS, cl, err := c.attemptConnect(ctx, endp, starttls, tlsConfig)
+	didTLS, cl, err := c.attemptConnect(ctx, false, endp, starttls, tlsConfig)
+	if err != nil {
+		return false, c.wrapClientErr(err, endp.Host)
+	}
+
+	c.serverName = endp.Host
+	c.cl = cl
+	return didTLS, nil
+}
+
+// ConnectLMTP estabilishes the network connection with the remote host and
+// sends LHLO command, negotiating LMTP use.
+func (c *C) ConnectLMTP(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
+	didTLS, cl, err := c.attemptConnect(ctx, true, endp, starttls, tlsConfig)
 	if err != nil {
 		return false, c.wrapClientErr(err, endp.Host)
 	}
@@ -153,7 +167,7 @@ func (err TLSError) Unwrap() error {
 	return err.Err
 }
 
-func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, cl *smtp.Client, err error) {
+func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, cl *smtp.Client, err error) {
 	var conn net.Conn
 	conn, err = c.Dialer(ctx, endp.Network(), endp.Address())
 	if err != nil {
@@ -166,7 +180,11 @@ func (c *C) attemptConnect(ctx context.Context, endp config.Endpoint, starttls b
 		conn = tls.Client(conn, cfg)
 	}
 
-	cl, err = smtp.NewClient(conn, endp.Host)
+	if lmtp {
+		cl, err = smtp.NewClientLMTP(conn, endp.Host)
+	} else {
+		cl, err = smtp.NewClient(conn, endp.Host)
+	}
 	if err != nil {
 		conn.Close()
 		return false, nil, err
@@ -308,6 +326,29 @@ func (c *C) Data(ctx context.Context, hdr textproto.Header, body io.Reader) erro
 	defer trace.StartRegion(ctx, "smtpconn/DATA").End()
 
 	wc, err := c.cl.Data()
+	if err != nil {
+		return c.wrapClientErr(err, c.serverName)
+	}
+
+	if err := textproto.WriteHeader(wc, hdr); err != nil {
+		return c.wrapClientErr(err, c.serverName)
+	}
+
+	if _, err := io.Copy(wc, body); err != nil {
+		return c.wrapClientErr(err, c.serverName)
+	}
+
+	if err := wc.Close(); err != nil {
+		return c.wrapClientErr(err, c.serverName)
+	}
+
+	return nil
+}
+
+func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, statusCb func(*smtp.SMTPError)) error {
+	defer trace.StartRegion(ctx, "smtpconn/LMTPDATA").End()
+
+	wc, err := c.cl.LMTPData(statusCb)
 	if err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}

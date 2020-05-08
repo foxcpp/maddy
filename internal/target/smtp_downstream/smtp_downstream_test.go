@@ -1,6 +1,7 @@
 package smtp_downstream
 
 import (
+	"errors"
 	"flag"
 	"math/rand"
 	"os"
@@ -43,6 +44,63 @@ func TestDownstreamDelivery(t *testing.T) {
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
+}
+
+func TestDownstreamDelivery_LMTP(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort, func(srv *smtp.Server) {
+		srv.LMTP = true
+	})
+	be.LMTPDataErr = []error{
+		nil,
+		&smtp.SMTPError{
+			Code:    501,
+			Message: "nop",
+		},
+	}
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		modName: "lmtp_downstream",
+		lmtp:    true,
+		log:     testutils.Logger(t, "lmtp_downstream"),
+	}
+
+	sc := make(statusCollector)
+
+	testutils.DoTestDeliveryNonAtomic(t, &sc, mod, "test@example.invalid", []string{"rcpt1@example.invalid", "rcpt2@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt1@example.invalid", "rcpt2@example.invalid"})
+
+	if len(sc) != 2 {
+		t.Fatal("Two statuses should be set")
+	}
+	if err := sc["rcpt1@example.invalid"]; err != nil {
+		t.Fatal("Unexpected error for rcpt1:", err)
+	}
+	if sc["rcpt2@example.invalid"] == nil {
+		t.Fatal("Expected an error for rcpt2")
+	}
+	var rcptErr *exterrors.SMTPError
+	if !errors.As(sc["rcpt2@example.invalid"], &rcptErr) {
+		t.Fatalf("Not SMTPError: %T", rcptErr)
+	}
+	if rcptErr.Code != 501 {
+		t.Fatal("Wrong SMTP code:", rcptErr.Code)
+	}
+}
+
+type statusCollector map[string]error
+
+func (sc *statusCollector) SetStatus(rcptTo string, err error) {
+	(*sc)[rcptTo] = err
 }
 
 func TestDownstreamDelivery_Fallback(t *testing.T) {
