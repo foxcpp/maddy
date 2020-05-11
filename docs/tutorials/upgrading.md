@@ -1,0 +1,113 @@
+# Upgrading from older maddy versions
+
+It is generally possible to just install latest version (e.g. using build.sh
+script) over the existing installation.
+
+It is recommended to backup state directory (usually /var/lib/maddy for Linux)
+before doing so. The new server version may automatically convert DB files in a
+way that will make them unreadable by older versions.
+
+Specific instructions for upgrading between versions with incompatible changes
+are documented on this page below.
+
+## Incompatible version migration
+
+## 0.2 -> 0.3
+
+0.3 includes a significant change to the authentication code that makes it
+completely independent of IMAP index. This means 0.2 "unified" database cannot
+be used in 0.3 and auto-migration is not possible. Additionally, the way
+passwords are hashed is changed, meaning that after migration passwords will
+need to be reset.
+
+**migrate.go script is SQLite-specific, if you need one that works for
+Postgres - reach out at IRC channel.**
+
+1. Make sure the server is not running.
+
+```
+systemctl stop maddy
+```
+
+2. Take a backup of `imapsql.db*` files in state directory (/var/lib/maddy).
+
+```
+mkdir backup
+cp /var/lib/maddy/imapsql.db* backup/
+```
+
+3. Download migrate.go from https://gist.github.com/foxcpp/1be0b627f9d2be6004c3867be186b7fb
+4. Compile it:
+
+```
+env GO111MODULE=on go build migrate.go
+```
+
+5. Run compiled binary:
+
+```
+./migrate /var/lib/maddy/imapsql.db
+```
+6. Open maddy.conf and make following changes:
+
+Remove `local_authdb` name from imapsql configuration block:
+```
+imapsql local_mailboxes {
+    driver sqlite3
+    dsn imapsql.db
+}
+```
+
+Add `local_authdb` configuration block using `pass_table` module:
+
+```
+pass_table local_authdb {
+    table sql_table {
+        driver sqlite3
+        dsn credentials.db
+        table_name passwords
+    }
+}
+```
+
+7. Use `maddyctl creds create ACCOUNT_NAME` to add credentials to `pass_table`
+   store.
+
+8. Start the server back.
+
+```
+systemctl start maddy
+```
+
+## 0.1 -> 0.2
+
+0.2 requires several changes in configuration file.
+
+Change
+```
+sql local_mailboxes local_authdb {
+```
+to
+```
+imapsql local_mailboxes local_authdb {
+```
+
+Replace
+```
+replace_rcpt postmaster postmaster@$(primary_domain)
+```
+with
+```
+replace_rcpt static {
+    entry postmaster postmaster@$(primary_domain)
+}
+```
+and
+
+```
+replace_rcpt "(.+)\+(.+)@(.+)" "$1@$3"
+```
+with
+```
+replace_rcpt regexp "(.+)\+(.+)@(.+)" "$1@$3"
+```
