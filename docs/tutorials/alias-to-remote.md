@@ -32,12 +32,13 @@ tweaking:
 
 ```
 smtp tcp://0.0.0.0:25 {
-    ... checks ...
+    ... global limits ...
     ... local source check ...
 
     default_source {
         destination $(local_domains) {
-            import local_delivery_actions
+            ... local checks ...
+            modify &local_modifiers
             deliver_to &local_mailboxes
         }
 
@@ -50,8 +51,8 @@ smtp tcp://0.0.0.0:25 {
 
 Here is the quick explanation of what is going on here: When maddy receives a
 message on port 25, it runs a set of checks, checks the recipients against
-'destination' blocks, runs what is specified in local_delivery_actions
-(that includes alias_file) and finally delivers the message to targets inside
+'destination' blocks, runs what is specified in local_modifiers
+(that includes replace_rcpt file) and finally delivers the message to targets inside
 the matching 'destination' blocks.
 
 The problem here is that recipients are matched before aliases are resolved so
@@ -61,12 +62,13 @@ is to insert another step into the pipeline configuration to rerun matching
 
 ```
 smtp tcp://0.0.0.0:25 {
-    ... checks ...
+    ... global limits ...
     ... local source check ...
 
     default_source {
         destination $(local_domains) {
-            import local_delivery_actions
+            ... local checks ...
+            modify &local_modifiers
 
             reroute {
                 destination $(local_domains) {

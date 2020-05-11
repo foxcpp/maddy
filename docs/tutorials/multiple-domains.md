@@ -32,7 +32,7 @@ primary one.
 For each handled domain, the following line should be added to the
 `local_modifiers` block:
 ```
-replace_rcpt /(.+)@example.com/ $1@$(primary_domain)
+replace_rcpt regexp /(.+)@example.com/ $1@$(primary_domain)
 ```
 It does regexp replacement, turning anything@example.com into
 anything@$(primary_domain) where $(primary_domain) in our case is example.org.
@@ -42,8 +42,8 @@ E.g.
 $(primary_domain) = example.org
 
 modifiers local_modifiers {
-    replace_rcpt /(.+)@example.net/ $1@$(primary_domain)
-    replace_rcpt /(.+)@example.com/ $1@$(primary_domain)
+    replace_rcpt regexp /(.+)@example.net/ $1@$(primary_domain)
+    replace_rcpt regexp /(.+)@example.com/ $1@$(primary_domain)
 }
 ```
 With that configuration, all messages for foo@example.net and foo@example.com

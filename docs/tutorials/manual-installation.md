@@ -19,19 +19,21 @@
 
 ## Building
 
-First, make sure Go Modules support is enabled:
+Clone maddy repo:
 ```
-export GO111MODULE=on
-```
-
-There are two binaries to install, server itself and DB management
-utility. Use the following command to install them:
-```
-go get github.com/foxcpp/maddy/cmd/{maddy,maddyctl}@master
+git clone https://github.com/foxcpp/maddy.git
+cd maddy
 ```
 
-Executables will be placed in the $GOPATH/bin directory (defaults to
-$HOME/go/bin).
+There are two binaries to build, server itself and DB management
+utility. Use the following commands to install them:
+```
+go build ./cmd/maddyctl
+go build ./cmd/maddy
+```
+
+Executables will be placed in the current directory. Copy them to
+/usr/local/bin or whatever directory you them to be in.
 
 ## Configuration
 
@@ -39,11 +41,11 @@ $HOME/go/bin).
 basic ideas about how email works.
 
 1. Install maddy and maddyctl (see above)
-2. Copy maddy.conf from this repo to /etc/maddy/maddy.conf
+2. Copy maddy.conf from the repo to /etc/maddy/maddy.conf
 3. Create /run/maddy and /var/lib/maddy, make sure they are writable
    for the maddy user. Though, you don't have to use system directories,
    see `maddy -help`.
-4. Open maddy.conf with ~~vim~~your favorite editor and change
+4. Open maddy.conf with your favorite editor and change
    the following:
 - `tls ...`
   Change to paths to TLS certificate and key.
@@ -67,4 +69,4 @@ SMTP endpoint is on port 465 with TLS enforced ("implicit TLS").
 ### systemd unit
 
 You can use the systemd unit file from the [dist/](dist) directory in
-this repo.
+the repo to supervise the server process and start it at boot.
