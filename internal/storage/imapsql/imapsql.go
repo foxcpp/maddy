@@ -298,6 +298,9 @@ func (store *Storage) Init(cfg *config.Map) error {
 	store.driver = driver
 	store.dsn = dsn
 
+	store.Back.EnableChildrenExt()
+	store.Back.EnableSpecialUseExt()
+
 	return nil
 }
 
