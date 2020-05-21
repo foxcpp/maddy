@@ -120,7 +120,7 @@ func Run() int {
 	var (
 		configPath   = flag.String("config", filepath.Join(ConfigDirectory, "maddy.conf"), "path to configuration file")
 		logTargets   = flag.String("log", "stderr", "default logging target(s)")
-		printVersion = flag.Bool("v", false, "print versio, build metadata and exit")
+		printVersion = flag.Bool("v", false, "print version and build metadata, then exit")
 	)
 
 	if enableDebugFlags {
