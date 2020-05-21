@@ -11,7 +11,7 @@
 //
 // Each module gets its own unique name (sql for go-imap-sql, proxy for
 // proxy module, local for local delivery perhaps, etc). Each module instance
-// also gets its own (unique too) name which is used to refer to it in
+// also can have its own unique name can be used to refer to it in
 // configuration.
 package module
 
@@ -42,7 +42,8 @@ type Module interface {
 	// It is used to reference module in the configuration and in logs.
 	Name() string
 
-	// InstanceName method reports unique name of this module instance.
+	// InstanceName method reports unique name of this module instance or empty
+	// string if module instance is unnamed.
 	InstanceName() string
 }
 
