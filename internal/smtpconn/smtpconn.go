@@ -345,7 +345,7 @@ func (c *C) Data(ctx context.Context, hdr textproto.Header, body io.Reader) erro
 	return nil
 }
 
-func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, statusCb func(*smtp.SMTPError)) error {
+func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, statusCb func(string, *smtp.SMTPError)) error {
 	defer trace.StartRegion(ctx, "smtpconn/LMTPDATA").End()
 
 	wc, err := c.cl.LMTPData(statusCb)

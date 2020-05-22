@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-milter"
@@ -75,7 +76,15 @@ func (c *Check) Init(cfg *config.Map) error {
 		return fmt.Errorf("%s: stray path in endpoint: %v", modName, endp)
 	}
 
-	c.cl = milter.NewClient(endp.Scheme, endp.Host)
+	c.cl = milter.NewClientWithOptions(endp.Network(), endp.Address(), milter.ClientOptions{
+		Dialer: &net.Dialer{
+			Timeout: 10 * time.Second,
+		},
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		ActionMask:   milter.OptAddHeader | milter.OptQuarantine,
+		ProtocolMask: 0,
+	})
 
 	return nil
 }
@@ -89,13 +98,7 @@ type state struct {
 }
 
 func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
-	const supportedActions = milter.OptAddHeader | milter.OptQuarantine
-	protocolOpts := milter.OptProtocol(0)
-	if msgMeta.Conn == nil {
-		protocolOpts = milter.OptNoConnect | milter.OptNoHelo
-	}
-
-	session, err := c.cl.Session(supportedActions, protocolOpts)
+	session, err := c.cl.Session()
 	if err != nil {
 		return nil, err
 	}
@@ -161,20 +164,20 @@ func (s *state) apply(modifyActs []milter.ModifyAction, res module.CheckResult) 
 		case milter.ActChangeFrom:
 			s.log.Msg("envelope changes are not supported", "from", act.From, "code", act.Code, "milter", s.c.milterUrl)
 		case milter.ActChangeHeader:
-			s.log.Msg("header field changes are not supported", "field", act.HdrName, "milter", s.c.milterUrl)
+			s.log.Msg("header field changes are not supported", "field", act.HeaderName, "milter", s.c.milterUrl)
 		case milter.ActInsertHeader:
-			if act.HdrIndex != 1 {
-				s.log.Msg("header inserting not on top is not supported, prepending instead", "field", act.HdrName, "milter", s.c.milterUrl)
+			if act.HeaderIndex != 1 {
+				s.log.Msg("header inserting not on top is not supported, prepending instead", "field", act.HeaderName, "milter", s.c.milterUrl)
 			}
 			fallthrough
 		case milter.ActAddHeader:
 			// Header field might be arbitarly folded by the caller and we want
 			// to preserve that exact format in case it is important (DKIM
 			// signature is added by milter).
-			field := make([]byte, 0, len(act.HdrName)+2+len(act.HdrValue)+2)
-			field = append(field, act.HdrName...)
+			field := make([]byte, 0, len(act.HeaderName)+2+len(act.HeaderValue)+2)
+			field = append(field, act.HeaderName...)
 			field = append(field, ':', ' ')
-			field = append(field, act.HdrValue...)
+			field = append(field, act.HeaderValue...)
 			field = append(field, '\r', '\n')
 			out.Header.AddRaw(field)
 		case milter.ActQuarantine:
@@ -191,7 +194,21 @@ func (s *state) apply(modifyActs []milter.ModifyAction, res module.CheckResult) 
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	if s.msgMeta.Conn == nil {
-		return module.CheckResult{}
+		// Submit some dummy values as the message is likely generated locally.
+
+		act, err := s.session.Conn("localhost", milter.FamilyInet, 25, "127.0.0.1")
+		if err != nil {
+			return s.ioError(err)
+		}
+		if act.Code != milter.ActContinue {
+			return s.handleAction(act)
+		}
+
+		act, err = s.session.Helo("localhost")
+		if err != nil {
+			return s.ioError(err)
+		}
+		return s.handleAction(act)
 	}
 
 	if !s.session.ProtocolOption(milter.OptNoConnect) {
@@ -371,7 +388,7 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 			}
 		}
 
-		modifyAct, act, err = s.session.Body(r)
+		modifyAct, act, err = s.session.BodyReadFrom(r)
 		if err != nil {
 			return s.ioError(err)
 		}

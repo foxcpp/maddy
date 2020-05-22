@@ -253,11 +253,11 @@ func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollec
 	defer r.Close()
 
 	rcptIndx := 0
-	err = d.conn.LMTPData(ctx, header, r, func(err *smtp.SMTPError) {
+	err = d.conn.LMTPData(ctx, header, r, func(rcpt string, err *smtp.SMTPError) {
 		if err == nil {
-			sc.SetStatus(d.rcpts[rcptIndx], nil)
+			sc.SetStatus(rcpt, nil)
 		} else {
-			sc.SetStatus(d.rcpts[rcptIndx], &exterrors.SMTPError{
+			sc.SetStatus(rcpt, &exterrors.SMTPError{
 				Code:         err.Code,
 				EnhancedCode: exterrors.EnhancedCode(err.EnhancedCode),
 				Message:      err.Message,
