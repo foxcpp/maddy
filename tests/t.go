@@ -36,6 +36,7 @@ type T struct {
 	cfg     string
 
 	dnsServ  *mockdns.Server
+	env      []string
 	ports    map[string]uint16
 	portsRev map[uint16]string
 
@@ -98,6 +99,10 @@ func (t *T) Port(name string) uint16 {
 	t.ports[name] = uint16(port)
 	t.portsRev[uint16(port)] = name
 	return uint16(port)
+}
+
+func (t *T) Env(kv string) {
+	t.env = append(t.env, kv)
 }
 
 // Run completes the configuration of test environment and starts the test server.
@@ -191,6 +196,7 @@ func (t *T) Run(waitListeners int) {
 	for name, port := range t.ports {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TEST_PORT_%s=%d", name, port))
 	}
+	cmd.Env = append(cmd.Env, t.env...)
 
 	// Capture maddy log and redirect it.
 	logOut, err := cmd.StderrPipe()
