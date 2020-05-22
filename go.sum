@@ -51,6 +51,8 @@ github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe h1:40SWqY0
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200505180305-0bead5af2e8a h1:S7nC7TVzheHNs2waad1a+oAbLwCEx3BhQubh0AmDUSA=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200505180305-0bead5af2e8a/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf h1:rmBPY5fryjp9zLQYsUmQqqgsYq7qeVfrjtr96Tf9vD8=
+github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200426175250-4110e9b66176 h1:qyze36XjZnwK9geEzr5qlChS8zJgz7L+YZ5O8JNhh90=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200426175250-4110e9b66176/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=

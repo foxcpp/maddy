@@ -18,7 +18,7 @@ require (
 	github.com/emersion/go-msgauth v0.4.1-0.20200429175443-e4c87369d72f
 	github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b
 	github.com/emersion/go-smtp v0.12.2-0.20200219094142-f9be832b5554
-	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200505180305-0bead5af2e8a
+	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200426175844-c3172a53940a
 	github.com/foxcpp/go-mockdns v0.0.0-20200503193630-ff72b88723f2
