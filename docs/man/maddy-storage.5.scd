@@ -43,6 +43,23 @@ imapsql {
 }
 ```
 
+imapsql module also can be used as a lookup table (*maddy-table*(5)).
+It returns empty string values for existing usernames. This might be useful
+with destination_in directive (*maddy-smtp*(5)) e.g. to implement catch-all
+addresses (this is a bad idea to do so, this is just an example):
+```
+destination_in &local_mailboxes {
+	deliver_to &local_mailboxes
+}
+destination_in example.org {
+	modify {
+		replace_rcpt regexp ".*" "catchall@example.org"
+	}
+	deliver_to &local_mailboxes
+}
+```
+
+
 ## Arguments
 
 Specify the driver and DSN.

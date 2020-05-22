@@ -434,6 +434,24 @@ func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error)
 	return store.Back.GetOrCreateUser(accountName)
 }
 
+func (store *Storage) Lookup(key string) (string, bool, error) {
+	accountName, err := prepareUsername(key)
+	if err != nil {
+		return "", false, nil
+	}
+
+	usr, err := store.Back.GetUser(accountName)
+	if err != nil {
+		if err == imapsql.ErrUserDoesntExists {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	usr.Logout()
+
+	return "", true, nil
+}
+
 func (store *Storage) Close() error {
 	// Stop backend from generating new updates.
 	store.Back.Close()
