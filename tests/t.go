@@ -131,6 +131,8 @@ func (t *T) Run(waitListeners int) {
 	}
 	t.testDir = testDir
 
+	t.Log("Using", t.testDir)
+
 	defer func() {
 		if !t.Failed() {
 			return
@@ -343,12 +345,7 @@ func (t *T) Conn4(sourceIP, portName string) Conn {
 	}
 }
 
-func (t *T) Conn(portName string) Conn {
-	port := t.ports[portName]
-	if port == 0 {
-		panic("tests: connection for the unused port name is requested")
-	}
-
+func (t *T) ConnUnnamed(port uint16) Conn {
 	conn, err := net.Dial("tcp4", "127.0.0.1:"+strconv.Itoa(int(port)))
 	if err != nil {
 		t.Fatal("Could not connect, is server listening?", err)
@@ -361,6 +358,15 @@ func (t *T) Conn(portName string) Conn {
 		Conn:         conn,
 		Scanner:      bufio.NewScanner(conn),
 	}
+}
+
+func (t *T) Conn(portName string) Conn {
+	port := t.ports[portName]
+	if port == 0 {
+		panic("tests: connection for the unused port name is requested")
+	}
+
+	return t.ConnUnnamed(port)
 }
 
 func (t *T) Subtest(name string, f func(t *T)) {

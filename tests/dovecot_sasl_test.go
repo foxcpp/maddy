@@ -6,6 +6,7 @@ package tests_test
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -77,7 +78,7 @@ const dovecotPasswd = `tester:{plain}123456:1000:1000::/home/user`
 func runDovecot(t *testing.T) (string, *exec.Cmd) {
 	dovecotExec, err := exec.LookPath(DovecotExecutable)
 	if err != nil {
-		if err == exec.ErrNotFound {
+		if errors.Is(err, exec.ErrNotFound) {
 			t.Skip("No Dovecot executable found, skipping interop. tests")
 		}
 		t.Fatal(err)
