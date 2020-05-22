@@ -177,9 +177,9 @@ func TestDovecotSASLClient(tt *testing.T) {
 	defer c.Close()
 	c.SMTPNegotation("localhost", nil, nil)
 	c.Writeln("AUTH PLAIN AHRlc3QAMTIzNDU2") // 0x00 test 0x00 123456 (invalid user)
-	c.ExpectPattern("454 *")
+	c.ExpectPattern("535 *")
 	c.Writeln("AUTH PLAIN AHRlc3RlcgAxMjM0NQ==") // 0x00 tester 0x00 12345 (invalid password)
-	c.ExpectPattern("454 *")
+	c.ExpectPattern("535 *")
 	c.Writeln("AUTH PLAIN AHRlc3RlcgAxMjM0NTY=") // 0x00 tester 0x00 123456
 	c.ExpectPattern("235 *")
 }

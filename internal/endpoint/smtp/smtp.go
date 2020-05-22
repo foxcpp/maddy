@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -22,6 +21,7 @@ import (
 	"github.com/foxcpp/maddy/internal/config"
 	modconfig "github.com/foxcpp/maddy/internal/config/module"
 	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/future"
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/log"
@@ -339,9 +339,21 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
-		// TODO(GH #208): Update fail2ban filters
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
-		return nil, errors.New("Invalid credentials")
+
+		if exterrors.IsTemporary(err) {
+			return nil, &smtp.SMTPError{
+				Code:         454,
+				EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+				Message:      "Temporary authentication failure",
+			}
+		}
+
+		return nil, &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Invalid credentials",
+		}
 	}
 
 	return endp.newSession(false, username, password, state), nil
