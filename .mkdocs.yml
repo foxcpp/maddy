@@ -16,6 +16,7 @@ nav:
     - tutorials/alias-to-remote.md
     - tutorials/multiple-domains.md
     - tutorials/upgrading.md
+    - tutorials/smtp-only.md
   - seclevels.md
   - faq.md
   - unicode.md
