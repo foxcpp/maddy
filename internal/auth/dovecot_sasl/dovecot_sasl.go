@@ -8,6 +8,7 @@ import (
 	dovecotsasl "github.com/foxcpp/go-dovecot-sasl"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
 )
@@ -116,13 +117,14 @@ func (a *Auth) AuthPlain(username, password string) error {
 	if _, ok := a.mechanisms[sasl.Plain]; ok {
 		cl, err := a.getConn()
 		if err != nil {
-			return err
+			return exterrors.WithTemporary(err, true)
 		}
 		defer a.returnConn(cl)
 
-		// Pretend it is SMTP even though we really don't know.
+		// Pretend it is SMTPS even though we really don't know.
 		// We also have no connection information to pass to the server...
-		return cl.Do("SMTP", sasl.NewPlainClient("", username, password))
+		return cl.Do("SMTP", sasl.NewPlainClient("", username, password),
+			dovecotsasl.Secured, dovecotsasl.NoPenalty)
 	}
 	if _, ok := a.mechanisms[sasl.Login]; ok {
 		cl, err := a.getConn()
@@ -131,8 +133,8 @@ func (a *Auth) AuthPlain(username, password string) error {
 		}
 		defer a.returnConn(cl)
 
-		// Pretend it is SMTP even though we really don't know.
-		return cl.Do("SMTP", sasl.NewLoginClient(username, password))
+		return cl.Do("SMTP", sasl.NewLoginClient(username, password),
+			dovecotsasl.Secured, dovecotsasl.NoPenalty)
 	}
 
 	return auth.ErrUnsupportedMech
