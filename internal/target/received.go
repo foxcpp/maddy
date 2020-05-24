@@ -55,18 +55,22 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 		}
 	}
 
-	ourHostname, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, ourHostname)
-	if err == nil {
-		builder.WriteString(" by ")
-		builder.WriteString(SanitizeForHeader(ourHostname))
+	if ourHostname != "" {
+		ourHostname, err := dns.SelectIDNA(msgMeta.SMTPOpts.UTF8, ourHostname)
+		if err == nil {
+			builder.WriteString(" by ")
+			builder.WriteString(SanitizeForHeader(ourHostname))
+		}
 	}
 
-	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
-	mailFrom, err = address.SelectIDNA(msgMeta.SMTPOpts.UTF8, mailFrom)
-	if err == nil {
-		builder.WriteString(" (envelope-sender <")
-		builder.WriteString(SanitizeForHeader(mailFrom))
-		builder.WriteString(">)")
+	if mailFrom != "" {
+		// INTERNATIONALIZATION: See RFC 6531 Section 3.7.3.
+		mailFrom, err := address.SelectIDNA(msgMeta.SMTPOpts.UTF8, mailFrom)
+		if err == nil {
+			builder.WriteString(" (envelope-sender <")
+			builder.WriteString(SanitizeForHeader(mailFrom))
+			builder.WriteString(">)")
+		}
 	}
 
 	if msgMeta.Conn.Proto != "" {
@@ -81,5 +85,5 @@ func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostn
 	builder.WriteString("; ")
 	builder.WriteString(time.Now().Format(time.RFC1123Z))
 
-	return builder.String(), nil
+	return strings.TrimSpace(builder.String()), nil
 }
