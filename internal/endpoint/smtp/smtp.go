@@ -31,7 +31,6 @@ import (
 )
 
 type Endpoint struct {
-	hostname  string
 	saslAuth  auth.SASLAuth
 	serv      *smtp.Server
 	name      string
@@ -203,14 +202,15 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 
 func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	var (
-		err     error
-		ioDebug bool
+		hostname string
+		err      error
+		ioDebug  bool
 	)
 
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
-	cfg.String("hostname", true, true, "", &endp.hostname)
+	cfg.String("hostname", true, true, "", &hostname)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
@@ -243,6 +243,13 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	if err != nil {
 		return err
 	}
+
+	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
+	endp.serv.Domain, err = idna.ToASCII(hostname)
+	if err != nil {
+		return fmt.Errorf("%s: cannot represent the hostname as an A-label name: %w", endp.name, err)
+	}
+
 	endp.pipeline, err = msgpipeline.New(cfg.Globals, unknown)
 	if err != nil {
 		return err
@@ -279,12 +286,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 				return nil
 			})
 		})
-	}
-
-	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
-	endp.serv.Domain, err = idna.ToASCII(endp.hostname)
-	if err != nil {
-		return fmt.Errorf("%s: cannot represent the hostname as an A-label name: %w", endp.name, err)
 	}
 
 	if ioDebug {
