@@ -514,7 +514,7 @@ func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 		t.Error("Wrong AuthPassword:", msg.MsgMeta.Conn.AuthPassword)
 	}
 
-	receivedPrefix := ` by mx.example.com (envelope-sender <sender@example.org>) with ESMTP id ` + msgID
+	receivedPrefix := `by mx.example.com (envelope-sender <sender@example.org>) with ESMTP id ` + msgID
 	if !strings.HasPrefix(msg.Header.Get("Received"), receivedPrefix) {
 		t.Error("Wrong Received contents:", msg.Header.Get("Received"))
 	}
