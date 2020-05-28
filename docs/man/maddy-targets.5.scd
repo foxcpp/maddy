@@ -123,6 +123,10 @@ See 'limits' directive in *maddy-smtp*(5) for SMTP endpoint.
 It works the same except for address domains used for
 per-source/per-destination are as observed when message exits the server.
 
+*Syntax*: local_ip _IP address_ ++
+*Default*: empty
+
+Choose the local IP to bind for outbound SMTP connections.
 
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
