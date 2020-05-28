@@ -86,6 +86,7 @@ func moduleError(err error) error {
 type Target struct {
 	name      string
 	hostname  string
+	localIP   string
 	tlsConfig *tls.Config
 
 	resolver    dns.Resolver
@@ -120,6 +121,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	}
 
 	cfg.String("hostname", true, true, "", &rt.hostname)
+	cfg.String("local_ip", false, false, "", &rt.localIP)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
@@ -154,6 +156,16 @@ func (rt *Target) Init(cfg *config.Map) error {
 	rt.hostname, err = idna.ToASCII(rt.hostname)
 	if err != nil {
 		return fmt.Errorf("remote: cannot represent the hostname as an A-label name: %w", err)
+	}
+
+	if rt.localIP != "" {
+		addr, err := net.ResolveTCPAddr("tcp", rt.localIP+":0")
+		if err != nil {
+			return fmt.Errorf("remote: failed to parse local IP: %w", err)
+		}
+		rt.dialer = (&net.Dialer{
+			LocalAddr: addr,
+		}).DialContext
 	}
 
 	return nil
