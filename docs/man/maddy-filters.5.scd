@@ -566,6 +566,11 @@ Valid values:
 Allow multiple addresses in From header field for purposes of
 require_sender_match checks. Only first address will be checked, however.
 
+*Syntax*: sign_subdomains _boolean_ ++
+*Default*: no
+
+Allow to sign emails from subdomains using a top domain key.
+
 # Envelope sender / recipient rewriting (replace_sender, replace_rcpt)
 
 'replace_sender' and 'replace_rcpt' modules replace SMTP envelope addresses
