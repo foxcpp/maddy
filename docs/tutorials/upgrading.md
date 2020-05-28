@@ -20,8 +20,8 @@ be used in 0.3 and auto-migration is not possible. Additionally, the way
 passwords are hashed is changed, meaning that after migration passwords will
 need to be reset.
 
-**migrate.go script is SQLite-specific, if you need one that works for
-Postgres - reach out at IRC channel.**
+**Migration utility is SQLite-specific, if you need one that works for
+Postgres - reach out at the IRC channel.**
 
 1. Make sure the server is not running.
 
@@ -36,19 +36,21 @@ mkdir backup
 cp /var/lib/maddy/imapsql.db* backup/
 ```
 
-3. Download migrate.go from https://gist.github.com/foxcpp/1be0b627f9d2be6004c3867be186b7fb
-4. Compile it:
+3. Compile migration utility:
 
 ```
-env GO111MODULE=on go build migrate.go
+git clone https://github/foxcpp/maddy.git
+cd maddy/cmd/migrate-db-0.2
+go build
 ```
 
-5. Run compiled binary:
+4. Run compiled binary:
 
 ```
-./migrate /var/lib/maddy/imapsql.db
+./migrate-db-0.2 /var/lib/maddy/imapsql.db
 ```
-6. Open maddy.conf and make following changes:
+
+5. Open maddy.conf and make following changes:
 
 Remove `local_authdb` name from imapsql configuration block:
 ```
@@ -70,10 +72,10 @@ pass_table local_authdb {
 }
 ```
 
-7. Use `maddyctl creds create ACCOUNT_NAME` to add credentials to `pass_table`
+6. Use `maddyctl creds create ACCOUNT_NAME` to add credentials to `pass_table`
    store.
 
-8. Start the server back.
+7. Start the server back.
 
 ```
 systemctl start maddy
