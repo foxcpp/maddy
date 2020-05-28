@@ -569,7 +569,10 @@ require_sender_match checks. Only first address will be checked, however.
 *Syntax*: sign_subdomains _boolean_ ++
 *Default*: no
 
-Allow to sign emails from subdomains using a top domain key.
+Sign emails from subdomains using a top domain key.
+
+Allows only one domain to be specified (can be workarounded using sign_dkim 
+multiple times).
 
 # Envelope sender / recipient rewriting (replace_sender, replace_rcpt)
 
