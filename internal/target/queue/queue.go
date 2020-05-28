@@ -927,7 +927,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	defer msgTask.End()
 
 	mailCtx, mailTask := trace.NewTask(msgCtx, "MAIL FROM")
-	dsnDelivery, err := q.dsnPipeline.Start(mailCtx, dsnMeta, "")
+	dsnDelivery, err := q.dsnPipeline.Start(mailCtx, dsnMeta, dsnEnvelope.From)
 	mailTask.End()
 	if err != nil {
 		dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)
