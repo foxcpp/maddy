@@ -517,6 +517,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
+	dnsSrv.Log = tgt.Log
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -558,6 +559,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	tgt := testTarget(t, zones, extResolver, []Policy{
 		&localPolicy{minMXLevel: MX_DNSSEC},
 	})
+	dnsSrv.Log = tgt.Log
 	defer tgt.Close()
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -611,6 +613,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
 	tgt := testTarget(t, zones, extResolver, []Policy{
 		&localPolicy{minMXLevel: MX_DNSSEC},
 	})
+	dnsSrv.Log = tgt.Log
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
@@ -657,6 +660,7 @@ func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
 	tgt := testTarget(t, zones, extResolver, []Policy{
 		&localPolicy{minMXLevel: MX_DNSSEC},
 	})
+	dnsSrv.Log = tgt.Log
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 	if err == nil {
