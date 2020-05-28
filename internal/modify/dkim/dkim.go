@@ -89,6 +89,7 @@ type Modifier struct {
 	hash           crypto.Hash
 	senderMatch    map[string]struct{}
 	multipleFromOk bool
+	signSubdomains bool
 
 	log log.Logger
 }
@@ -149,6 +150,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	cfg.EnumList("require_sender_match", false, false,
 		[]string{"envelope", "auth_domain", "auth_user", "off"}, []string{"envelope", "auth"}, &senderMatch)
 	cfg.Bool("allow_multiple_from", false, false, &m.multipleFromOk)
+	cfg.Bool("sign_subdomains", false, false, &m.signSubdomains)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -159,6 +161,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	}
 	if m.selector == "" {
 		return errors.New("sign_domain: selector is not specified")
+	}
+	if m.signSubdomains && len(m.domains) > 1 {
+		return errors.New("sign_domain: only one domain is supported when sign_subdomains is enabled")
 	}
 
 	m.senderMatch = make(map[string]struct{}, len(senderMatch))
@@ -281,6 +286,12 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 	}
 	selector := s.m.selector
 
+	if s.m.signSubdomains {
+		topDomain := s.m.domains[0]
+		if strings.HasSuffix(domain, "." + topDomain) {
+			domain = topDomain
+		}
+	}
 	normDomain, err := dns.ForLookup(domain)
 	if err != nil {
 		s.log.Error("unable to normalize domain from envelope sender", err, "domain", domain)
