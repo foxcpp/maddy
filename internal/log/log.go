@@ -139,6 +139,11 @@ func fieldsToMap(fields []interface{}, out map[string]interface{}) {
 func (l Logger) formatMsg(msg string, fields map[string]interface{}) string {
 	formatted := strings.Builder{}
 
+	formatted.WriteString(time.Now().Format("2006-01-02 15:04:05 "))
+	if l.Name != "" {
+		formatted.WriteString(l.Name)
+		formatted.WriteString(": ")
+	}
 	formatted.WriteString(msg)
 	formatted.WriteRune('\t')
 
@@ -182,10 +187,6 @@ func (l Logger) DebugWriter() io.Writer {
 }
 
 func (l Logger) log(debug bool, s string) {
-	if l.Name != "" {
-		s = l.Name + ": " + s
-	}
-
 	if l.Out != nil {
 		l.Out.Write(time.Now(), debug, s)
 		return
