@@ -205,16 +205,25 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 		policies = append(policies, p.Start(msgMeta))
 	}
 
-	_, domain, err := address.Split(mailFrom)
-	if err != nil {
-		return nil, &exterrors.SMTPError{
-			Code:         501,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
-			Message:      "Malformed sender address",
-			TargetName:   "remote",
-			Err:          err,
+	var (
+		ratelimitDomain string
+		err             error
+	)
+	// This will leave ratelimitDomain = "" for null return path which is fine
+	// for purposes of ratelimiting.
+	if mailFrom != "" {
+		_, ratelimitDomain, err = address.Split(mailFrom)
+		if err != nil {
+			return nil, &exterrors.SMTPError{
+				Code:         501,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 8},
+				Message:      "Malformed sender address",
+				TargetName:   "remote",
+				Err:          err,
+			}
 		}
 	}
+
 	// Domain is already should be normalized by the message source (e.g.
 	// endpoint/smtp).
 	region := trace.StartRegion(ctx, "remote/limits.Take")
@@ -225,7 +234,7 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 			addr = tcpAddr.IP
 		}
 	}
-	if err := rt.limits.TakeMsg(ctx, addr, domain); err != nil {
+	if err := rt.limits.TakeMsg(ctx, addr, ratelimitDomain); err != nil {
 		region.End()
 		return nil, &exterrors.SMTPError{
 			Code:         451,
@@ -426,10 +435,17 @@ func (rd *remoteDelivery) Close() error {
 		conn.Close()
 	}
 
-	_, domain, err := address.Split(rd.mailFrom)
-	if err != nil {
-		return err
+	var (
+		ratelimitDomain string
+		err             error
+	)
+	if rd.mailFrom != "" {
+		_, ratelimitDomain, err = address.Split(rd.mailFrom)
+		if err != nil {
+			return err
+		}
 	}
+
 	addr := net.IPv4(127, 0, 0, 1)
 	if rd.msgMeta.Conn != nil && rd.msgMeta.Conn.RemoteAddr != nil {
 		tcpAddr, ok := rd.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
@@ -437,7 +453,7 @@ func (rd *remoteDelivery) Close() error {
 			addr = tcpAddr.IP
 		}
 	}
-	rd.rt.limits.ReleaseMsg(addr, domain)
+	rd.rt.limits.ReleaseMsg(addr, ratelimitDomain)
 
 	return nil
 }

@@ -112,6 +112,26 @@ func TestRemoteDelivery(t *testing.T) {
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
+func TestRemoteDelivery_EmptySender(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
+	testutils.DoTestDelivery(t, tgt, "", []string{"test@example.invalid"})
+
+	be.CheckMsg(t, 0, "", []string{"test@example.invalid"})
+}
+
 func TestRemoteDelivery_IPLiteral(t *testing.T) {
 	t.Skip("Support disabled")
 
