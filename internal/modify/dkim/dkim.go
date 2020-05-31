@@ -288,7 +288,7 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 
 	if s.m.signSubdomains {
 		topDomain := s.m.domains[0]
-		if strings.HasSuffix(domain, "." + topDomain) {
+		if strings.HasSuffix(domain, "."+topDomain) {
 			domain = topDomain
 		}
 	}

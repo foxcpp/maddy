@@ -447,7 +447,9 @@ func (store *Storage) Lookup(key string) (string, bool, error) {
 		}
 		return "", false, err
 	}
-	usr.Logout()
+	if err := usr.Logout(); err != nil {
+		store.Log.Error("logout failed", err, "username", accountName)
+	}
 
 	return "", true, nil
 }
