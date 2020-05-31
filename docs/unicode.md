@@ -22,15 +22,18 @@ encodings:
 - ISO-8859-1, 2, 3, 4, 9, 10, 13, 14, 15 or 16
 - Windows-1250, 1251 or 1252 (aka Code Page 1250 and so on)
 - KOI8-R
-- HZGB2312, GB18030
+- ~~HZGB2312~~, GB18030
 - GBK (aka Code Page 936)
 - Shift JIS (aka Code Page 932 or Windows-31J)
 - Big-5 (aka Code Page 950)
 - EUC-JP
 - ISO-2022-JP
 
-If mailbox includes a message with any encoding not listed here, search
-commands will fail.
+_Support for HZGB2312 is currently disabled due to bugs with security
+implications._
+
+If mailbox includes a message with any encoding not listed here, it will not
+be returned in search results for any request.
 
 Behavior regarding handling of non-Unicode encodings is not considered stable
 and may change between versions (including removal of supported encodings). If
