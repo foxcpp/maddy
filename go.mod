@@ -1,6 +1,6 @@
 module github.com/foxcpp/maddy
 
-go 1.13
+go 1.14
 
 require (
 	blitiri.com.ar/go/spf v1.1.0

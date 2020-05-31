@@ -199,8 +199,8 @@ read_config() {
 # Test whether the Go toolchain is available on the system and matches required
 # version. If it is not present or incompatible - download Go $GOVERSION and unpack.
 ensure_go() {
-    REQUIRED_GOVERSION=1.13.0
-    GOVERSION=1.13.8
+    REQUIRED_GOVERSION=1.14.0
+    GOVERSION=1.14.3
 
     pushd "$BUILDDIR" >/dev/null
 

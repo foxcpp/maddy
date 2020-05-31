@@ -2,15 +2,15 @@
 
 ## Dependencies
 
-- [Go](https://golang.org) toolchain (1.13 or newer)
+- [Go](https://golang.org) toolchain (1.14 or newer)
 
   If your distribution ships an outdated Go version, you can use
   following commands to get a newer version:
   ```
-  go get golang.org/dl/go1.13
-  go1.13 download
+  go get golang.org/dl/go1.14
+  go1.14 download
   ```
-  Then use `go1.13` instead of `go` in commands below.
+  Then use `go1.14` instead of `go` in commands below.
 
 - C compiler (**optional**, set CGO_ENABLED env. variable to 0 to disable)
 

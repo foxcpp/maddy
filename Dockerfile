@@ -1,4 +1,4 @@
-FROM golang:1.13-alpine3.11 AS build-env
+FROM golang:1.14.3-alpine3.11 AS build-env
 
 COPY . maddy/
 WORKDIR maddy/
