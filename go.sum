@@ -39,6 +39,8 @@ github.com/emersion/go-message v0.11.2 h1:oxO9SQ+3wgBAQRdk07eqfkCJ26Tl8ZHF7CcpGV
 github.com/emersion/go-message v0.11.2/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-message v0.11.3-0.20200429151259-c5125629c3f8 h1:FiBAeT0Qr/4qr/qlr6tvOmeKggwiWTyNqWl3u9vicWk=
 github.com/emersion/go-message v0.11.3-0.20200429151259-c5125629c3f8/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
+github.com/emersion/go-message v0.12.0 h1:mZnv35eZ6lB6EftTQBgYXspOH0FQdhpFhSUhA9i6/Zg=
+github.com/emersion/go-message v0.12.0/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-milter v0.1.1-0.20200513090417-c3e74efc8df9 h1:8eIuvmSjG0aIbHbe8u4anq+oPAmLl+u4RwMqzcuYyuA=
 github.com/emersion/go-milter v0.1.1-0.20200513090417-c3e74efc8df9/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=

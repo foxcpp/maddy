@@ -171,7 +171,11 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 			if subCheckRes.Header.Len() != 0 {
 				data.headerLock.Lock()
 				for field := subCheckRes.Header.Fields(); field.Next(); {
-					cr.mergedRes.Header.AddRaw(field.Raw())
+					formatted, err := field.Raw()
+					if err != nil {
+						cr.log.Error("malformed header field added by check", err)
+					}
+					cr.mergedRes.Header.AddRaw(formatted)
 				}
 				data.headerLock.Unlock()
 			}
@@ -303,7 +307,11 @@ func (cr *checkRunner) applyResults(hostname string, header *textproto.Header) e
 	}
 
 	for field := cr.mergedRes.Header.Fields(); field.Next(); {
-		header.AddRaw(field.Raw())
+		formatted, err := field.Raw()
+		if err != nil {
+			cr.log.Error("malformed header field added by check", err)
+		}
+		header.AddRaw(formatted)
 	}
 	return nil
 }
