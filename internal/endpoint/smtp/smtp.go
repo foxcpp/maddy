@@ -223,8 +223,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		}
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
 	}, bufferModeDirective, &endp.buffer)
-	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.serv.TLSConfig)
-	cfg.Bool("insecure_auth", false, false, &endp.serv.AllowInsecureAuth)
+	cfg.Custom("tls", true, endp.name != "lmtp", nil, config.TLSDirective, &endp.serv.TLSConfig)
+	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
