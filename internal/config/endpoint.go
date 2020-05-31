@@ -18,6 +18,10 @@ type Endpoint struct {
 
 // String returns a human-friendly print of the address.
 func (e Endpoint) String() string {
+	if e.Original != "" {
+		return e.Original
+	}
+
 	if e.Scheme == "unix" {
 		return "unix://" + e.Path
 	}
@@ -70,10 +74,6 @@ func (e Endpoint) IsTLS() bool {
 func ParseEndpoint(str string) (Endpoint, error) {
 	input := str
 
-	// Split input into components (prepend with // to assert host by default)
-	if !strings.Contains(str, "//") && !strings.HasPrefix(str, "/") {
-		str = "//" + str
-	}
 	u, err := url.Parse(str)
 	if err != nil {
 		return Endpoint{}, err
@@ -82,7 +82,17 @@ func ParseEndpoint(str string) (Endpoint, error) {
 	switch u.Scheme {
 	case "tcp", "tls":
 		// ALL GREEN
+
+		// scheme:OPAQUE URL syntax
+		if u.Host == "" && u.Opaque != "" {
+			u.Host = u.Opaque
+		}
 	case "unix":
+		// scheme:OPAQUE URL syntax
+		if u.Path == "" && u.Opaque != "" {
+			u.Path = u.Opaque
+		}
+
 		var actualPath string
 		if u.Host != "" {
 			actualPath += u.Host
@@ -97,7 +107,7 @@ func ParseEndpoint(str string) (Endpoint, error) {
 
 		return Endpoint{Original: input, Scheme: u.Scheme, Path: actualPath}, err
 	default:
-		return Endpoint{}, fmt.Errorf("unsupported scheme: %s", input)
+		return Endpoint{}, fmt.Errorf("unsupported scheme: %s (%+v)", input, u)
 	}
 
 	// separate host and port
