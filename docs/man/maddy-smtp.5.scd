@@ -180,17 +180,17 @@ If period is not specified, 1 second is used.
 Restrict the amount of messages processed in parallel to _max_.
 
 For each supported limitation, _scope_ determines whether it should be applied
-for all messages ("all"), per-sender IP ("ip") or per-recipient domain
-("destination"). Having a scope other than "all" means that the restriction
-will be enforced independently for each group determined by scope. E.g.
-"ip rate 20" means that the same IP cannot send more than 20 messages in a
-scond. "destination concurrency 5" means that no more than 5 messages can be
-sent in parallel to a single domain.
+for all messages ("all"), per-sender IP ("ip"), per-sender domain ("source") or
+per-recipient domain ("destination"). Having a scope other than "all" means
+that the restriction will be enforced independently for each group determined
+by scope. E.g.  "ip rate 20" means that the same IP cannot send more than 20
+messages in a scond. "destination concurrency 5" means that no more than 5
+messages can be sent in parallel to a single domain.
 
-*Note*: At the moment, SMTP endpoint does not support per-recipient limits.
-They will be no-op. If you want to enforce a per-recipient restriction on
-outbound messages, do so using 'limits' directive for the 'remote' module (see
-*maddy-targets*(5)).
+*Note*: At the moment, SMTP endpoint on its own does not support per-recipient
+limits.  They will be no-op. If you want to enforce a per-recipient restriction
+on outbound messages, do so using 'limits' directive for the 'remote' module
+(see *maddy-targets*(5)).
 
 It is possible to share limit counters between multiple endpoints (or any other
 modules). To do so define a top-level configuration block for module "limits"
