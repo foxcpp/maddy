@@ -498,7 +498,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 		},
 	}
 
-	dnsSrv, err := mockdns.NewServer(zones)
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,7 +517,6 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	dnsSrv.Log = tgt.Log
 	defer tgt.Close()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
@@ -538,7 +537,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 		},
 	}
 
-	dnsSrv, err := mockdns.NewServer(zones)
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,110 +558,9 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	tgt := testTarget(t, zones, extResolver, []Policy{
 		&localPolicy{minMXLevel: MX_DNSSEC},
 	})
-	dnsSrv.Log = tgt.Log
 	defer tgt.Close()
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
-	if err == nil {
-		t.Fatal("Expected an error, got none")
-	}
-
-	if be.MailFromCounter != 0 {
-		t.Fatal("MAIL FROM issued for server failing authentication")
-	}
-}
-
-func TestRemoteDelivery_MXAuth_IPLiteral(t *testing.T) {
-	t.Skip("Support disabled")
-
-	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
-
-	zones := map[string]mockdns.Zone{
-		"example.invalid.": {
-			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
-		},
-		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
-		},
-		"1.0.0.127.in-addr.arpa.": {
-			AD:  true,
-			PTR: []string{"mx.example.invalid."},
-		},
-	}
-
-	dnsSrv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dnsSrv.Close()
-
-	dialer := net.Dialer{}
-	dialer.Resolver = &net.Resolver{}
-	dnsSrv.PatchNet(dialer.Resolver)
-	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
-
-	extResolver, err := dns.NewExtResolver()
-	if err != nil {
-		t.Fatal(err)
-	}
-	extResolver.Cfg.Servers = []string{addr.IP.String()}
-	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
-
-	tgt := testTarget(t, zones, extResolver, []Policy{
-		&localPolicy{minMXLevel: MX_DNSSEC},
-	})
-	dnsSrv.Log = tgt.Log
-	defer tgt.Close()
-
-	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
-	be.CheckMsg(t, 0, "test@example.com", []string{"test@[127.0.0.1]"})
-}
-
-func TestRemoteDelivery_MXAuth_IPLiteral_Fail(t *testing.T) {
-	t.Skip("Support disabled")
-
-	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
-
-	zones := map[string]mockdns.Zone{
-		"example.invalid.": {
-			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
-		},
-		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
-		},
-		"1.0.0.127.in-addr.arpa.": {
-			PTR: []string{"mx.example.invalid."},
-		},
-	}
-
-	dnsSrv, err := mockdns.NewServer(zones)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dnsSrv.Close()
-
-	dialer := net.Dialer{}
-	dialer.Resolver = &net.Resolver{}
-	dnsSrv.PatchNet(dialer.Resolver)
-	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
-
-	extResolver, err := dns.NewExtResolver()
-	if err != nil {
-		t.Fatal(err)
-	}
-	extResolver.Cfg.Servers = []string{addr.IP.String()}
-	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
-
-	tgt := testTarget(t, zones, extResolver, []Policy{
-		&localPolicy{minMXLevel: MX_DNSSEC},
-	})
-	dnsSrv.Log = tgt.Log
-
-	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 	if err == nil {
 		t.Fatal("Expected an error, got none")
 	}

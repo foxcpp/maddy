@@ -13,7 +13,7 @@ import (
 )
 
 func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdns.Server, *Target) {
-	dnsSrv, err := mockdns.NewServer(zones)
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,6 @@ func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdn
 	tgt := testTarget(t, zones, extResolver, []Policy{
 		testDANEPolicy(t, extResolver),
 	})
-	dnsSrv.Log = tgt.Log
 	return dnsSrv, tgt
 }
 
