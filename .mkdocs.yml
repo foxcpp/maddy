@@ -17,6 +17,7 @@ nav:
     - tutorials/multiple-domains.md
     - tutorials/upgrading.md
     - tutorials/smtp-only.md
+    - tutorials/imap-only.md
   - seclevels.md
   - faq.md
   - unicode.md
