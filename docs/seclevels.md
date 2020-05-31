@@ -83,7 +83,7 @@ passive attacks.
 
 ## maddy security policies
 
-See [**maddy-targets(5)**](../\_generated\_maddy-targets.5) page for
+See [**maddy-targets(5)**](../man/\_generated\_maddy-targets.5) page for
 description of configuration options available for each policy mechanism
 supported by maddy.
 

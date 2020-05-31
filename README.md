@@ -53,10 +53,6 @@ any questions or just want to talk.
 Also there is public mailing list for maddy-related discussions on
 https://lists.sr.ht/~foxcpp/maddy. You can use it too.
 
-## Contributing
-
-See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
-
 ## License
 
 The code is under MIT license. See [LICENSE](LICENSE) for more information.

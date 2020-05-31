@@ -248,4 +248,5 @@ Source code is available at https://github.com/foxcpp/maddy.
 *maddy-storage*(5) - Storage modules reference ++
 *maddy-auth*(5) - Authentication modules reference ++
 *maddy-filters*(5) - Message filtering modules reference ++
+*maddy-tables*(5) - Table modules reference ++
 *maddy-tls*(5) - Advanced TLS client & server configuration
