@@ -39,8 +39,10 @@ cp /var/lib/maddy/imapsql.db* backup/
 3. Compile migration utility:
 
 ```
-git clone https://github/foxcpp/maddy.git
-cd maddy/cmd/migrate-db-0.2
+git clone https://github.com/foxcpp/maddy.git
+cd maddy/
+git checkout v0.3.0
+cd cmd/migrate-db-0.2
 go build
 ```
 
