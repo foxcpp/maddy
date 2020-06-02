@@ -307,6 +307,15 @@ ensure_source_tree() {
 
     MADDY_MAJOR=$(sed 's/^v//' <<<$DESCR | cut -f1 -d '.')
     MADDY_MINOR=$(cut -f2 -d '.' <<<$DESCR )
+
+    set +e
+    if git branch -r | grep "origin/$MADDY_MAJOR.$MADDY_MINOR-fixes" >/dev/null; then
+        echo "--- Using $MADDY_MAJOR.$MADDY_MINOR-fixes tree" >&2
+        git checkout "$MADDY_MAJOR.$MADDY_MINOR-fixes"
+        DESCR=$(git describe --long 2>/dev/null)
+    fi
+    set -e
+
     MADDY_PATCH=$(cut -f1 -d '-' <<<$DESCR | sed 's/-.+//' | cut -f3 -d '.')
     MADDY_SNAPSHOT=$(cut -f2 -d '-' <<<$DESCR)
     MADDY_COMMIT=$(cut -f3 -d '-' <<<$DESCR)
