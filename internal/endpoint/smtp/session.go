@@ -326,6 +326,9 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 }
 
 func (s *Session) Data(r io.Reader) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
 	defer bodyTask.End()
 
@@ -374,6 +377,9 @@ func (sw statusWrapper) SetStatus(rcpt string, err error) {
 }
 
 func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
 	defer bodyTask.End()
 
