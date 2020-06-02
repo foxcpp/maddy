@@ -69,3 +69,6 @@ ExecStart=/usr/bin/maddy -config /etc/maddy/%i.conf
 
 ExecReload=/bin/kill -USR1 $MAINPID
 ExecReload=/bin/kill -USR2 $MAINPID
+
+[Install]
+WantedBy=multi-user.target
