@@ -76,7 +76,11 @@ func (s *Session) abort(ctx context.Context) {
 		s.endp.Log.Error("delivery abort failed", err)
 	}
 	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
+	s.cleanSession()
+}
 
+func (s *Session) cleanSession() {
+	s.releaseLimits()
 	s.mailFrom = ""
 	s.opts = smtp.MailOptions{}
 	s.msgMeta = nil
@@ -340,11 +344,7 @@ func (s *Session) Data(r io.Reader) error {
 		}
 
 		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.delivery = nil
-		s.msgCtx = nil
-		s.msgTask.End()
-		s.msgTask = nil
-		s.releaseLimits()
+		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
@@ -392,11 +392,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		}
 
 		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.delivery = nil
-		s.msgCtx = nil
-		s.msgTask.End()
-		s.msgTask = nil
-		s.releaseLimits()
+		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
