@@ -122,6 +122,7 @@ func rateCtor(node config.Node, args []string) (func() limiters.L, error) {
 		if err != nil {
 			return nil, config.NodeErr(node, "%v", err)
 		}
+		fallthrough
 	case 1:
 		var err error
 		burst, err = strconv.Atoi(args[0])
@@ -130,6 +131,8 @@ func rateCtor(node config.Node, args []string) (func() limiters.L, error) {
 		}
 	case 0:
 		return nil, config.NodeErr(node, "at least burst size is needed")
+	default:
+		return nil, config.NodeErr(node, "too many arguments")
 	}
 
 	return func() limiters.L {
