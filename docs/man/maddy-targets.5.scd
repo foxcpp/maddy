@@ -332,7 +332,7 @@ smtp_downstream {
     attempt_starttls yes
     require_yes no
     auth off
-    target tcp://127.0.0.1:2525
+    targets tcp://127.0.0.1:2525
 }
 ```
 
@@ -392,7 +392,7 @@ Valid values:
 	authentication using TLS client certificates. See *maddy-tls*(5)
 	for how to specify the client certificate.
 
-*Syntax*: target _endpoints..._ ++
+*Syntax*: targets _endpoints..._ ++
 *Default:* not specified
 
 REQUIRED.
