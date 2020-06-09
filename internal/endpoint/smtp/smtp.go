@@ -278,7 +278,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		endp.serv.EnableAuth(mech, func(c *smtp.Conn) sasl.Server {
 			state := c.State()
 			if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {
-				return auth.FailingSASLServ{Err: endp.wrapErr("", true, err)}
+				return auth.FailingSASLServ{Err: endp.wrapErr("", true, "AUTH", err)}
 			}
 
 			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
@@ -335,12 +335,14 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, err)
+		return nil, endp.wrapErr("", true, "AUTH", err)
 	}
 
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
+
+		failedLogins.WithLabelValues(endp.name).Inc()
 
 		if exterrors.IsTemporary(err) {
 			return nil, &smtp.SMTPError{
@@ -367,7 +369,7 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, err)
+		return nil, endp.wrapErr("", true, "MAIL", err)
 	}
 
 	return endp.newSession(true, "", "", state), nil

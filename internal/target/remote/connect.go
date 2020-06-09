@@ -144,6 +144,9 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		}
 	}
 
+	mxLevelCnt.WithLabelValues(rd.rt.Name(), mxLevel.String()).Inc()
+	tlsLevelCnt.WithLabelValues(rd.rt.Name(), tlsLevel.String()).Inc()
+
 	return nil
 }
 

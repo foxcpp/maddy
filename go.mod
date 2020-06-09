@@ -31,11 +31,11 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/miekg/dns v1.1.29
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/prometheus/client_golang v1.6.0
 	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/net v0.0.0-20200528225125-3c3fba18258b
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	golang.org/x/text v0.3.2
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

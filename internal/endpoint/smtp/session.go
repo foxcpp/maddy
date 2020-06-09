@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"runtime/trace"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -76,11 +77,13 @@ func (s *Session) abort(ctx context.Context) {
 		s.endp.Log.Error("delivery abort failed", err)
 	}
 	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
+	abortedSMTPTransactions.WithLabelValues(s.endp.name).Inc()
 	s.cleanSession()
 }
 
 func (s *Session) cleanSession() {
 	s.releaseLimits()
+
 	s.mailFrom = ""
 	s.opts = smtp.MailOptions{}
 	s.msgMeta = nil
@@ -159,6 +162,8 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
 	defer mailTask.End()
 
+	startedSMTPTransactions.WithLabelValues(s.endp.name).Inc()
+
 	delivery, err := s.endp.pipeline.Start(mailCtx, msgMeta, cleanFrom)
 	if err != nil {
 		s.msgCtx = nil
@@ -184,7 +189,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
 			}
-			return s.endp.wrapErr(msgID, !opts.UTF8, err)
+			return s.endp.wrapErr(msgID, !opts.UTF8, "MAIL", err)
 		}
 	}
 
@@ -242,7 +247,7 @@ func (s *Session) Rcpt(to string) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
 			}
-			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, err)
+			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, "RCPT", err)
 			return s.deliveryErr
 		}
 	}
@@ -258,7 +263,7 @@ func (s *Session) Rcpt(to string) error {
 				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.connState.RemoteAddr, "msg_id", s.msgMeta.ID)
 			}
 		}
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "RCPT", err)
 	}
 	s.endp.Log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
 	return nil
@@ -334,7 +339,7 @@ func (s *Session) Data(r io.Reader) error {
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
 	header, buf, err := s.prepareBody(bodyCtx, r)
@@ -373,7 +378,7 @@ type statusWrapper struct {
 }
 
 func (sw statusWrapper) SetStatus(rcpt string, err error) {
-	sw.sc.SetStatus(rcpt, sw.s.endp.wrapErr(sw.s.msgMeta.ID, !sw.s.opts.UTF8, err))
+	sw.sc.SetStatus(rcpt, sw.s.endp.wrapErr(sw.s.msgMeta.ID, !sw.s.opts.UTF8, "DATA", err))
 }
 
 func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
@@ -385,7 +390,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
 	header, buf, err := s.prepareBody(bodyCtx, r)
@@ -438,7 +443,7 @@ func (s *Session) checkRoutingLoops(header textproto.Header) error {
 	return nil
 }
 
-func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
+func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, command string, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -488,6 +493,12 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
 	if msgId != "" {
 		res.Message += " (msg ID = " + msgId + ")"
 	}
+
+	failedCmds.WithLabelValues(endp.name, command, strconv.Itoa(res.Code),
+		fmt.Sprintf("%d.%d.%d",
+			res.EnhancedCode[0],
+			res.EnhancedCode[1],
+			res.EnhancedCode[2])).Inc()
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.4.1.
 	if mangleUTF8 {
