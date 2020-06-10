@@ -142,12 +142,12 @@ at https://mta-sts.example.org/.well-known/mta-sts.txt:
 ```
 mode: enforce
 max_age: 604800
-mx: example.org
+mx: mx.example.org
 ```
 
-**Note**: example.org in the file is your MX hostname, example.org in URL is
+**Note**: mx.example.org in the file is your MX hostname, example.org in URL is
 the domain you are receiving messages for. In simple configurations, they are
-going to be the same, but this is not the case for more complex setups.
+may be the same, but this is not the case for more complex setups.
 If you have multiple MX servers - add them all once per line, like that:
 ```
 mx: mx1.example.org
@@ -176,7 +176,7 @@ After registering the user credentials, you also need to create a local
 storage account:
 ```
 $ maddyctl imap-acct create postmaster@example.org
-``
+```
 
 That is it. Now you have your first e-mail address. when authenticating using
 your e-mail client, do not forget the username is "postmaster@example.org", not
