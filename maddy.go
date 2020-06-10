@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -202,6 +203,25 @@ func initDebug() {
 	}
 }
 
+func startPrometheusHTTP(endpoint string) error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	l, err := net.Listen("tcp", prometheusEndpoint)
+	if err != nil {
+		return err
+	}
+
+	log.Println("listening on", prometheusEndpoint, "for Prometheus scraping")
+	go func() {
+		err := http.Serve(l, mux)
+		if err != nil && err != http.ErrServerClosed {
+			log.Println("prometheus listener fail:", err)
+		}
+	}()
+	return nil
+}
+
 func InitDirs() error {
 	if config.StateDirectory == "" {
 		config.StateDirectory = DefaultStateDirectory
@@ -283,13 +303,9 @@ func moduleMain(cfg []config.Node) error {
 
 	// Set by ReadGlobals.
 	if prometheusEndpoint != "" {
-		http.Handle("/metrics", promhttp.Handler())
-		log.Println("listening on", prometheusEndpoint, "for Prometheus scraping")
-		go http.ListenAndServe(prometheusEndpoint, nil)
-		//s := http.Server{}
-		//s.Handler = promhttp.Handler()
-		//s.Addr = prometheusEndpoint
-		//go s.ListenAndServe()
+		if err := startPrometheusHTTP(prometheusEndpoint); err != nil {
+			return err
+		}
 	}
 
 	if err := InitDirs(); err != nil {
