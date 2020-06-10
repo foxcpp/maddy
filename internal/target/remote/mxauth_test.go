@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 	"net/http"
@@ -9,10 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/go-mtasts/preload"
 	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -565,6 +568,272 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 		t.Fatal("Expected an error, got none")
 	}
 
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_REQUIRETLS(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = true
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			// Testing policy is enough.
+			Mode: mtasts.ModeTesting,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	testutils.DoTestDeliveryMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_REQUIRETLS_Fail(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = false /* no REQUIRETLS */
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			// Testing policy is enough.
+			Mode: mtasts.ModeTesting,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	}); err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_REQUIRETLS_Relaxed(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = false /* no REQUIRETLS */
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			// Testing policy is enough.
+			Mode: mtasts.ModeTesting,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.relaxedREQUIRETLS = true
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	testutils.DoTestDeliveryMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_REQUIRETLS_Relaxed_NoMXAuth(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = false /* no REQUIRETLS */
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+		return nil, mtasts.ErrNoPolicy
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.relaxedREQUIRETLS = true
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	}); err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_REQUIRETLS_Relaxed_NoTLS(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = false /* no REQUIRETLS */
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			// Testing policy is enough.
+			Mode: mtasts.ModeTesting,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.relaxedREQUIRETLS = true
+	tgt.tlsConfig = nil
+	defer tgt.Close()
+
+	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	}); err == nil {
+		t.Error("Expected an error, got none")
+	}
+	if be.MailFromCounter != 0 {
+		t.Fatal("MAIL FROM issued for server failing authentication")
+	}
+}
+
+func TestRemoteDelivery_REQUIRETLS_Relaxed_TLSFail(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	srv.EnableREQUIRETLS = false /* no REQUIRETLS */
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+		if domain != "example.invalid" {
+			return nil, errors.New("Wrong domain in lookup")
+		}
+
+		return &mtasts.Policy{
+			// Testing policy is enough.
+			Mode: mtasts.ModeTesting,
+			MX:   []string{"mx.example.invalid"},
+		}, nil
+	}
+
+	tgt := testTarget(t, zones, nil, []Policy{
+		testSTSPolicy(t, zones, mtastsGet),
+	})
+	tgt.relaxedREQUIRETLS = true
+	// Cause failure through version incompatibility.
+	clientCfg.MaxVersion = tls.VersionTLS12
+	clientCfg.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MinVersion = tls.VersionTLS11
+	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	tgt.tlsConfig = clientCfg
+	defer tgt.Close()
+
+	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
+		OriginalFrom: "test@example.com",
+		SMTPOpts: smtp.MailOptions{
+			RequireTLS: true,
+		},
+	}); err == nil {
+		t.Error("Expected an error, got none")
+	}
 	if be.MailFromCounter != 0 {
 		t.Fatal("MAIL FROM issued for server failing authentication")
 	}

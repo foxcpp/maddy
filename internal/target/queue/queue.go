@@ -918,7 +918,8 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	dsnMeta := &module.MsgMetadata{
 		ID: dsnID,
 		SMTPOpts: smtp.MailOptions{
-			UTF8: meta.MsgMeta.SMTPOpts.UTF8,
+			UTF8:       meta.MsgMeta.SMTPOpts.UTF8,
+			RequireTLS: meta.MsgMeta.SMTPOpts.RequireTLS,
 		},
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)

@@ -106,6 +106,11 @@ type MsgMetadata struct {
 	//
 	// It can be nil for locally generated messages.
 	Conn *ConnState
+
+	// This is set by endpoint/smtp to indicate that body contains "TLS-Required: No"
+	// header. It is only meaningful if server has seen the body at least once
+	// (e.g. the message was passed via queue).
+	TLSRequireOverride bool
 }
 
 // DeepCopy creates a copy of the MsgMetadata structure, also

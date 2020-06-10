@@ -144,6 +144,31 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		}
 	}
 
+	if rd.msgMeta.SMTPOpts.RequireTLS {
+		if tlsLevel < TLSAuthenticated {
+			conn.Close()
+			return &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "TLS it not available or unauthenticated but required (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"tls_level": tlsLevel,
+				},
+			}
+		}
+		if mxLevel < MX_MTASTS {
+			conn.Close()
+			return &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "Failed to estabilish the MX record authenticity (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"mx_level": mxLevel,
+				},
+			}
+		}
+	}
+
 	mxLevelCnt.WithLabelValues(rd.rt.Name(), mxLevel.String()).Inc()
 	tlsLevelCnt.WithLabelValues(rd.rt.Name(), tlsLevel.String()).Inc()
 
@@ -218,6 +243,18 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 				"domain": domain,
 			},
 		}
+	}
+
+	// Relaxed REQUIRETLS mode is not conforming to the specification strictly
+	// but allows to start deploying client support for REQUIRETLS without the
+	// requirement for servers in the whole world to support it. The assumption
+	// behind it is that MX for the recipient domain is the final destination
+	// and all other forwarders behind it already have secure connection to
+	// each other. Therefore it is enough to enforce strict security only on
+	// the path to the MX even if it does not support the REQUIRETLS to propagate
+	// this requirement further.
+	if ok, _ := conn.Client().Extension("REQUIRETLS"); rd.rt.relaxedREQUIRETLS && !ok {
+		rd.msgMeta.SMTPOpts.RequireTLS = false
 	}
 
 	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {

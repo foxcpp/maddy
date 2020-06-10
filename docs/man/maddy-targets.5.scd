@@ -133,6 +133,24 @@ Choose the local IP to bind for outbound SMTP connections.
 
 Enable verbose logging.
 
+*Syntax*: requiretls_override _boolean_ ++
+*Default*: true
+
+Allow local security policy to be disabled using 'TLS-Required' header field in
+sent messages. Note that the field has no effect if transparent forwarding is
+used, message body should be processed before outbound delivery starts for it
+to take effect (e.g. message should be queued using 'queue' module).
+
+*Syntax*: relaxed_requiretls _boolean_ ++
+*Default*: true
+
+This option disables strict conformance with REQUIRETLS specification and
+allows forwarding of messages 'tagged' with REQUIRETLS to MXes that are not
+advertising REQUIRETLS support. It is meant to allow REQUIRETLS use without the
+need to have support from all servers. It is based on the assumption that
+server referenced by MX record is likely the final destination and therefore
+there is only need to secure communication towards it and not beyond.
+
 ## Security policies
 
 *Syntax*: mx_auth _config block_ ++

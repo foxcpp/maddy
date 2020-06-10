@@ -83,6 +83,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv.ErrorLog = endp.Log
 	endp.serv.LMTP = endp.lmtp
 	endp.serv.EnableSMTPUTF8 = true
+	endp.serv.EnableREQUIRETLS = true
 	if err := endp.setConfig(cfg); err != nil {
 		return err
 	}

@@ -93,8 +93,10 @@ type Target struct {
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	policies []Policy
-	limits   *limits.Group
+	policies          []Policy
+	limits            *limits.Group
+	allowSecOverride  bool
+	relaxedREQUIRETLS bool
 
 	Log log.Logger
 }
@@ -147,6 +149,8 @@ func (rt *Target) Init(cfg *config.Map) error {
 		}
 		return g, nil
 	}, &rt.limits)
+	cfg.Bool("requiretls_override", false, true, &rt.allowSecOverride)
+	cfg.Bool("relaxed_requiretls", false, true, &rt.relaxedREQUIRETLS)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -201,8 +205,10 @@ type remoteDelivery struct {
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	policies := make([]DeliveryPolicy, 0, len(rt.policies))
-	for _, p := range rt.policies {
-		policies = append(policies, p.Start(msgMeta))
+	if !(msgMeta.TLSRequireOverride && rt.allowSecOverride) {
+		for _, p := range rt.policies {
+			policies = append(policies, p.Start(msgMeta))
+		}
 	}
 
 	var (
