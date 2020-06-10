@@ -17,7 +17,7 @@ var (
 			Namespace: "maddy",
 			Subsystem: "smtp",
 			Name:      "smtp_completed_transactions",
-			Help:      "Amount of SMTP trasanactions succesfully completed",
+			Help:      "Amount of SMTP trasanactions successfully completed",
 		},
 		[]string{"module"},
 	)
