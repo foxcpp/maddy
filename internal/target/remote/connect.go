@@ -19,6 +19,29 @@ type mxConn struct {
 	// Domain this MX belongs to.
 	domain   string
 	dnssecOk bool
+
+	// Errors occured previously on this connection.
+	errored bool
+
+	reuseLimit int
+
+	// Amount of times connection was used for an SMTP transaction.
+	transactions int
+
+	// MX/TLS security level established for this connection.
+	mxLevel  MXLevel
+	tlsLevel TLSLevel
+}
+
+func (c *mxConn) Usable() bool {
+	if c.C == nil || c.transactions > c.reuseLimit || c.C.Client() == nil {
+		return false
+	}
+	return c.C.Client().Reset() == nil
+}
+
+func (c *mxConn) Close() error {
+	return c.C.Close()
 }
 
 func isVerifyError(err error) bool {
@@ -103,7 +126,7 @@ retry:
 	return tlsLevel, tlsErr, nil
 }
 
-func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *net.MX) error {
+func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *net.MX) error {
 	mxLevel := MXNone
 
 	connCtx, cancel := context.WithCancel(ctx)
@@ -122,7 +145,7 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		p.PrepareConn(ctx, record.Host)
 	}
 
-	tlsLevel, tlsErr, err := rd.connect(connCtx, conn, record.Host, rd.rt.tlsConfig)
+	tlsLevel, tlsErr, err := rd.connect(connCtx, *conn, record.Host, rd.rt.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -144,30 +167,8 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		}
 	}
 
-	if rd.msgMeta.SMTPOpts.RequireTLS {
-		if tlsLevel < TLSAuthenticated {
-			conn.Close()
-			return &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
-				Message:      "TLS it not available or unauthenticated but required (REQUIRETLS)",
-				Misc: map[string]interface{}{
-					"tls_level": tlsLevel,
-				},
-			}
-		}
-		if mxLevel < MX_MTASTS {
-			conn.Close()
-			return &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
-				Message:      "Failed to estabilish the MX record authenticity (REQUIRETLS)",
-				Misc: map[string]interface{}{
-					"mx_level": mxLevel,
-				},
-			}
-		}
-	}
+	conn.mxLevel = mxLevel
+	conn.tlsLevel = tlsLevel
 
 	mxLevelCnt.WithLabelValues(rd.rt.Name(), mxLevel.String()).Inc()
 	tlsLevelCnt.WithLabelValues(rd.rt.Name(), tlsLevel.String()).Inc()
@@ -180,9 +181,84 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		return c.C, nil
 	}
 
+	pooledConn, err := rd.rt.pool.Get(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var conn *mxConn
+	// Ignore pool for connections with REQUIRETLS to avoid "pool poisoning"
+	// where attacker can make messages indeliverable by forcing reuse of old
+	// connection with weaker security.
+	if pooledConn != nil && !rd.msgMeta.SMTPOpts.RequireTLS {
+		conn = pooledConn.(*mxConn)
+		rd.Log.Msg("reusing cached connection", "domain", domain, "transactions_counter", conn.transactions)
+	} else {
+		rd.Log.DebugMsg("opening new connection", "domain", domain, "cache_ignored", pooledConn != nil)
+		conn, err = rd.newConn(ctx, domain)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if rd.msgMeta.SMTPOpts.RequireTLS {
+		if conn.tlsLevel < TLSAuthenticated {
+			conn.Close()
+			return nil, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "TLS it not available or unauthenticated but required (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"tls_level": conn.tlsLevel,
+				},
+			}
+		}
+		if conn.mxLevel < MX_MTASTS {
+			conn.Close()
+			return nil, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "Failed to estabilish the MX record authenticity (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"mx_level": conn.mxLevel,
+				},
+			}
+		}
+	}
+
+	region := trace.StartRegion(ctx, "remote/limits.TakeDest")
+	if err := rd.rt.limits.TakeDest(ctx, domain); err != nil {
+		region.End()
+		return nil, err
+	}
+	region.End()
+
+	// Relaxed REQUIRETLS mode is not conforming to the specification strictly
+	// but allows to start deploying client support for REQUIRETLS without the
+	// requirement for servers in the whole world to support it. The assumption
+	// behind it is that MX for the recipient domain is the final destination
+	// and all other forwarders behind it already have secure connection to
+	// each other. Therefore it is enough to enforce strict security only on
+	// the path to the MX even if it does not support the REQUIRETLS to propagate
+	// this requirement further.
+	if ok, _ := conn.Client().Extension("REQUIRETLS"); rd.rt.relaxedREQUIRETLS && !ok {
+		rd.msgMeta.SMTPOpts.RequireTLS = false
+	}
+
+	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	rd.connections[domain] = conn
+	return conn.C, nil
+}
+
+func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, error) {
 	conn := mxConn{
-		C:      smtpconn.New(),
-		domain: domain,
+		reuseLimit: rd.rt.connReuseLimit,
+		C:          smtpconn.New(),
+		domain:     domain,
 	}
 
 	conn.Dialer = rd.rt.dialer
@@ -202,13 +278,6 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 	conn.dnssecOk = dnssecOk
 
-	region = trace.StartRegion(ctx, "remote/limits.TakeDest")
-	if err := rd.rt.limits.TakeDest(ctx, domain); err != nil {
-		region.End()
-		return nil, err
-	}
-	region.End()
-
 	var lastErr error
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")
 	for _, record := range records {
@@ -220,7 +289,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			}
 		}
 
-		if err := rd.attemptMX(ctx, conn, record); err != nil {
+		if err := rd.attemptMX(ctx, &conn, record); err != nil {
 			if len(records) != 0 {
 				rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
 			}
@@ -245,25 +314,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		}
 	}
 
-	// Relaxed REQUIRETLS mode is not conforming to the specification strictly
-	// but allows to start deploying client support for REQUIRETLS without the
-	// requirement for servers in the whole world to support it. The assumption
-	// behind it is that MX for the recipient domain is the final destination
-	// and all other forwarders behind it already have secure connection to
-	// each other. Therefore it is enough to enforce strict security only on
-	// the path to the MX even if it does not support the REQUIRETLS to propagate
-	// this requirement further.
-	if ok, _ := conn.Client().Extension("REQUIRETLS"); rd.rt.relaxedREQUIRETLS && !ok {
-		rd.msgMeta.SMTPOpts.RequireTLS = false
-	}
-
-	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	rd.connections[domain] = conn
-	return conn.C, nil
+	return &conn, nil
 }
 
 func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk bool, records []*net.MX, err error) {

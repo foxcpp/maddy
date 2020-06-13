@@ -22,6 +22,7 @@ import (
 	"github.com/foxcpp/maddy/internal/exterrors"
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/internal/smtpconn/pool"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -43,6 +44,12 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		Log:         testutils.Logger(t, "remote"),
 		policies:    extraPolicies,
 		limits:      &limits.Group{},
+		pool: pool.New(pool.Config{
+			MaxKeys:             20000,
+			MaxConnsPerKey:      10,     // basically, max. amount of idle connections in cache
+			MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
+			StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
+		}),
 	}
 
 	return &tgt
@@ -974,4 +981,31 @@ func TestMain(m *testing.M) {
 
 	smtpPort = *remoteSmtpPort
 	os.Exit(m.Run())
+}
+
+func TestRemoteDelivery_ConnReuse(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.connReuseLimit = 5
+	defer tgt.Close()
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 1, "test@example.com", []string{"test@example.invalid"})
+
+	if len(be.SourceEndpoints) != 1 {
+		t.Fatal("Only one session should be used, found", be.SourceEndpoints)
+	}
 }

@@ -28,6 +28,8 @@ type SMTPMessage struct {
 type SMTPBackend struct {
 	Messages        []*SMTPMessage
 	MailFromCounter int
+	SessionCounter  int
+	SourceEndpoints map[string]struct{}
 
 	AuthErr     error
 	MailErr     error
@@ -40,6 +42,11 @@ func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password str
 	if be.AuthErr != nil {
 		return nil, be.AuthErr
 	}
+	be.SessionCounter++
+	if be.SourceEndpoints == nil {
+		be.SourceEndpoints = make(map[string]struct{})
+	}
+	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{
 		backend:  be,
 		user:     username,
@@ -49,6 +56,11 @@ func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password str
 }
 
 func (be *SMTPBackend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
+	be.SessionCounter++
+	if be.SourceEndpoints == nil {
+		be.SourceEndpoints = make(map[string]struct{})
+	}
+	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{backend: be, state: state}, nil
 }
 

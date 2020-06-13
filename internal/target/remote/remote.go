@@ -25,6 +25,7 @@ import (
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/log"
 	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/internal/smtpconn/pool"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
@@ -98,6 +99,9 @@ type Target struct {
 	allowSecOverride  bool
 	relaxedREQUIRETLS bool
 
+	pool           *pool.P
+	connReuseLimit int
+
 	Log log.Logger
 }
 
@@ -107,6 +111,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	if len(inlineArgs) != 0 {
 		return nil, errors.New("remote: inline arguments are not used")
 	}
+	// Keep this synchronized with testTarget.
 	return &Target{
 		name:     instName,
 		resolver: dns.DefaultResolver(),
@@ -151,10 +156,21 @@ func (rt *Target) Init(cfg *config.Map) error {
 	}, &rt.limits)
 	cfg.Bool("requiretls_override", false, true, &rt.allowSecOverride)
 	cfg.Bool("relaxed_requiretls", false, true, &rt.relaxedREQUIRETLS)
+	cfg.Int("conn_reuse_limit", false, false, 10, &rt.connReuseLimit)
+
+	poolCfg := pool.Config{
+		MaxKeys:             20000,
+		MaxConnsPerKey:      10,     // basically, max. amount of idle connections in cache
+		MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
+		StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
+	}
+	cfg.Int("conn_max_idle_count", false, false, 10, &poolCfg.MaxConnsPerKey)
+	cfg.Int64("conn_max_idle_time", false, false, 150, &poolCfg.MaxConnLifetimeSec)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
+	rt.pool = pool.New(poolCfg)
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
 	rt.hostname, err = idna.ToASCII(rt.hostname)
@@ -180,6 +196,8 @@ func (rt *Target) Close() error {
 		p.Close()
 	}
 
+	rt.pool.Close()
+
 	return nil
 }
 
@@ -198,7 +216,7 @@ type remoteDelivery struct {
 	Log      log.Logger
 
 	recipients  []string
-	connections map[string]mxConn
+	connections map[string]*mxConn
 
 	policies []DeliveryPolicy
 }
@@ -258,7 +276,7 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 		mailFrom:    mailFrom,
 		msgMeta:     msgMeta,
 		Log:         target.DeliveryLogger(rt.Log, msgMeta),
-		connections: map[string]mxConn{},
+		connections: map[string]*mxConn{},
 		policies:    policies,
 	}, nil
 }
@@ -397,7 +415,8 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 
 	var wg sync.WaitGroup
 
-	for _, conn := range rd.connections {
+	for i, conn := range rd.connections {
+		i := i
 		conn := conn
 		wg.Add(1)
 		go func() {
@@ -416,6 +435,7 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 			for _, rcpt := range conn.Rcpts() {
 				c.SetStatus(rcpt, err)
 			}
+			rd.connections[i].errored = err != nil
 		}()
 	}
 
@@ -434,11 +454,17 @@ func (rd *remoteDelivery) Commit(ctx context.Context) error {
 
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
-		rd.Log.Debugf("disconnected from %s", conn.ServerName())
-
 		rd.rt.limits.ReleaseDest(conn.domain)
+		conn.transactions++
 
-		conn.Close()
+		if conn.C == nil || conn.transactions > rd.rt.connReuseLimit || conn.C.Client() == nil || conn.errored {
+			rd.Log.Debugf("disconnected from %s (errored=%v,transactions=%v,disconnected before=%v)",
+				conn.ServerName(), conn.errored, conn.transactions, conn.C.Client() == nil)
+			conn.Close()
+		} else {
+			rd.Log.Debugf("returning connection for %s to pool", conn.ServerName())
+			rd.rt.pool.Return(conn.domain, conn)
+		}
 	}
 
 	var (

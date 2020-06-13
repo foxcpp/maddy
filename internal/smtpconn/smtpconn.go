@@ -12,6 +12,7 @@ package smtpconn
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"runtime/trace"
@@ -366,6 +367,14 @@ func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, 
 	}
 
 	return nil
+}
+
+func (c *C) Noop() error {
+	if c.cl == nil {
+		return errors.New("smtpconn: nto connected")
+	}
+
+	return c.cl.Noop()
 }
 
 // Close sends the QUIT command, if it fail - it directly closes the

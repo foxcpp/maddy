@@ -151,6 +151,22 @@ need to have support from all servers. It is based on the assumption that
 server referenced by MX record is likely the final destination and therefore
 there is only need to secure communication towards it and not beyond.
 
+*Syntax*: conn_reuse_limit _integer_ ++
+*Default*: 10
+
+Amount of times the same SMTP connection can be used.
+Connections are never reused if the previous DATA command failed.
+
+*Syntax*: conn_max_idle_count _integer_ ++
+*Default*: 10
+
+Max. amount of idle connections per recipient domains to keep in cache.
+
+*Syntax*: conn_max_idle_time _integer_ ++
+*Default*: 150 (2.5 min)
+
+Amount of time the idle connection is still considered potentially usable.
+
 ## Security policies
 
 *Syntax*: mx_auth _config block_ ++
