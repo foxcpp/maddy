@@ -67,11 +67,11 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 			},
 			{
 				Name: "lookup",
-				Args: []string{fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1", valueColumn, tableName, keyColumn)},
+				Args: []string{fmt.Sprintf("SELECT %s FROM %s WHERE %s = :key", valueColumn, tableName, keyColumn)},
 			},
 			{
 				Name: "add",
-				Args: []string{fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES($1, $2)", tableName, keyColumn, valueColumn)},
+				Args: []string{fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES(:key, :value)", tableName, keyColumn, valueColumn)},
 			},
 			{
 				Name: "list",
@@ -79,11 +79,11 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 			},
 			{
 				Name: "set",
-				Args: []string{fmt.Sprintf("UPDATE %s SET %s = $2 WHERE %s = $1", tableName, valueColumn, keyColumn)},
+				Args: []string{fmt.Sprintf("UPDATE %s SET %s = :value WHERE %s = :key", tableName, valueColumn, keyColumn)},
 			},
 			{
 				Name: "del",
-				Args: []string{fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tableName, keyColumn)},
+				Args: []string{fmt.Sprintf("DELETE FROM %s WHERE %s = :key", tableName, keyColumn)},
 			},
 			{
 				Name: "init",
