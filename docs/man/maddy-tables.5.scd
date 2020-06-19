@@ -111,7 +111,7 @@ https://pkg.go.dev/github.com/lib/pq?tab=doc#hdr-Connection_String_Parameters
 
 SQL query to use to obtain the lookup result.
 
-It will get one positional argument containing the lookup key. Use $1
+It will get one named argument containing the lookup key. Use :key
 placeholder to access it in SQL. The result row set should contain one row, one
 column with the string that will be used as a lookup result. If there are more
 rows, they will be ignored. If there are more columns, lookup will fail.  If
@@ -143,17 +143,17 @@ sql_query {
 If queries are set to implement corresponding table operations - table becomes
 "mutable" and can be used in contexts that require writable key-value store.
 
-'add' query gets two ordered arguments - key and value strings to store.
+'add' query gets :key, :value named arguments - key and value strings to store.
 They should be added to the store. The query *should* not add multiple values
 for the same key and *should* fail if the key already exists.
 
 'list' query gets no arguments and should return a column with all keys in
 the store.
 
-'set' query gets two arguments - key and value and should replace the existing
+'set' query gets :key, :value named arguments - key and value and should replace the existing
 entry in the database.
 
-'del' query gets one argument - key and should remove it from the database.
+'del' query gets :key argument - key and should remove it from the database.
 
 # Static table (static)
 
