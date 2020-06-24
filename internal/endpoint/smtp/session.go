@@ -252,7 +252,7 @@ func (s *Session) Rcpt(to string) error {
 
 	if err := s.rcpt(rcptCtx, to); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
-			s.log.Error("RCPT error", err, "rcpt", to)
+			s.log.Error("RCPT error", err, "rcpt", to, "msg_id", s.msgMeta.ID)
 			s.loggedRcptErrors++
 			if s.loggedRcptErrors == s.endp.maxLoggedRcptErrors {
 				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.connState.RemoteAddr, "msg_id", s.msgMeta.ID)
