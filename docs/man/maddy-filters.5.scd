@@ -571,7 +571,7 @@ require_sender_match checks. Only first address will be checked, however.
 
 Sign emails from subdomains using a top domain key.
 
-Allows only one domain to be specified (can be workarounded using sign_dkim 
+Allows only one domain to be specified (can be workarounded using sign_dkim
 multiple times).
 
 # Envelope sender / recipient rewriting (replace_sender, replace_rcpt)
@@ -800,3 +800,83 @@ The endpoit is specified in standard URL-like format:
 
 Toggles behavior on milter I/O errors. If false ("fail closed") - message is
 rejected with temporary error code. If true ("fail open") - check is skipped.
+
+## rspamd check (rspamd)
+
+The 'rspamd' module implements message filtering by contacting the rspamd
+server via HTTP API.
+
+```
+rspamd {
+	tls_client { ... }
+	api_path http://127.0.0.1:11333
+	settings_id whatever
+	tag maddy
+	hostname mx.example.org
+	io_error_action ignore
+	error_resp_action ignore
+	add_header_action quarantine
+	rewrite_subj_action quarantine
+	flags pass_all
+}
+
+rspamd http://127.0.0.1:11333
+```
+
+## Configuration directives
+
+*Syntax:* tls_client { ... } ++
+*Default:* not set
+
+Configure TLS client if HTTPS is used, see *maddy-tls*(5) for details.
+
+*Syntax:* api_path _url_ ++
+*Default:* http://127.0.0.1:11333
+
+URL of HTTP API endpoint. Supports both HTTP and HTTPS and can include
+path element.
+
+*Syntax:* settings_id _string_ ++
+*Default:* not set
+
+Settings ID to pass to the server.
+
+*Syntax:* tag _string_ ++
+*Default:* maddy
+
+Value to send in MTA-Tag header field.
+
+*Syntax:* hostname _string_ ++
+*Default:* value of global directive
+
+Value to send in MTA-Name header field.
+
+*Syntax:* io_error_action _action_ ++
+*Default:* ignore
+
+Action to take in case of inability to contact the rspamd server.
+
+*Syntax:* error_resp_action _action_ ++
+*Default:* ignore
+
+Action to take in case of 5xx or 4xx response received from the rspamd server.
+
+*Syntax:* add_header_action _action_ ++
+*Default:* quarantine
+
+Action to take when rspamd requests to "add header".
+
+X-Spam-Flag and X-Spam-Score are added to the header irregardless of value.
+
+*Syntax:* rewrite_subj_action _action_ ++
+*Default:* quarantine
+
+Action to take when rspamd requests to "rewrite subject".
+
+X-Spam-Flag and X-Spam-Score are added to the header irregardless of value.
+
+*Syntax:* flags _string list..._ ++
+*Default:* pass_all
+
+Flags to pass to the rspamd server.
+See https://rspamd.com/doc/architecture/protocol.html for details.

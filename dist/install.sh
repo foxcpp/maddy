@@ -22,6 +22,3 @@ install -Dm 0644 -t "$DESTDIR/$FAIL2BANDIR/jail.d/" fail2ban/jail.d/*
 install -Dm 0644 -t "$DESTDIR/$FAIL2BANDIR/filter.d/" fail2ban/filter.d/*
 
 install -Dm 0644 -t "$DESTDIR/$PREFIX/lib/systemd/system/" systemd/maddy.service systemd/maddy@.service
-
-install -Dm 0644 -t "$DESTDIR/$CONFDIR/integration/" integration/rspamd.conf
-install -Dm 0755 -t "$DESTDIR/$PREFIX/lib/maddy/" scripts/rspamd-hook

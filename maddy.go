@@ -33,6 +33,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/check/dnsbl"
 	_ "github.com/foxcpp/maddy/internal/check/milter"
 	_ "github.com/foxcpp/maddy/internal/check/requiretls"
+	_ "github.com/foxcpp/maddy/internal/check/rspamd"
 	_ "github.com/foxcpp/maddy/internal/check/spf"
 	_ "github.com/foxcpp/maddy/internal/endpoint/dovecot_sasld"
 	_ "github.com/foxcpp/maddy/internal/endpoint/imap"

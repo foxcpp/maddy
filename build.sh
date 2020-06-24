@@ -409,9 +409,6 @@ prepare_misc() {
 
     install -Dm 0644 -t "$PKGDIR/$PREFIX/lib/systemd/system/" systemd/maddy.service systemd/maddy@.service
 
-    install -Dm 0644 -t "$PKGDIR/$CONFDIR/integration/" integration/rspamd.conf
-    install -Dm 0755 -t "$PKGDIR/$PREFIX/lib/maddy/" scripts/rspamd-hook
-
     sed -Ei "s!/usr/bin!$PREFIX/bin!g;\
         s!/usr/lib/maddy!$PREFIX/lib/maddy!g;\
         s!/etc/maddy!$CONFDIR!g" "$PKGDIR/$SYSTEMDUNITS/system/maddy.service" "$PKGDIR/$SYSTEMDUNITS/system/maddy@.service"
