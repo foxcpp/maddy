@@ -20,7 +20,7 @@ type mxConn struct {
 	domain   string
 	dnssecOk bool
 
-	// Errors occured previously on this connection.
+	// Errors occurred previously on this connection.
 	errored bool
 
 	reuseLimit int

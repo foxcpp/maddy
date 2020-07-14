@@ -371,7 +371,7 @@ func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, 
 
 func (c *C) Noop() error {
 	if c.cl == nil {
-		return errors.New("smtpconn: nto connected")
+		return errors.New("smtpconn: not connected")
 	}
 
 	return c.cl.Noop()
