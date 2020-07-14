@@ -1,8 +1,8 @@
 package target
 
 import (
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 func DeliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {

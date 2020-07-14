@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/framework/dns"
 	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )

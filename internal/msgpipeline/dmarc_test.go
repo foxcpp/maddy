@@ -13,9 +13,9 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/foxcpp/go-mockdns"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

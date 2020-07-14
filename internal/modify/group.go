@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 type (

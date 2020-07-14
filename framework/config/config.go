@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	parser "github.com/foxcpp/maddy/pkg/cfgparser"
+	parser "github.com/foxcpp/maddy/framework/cfgparser"
 )
 
 type (

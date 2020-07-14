@@ -12,15 +12,15 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	maddydmarc "github.com/foxcpp/maddy/internal/dmarc"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
@@ -31,12 +31,12 @@ type Check struct {
 	instName     string
 	enforceEarly bool
 
-	noneAction     check.FailAction
-	neutralAction  check.FailAction
-	failAction     check.FailAction
-	softfailAction check.FailAction
-	permerrAction  check.FailAction
-	temperrAction  check.FailAction
+	noneAction     modconfig.FailAction
+	neutralAction  modconfig.FailAction
+	failAction     modconfig.FailAction
+	softfailAction modconfig.FailAction
+	permerrAction  modconfig.FailAction
+	temperrAction  modconfig.FailAction
 
 	log log.Logger
 }
@@ -61,28 +61,28 @@ func (c *Check) Init(cfg *config.Map) error {
 	cfg.Bool("enforce_early", true, false, &c.enforceEarly)
 	cfg.Custom("none_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.noneAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.noneAction)
 	cfg.Custom("neutral_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.neutralAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.neutralAction)
 	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Quarantine: true}, nil
-		}, check.FailActionDirective, &c.failAction)
+			return modconfig.FailAction{Quarantine: true}, nil
+		}, modconfig.FailActionDirective, &c.failAction)
 	cfg.Custom("softfail_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Quarantine: true}, nil
-		}, check.FailActionDirective, &c.softfailAction)
+			return modconfig.FailAction{Quarantine: true}, nil
+		}, modconfig.FailActionDirective, &c.softfailAction)
 	cfg.Custom("permerr_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Reject: true}, nil
-		}, check.FailActionDirective, &c.permerrAction)
+			return modconfig.FailAction{Reject: true}, nil
+		}, modconfig.FailActionDirective, &c.permerrAction)
 	cfg.Custom("temperr_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Reject: true}, nil
-		}, check.FailActionDirective, &c.temperrAction)
+			return modconfig.FailAction{Reject: true}, nil
+		}, modconfig.FailActionDirective, &c.temperrAction)
 	_, err := cfg.Process()
 	if err != nil {
 		return err

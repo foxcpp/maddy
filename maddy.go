@@ -13,11 +13,11 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/hooks"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
-	parser "github.com/foxcpp/maddy/pkg/cfgparser"
+	parser "github.com/foxcpp/maddy/framework/cfgparser"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/hooks"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	// Import packages for side-effect of module registration.

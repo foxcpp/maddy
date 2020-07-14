@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-sasl"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 type mockAuth struct {

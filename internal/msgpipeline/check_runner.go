@@ -6,12 +6,12 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/dmarc"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 )
 
 // checkRunner runs groups of checks, collects and merges results.

@@ -3,8 +3,8 @@ package table
 import (
 	"fmt"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 	_ "github.com/lib/pq"
 )
 

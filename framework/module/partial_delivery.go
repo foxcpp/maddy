@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/framework/buffer"
 )
 
 // StatusCollector is an object that is passed by message source

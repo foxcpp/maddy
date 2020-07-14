@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/foxcpp/maddy/internal/exterrors"
-	parser "github.com/foxcpp/maddy/pkg/cfgparser"
+	parser "github.com/foxcpp/maddy/framework/cfgparser"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 func policyError(code int) error {

@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 /*

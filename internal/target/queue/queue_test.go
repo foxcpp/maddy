@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

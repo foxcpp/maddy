@@ -1,8 +1,8 @@
 package modconfig
 
 import (
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 func MessageCheck(globals map[string]interface{}, args []string, block config.Node) (module.Check, error) {

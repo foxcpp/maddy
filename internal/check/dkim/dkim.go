@@ -12,13 +12,13 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dkim"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -28,8 +28,8 @@ type Check struct {
 
 	requiredFields  map[string]struct{}
 	allowBodySubset bool
-	brokenSigAction check.FailAction
-	noSigAction     check.FailAction
+	brokenSigAction modconfig.FailAction
+	noSigAction     modconfig.FailAction
 	failOpen        bool
 
 	resolver dns.Resolver
@@ -55,12 +55,12 @@ func (c *Check) Init(cfg *config.Map) error {
 	cfg.Bool("fail_open", false, false, &c.failOpen)
 	cfg.Custom("broken_sig_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.brokenSigAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.brokenSigAction)
 	cfg.Custom("no_sig_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.noSigAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.noSigAction)
 	_, err := cfg.Process()
 	if err != nil {
 		return err

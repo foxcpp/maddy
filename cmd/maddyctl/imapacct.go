@@ -7,7 +7,7 @@ import (
 
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/urfave/cli"
 )
 

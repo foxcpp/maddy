@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
-	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/internal/testutils"
 	miekgdns "github.com/miekg/dns"
 )

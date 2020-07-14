@@ -3,7 +3,7 @@ package pass_table
 import (
 	"testing"
 
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

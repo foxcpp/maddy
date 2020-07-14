@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 type SMTPMessage struct {

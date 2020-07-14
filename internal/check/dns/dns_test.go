@@ -6,9 +6,9 @@ import (
 
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/maddy/framework/future"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/future"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

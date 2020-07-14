@@ -1,4 +1,4 @@
-package check
+package modconfig
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // FailAction specifies actions that messages pipeline should take based on the
@@ -20,8 +20,8 @@ import (
 // Add the configuration directive to allow user to specify the action:
 //     cfg.Custom("SOME_action", false, false,
 //     	func() (interface{}, error) {
-//     		return check.FailAction{Quarantine: true}, nil
-//     	}, check.FailActionDirective, &yourModule.SOMEAction)
+//     		return modconfig.FailAction{Quarantine: true}, nil
+//     	}, modconfig.FailActionDirective, &yourModule.SOMEAction)
 // return in func literal is the default value, you might want to adjust it.
 //
 // Call yourModule.SOMEAction.Apply on CheckResult containing only the

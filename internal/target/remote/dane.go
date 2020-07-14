@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 // verifyDANE checks whether TLSA records require TLS use and match the

@@ -5,7 +5,7 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 func AuthUsingHelper(binaryPath, accountName, password string) error {

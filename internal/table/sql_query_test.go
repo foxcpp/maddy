@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

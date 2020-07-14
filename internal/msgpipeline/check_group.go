@@ -1,9 +1,9 @@
 package msgpipeline
 
 import (
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // CheckGroup is a module container for a group of Check implementations.

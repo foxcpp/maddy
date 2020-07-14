@@ -16,7 +16,7 @@
 package module
 
 import (
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/config"
 )
 
 // Module is the interface implemented by all maddy module instances.

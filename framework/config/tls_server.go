@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/foxcpp/maddy/internal/hooks"
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/hooks"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 type TLSConfig struct {

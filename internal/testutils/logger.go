@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 var (

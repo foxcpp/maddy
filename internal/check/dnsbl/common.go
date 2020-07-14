@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 type ListedErr struct {

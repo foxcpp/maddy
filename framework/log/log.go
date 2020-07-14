@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 // Logger is the structure that writes formatted output to the underlying

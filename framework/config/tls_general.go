@@ -3,7 +3,7 @@ package config
 import (
 	"crypto/tls"
 
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 var strVersionsMap = map[string]uint16{

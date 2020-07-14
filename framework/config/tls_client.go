@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 func TLSClientBlock(m *Map, node Node) (interface{}, error) {

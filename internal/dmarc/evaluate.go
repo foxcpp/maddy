@@ -11,7 +11,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
-	"github.com/foxcpp/maddy/internal/address"
+	"github.com/foxcpp/maddy/framework/address"
 	"golang.org/x/net/publicsuffix"
 )
 

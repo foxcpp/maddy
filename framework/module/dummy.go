@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
 )
 
 // Dummy is a struct that implements PlainAuth and DeliveryTarget

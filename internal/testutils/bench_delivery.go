@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // Empirically observed "around average" values.

@@ -22,11 +22,11 @@ import (
 	"github.com/emersion/go-sasl"
 	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
 	"github.com/foxcpp/go-imap-sql/children"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 

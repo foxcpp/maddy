@@ -3,7 +3,7 @@ package msgpipeline
 import (
 	"fmt"
 
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // objectName returns a new that is usable to identify the used external

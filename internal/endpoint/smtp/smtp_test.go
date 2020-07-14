@@ -13,10 +13,10 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/testutils"
 )

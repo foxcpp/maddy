@@ -1,9 +1,10 @@
 package requiretls
 
 import (
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
 )
 
 func requireTLS(ctx check.StatelessCheckContext) module.CheckResult {
@@ -22,5 +23,5 @@ func requireTLS(ctx check.StatelessCheckContext) module.CheckResult {
 }
 
 func init() {
-	check.RegisterStatelessCheck("require_tls", check.FailAction{Reject: true}, requireTLS, nil, nil, nil)
+	check.RegisterStatelessCheck("require_tls", modconfig.FailAction{Reject: true}, requireTLS, nil, nil, nil)
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 func init() {

@@ -3,7 +3,7 @@ package msgpipeline
 import (
 	"testing"
 
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

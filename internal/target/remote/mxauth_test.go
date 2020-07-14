@@ -14,8 +14,8 @@ import (
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/go-mtasts/preload"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

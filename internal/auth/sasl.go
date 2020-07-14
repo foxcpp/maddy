@@ -6,10 +6,10 @@ import (
 	"net"
 
 	"github.com/emersion/go-sasl"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 var (

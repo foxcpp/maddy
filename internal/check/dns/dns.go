@@ -4,11 +4,12 @@ import (
 	"net"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/address"
+	"github.com/foxcpp/maddy/framework/address"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
 )
 
 func requireMatchingRDNS(ctx check.StatelessCheckContext) module.CheckResult {
@@ -217,10 +218,10 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 }
 
 func init() {
-	check.RegisterStatelessCheck("require_matching_rdns", check.FailAction{Quarantine: true},
+	check.RegisterStatelessCheck("require_matching_rdns", modconfig.FailAction{Quarantine: true},
 		requireMatchingRDNS, nil, nil, nil)
-	check.RegisterStatelessCheck("require_mx_record", check.FailAction{Quarantine: true},
+	check.RegisterStatelessCheck("require_mx_record", modconfig.FailAction{Quarantine: true},
 		nil, requireMXRecord, nil, nil)
-	check.RegisterStatelessCheck("require_matching_ehlo", check.FailAction{Quarantine: true},
+	check.RegisterStatelessCheck("require_matching_ehlo", modconfig.FailAction{Quarantine: true},
 		requireMatchingEHLO, nil, nil, nil)
 }

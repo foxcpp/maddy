@@ -8,8 +8,8 @@ import (
 	"runtime/trace"
 	"sort"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 )
 

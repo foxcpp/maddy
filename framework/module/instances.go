@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/hooks"
-	"github.com/foxcpp/maddy/internal/log"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/hooks"
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 var (

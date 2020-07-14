@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 
 	"github.com/foxcpp/maddy"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/hooks"
-	"github.com/foxcpp/maddy/internal/module"
+	parser "github.com/foxcpp/maddy/framework/cfgparser"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/hooks"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
-	parser "github.com/foxcpp/maddy/pkg/cfgparser"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/bcrypt"
 )

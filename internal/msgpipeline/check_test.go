@@ -6,7 +6,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 

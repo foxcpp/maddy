@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -32,10 +32,10 @@ type Check struct {
 	tag        string
 	mtaName    string
 
-	ioErrAction       check.FailAction
-	errorRespAction   check.FailAction
-	addHdrAction      check.FailAction
-	rewriteSubjAction check.FailAction
+	ioErrAction       modconfig.FailAction
+	errorRespAction   modconfig.FailAction
+	addHdrAction      modconfig.FailAction
+	rewriteSubjAction modconfig.FailAction
 
 	client *http.Client
 }
@@ -81,20 +81,20 @@ func (c *Check) Init(cfg *config.Map) error {
 	cfg.String("hostname", true, false, "", &c.mtaName)
 	cfg.Custom("io_error_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.ioErrAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.ioErrAction)
 	cfg.Custom("error_resp_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{}, nil
-		}, check.FailActionDirective, &c.errorRespAction)
+			return modconfig.FailAction{}, nil
+		}, modconfig.FailActionDirective, &c.errorRespAction)
 	cfg.Custom("add_header_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Quarantine: true}, nil
-		}, check.FailActionDirective, &c.addHdrAction)
+			return modconfig.FailAction{Quarantine: true}, nil
+		}, modconfig.FailActionDirective, &c.addHdrAction)
 	cfg.Custom("rewrite_subj_action", false, false,
 		func() (interface{}, error) {
-			return check.FailAction{Quarantine: true}, nil
-		}, check.FailActionDirective, &c.rewriteSubjAction)
+			return modconfig.FailAction{Quarantine: true}, nil
+		}, modconfig.FailActionDirective, &c.rewriteSubjAction)
 	cfg.StringList("flags", false, false, []string{"pass_all"}, &flags)
 	if _, err := cfg.Process(); err != nil {
 		return err

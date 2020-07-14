@@ -6,11 +6,12 @@ import (
 	"runtime/trace"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -43,9 +44,9 @@ type statelessCheck struct {
 	logger   log.Logger
 
 	// One used by Init if config option is not passed by a user.
-	defaultFailAction FailAction
+	defaultFailAction modconfig.FailAction
 	// The actual fail action that should be applied.
-	failAction FailAction
+	failAction modconfig.FailAction
 
 	connCheck   FuncConnCheck
 	senderCheck FuncSenderCheck
@@ -138,7 +139,7 @@ func (c *statelessCheck) Init(cfg *config.Map) error {
 	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
 			return c.defaultFailAction, nil
-		}, FailActionDirective, &c.failAction)
+		}, modconfig.FailActionDirective, &c.failAction)
 	_, err := cfg.Process()
 	return err
 }
@@ -161,7 +162,7 @@ func (c *statelessCheck) InstanceName() string {
 // StatelessCheck supports different action types based on the user configuration, but the particular check
 // code doesn't need to know about it. It should assume that it is always "Reject" and hence it should
 // populate Reason field of the result object with the relevant error description.
-func RegisterStatelessCheck(name string, defaultFailAction FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
+func RegisterStatelessCheck(name string, defaultFailAction modconfig.FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
 	module.Register(name, func(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
 		if len(inlineArgs) != 0 {
 			return nil, fmt.Errorf("%s: inline arguments are not used", modName)

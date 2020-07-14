@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 func SanitizeForHeader(raw string) string {

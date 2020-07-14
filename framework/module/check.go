@@ -6,7 +6,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/buffer"
+	"github.com/foxcpp/maddy/framework/buffer"
 )
 
 // Check is the module interface that is meant for read-only (with the

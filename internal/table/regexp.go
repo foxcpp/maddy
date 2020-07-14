@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 type Regexp struct {

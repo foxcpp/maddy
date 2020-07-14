@@ -16,12 +16,12 @@ import (
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -43,7 +43,7 @@ type Check struct {
 	log      log.Logger
 
 	stage   Stage
-	actions map[int]check.FailAction
+	actions map[int]modconfig.FailAction
 	cmd     string
 	cmdArgs []string
 }
@@ -51,11 +51,11 @@ type Check struct {
 func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
-		actions: map[int]check.FailAction{
-			1: check.FailAction{
+		actions: map[int]modconfig.FailAction{
+			1: modconfig.FailAction{
 				Reject: true,
 			},
-			2: check.FailAction{
+			2: modconfig.FailAction{
 				Quarantine: true,
 			},
 		},
@@ -105,7 +105,7 @@ func (c *Check) Init(cfg *config.Map) error {
 			if err != nil {
 				return config.NodeErr(node, "%v", err)
 			}
-			action, err := check.ParseActionDirective(node.Args[1:])
+			action, err := modconfig.ParseActionDirective(node.Args[1:])
 			if err != nil {
 				return config.NodeErr(node, "%v", err)
 			}
