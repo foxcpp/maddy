@@ -1,4 +1,4 @@
-// Package smtp_downstream provides smtp_downstream module that implements
+// Package smtp_downstream provides target.smtp module that implements
 // transparent forwarding or messages to configured list of SMTP servers.
 //
 // Like remote module, this implementation doesn't handle atomic
@@ -137,7 +137,7 @@ type lmtpDelivery struct {
 }
 
 func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	defer trace.StartRegion(ctx, "smtp_downstream/Start").End()
+	defer trace.StartRegion(ctx, "target.smtp/Start").End()
 
 	d := &delivery{
 		u:        u,
@@ -285,6 +285,8 @@ func (d *delivery) Commit(ctx context.Context) error {
 }
 
 func init() {
-	module.Register("smtp_downstream", NewDownstream)
-	module.Register("lmtp_downstream", NewDownstream)
+	module.Register("target.smtp", NewDownstream)
+	module.RegisterDeprecated("smtp_downstream", "target.smtp", NewDownstream)
+	module.Register("target.lmtp", NewDownstream)
+	module.RegisterDeprecated("lmtp_downstream", "target.lmtp", NewDownstream)
 }

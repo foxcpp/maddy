@@ -25,7 +25,7 @@ import (
 	"github.com/foxcpp/maddy/internal/target"
 )
 
-const modName = "command"
+const modName = "check.command"
 
 type Stage string
 
@@ -379,5 +379,6 @@ func (s *state) Close() error {
 }
 
 func init() {
+	module.RegisterDeprecated("command", "check.command", New)
 	module.Register(modName, New)
 }

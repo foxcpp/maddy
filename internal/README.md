@@ -12,7 +12,7 @@ endpoint/
   modules - protocol listeners (e.g. SMTP server, etc)
 target/
   modules - final delivery targets (including outbound delivery, such as
-  smtp_downstream, remote)
+  target.smtp, remote)
 auth/
   modules - authentication providers
 check/

@@ -41,7 +41,7 @@ func NewReplaceAddr(modName, instName string, _, inlineArgs []string) (module.Mo
 }
 
 func (r *replaceAddr) Init(cfg *config.Map) error {
-	return modconfig.ModuleFromNode(r.inlineArgs, cfg.Block, cfg.Globals, &r.table)
+	return modconfig.ModuleFromNode("table", r.inlineArgs, cfg.Block, cfg.Globals, &r.table)
 }
 
 func (r replaceAddr) Name() string {
@@ -122,6 +122,8 @@ func (r replaceAddr) rewrite(val string) (string, error) {
 }
 
 func init() {
-	module.Register("replace_sender", NewReplaceAddr)
-	module.Register("replace_rcpt", NewReplaceAddr)
+	module.Register("modify.replace_sender", NewReplaceAddr)
+	module.RegisterDeprecated("replace_sender", "modify.replace_sender", NewReplaceAddr)
+	module.Register("modify.replace_rcpt", NewReplaceAddr)
+	module.RegisterDeprecated("replace_rcpt", "modify.replace_rcpt", NewReplaceAddr)
 }

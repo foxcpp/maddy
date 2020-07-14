@@ -89,5 +89,6 @@ func (r *Regexp) Lookup(key string) (string, bool, error) {
 }
 
 func init() {
-	module.Register("regexp", NewRegexp)
+	module.RegisterDeprecated("regexp", "table.regexp", NewRegexp)
+	module.Register("table.regexp", NewRegexp)
 }

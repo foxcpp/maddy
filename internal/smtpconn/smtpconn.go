@@ -1,4 +1,4 @@
-// The package smtpconn contains the code shared between smtp_downstream and
+// The package smtpconn contains the code shared between target.smtp and
 // remote modules.
 //
 // It implements the wrapper over the SMTP connection (go-smtp.Client) object

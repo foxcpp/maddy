@@ -35,7 +35,7 @@ func TestSASL_Plain(t *testing.T) {
 			},
 		},
 		saslFactory: testSaslFactory(t, "plain", "test", "testpass"),
-		log:         testutils.Logger(t, "smtp_downstream"),
+		log:         testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -69,7 +69,7 @@ func TestSASL_Plain_AuthFail(t *testing.T) {
 			},
 		},
 		saslFactory: testSaslFactory(t, "plain", "test", "testpass"),
-		log:         testutils.Logger(t, "smtp_downstream"),
+		log:         testutils.Logger(t, "target.smtp"),
 	}
 
 	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -93,7 +93,7 @@ func TestSASL_Forward(t *testing.T) {
 			},
 		},
 		saslFactory: testSaslFactory(t, "forward"),
-		log:         testutils.Logger(t, "smtp_downstream"),
+		log:         testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDeliveryMeta(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"}, &module.MsgMetadata{
@@ -126,7 +126,7 @@ func TestSASL_Forward_NoCreds(t *testing.T) {
 			},
 		},
 		saslFactory: testSaslFactory(t, "forward"),
-		log:         testutils.Logger(t, "smtp_downstream"),
+		log:         testutils.Logger(t, "target.smtp"),
 	}
 
 	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})

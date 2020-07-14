@@ -33,7 +33,7 @@ func saslAuthDirective(m *config.Map, node config.Node) (interface{}, error) {
 					Code:         530,
 					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
 					Message:      "Authentication is required",
-					TargetName:   "smtp_downstream",
+					TargetName:   "target.smtp",
 					Reason:       "Credentials forwarding is requested but the client is not authenticated",
 				}
 			}

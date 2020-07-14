@@ -2,6 +2,8 @@ package module
 
 import (
 	"sync"
+
+	"github.com/foxcpp/maddy/internal/log"
 )
 
 var (
@@ -25,6 +27,17 @@ func Register(name string, factory FuncNewModule) {
 	}
 
 	modules[name] = factory
+}
+
+// RegisterDeprecated adds module factory function to global registry.
+//
+// It prints warning to the log about name being deprecated and suggests using
+// a new name.
+func RegisterDeprecated(name, newName string, factory FuncNewModule) {
+	Register(name, func(modName, instName string, aliases, inlineArgs []string) (Module, error) {
+		log.Printf("module initialized via deprecated name %s, %s should be used instead; deprecated name may be removed in the next version", name, newName)
+		return factory(modName, instName, aliases, inlineArgs)
+	})
 }
 
 // Get returns module from global registry.

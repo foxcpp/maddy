@@ -5,18 +5,18 @@ maddy-targets(5) "maddy mail server" "maddy reference documentation"
 This man page describes modules that can used with 'deliver_to' directive
 of SMTP endpoint module.
 
-# SQL module (sql)
+# SQL module (target.imapsql)
 
 SQL module described in *maddy-storage*(5) can also be used as a delivery
 target.
 
-# Queue module (queue)
+# Queue module (target.queue)
 
 Queue module buffers messages on disk and retries delivery multiple times to
 another target to ensure reliable delivery.
 
 ```
-queue {
+target.queue {
     target remote
     location ...
     max_parallelism 16
@@ -98,7 +98,7 @@ Module that implements message delivery to remote MTAs discovered via DNS MX
 records. You probably want to use it with queue module for reliability.
 
 ```
-remote {
+target.remote {
     hostname mx.example.org
     debug no
 }
@@ -344,21 +344,21 @@ Set the minimal MX security level required for all outbound messages.
 
 See [Security levels](../../seclevels) page for details.
 
-# SMTP transparent forwarding module (smtp_downstream)
+# SMTP transparent forwarding module (target.smtp)
 
 Module that implements transparent forwarding of messages over SMTP.
 
 Use in pipeline configuration:
 ```
-deliver_to smtp_downstream tcp://127.0.0.1:5353
+deliver_to smtp tcp://127.0.0.1:5353
 # or
-deliver_to smtp_downstream tcp://127.0.0.1:5353 {
+deliver_to smtp tcp://127.0.0.1:5353 {
   # Other settings, see below.
 }
 ```
 
 ```
-smtp_downstream {
+target.smtp {
     debug no
     tls_client {
         ...
@@ -439,7 +439,7 @@ TLS).
 Multiple addresses can be specified, they will be tried in order until connection to
 one succeeds (including TLS handshake if TLS is required).
 
-# LMTP transparent forwarding module (lmtp_downstream)
+# LMTP transparent forwarding module (target.lmtp)
 
-The 'lmtp_downstream' module is similar to 'smtp_downstream' and supports all
+The 'target.lmtp' module is similar to 'target.smtp' and supports all
 its options and syntax but speaks LMTP instead of SMTP.

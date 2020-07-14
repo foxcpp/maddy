@@ -491,5 +491,6 @@ func (rd *remoteDelivery) Close() error {
 }
 
 func init() {
-	module.Register("remote", New)
+	module.RegisterDeprecated("remote", "target.remote", New)
+	module.Register("target.remote", New)
 }

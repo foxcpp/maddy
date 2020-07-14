@@ -93,7 +93,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 // the 'auth' configuration directive.
 func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 	var any interface{}
-	if err := modconfig.ModuleFromNode(node.Args, node, m.Globals, &any); err != nil {
+	if err := modconfig.ModuleFromNode("auth", node.Args, node, m.Globals, &any); err != nil {
 		return err
 	}
 

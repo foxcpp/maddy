@@ -11,7 +11,7 @@ change the source of data, effectively turning the table into a complete
 interface to a key-value store for maddy. Such tables are referred to as
 "mutable tables".
 
-# File mapping (file)
+# File mapping (table.file)
 
 This module builds string-string mapping from a text file.
 
@@ -58,13 +58,13 @@ aaa: bbb
 aaa
 ```
 
-# SQL query mapping (sql_query)
+# SQL query mapping (table.sql_query)
 
 The sql_query module implements table interface using SQL queries.
 
 Definition:
 ```
-sql_query {
+table.sql_query {
 	driver <driver name>
 	dsn <data source name>
 	lookup <lookup query>
@@ -125,7 +125,7 @@ List of queries to execute on initialization. Can be used to configure RDBMS.
 
 Example, to improve SQLite3 performance:
 ```
-sql_query {
+table.sql_query {
 	driver sqlite3
 	dsn whatever.db
 	init "PRAGMA journal_mode=WAL" \
@@ -155,13 +155,13 @@ entry in the database.
 
 'del' query gets :key argument - key and should remove it from the database.
 
-# Static table (static)
+# Static table (table.static)
 
 The 'static' module implements table lookups using key-value pairs in its
 configuration.
 
 ```
-static {
+table.static {
 	entry KEY1 VALUE1
 	entry KEY2 VALUE2
 	...
@@ -176,7 +176,7 @@ Add an entry to the table.
 
 If the same key is used multiple times, the last one takes effect.
 
-# Regexp rewrite table (regexp)
+# Regexp rewrite table (table.regexp)
 
 The 'regexp' module implements table lookups by applying a regular expression
 to the key value. If it matches - 'replacement' value is returned with $N
@@ -187,7 +187,7 @@ The regular expression syntax is the subset of PCRE. See
 https://golang.org/pkg/regexp/syntax/ for details.
 
 ```
-regexp <regexp> <replacement> {
+table.regexp <regexp> <replacement> {
 	full_match yes
 	case_insensitive yes
 	expand_placeholders yes
@@ -216,12 +216,12 @@ corresponding capture groups from the match.
 
 To insert a literal $ in the output, use $$ in the template.
 
-# Identity table (identity)
+# Identity table (table.identity)
 
 The module 'identity' is a table module that just returns the key looked up.
 
 ```
-identity { }
+table.identity { }
 ```
 
 # No-op table (dummy)

@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/idna"
 )
 
-const modName = "apply_spf"
+const modName = "check.spf"
 
 type Check struct {
 	instName     string
@@ -371,5 +371,6 @@ func (s *state) Close() error {
 }
 
 func init() {
+	module.RegisterDeprecated("apply_spf", "check.spf", New)
 	module.Register(modName, New)
 }

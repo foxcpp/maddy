@@ -117,5 +117,6 @@ func (s *SQLTable) SetKey(k, v string) error {
 }
 
 func init() {
-	module.Register("sql_table", NewSQLTable)
+	module.RegisterDeprecated("sql_table", "table.sql_table", NewSQLTable)
+	module.Register("table.sql_table", NewSQLTable)
 }

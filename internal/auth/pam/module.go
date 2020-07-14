@@ -72,5 +72,6 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("pam", New)
+	module.RegisterDeprecated("pam", "auth.pam", New)
+	module.Register("auth.pam", New)
 }

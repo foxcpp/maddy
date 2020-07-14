@@ -55,7 +55,7 @@ func TestSMTPUTF8(t *testing.T) {
 		defer testutils.CheckSMTPConnLeak(t, srv)
 
 		c := New()
-		c.Log = testutils.Logger(t, "smtp_downstream")
+		c.Log = testutils.Logger(t, "target.smtp")
 		if _, err := c.Connect(context.Background(), config.Endpoint{
 			Scheme: "tcp",
 			Host:   "127.0.0.1",

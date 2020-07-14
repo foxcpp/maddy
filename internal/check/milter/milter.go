@@ -18,7 +18,7 @@ import (
 	"github.com/foxcpp/maddy/internal/target"
 )
 
-const modName = "milter"
+const modName = "check.milter"
 
 type Check struct {
 	cl        *milter.Client
@@ -408,5 +408,6 @@ func (s *state) Close() error {
 }
 
 func init() {
+	module.RegisterDeprecated("milter", "check.milter", New)
 	module.Register(modName, New)
 }

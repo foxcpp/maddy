@@ -7,7 +7,7 @@ import (
 
 func MessageCheck(globals map[string]interface{}, args []string, block config.Node) (module.Check, error) {
 	var check module.Check
-	if err := ModuleFromNode(args, block, globals, &check); err != nil {
+	if err := ModuleFromNode("check", args, block, globals, &check); err != nil {
 		return nil, err
 	}
 	return check, nil
@@ -29,7 +29,7 @@ func DeliveryDirective(m *config.Map, node config.Node) (interface{}, error) {
 
 func DeliveryTarget(globals map[string]interface{}, args []string, block config.Node) (module.DeliveryTarget, error) {
 	var target module.DeliveryTarget
-	if err := ModuleFromNode(args, block, globals, &target); err != nil {
+	if err := ModuleFromNode("target", args, block, globals, &target); err != nil {
 		return nil, err
 	}
 	return target, nil
@@ -37,7 +37,7 @@ func DeliveryTarget(globals map[string]interface{}, args []string, block config.
 
 func MsgModifier(globals map[string]interface{}, args []string, block config.Node) (module.Modifier, error) {
 	var check module.Modifier
-	if err := ModuleFromNode(args, block, globals, &check); err != nil {
+	if err := ModuleFromNode("modify", args, block, globals, &check); err != nil {
 		return nil, err
 	}
 	return check, nil
@@ -45,7 +45,7 @@ func MsgModifier(globals map[string]interface{}, args []string, block config.Nod
 
 func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 	var backend module.Storage
-	if err := ModuleFromNode(node.Args, node, m.Globals, &backend); err != nil {
+	if err := ModuleFromNode("storage", node.Args, node, m.Globals, &backend); err != nil {
 		return nil, err
 	}
 	return backend, nil
@@ -53,7 +53,7 @@ func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 
 func TableDirective(m *config.Map, node config.Node) (interface{}, error) {
 	var tbl module.Table
-	if err := ModuleFromNode(node.Args, node, m.Globals, &tbl); err != nil {
+	if err := ModuleFromNode("table", node.Args, node, m.Globals, &tbl); err != nil {
 		return nil, err
 	}
 	return tbl, nil

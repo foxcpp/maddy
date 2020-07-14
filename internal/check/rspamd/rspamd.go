@@ -20,7 +20,7 @@ import (
 	"github.com/foxcpp/maddy/internal/target"
 )
 
-const modName = "rspamd"
+const modName = "check.rspamd"
 
 type Check struct {
 	instName string
@@ -332,5 +332,6 @@ func (s *state) Close() error {
 }
 
 func init() {
+	module.RegisterDeprecated("rspamd", modName, New)
 	module.Register(modName, New)
 }

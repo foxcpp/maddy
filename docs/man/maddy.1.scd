@@ -61,9 +61,9 @@ smtp ... {
     # Deliver messages to the 'dummy' module with the default configuration.
     deliver_to dummy
 
-    # Deliver messages to the 'smtp_downstream' module with
+    # Deliver messages to the 'target.smtp' module with
     # 'tcp://127.0.0.1:1125' argument as a configuration.
-    deliver_to smtp_downstream tcp://127.0.0.1:1125
+    deliver_to smtp tcp://127.0.0.1:1125
 
     # Deliver messages to the 'queue' module with the specified configuration.
     deliver_to queue {
@@ -78,7 +78,7 @@ at the top-level and merely referenced by its name where it is needed.
 
 Here is the example:
 ```
-sql local_mailboxes {
+storage.imapsql local_mailboxes {
     driver sqlite3
     dsn all.db
 }
@@ -93,18 +93,24 @@ initialize such as storage backends and authentication providers.
 
 For top-level configuration block definition, syntax is as follows:
 ```
-module_name config_block_name... {
+namespace.module_name config_block_name... {
     module_configuration
 }
 ```
 If config_block_name is omitted, it will be the same as module_name. Multiple
 names can be specified. All names must be unique.
 
+Note the "storage." prefix. The actual module name is this and includes
+"namespace". It is a little cheating to make more concise names and can
+be omitted when you reference the module where it is used since it can
+be implied (e.g. putting module reference in "check{}" likely means you want
+something with "check." prefix)
+
 Usual module arguments can't be specified when using this syntax, however,
 modules usually provide explicit directives that allow to specify the needed
 values. For example 'sql sqlite3 all.db' is equivalent to
 ```
-sql {
+storage.imapsql {
     driver sqlite3
     dsn all.db
 }

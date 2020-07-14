@@ -472,5 +472,6 @@ func (store *Storage) Close() error {
 }
 
 func init() {
-	module.Register("imapsql", New)
+	module.RegisterDeprecated("imapsql", "storage.imapsql", New)
+	module.Register("storage.imapsql", New)
 }

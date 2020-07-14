@@ -87,13 +87,13 @@ the STARTTLS command.
 By default, rejects messages coming from unencrypted servers. Use the
 'fail_action' directive to change that.
 
-# DKIM authentication module (verify_dkim)
+# DKIM authentication module (check.dkim)
 
 This is the check module that performs verification of the DKIM signatures
 present on the incoming messages.
 
 ```
-verify_dkim {
+check.dkim {
     debug no
     required_fields From Subject
     allow_body_subset no
@@ -152,13 +152,13 @@ Whether to accept the message if a temporary error occurs during DKIM
 verification. Rejecting the message with a 4xx code will require the sender
 to resend it later in a hope that the problem will be resolved.
 
-# SPF policy enforcement module (apply_spf)
+# SPF policy enforcement module (check.spf)
 
 This is the check module that verifies whether IP address of the client is
 authorized to send messages for domain in MAIL FROM address.
 
 ```
-apply_spf {
+check.spf {
     debug no
     enforce_early no
     fail_action quarantine
@@ -173,7 +173,7 @@ apply_spf {
 It is recommended by the DMARC standard to don't fail delivery based solely on
 SPF policy and always check DMARC policy and take action based on it.
 
-If enforce_early is no, apply_spf module will not take any action on SPF
+If enforce_early is no, check.spf module will not take any action on SPF
 policy failure if sender domain does have a DMARC record with 'quarantine' or
 'reject' policy. Instead it will rely on DMARC support to take necesary
 actions using SPF results as an input.
@@ -186,7 +186,7 @@ no-op and is considered insecure.
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
 
-Enable verbose logging for apply_spf.
+Enable verbose logging for check.spf.
 
 *Syntax*: enforce_early _boolean_ ++
 *Default*: no
@@ -230,7 +230,7 @@ Action to take when SPF policy evaluates to a 'permerror' result.
 
 Action to take when SPF policy evaluates to a 'temperror' result.
 
-# DNSBL lookup module (dnsbl)
+# DNSBL lookup module (check.dnsbl)
 
 The dnsbl module implements checking of source IP and hostnames against a set
 of DNS-based Blackhole lists (DNSBLs).
@@ -239,7 +239,7 @@ Its configuration consists of module configuration directives and a set
 of blocks specifing lists to use and kind of lookups to perform on them.
 
 ```
-dnsbl {
+check.dnsbl {
     debug no
     check_early no
 
@@ -387,13 +387,13 @@ will be rejected.
 It is possible to specify a negative value to make list act like a whitelist
 and override results of other blocklists.
 
-# DKIM signing module (sign_dkim)
+# DKIM signing module (modify.dkim)
 
 sign_dkim module is a modifier that signs messages using DKIM
 protocol (RFC 6376).
 
 ```
-sign_dkim {
+modify.dkim {
     debug no
     domains example.org example.com
     selector default
@@ -414,7 +414,7 @@ domains and selector can be specified in arguments, so actual sign_dkim use can
 be shortened to the following:
 ```
 modify {
-    sign_dkim example.org selector
+    dkim example.org selector
 }
 ```
 
@@ -574,7 +574,7 @@ Sign emails from subdomains using a top domain key.
 Allows only one domain to be specified (can be workarounded using sign_dkim
 multiple times).
 
-# Envelope sender / recipient rewriting (replace_sender, replace_rcpt)
+# Envelope sender / recipient rewriting (modify.replace_sender, modify.replace_rcpt)
 
 'replace_sender' and 'replace_rcpt' modules replace SMTP envelope addresses
 based on the mapping defined by the table module (maddy-tables(5)). Currently,
@@ -625,7 +625,7 @@ cat: dog
 cat@example.org: cat@example.com
 ```
 
-# System command filter (command)
+# System command filter (check.command)
 
 This module executes an arbitrary system command during a specified stage of
 checks execution.
@@ -756,7 +756,7 @@ Two codes are defined implicitly, exit code 1 causes the message to be rejected
 with a permanent error, exit code 2 causes the message to be quarantined. Both
 action can be overriden using the 'code' directive.
 
-## Milter protocol check (milter)
+## Milter protocol check (check.milter)
 
 The 'milter' implements subset of Sendmail's milter protocol that can be used
 to integrate external software in maddy.
@@ -773,7 +773,7 @@ removed without major changes to it. Restrictions 3, 4 and 5 are temporary due t
 incomplete implementation.
 
 ```
-milter {
+check.milter {
 	endpoint <endpoint>
 	fail_open false
 }
@@ -801,13 +801,13 @@ The endpoit is specified in standard URL-like format:
 Toggles behavior on milter I/O errors. If false ("fail closed") - message is
 rejected with temporary error code. If true ("fail open") - check is skipped.
 
-## rspamd check (rspamd)
+## rspamd check (check.rspamd)
 
 The 'rspamd' module implements message filtering by contacting the rspamd
 server via HTTP API.
 
 ```
-rspamd {
+check.rspamd {
 	tls_client { ... }
 	api_path http://127.0.0.1:11333
 	settings_id whatever

@@ -29,9 +29,9 @@ service lmtp {
 }
 ```
 
-Add `local_mailboxes` block to maddy config using `lmtp_downstream` module:
+Add `local_mailboxes` block to maddy config using `target.lmtp` module:
 ```
-lmtp_downstream local_mailboxes {
+target.lmtp local_mailboxes {
     targets unix:///var/run/maddy/dovecot-lmtp.sock
 }
 ```

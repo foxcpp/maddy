@@ -22,10 +22,23 @@ import (
 )
 
 // createInlineModule is a helper function for config matchers that can create inline modules.
-func createInlineModule(modName string, args []string) (module.Module, error) {
-	newMod := module.Get(modName)
+func createInlineModule(preferredNamespace string, modName string, args []string) (module.Module, error) {
+	var newMod module.FuncNewModule
+
+	// First try to extend the name with preferred namespace unless the name
+	// already contains it.
+	if !strings.Contains(modName, ".") && preferredNamespace != "" {
+		newMod = module.Get(preferredNamespace + "." + modName)
+	}
+
+	// Then try global namespace for compatibility and complex modules.
 	if newMod == nil {
-		return nil, fmt.Errorf("unknown module: %s", modName)
+		newMod = module.Get(modName)
+	}
+
+	// Bail if both failed.
+	if newMod == nil {
+		return nil, fmt.Errorf("unknown module: %s (namespace: %s)", modName, preferredNamespace)
 	}
 
 	return newMod(modName, "", nil, args)
@@ -67,7 +80,11 @@ func initInlineModule(modObj module.Module, globals map[string]interface{}, bloc
 // pointer (e.g. it implements all necessary interfaces) and stores it if everything is fine.
 // If module object doesn't implement necessary module interfaces - error is returned.
 // If modObj is not a pointer, ModuleFromNode panics.
-func ModuleFromNode(args []string, inlineCfg config.Node, globals map[string]interface{}, moduleIface interface{}) error {
+//
+// preferredNamespace is used as an implicit prefix for module name lookups.
+// Module with name preferredNamespace + "." + args[0] will be preferred over just args[0].
+// It can be omitted.
+func ModuleFromNode(preferredNamespace string, args []string, inlineCfg config.Node, globals map[string]interface{}, moduleIface interface{}) error {
 	if len(args) == 0 {
 		return parser.NodeErr(inlineCfg, "at least one argument is required")
 	}
@@ -84,7 +101,7 @@ func ModuleFromNode(args []string, inlineCfg config.Node, globals map[string]int
 		log.Debugf("%s:%d: reference %s", inlineCfg.File, inlineCfg.Line, args[0])
 	} else {
 		log.Debugf("%s:%d: new module %s %v", inlineCfg.File, inlineCfg.Line, args[0], args[1:])
-		modObj, err = createInlineModule(args[0], args[1:])
+		modObj, err = createInlineModule(preferredNamespace, args[0], args[1:])
 	}
 	if err != nil {
 		return err
@@ -122,5 +139,5 @@ func GroupFromNode(defaultModule string, args []string, inlineCfg config.Node, g
 	if len(args) == 0 {
 		args = append(args, defaultModule)
 	}
-	return ModuleFromNode(args, inlineCfg, globals, moduleIface)
+	return ModuleFromNode("", args, inlineCfg, globals, moduleIface)
 }

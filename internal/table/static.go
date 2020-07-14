@@ -46,5 +46,6 @@ func (s *Static) Lookup(key string) (string, bool, error) {
 }
 
 func init() {
-	module.Register("static", NewStatic)
+	module.RegisterDeprecated("static", "table.static", NewStatic)
+	module.Register("table.static", NewStatic)
 }

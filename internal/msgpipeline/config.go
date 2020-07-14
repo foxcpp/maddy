@@ -52,7 +52,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			cfg.globalModifiers.Modifiers = append(cfg.globalModifiers.Modifiers, globalModifiers.Modifiers...)
 		case "source_in":
 			var tbl module.Table
-			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+			if err := modconfig.ModuleFromNode("table", node.Args, config.Node{}, globals, &tbl); err != nil {
 				return msgpipelineCfg{}, err
 			}
 			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
@@ -163,7 +163,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 			src.modifiers.Modifiers = append(src.modifiers.Modifiers, modifiers.Modifiers...)
 		case "destination_in":
 			var tbl module.Table
-			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+			if err := modconfig.ModuleFromNode("table", node.Args, config.Node{}, globals, &tbl); err != nil {
 				return sourceBlock{}, err
 			}
 			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)

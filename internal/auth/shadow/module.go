@@ -112,5 +112,6 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("shadow", New)
+	module.RegisterDeprecated("shadow", "auth.shadow", New)
+	module.Register("auth.shadow", New)
 }

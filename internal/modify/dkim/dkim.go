@@ -365,5 +365,6 @@ func (s state) Close() error {
 }
 
 func init() {
-	module.Register("sign_dkim", New)
+	module.RegisterDeprecated("sign_dkim", "modify.dkim", New)
+	module.Register("modify.dkim", New)
 }

@@ -39,7 +39,7 @@ func TestDownstreamDelivery(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		log: testutils.Logger(t, "smtp_downstream"),
+		log: testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -122,7 +122,7 @@ func TestDownstreamDelivery_Fallback(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		log: testutils.Logger(t, "smtp_downstream"),
+		log: testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -149,7 +149,7 @@ func TestDownstreamDelivery_MAILErr(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		log: testutils.Logger(t, "smtp_downstream"),
+		log: testutils.Logger(t, "target.smtp"),
 	}
 
 	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -172,7 +172,7 @@ func TestDownstreamDelivery_AttemptTLS(t *testing.T) {
 		},
 		tlsConfig:       *clientCfg.Clone(),
 		attemptStartTLS: true,
-		log:             testutils.Logger(t, "smtp_downstream"),
+		log:             testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -197,7 +197,7 @@ func TestDownstreamDelivery_AttemptTLS_Fallback(t *testing.T) {
 			},
 		},
 		attemptStartTLS: true,
-		log:             testutils.Logger(t, "smtp_downstream"),
+		log:             testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -221,7 +221,7 @@ func TestDownstreamDelivery_RequireTLS(t *testing.T) {
 		tlsConfig:       *clientCfg.Clone(),
 		attemptStartTLS: true,
 		requireTLS:      true,
-		log:             testutils.Logger(t, "smtp_downstream"),
+		log:             testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -248,7 +248,7 @@ func TestDownstreamDelivery_RequireTLS_Implicit(t *testing.T) {
 		tlsConfig:       *clientCfg.Clone(),
 		attemptStartTLS: true,
 		requireTLS:      true,
-		log:             testutils.Logger(t, "smtp_downstream"),
+		log:             testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -274,7 +274,7 @@ func TestDownstreamDelivery_RequireTLS_Fail(t *testing.T) {
 		},
 		attemptStartTLS: true,
 		requireTLS:      true,
-		log:             testutils.Logger(t, "smtp_downstream"),
+		log:             testutils.Logger(t, "target.smtp"),
 	}
 
 	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})

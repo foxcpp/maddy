@@ -44,7 +44,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/table"
 	_ "github.com/foxcpp/maddy/internal/target/queue"
 	_ "github.com/foxcpp/maddy/internal/target/remote"
-	_ "github.com/foxcpp/maddy/internal/target/smtp_downstream"
+	_ "github.com/foxcpp/maddy/internal/target/smtp"
 )
 
 var (

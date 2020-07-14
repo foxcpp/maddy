@@ -15,7 +15,7 @@ import (
 	"github.com/foxcpp/maddy/internal/module"
 )
 
-const FileModName = "file"
+const FileModName = "table.file"
 
 type File struct {
 	instName string
@@ -206,5 +206,6 @@ func (f *File) Lookup(val string) (string, bool, error) {
 }
 
 func init() {
+	module.RegisterDeprecated("file", "table.file", NewFile)
 	module.Register(FileModName, NewFile)
 }

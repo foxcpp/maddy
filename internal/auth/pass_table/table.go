@@ -29,7 +29,7 @@ func New(modName, instName string, _, inlineArgs []string) (module.Module, error
 
 func (a *Auth) Init(cfg *config.Map) error {
 	if len(a.inlineArgs) != 0 {
-		return modconfig.ModuleFromNode(a.inlineArgs, cfg.Block, cfg.Globals, &a.table)
+		return modconfig.ModuleFromNode("table", a.inlineArgs, cfg.Block, cfg.Globals, &a.table)
 	}
 
 	cfg.Custom("table", false, true, nil, modconfig.TableDirective, &a.table)
@@ -168,5 +168,6 @@ func (a *Auth) DeleteUser(username string) error {
 }
 
 func init() {
-	module.Register("pass_table", New)
+	module.RegisterDeprecated("pass_table", "auth.pass_table", New)
+	module.Register("auth.pass_table", New)
 }
