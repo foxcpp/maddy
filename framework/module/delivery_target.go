@@ -10,6 +10,9 @@ import (
 // DeliveryTarget interface represents abstract storage for the message data
 // (typically persistent) or other kind of component that can be used as a
 // final destination for the message.
+//
+// Modules implementing this interface should be registered with "target."
+// prefix in name.
 type DeliveryTarget interface {
 	// Start starts the delivery of a new message.
 	//

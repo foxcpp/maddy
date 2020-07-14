@@ -11,6 +11,8 @@ var (
 
 // PlainAuth is the interface implemented by modules providing authentication using
 // username:password pairs.
+//
+// Modules implementing this interface should be registered with "auth." prefix in name.
 type PlainAuth interface {
 	AuthPlain(username, password string) error
 }

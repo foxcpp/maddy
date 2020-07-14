@@ -6,6 +6,9 @@ import (
 
 // Storage interface is a slightly modified go-imap's Backend interface
 // (authentication is removed).
+//
+// Modules implementing this interface should be registered with prefix
+// "storage." in name.
 type Storage interface {
 	// GetOrCreateIMAPAcct returns User associated with storage account specified by
 	// the name.

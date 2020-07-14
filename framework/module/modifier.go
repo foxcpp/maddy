@@ -23,6 +23,8 @@ import (
 // RewriteRcpt is newer called before RewriteSender and RewriteBody is never called
 // before RewriteRcpts. This allows modificator code to save values
 // passed to previous calls for use in later operations.
+//
+// Modules implementing this interface should be registered with "modify." prefix in name.
 type Modifier interface {
 	// ModStateForMsg initializes modifier "internal" state
 	// required for processing of the message.
