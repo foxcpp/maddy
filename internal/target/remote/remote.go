@@ -30,52 +30,6 @@ import (
 	"golang.org/x/net/idna"
 )
 
-const (
-	AuthDisabled     = "off"
-	AuthMTASTS       = "mtasts"
-	AuthDNSSEC       = "dnssec"
-	AuthCommonDomain = "common_domain"
-)
-
-type (
-	TLSLevel int
-	MXLevel  int
-)
-
-const (
-	TLSNone TLSLevel = iota
-	TLSEncrypted
-	TLSAuthenticated
-
-	MXNone MXLevel = iota
-	MX_MTASTS
-	MX_DNSSEC
-)
-
-func (l TLSLevel) String() string {
-	switch l {
-	case TLSNone:
-		return "none"
-	case TLSEncrypted:
-		return "encrypted"
-	case TLSAuthenticated:
-		return "authenticated"
-	}
-	return "???"
-}
-
-func (l MXLevel) String() string {
-	switch l {
-	case MXNone:
-		return "none"
-	case MX_MTASTS:
-		return "mtasts"
-	case MX_DNSSEC:
-		return "dnssec"
-	}
-	return "???"
-}
-
 var smtpPort = "25"
 
 func moduleError(err error) error {
@@ -94,7 +48,7 @@ type Target struct {
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	policies          []Policy
+	policies          []module.MXAuthPolicy
 	limits            *limits.Group
 	allowSecOverride  bool
 	relaxedREQUIRETLS bool
@@ -192,10 +146,6 @@ func (rt *Target) Init(cfg *config.Map) error {
 }
 
 func (rt *Target) Close() error {
-	for _, p := range rt.policies {
-		p.Close()
-	}
-
 	rt.pool.Close()
 
 	return nil
@@ -218,11 +168,11 @@ type remoteDelivery struct {
 	recipients  []string
 	connections map[string]*mxConn
 
-	policies []DeliveryPolicy
+	policies []module.DeliveryMXAuthPolicy
 }
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	policies := make([]DeliveryPolicy, 0, len(rt.policies))
+	policies := make([]module.DeliveryMXAuthPolicy, 0, len(rt.policies))
 	if !(msgMeta.TLSRequireOverride && rt.allowSecOverride) {
 		for _, p := range rt.policies {
 			policies = append(policies, p.Start(msgMeta))

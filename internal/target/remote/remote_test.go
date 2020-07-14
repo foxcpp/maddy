@@ -6,7 +6,6 @@ import (
 	"flag"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -31,7 +30,7 @@ import (
 // any useful data that can lead to outgoing connections being made.
 
 func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.ExtResolver,
-	extraPolicies []Policy) *Target {
+	extraPolicies []module.MXAuthPolicy) *Target {
 	resolver := &mockdns.Resolver{Zones: zones}
 
 	tgt := Target{
@@ -56,7 +55,12 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 }
 
 func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(context.Context, string) (*mtasts.Policy, error)) *mtastsPolicy {
-	p, err := NewMTASTSPolicy(&mockdns.Resolver{Zones: zones}, false, config.NewMap(nil, config.Node{
+	m, err := NewMTASTSPolicy("mx_auth.mtasts", "test", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := m.(*mtastsPolicy)
+	err = p.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "cache",
@@ -67,6 +71,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	p.mtastsGet = mtastsGet
 	p.log = testutils.Logger(t, "remote/mtasts")
 	p.StartUpdater()
@@ -75,7 +80,13 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 }
 
 func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
-	p, err := NewSTSPreloadPolicy(false, http.DefaultClient, download, config.NewMap(nil, config.Node{
+	m, err := NewSTSPreload("mx_auth.mtasts", "test", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := m.(*stsPreloadPolicy)
+	p.listDownload = download
+	err = p.Init(config.NewMap(nil, config.Node{
 		Children: []config.Node{
 			{
 				Name: "source",
@@ -86,6 +97,7 @@ func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	p.log = testutils.Logger(t, "remote/preload")
 	p.StartUpdater()
 
@@ -93,7 +105,18 @@ func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
 }
 
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
-	p := NewDANEPolicy(false)
+	m, err := NewDANEPolicy("mx_auth.dane", "test", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := m.(*danePolicy)
+	err = p.Init(config.NewMap(nil, config.Node{
+		Children: nil,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	p.extResolver = extR
 	p.log = testutils.Logger(t, "remote/dane")
 	return p
@@ -850,8 +873,8 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
-		&localPolicy{minTLSLevel: TLSEncrypted},
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
+		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	defer tgt.Close()
 
@@ -874,8 +897,8 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 		},
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
-		&localPolicy{minTLSLevel: TLSEncrypted},
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
+		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -903,8 +926,8 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 
-	tgt := testTarget(t, zones, nil, []Policy{
-		&localPolicy{minTLSLevel: TLSEncrypted},
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
+		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -929,8 +952,8 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 	}
 
 	// tlsConfig is not configured to trust server cert.
-	tgt := testTarget(t, zones, nil, []Policy{
-		&localPolicy{minTLSLevel: TLSEncrypted},
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
+		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	defer tgt.Close()
 

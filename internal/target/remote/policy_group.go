@@ -2,6 +2,7 @@ package remote
 
 import (
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/module"
 )
 
@@ -15,9 +16,9 @@ import (
 // implement any standard module interfaces besides module.Module and is
 // specific to the remote target.
 type PolicyGroup struct {
-	L        []Policy
+	L        []module.MXAuthPolicy
 	instName string
-	pols     map[string]Policy
+	pols     map[string]module.MXAuthPolicy
 }
 
 func (pg *PolicyGroup) Init(cfg *config.Map) error {
@@ -38,7 +39,8 @@ func (pg *PolicyGroup) Init(cfg *config.Map) error {
 			return config.NodeErr(block, "duplicate policy block: %v", block.Name)
 		}
 
-		policy, err := policyFromNode(debugLog, cfg, block)
+		var policy module.MXAuthPolicy
+		err := modconfig.ModuleFromNode("mx_auth", append([]string{block.Name}, block.Args...), block, cfg.Globals, &policy)
 		if err != nil {
 			return err
 		}
@@ -79,7 +81,7 @@ func init() {
 	module.Register("mx_auth", func(_, instName string, _, _ []string) (module.Module, error) {
 		return &PolicyGroup{
 			instName: instName,
-			pols:     map[string]Policy{},
+			pols:     map[string]module.MXAuthPolicy{},
 		}, nil
 	})
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 	miekgdns "github.com/miekg/dns"
 )
@@ -30,7 +31,7 @@ func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdn
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	tgt := testTarget(t, zones, extResolver, []Policy{
+	tgt := testTarget(t, zones, extResolver, []module.MXAuthPolicy{
 		testDANEPolicy(t, extResolver),
 	})
 	return dnsSrv, tgt

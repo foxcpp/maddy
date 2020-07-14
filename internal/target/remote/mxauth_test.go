@@ -44,7 +44,7 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
@@ -80,7 +80,7 @@ func TestRemoteDelivery_AuthMX_STSPreload(t *testing.T) {
 			},
 		}, nil
 	}
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPreload(t, download),
 	})
 	tgt.tlsConfig = clientCfg
@@ -116,9 +116,9 @@ func TestRemoteDelivery_AuthMX_STSPreload_Fail(t *testing.T) {
 			},
 		}, nil
 	}
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPreload(t, download),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -159,9 +159,9 @@ func TestRemoteDelivery_AuthMX_STSPreload_NoTLS(t *testing.T) {
 			},
 		}, nil
 	}
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPreload(t, download),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	defer tgt.Close()
 
@@ -202,9 +202,9 @@ func TestRemoteDelivery_AuthMX_STSPreload_RequirePKIX(t *testing.T) {
 			},
 		}, nil
 	}
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPreload(t, download),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	defer tgt.Close()
 
@@ -255,10 +255,10 @@ func TestRemoteDelivery_AuthMX_STSPreload_MTASTS(t *testing.T) {
 			},
 		}, nil
 	}
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 		testSTSPreload(t, download),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -301,9 +301,9 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -341,9 +341,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
@@ -383,9 +383,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	defer tgt.Close()
 
@@ -424,9 +424,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	defer tgt.Close()
 
@@ -474,9 +474,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		return nil, mtasts.ErrNoPolicy
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
-		&localPolicy{minMXLevel: MX_MTASTS},
+		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	defer tgt.Close()
 
@@ -558,8 +558,8 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	extResolver.Cfg.Servers = []string{addr.IP.String()}
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
-	tgt := testTarget(t, zones, extResolver, []Policy{
-		&localPolicy{minMXLevel: MX_DNSSEC},
+	tgt := testTarget(t, zones, extResolver, []module.MXAuthPolicy{
+		&localPolicy{minMXLevel: module.MX_DNSSEC},
 	})
 	defer tgt.Close()
 
@@ -599,7 +599,7 @@ func TestRemoteDelivery_REQUIRETLS(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
@@ -640,7 +640,7 @@ func TestRemoteDelivery_REQUIRETLS_Fail(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
@@ -685,7 +685,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.relaxedREQUIRETLS = true
@@ -722,7 +722,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoMXAuth(t *testing.T) {
 		return nil, mtasts.ErrNoPolicy
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.relaxedREQUIRETLS = true
@@ -768,7 +768,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoTLS(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.relaxedREQUIRETLS = true
@@ -814,7 +814,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_TLSFail(t *testing.T) {
 		}, nil
 	}
 
-	tgt := testTarget(t, zones, nil, []Policy{
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.relaxedREQUIRETLS = true

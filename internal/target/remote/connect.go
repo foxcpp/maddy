@@ -10,6 +10,7 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 )
 
@@ -29,8 +30,8 @@ type mxConn struct {
 	transactions int
 
 	// MX/TLS security level established for this connection.
-	mxLevel  MXLevel
-	tlsLevel TLSLevel
+	mxLevel  module.MXLevel
+	tlsLevel module.TLSLevel
 }
 
 func (c *mxConn) Usable() bool {
@@ -68,8 +69,8 @@ func isVerifyError(err error) bool {
 // Return values:
 // - tlsLevel    TLS security level that was estabilished.
 // - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
-func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel TLSLevel, tlsErr error, err error) {
-	tlsLevel = TLSAuthenticated
+func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr error, err error) {
+	tlsLevel = module.TLSAuthenticated
 	if rd.rt.tlsConfig != nil {
 		tlsCfg = rd.rt.tlsConfig.Clone()
 		tlsCfg.ServerName = host
@@ -85,7 +86,7 @@ retry:
 		Port: smtpPort,
 	}, false, nil)
 	if err != nil {
-		return TLSNone, nil, err
+		return module.TLSNone, nil, err
 	}
 
 	starttlsOk, _ := conn.Client().Extension("STARTTLS")
@@ -100,10 +101,10 @@ retry:
 			// Check tlsLevel is to avoid looping forever if the same verify
 			// error happens with InsecureSkipVerify too (e.g. certificate is
 			// *too* broken).
-			if isVerifyError(err) && tlsLevel == TLSAuthenticated {
+			if isVerifyError(err) && tlsLevel == module.TLSAuthenticated {
 				rd.Log.Error("TLS verify error, trying without authentication", err, "remote_server", host, "domain", conn.domain)
 				tlsCfg.InsecureSkipVerify = true
-				tlsLevel = TLSEncrypted
+				tlsLevel = module.TLSEncrypted
 
 				// TODO: Check go-smtp code to make TLS verification errors
 				// non-sticky so we can properly send QUIT in this case.
@@ -114,20 +115,20 @@ retry:
 
 			rd.Log.Error("TLS error, trying plaintext", err, "remote_server", host, "domain", conn.domain)
 			tlsCfg = nil
-			tlsLevel = TLSNone
+			tlsLevel = module.TLSNone
 			conn.DirectClose()
 
 			goto retry
 		}
 	} else {
-		tlsLevel = TLSNone
+		tlsLevel = module.TLSNone
 	}
 
 	return tlsLevel, tlsErr, nil
 }
 
 func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *net.MX) error {
-	mxLevel := MXNone
+	mxLevel := module.MXNone
 
 	connCtx, cancel := context.WithCancel(ctx)
 	// Cancel async policy lookups if rd.connect fails.
@@ -202,7 +203,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 
 	if rd.msgMeta.SMTPOpts.RequireTLS {
-		if conn.tlsLevel < TLSAuthenticated {
+		if conn.tlsLevel < module.TLSAuthenticated {
 			conn.Close()
 			return nil, &exterrors.SMTPError{
 				Code:         550,
@@ -213,7 +214,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 				},
 			}
 		}
-		if conn.mxLevel < MX_MTASTS {
+		if conn.mxLevel < module.MX_MTASTS {
 			conn.Close()
 			return nil, &exterrors.SMTPError{
 				Code:         550,
