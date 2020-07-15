@@ -119,8 +119,8 @@ Domain that is used in From field for auto-generated messages (such as Delivery
 Status Notifications).
 
 *Syntax*: ++
-    tls _cert_file_ _pkey_file_ ++
-    tls self_signed ++
+    tls file _cert_file_ _pkey_file_ ++
+    tls _module reference_ ++
     tls off ++
 *Default*: not specified
 
@@ -129,11 +129,8 @@ Default TLS certificate to use for all endpoints.
 Must be present in either all endpoint modules configuration blocks or as
 global directive.
 
-Use of 'self_signed' generates temporary self-signed certificate, this useful
-for testing but should be used only for it.
-
 You can also specify other configuration options such as cipher suites and TLS
-version. See TLS server configuration for details. maddy uses reasonable
+version. See maddy-tls(5) for details. maddy uses reasonable
 cipher suites and TLS versions by default so you generally don't have to worry
 about it.
 

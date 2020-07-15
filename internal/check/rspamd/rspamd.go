@@ -14,6 +14,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
@@ -74,7 +75,7 @@ func (c *Check) Init(cfg *config.Map) error {
 
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return tls.Config{}, nil
-	}, config.TLSClientBlock, &tlsConfig)
+	}, tls2.TLSClientBlock, &tlsConfig)
 	cfg.String("api_path", false, false, c.apiPath, &c.apiPath)
 	cfg.String("settings_id", false, false, "", &c.settingsID)
 	cfg.String("tag", false, false, "maddy", &c.tag)

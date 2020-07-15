@@ -1,8 +1,9 @@
-package config
+package tls
 
 import (
 	"crypto/tls"
 
+	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
 )
 
@@ -51,26 +52,26 @@ var strCurvesMap = map[string]tls.CurveID{
 // minimum and maximum supported TLS versions.
 //
 // It returns [2]uint16 value for use in corresponding fields from tls.Config.
-func TLSVersionsDirective(m *Map, node Node) (interface{}, error) {
+func TLSVersionsDirective(m *config.Map, node config.Node) (interface{}, error) {
 	switch len(node.Args) {
 	case 1:
 		value, ok := strVersionsMap[node.Args[0]]
 		if !ok {
-			return nil, NodeErr(node, "invalid TLS version value: %s", node.Args[0])
+			return nil, config.NodeErr(node, "invalid TLS version value: %s", node.Args[0])
 		}
 		return [2]uint16{value, value}, nil
 	case 2:
 		minValue, ok := strVersionsMap[node.Args[0]]
 		if !ok {
-			return nil, NodeErr(node, "invalid TLS version value: %s", node.Args[0])
+			return nil, config.NodeErr(node, "invalid TLS version value: %s", node.Args[0])
 		}
 		maxValue, ok := strVersionsMap[node.Args[1]]
 		if !ok {
-			return nil, NodeErr(node, "invalid TLS version value: %s", node.Args[1])
+			return nil, config.NodeErr(node, "invalid TLS version value: %s", node.Args[1])
 		}
 		return [2]uint16{minValue, maxValue}, nil
 	default:
-		return nil, NodeErr(node, "expected 1 or 2 arguments")
+		return nil, config.NodeErr(node, "expected 1 or 2 arguments")
 	}
 }
 
@@ -78,16 +79,16 @@ func TLSVersionsDirective(m *Map, node Node) (interface{}, error) {
 // list of ciphers to offer to clients (or to use for outgoing connections).
 //
 // It returns list of []uint16 with corresponding cipher IDs.
-func TLSCiphersDirective(m *Map, node Node) (interface{}, error) {
+func TLSCiphersDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
-		return nil, NodeErr(node, "expected at least 1 argument, got 0")
+		return nil, config.NodeErr(node, "expected at least 1 argument, got 0")
 	}
 
 	res := make([]uint16, 0, len(node.Args))
 	for _, arg := range node.Args {
 		cipherId, ok := strCiphersMap[arg]
 		if !ok {
-			return nil, NodeErr(node, "unknown cipher: %s", arg)
+			return nil, config.NodeErr(node, "unknown cipher: %s", arg)
 		}
 		res = append(res, cipherId)
 	}
@@ -99,16 +100,16 @@ func TLSCiphersDirective(m *Map, node Node) (interface{}, error) {
 // elliptic curves to use during TLS key exchange.
 //
 // It returns []tls.CurveID.
-func TLSCurvesDirective(m *Map, node Node) (interface{}, error) {
+func TLSCurvesDirective(m *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
-		return nil, NodeErr(node, "expected at least 1 argument, got 0")
+		return nil, config.NodeErr(node, "expected at least 1 argument, got 0")
 	}
 
 	res := make([]tls.CurveID, 0, len(node.Args))
 	for _, arg := range node.Args {
 		curveId, ok := strCurvesMap[arg]
 		if !ok {
-			return nil, NodeErr(node, "unknown curve: %s", arg)
+			return nil, config.NodeErr(node, "unknown curve: %s", arg)
 		}
 		res = append(res, curveId)
 	}

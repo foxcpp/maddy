@@ -20,6 +20,7 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
@@ -82,7 +83,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	}, saslAuthDirective, &u.saslFactory)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return tls.Config{}, nil
-	}, config.TLSClientBlock, &u.tlsConfig)
+	}, tls2.TLSClientBlock, &u.tlsConfig)
 
 	if _, err := cfg.Process(); err != nil {
 		return err

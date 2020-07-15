@@ -24,6 +24,7 @@ import (
 	"github.com/foxcpp/go-imap-sql/children"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -68,7 +69,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
-	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.tlsConfig)
+	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)

@@ -20,6 +20,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
@@ -86,7 +87,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
-	}, config.TLSClientBlock, &rt.tlsConfig)
+	}, tls2.TLSClientBlock, &rt.tlsConfig)
 	cfg.Custom("mx_auth", false, false, func() (interface{}, error) {
 		// Default is "no policies" to follow the principles of explicit
 		// configuration (if it is not requested - it is not done).

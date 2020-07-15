@@ -19,6 +19,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/future"
@@ -224,7 +225,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		}
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
 	}, bufferModeDirective, &endp.buffer)
-	cfg.Custom("tls", true, endp.name != "lmtp", nil, config.TLSDirective, &endp.serv.TLSConfig)
+	cfg.Custom("tls", true, endp.name != "lmtp", nil, tls2.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)

@@ -1,4 +1,4 @@
-package config
+package tls
 
 import (
 	"crypto/tls"
@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
 )
 
-func TLSClientBlock(m *Map, node Node) (interface{}, error) {
+func TLSClientBlock(m *config.Map, node config.Node) (interface{}, error) {
 	cfg := tls.Config{}
 
-	childM := NewMap(nil, node)
+	childM := config.NewMap(nil, node)
 	var (
 		tlsVersions       [2]uint16
 		rootCAPaths       []string
