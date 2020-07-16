@@ -12,7 +12,6 @@ Composable all-in-one mail server.
   - [DMARC][dmarc] policy enforcement
   - [MTA-STS][mtasts] policy enforcement
   - [DANE][dane] support
-  - Built-in [STARTTLS Everywhere][sts-preload] rules support
 - Simple to deploy
   - Two steps (excluding messing with DNS) to get your own
     _secure_ mail server running
@@ -63,7 +62,6 @@ The code is under MIT license. See [LICENSE](LICENSE) for more information.
 [dmarc]: https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/
 [mtasts]: https://www.hardenize.com/blog/mta-sts
 [dane]: https://halon.io/blog/what-is-dane/
-[sts-preload]: https://starttls-everywhere.org/
 [subaddr]: https://en.wikipedia.org/wiki/Email_address#Sub-addressing
 [dnsbl]: https://en.wikipedia.org/wiki/DNSBL
 [backscatter]: https://en.wikipedia.org/wiki/Backscatter_(e-mail)
