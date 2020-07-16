@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
+options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,tags:,prefix:,gitversion:,version:,source:,sudo -- "$@")
 eval set -- "$options"
 print_help() {
     cat >&2 <<EOF
@@ -26,6 +26,7 @@ Options:
                                (default: /run/maddy, \$RUNTIMEDIR)
     --fail2bandir <path>      directory to install fail2ban configuration to
                                (default: /etc/fail2ban, \$FAIL2BANDIR)
+    --tags <string>           Go build tags to use
     --gitversion <revision>   git commit or tag to checkout if not building inside
                                existing tree (default: master, \$GITVERSION)
     --version <revision>      bypass Git tag version detection and use specified string
@@ -85,7 +86,9 @@ read_config() {
     # if it is not defined, the empty value is fine.
     export DESTDIR=$DESTDIR
 
-    # Most variables are exported so they are accessible when we cann "$0" with
+    export TAGS=""
+
+    # Most variables are exported so they are accessible when we call "$0" with
     # sudo.
 
     if [ -z "$GITVERSION" ]; then
@@ -158,6 +161,10 @@ read_config() {
             --fail2bandir)
                 shift
                 export FAIL2BANDIR="$1"
+                ;;
+            --tags)
+                shift
+                export TAGS="$1"
                 ;;
             --gitversion)
                 shift
@@ -347,7 +354,7 @@ compile_binaries() {
     go get -d ./...
 
     echo '--- Building main executable...' >&2
-    go build -trimpath -buildmode=pie \
+    go build -trimpath -buildmode=pie -tags "$TAGS" \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
@@ -357,7 +364,7 @@ compile_binaries() {
         -o "$PKGDIR/$PREFIX/bin/maddy" ./cmd/maddy
 
     echo '--- Building management utility executable...' >&2
-    go build -trimpath -buildmode=pie \
+    go build -trimpath -buildmode=pie -tags "$TAGS" \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
