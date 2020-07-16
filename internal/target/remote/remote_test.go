@@ -79,31 +79,6 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 	return p
 }
 
-func testSTSPreload(t *testing.T, download FuncPreloadList) *stsPreloadPolicy {
-	m, err := NewSTSPreload("mx_auth.mtasts", "test", nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := m.(*stsPreloadPolicy)
-	p.listDownload = download
-	err = p.Init(config.NewMap(nil, config.Node{
-		Children: []config.Node{
-			{
-				Name: "source",
-				Args: []string{"https://127.0.0.1:1111"},
-			},
-		},
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	p.log = testutils.Logger(t, "remote/preload")
-	p.StartUpdater()
-
-	return p
-}
-
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
 	m, err := NewDANEPolicy("mx_auth.dane", "test", nil, nil)
 	if err != nil {
