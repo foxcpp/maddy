@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 
@@ -133,14 +134,19 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	h.Add("Status", fmt.Sprintf("%d.%d.%d", info.Status[0], info.Status[1], info.Status[2]))
 
 	if smtpErr, ok := info.DiagnosticCode.(*smtp.SMTPError); ok {
+		// Error message may contain newlines if it is received from another SMTP server.
+		// But we cannot directly insert CR/LF into Disagnostic-Code so rewrite it.
 		h.Add("Diagnostic-Code", fmt.Sprintf("smtp; %d %d.%d.%d %s",
 			smtpErr.Code, smtpErr.EnhancedCode[0], smtpErr.EnhancedCode[1], smtpErr.EnhancedCode[2],
-			smtpErr.Message))
+			strings.ReplaceAll(strings.ReplaceAll(smtpErr.Message, "\n", " "), "\r", " ")))
 	} else if utf8 {
 		// It might contain Unicode, so don't include it if we are not allowed to.
 		// ... I didn't bother implementing mangling logic to remove Unicode
 		// characters.
-		h.Add("Diagnostic-Code", "X-Maddy; "+info.DiagnosticCode.Error())
+		errorDesc := info.DiagnosticCode.Error()
+		errorDesc = strings.ReplaceAll(strings.ReplaceAll(errorDesc, "\n", " "), "\r", " ")
+
+		h.Add("Diagnostic-Code", "X-Maddy; "+errorDesc)
 	}
 
 	if info.RemoteMTA != "" {
