@@ -21,7 +21,7 @@ import (
 
 type TLSConfig struct {
 	loader  module.TLSLoader
-	baseCfg tls.Config
+	baseCfg *tls.Config
 }
 
 func (cfg *TLSConfig) Get() (*tls.Config, error) {
@@ -50,8 +50,7 @@ func TLSDirective(m *config.Map, node config.Node) (interface{}, error) {
 		return nil, err
 	}
 
-	// Return nil so callers can check whether TLS is enabled easier.
-	if cfg.loader == nil {
+	if cfg == nil {
 		return nil, nil
 	}
 
@@ -119,7 +118,7 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 
 	return &TLSConfig{
 		loader:  loader,
-		baseCfg: baseCfg,
+		baseCfg: &baseCfg,
 	}, nil
 }
 
