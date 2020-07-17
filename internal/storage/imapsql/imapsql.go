@@ -26,6 +26,7 @@ import (
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
@@ -53,6 +54,8 @@ type Storage struct {
 	updates     <-chan backend.Update
 	updPipe     updatepipe.P
 	updPushStop chan struct{}
+
+	filters module.IMAPFilter
 }
 
 type delivery struct {
@@ -121,6 +124,16 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	defer trace.StartRegion(ctx, "sql/Body").End()
+
+	if !d.msgMeta.Quarantine {
+		for rcpt := range d.addedRcpts {
+			folder, flags, err := d.store.filters.IMAPFilter(rcpt, d.msgMeta, header, body)
+			if err != nil {
+				return err
+			}
+			d.d.UserMailbox(rcpt, folder, flags)
+		}
+	}
 
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
@@ -232,6 +245,13 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Int("sqlite3_busy_timeout", false, false, 5000, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
+	cfg.Custom("imap_filter", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, func(m *config.Map, node config.Node) (interface{}, error) {
+		var filter module.IMAPFilter
+		err := modconfig.GroupFromNode("imap_filters", node.Args, node, m.Globals, &filter)
+		return filter, err
+	}, &store.filters)
 
 	if _, err := cfg.Process(); err != nil {
 		return err

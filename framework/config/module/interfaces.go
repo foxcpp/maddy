@@ -43,6 +43,14 @@ func MsgModifier(globals map[string]interface{}, args []string, block config.Nod
 	return check, nil
 }
 
+func IMAPFilter(globals map[string]interface{}, args []string, block config.Node) (module.IMAPFilter, error) {
+	var filter module.IMAPFilter
+	if err := ModuleFromNode("imap.filter", args, block, globals, &filter); err != nil {
+		return nil, err
+	}
+	return filter, nil
+}
+
 func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 	var backend module.Storage
 	if err := ModuleFromNode("storage", node.Args, node, m.Globals, &backend); err != nil {
