@@ -187,10 +187,20 @@ The regular expression syntax is the subset of PCRE. See
 https://golang.org/pkg/regexp/syntax/ for details.
 
 ```
-table.regexp <regexp> <replacement> {
+table.regexp <regexp> [replacement] {
 	full_match yes
 	case_insensitive yes
 	expand_placeholders yes
+}
+```
+
+Note that [replacement] is optional. If it is not included - table.regexp
+will return the original string, therefore acting as a regexp match check.
+This can be useful in combination in destination_in (*maddy-smtp*(5)) for
+advanced matching:
+```
+destination_in regexp ".*-bounce+.*@example.com" {
+	...
 }
 ```
 

@@ -40,11 +40,13 @@ func (r *Regexp) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if len(r.inlineArgs) < 2 {
-		return fmt.Errorf("%s: two arguments required", r.modName)
+	if len(r.inlineArgs) > 2 {
+		return fmt.Errorf("%s: at most two arguments accepted", r.modName)
 	}
 	regex := r.inlineArgs[0]
-	r.replacement = r.inlineArgs[1]
+	if len(r.inlineArgs) == 2 {
+		r.replacement = r.inlineArgs[1]
+	}
 
 	if fullMatch {
 		if !strings.HasPrefix(regex, "^") {
