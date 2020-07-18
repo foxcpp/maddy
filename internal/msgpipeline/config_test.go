@@ -119,21 +119,6 @@ func TestMsgPipelineCfg(t *testing.T) {
 			},
 		},
 		{
-			name: "duplicate source",
-			str: `
-				source example.org {
-					reject 410
-				}
-				source eXample.org {
-					reject 410
-				}
-				default_source {
-					reject 420
-				}
-				`,
-			fail: true,
-		},
-		{
 			name: "missing default source handler",
 			str: `
 				source example.org {
@@ -153,20 +138,6 @@ func TestMsgPipelineCfg(t *testing.T) {
 			name: "invalid domain",
 			str: `
 				destination .. {
-					reject 410
-				}
-				default_destination {
-					reject 500
-				}`,
-			fail: true,
-		},
-		{
-			name: "duplicate destination",
-			str: `
-				destination xxx.xxx{
-					reject 410
-				}
-				destination xXx.xxx {
 					reject 410
 				}
 				default_destination {

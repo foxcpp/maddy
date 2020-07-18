@@ -296,8 +296,8 @@ Then, for each recipient:
   specified target module. Only recipients that are handled
   by used block are visible to the target.
 
-Each recipient is handled only by a single 'destination' block, duplicated
-match rules are not allowed.
+Each recipient is handled only by a single 'destination' block, in case of
+overlapping 'destination' - first one takes priority.
 ```
 destination example.org {
     deliver_to targetA
@@ -492,8 +492,8 @@ See 'destination_in' documentation for note about table configuration.
 Handle messages with MAIL FROM value (sender address) matching any of the rules
 in accordance with the specified configuration block.
 
-"Rule" is either a domain or a complete address. Duplicate rules are not
-allowed. Matching is case-insensitive.
+"Rule" is either a domain or a complete address. In case of overlapping
+'rules', first one takes priority. Matching is case-insensitive.
 
 Example:
 ```

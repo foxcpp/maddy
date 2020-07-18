@@ -88,7 +88,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				}
 
 				if _, ok := cfg.perSource[rule]; ok {
-					return msgpipelineCfg{}, config.NodeErr(node, "duplicate source routing rule: %v", rule)
+					continue
 				}
 
 				cfg.perSource[rule] = srcBlock
@@ -199,7 +199,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 				}
 
 				if _, ok := src.perRcpt[rule]; ok {
-					return sourceBlock{}, config.NodeErr(node, "duplicate destination match rule: %v", rule)
+					continue
 				}
 
 				src.perRcpt[rule] = rcptBlock
