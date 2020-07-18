@@ -20,6 +20,7 @@ nav:
     - third-party/dovecot.md
     - third-party/smtp-servers.md
     - third-party/rspamd.md
+    - third-party/mailman3.md
   - seclevels.md
   - faq.md
   - unicode.md
