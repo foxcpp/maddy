@@ -16,8 +16,9 @@ nav:
     - tutorials/alias-to-remote.md
     - tutorials/multiple-domains.md
     - tutorials/upgrading.md
-    - tutorials/smtp-only.md
-    - tutorials/imap-only.md
+  - Integration with software:
+    - third-party/dovecot.md
+    - third-party/smtp-servers.md
   - seclevels.md
   - faq.md
   - unicode.md

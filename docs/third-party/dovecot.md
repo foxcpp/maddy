@@ -1,14 +1,9 @@
-# Using maddy with an external IMAP server
+# Dovecot
 
 Builtin maddy IMAP server may not match your requirements in terms of
 performance, reliabilty or anything. For this reason it is possible to
 integrate it with any external IMAP server that implements necessary
-protocols.
-
-## Dovecot
-
-It is possible to replace builtin IMAP server with Dovecot.
-Here are necessary bits to change in configuration.
+protocols. Here is how to do it for Dovecot.
 
 1. Get rid of `imap` endpoint and existing `local_authdb` and `local_mailboxes`
    blocks.

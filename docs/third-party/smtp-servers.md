@@ -1,4 +1,4 @@
-# Using maddy with an external SMTP server
+# External SMTP server
 
 It is possible to use maddy as an IMAP server only
 and have it interface with external SMTP server using
