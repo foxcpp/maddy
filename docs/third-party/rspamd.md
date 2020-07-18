@@ -4,9 +4,10 @@ maddy has direct support for rspamd HTTP protocol. There is no need to use
 milter proxy.
 
 If rspamd is running locally, it is enough to just add `rspamd` check
-with default configuration into appropriate check block:
+with default configuration into appropriate check block (probably in
+local_routing):
 ```
-checks inbound_checks {
+checks {
     ...
     rspamd
 }
@@ -20,7 +21,7 @@ If rspamd is not running on a local machine, change api_path to point
 to the "normal" worker socket:
 
 ```
-checks inbound_checks {
+check {
     ...
     rspamd {
         api_path http://spam-check.example.org:11333

@@ -1,12 +1,10 @@
 # External SMTP server
 
-It is possible to use maddy as an IMAP server only
-and have it interface with external SMTP server using
-standard protocols.
+It is possible to use maddy as an IMAP server only and have it interface with
+external SMTP server using standard protocols.
 
-Here is the minimal configuration that creates
-a local IMAP index, credentials database and IMAP
-endpoint:
+Here is the minimal configuration that creates a local IMAP index, credentials
+database and IMAP endpoint:
 ```
 # Credentials DB.
 pass_table local_authdb {

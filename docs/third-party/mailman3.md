@@ -19,67 +19,44 @@ lmtp_port: 8024
 ```
 
 After that, you will need to configure maddy to send messages to Mailman.
-This need to be done for SMTP, Submission and bounces.
 
 The preferrable way of doing so is destination_in and table.regexp:
 ```
-(mailing_lists) {
+msgpipeline local_routing {
     destination_in regexp "first-mailinglist(-(bounces\+.*|confirm\+.*|join|leave|owner|request|subscribe|unsubscribe))?@lists.example.org" {
         deliver_to lmtp tcp://127.0.0.1:8024
     }
     destination_in regexp "second-mailinglist(-(bounces\+.*|confirm\+.*|join|leave|owner|request|subscribe|unsubscribe))?@lists.example.org" {
         deliver_to lmtp tcp://127.0.0.1:8024
     }
+
+    ...
 }
 ```
-or
+
+A more simple option is also meaningful (provided you have a separate domain
+for lists):
 ```
-(mailing_list) {
-    destination_in regexp "first-mailinglist(-.*)?@lists.example.org" {
+msgpipeline local_routing {
+    destination lists.example.org {
         deliver_to lmtp tcp://127.0.0.1:8024
     }
+
+    ...
 }
 ```
-But second variant will lead to inefficient handling of non-existing subaddresses.
+But this variant will lead to inefficient handling of non-existing subaddresses.
 See [Mailman Core issue 14](https://gitlab.com/mailman/mailman/-/issues/14) for
 details. (5 year old issue, sigh...)
-
-After that, use mailing_lists 'snippet' in corresponding endpoint blocks:
-```
-# SMTP...
-    default_source {
-        import mailing_lists
-        destination postmaster $(local_domains) {
-            ...
-        }
-    }
-
-# Submission...
-    source $(local_domains) {
-        import mailing_lists
-        destination $(local_domains) {
-            ...
-        }
-    }
-
-# Queue...
-    bounce {
-        import mailing_lists
-        destination $(local_domains) {
-            ...
-        }
-        default_destination {
-            ...
-        }
-    }
-```
 
 ## Sending messages
 
 It is recommended to configure Mailman to send messages using Submission port
 with authentication and TLS as maddy does not allow relay on port 25 for local
-users as some MTAs do:
+clients as some MTAs do:
 ```
+[mta]
+# ... incoming configuration here ...
 outgoing: mailman.mta.deliver.deliver
 smtp_host: mx.example.org
 smtp_port: 465
@@ -89,15 +66,13 @@ smtp_secure_mode: smtps
 ```
 
 If you do not want to use TLS and/or authentication you can create a separate
-endpoint and just point Mailman to it.  E.g.
+endpoint and just point Mailman to it. E.g.
 ```
 smtp tcp://127.0.0.1:2525 {
-    destination $(local_domains) {
-        modify &local_modifiers
-        deliver_to &local_mailboxes
+    destination postmaster $(local_domains) {
+        deliver_to &local_routing
     }
     default_destination {
-        modify &outbound_modifiers
         deliver_to &remote_queue
     }
 }

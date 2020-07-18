@@ -76,8 +76,8 @@ Depending on how Submission service is implemented you may also need to route
 messages for local domains back to it via LMTP:
 ```
 smtp tcp://127.0.0.1:587 {
-    destination $(local_domains) {
-        deliver_to &local_mailboxes
+    destination postmaster $(local_domains) {
+        deliver_to &local_routing
     }
     default_destination {
         deliver_to &remote_queue
