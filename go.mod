@@ -6,7 +6,7 @@ require (
 	blitiri.com.ar/go/spf v1.1.0
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/emersion/go-imap v1.0.4
+	github.com/emersion/go-imap v1.0.6-0.20200708083111-011063d6c9df
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
 	github.com/emersion/go-imap-compress v0.0.0-20170105185004-f036eda44681
 	github.com/emersion/go-imap-idle v0.0.0-20190519112320-2704abd7050e
