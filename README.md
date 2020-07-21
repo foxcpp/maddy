@@ -54,7 +54,8 @@ https://lists.sr.ht/~foxcpp/maddy. You can use it too.
 
 ## License
 
-The code is under MIT license. See [LICENSE](LICENSE) for more information.
+Maddy Mail Server is published under the terms of the GNU Public License
+Version 3. See [COPYING](COPYING) for license text.
 
 
 [dkim]: https://www.validity.com/blog/how-to-explain-dkim-in-plain-english/
