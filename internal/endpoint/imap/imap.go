@@ -21,6 +21,7 @@ import (
 	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-sasl"
 	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
+	namespace "github.com/foxcpp/go-imap-namespace"
 	"github.com/foxcpp/go-imap-sql/children"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
@@ -254,6 +255,7 @@ func (endp *Endpoint) enableExtensions() error {
 	endp.serv.Enable(compress.NewExtension())
 	endp.serv.Enable(unselect.NewExtension())
 	endp.serv.Enable(idle.NewExtension())
+	endp.serv.Enable(namespace.NewExtension())
 
 	return nil
 }
