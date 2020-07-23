@@ -1,6 +1,19 @@
-Previously (as of 0.3.2) Maddy Mail Server was distributed under the terms
-of the MIT license. Here is the original copyright and related notices
-as required by the license:
+Changes for Maddy Mail Server made before 2020-07-23 are
+available under MIT license as reproduced below. Additionally, changes before
+2020-07-23 from Max Mazurov <fox.cpp@disroot.org> and agreed contributors[1]
+are available under the terms of GNU Public License Version 3.
+
+All changes made to Maddy Mail Server after and including 2020-07-23 are
+available under the terms of GNU Public License Version 3 *only*.
+
+NOTE: Due to the limited scope of only-MIT-licensed changes, all source code
+files in the development tree were automatically extended with GPL header.
+One should consult VCS history in repository available at
+https://github.com/foxcpp/maddy to determine the scope of MIT license
+application.
+
+[1]: Agreements given by contribtors can be viewed at
+https://github.com/foxcpp/maddy/issues/253
 
 ---------------------------
 
