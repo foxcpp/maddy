@@ -72,7 +72,7 @@ func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []st
 		t.Errorf("Wrong RCPT TO: %v", msg.To)
 	}
 	if string(msg.Data) != DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
+		t.Errorf("Wrong DATA payload: %v (%v)", string(msg.Data), msg.Data)
 	}
 }
 

@@ -589,7 +589,7 @@ func TestQueueDelivery_AbortNoDangling(t *testing.T) {
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
 		ID:              encodedID,
@@ -764,7 +764,7 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 	IDRaw := sha1.Sum([]byte(t.Name()))
 	encodedID := hex.EncodeToString(IDRaw[:])
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	ctx := module.MsgMetadata{
 		DontTraceSender: true,
 		OriginalFrom:    "test3@example.org",
