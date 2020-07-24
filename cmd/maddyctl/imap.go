@@ -342,7 +342,7 @@ func msgsList(be module.Storage, ctx *cli.Context) error {
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
-		seqset = "*"
+		seqset = "1:*"
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
