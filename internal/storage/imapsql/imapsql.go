@@ -98,7 +98,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 			Code:         501,
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
 			Message:      "User does not exist",
-			TargetName:   "sql",
+			TargetName:   "imapsql",
 			Err:          err,
 		}
 	}
@@ -120,7 +120,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
 				Message:      "User does not exist",
-				TargetName:   "sql",
+				TargetName:   "imapsql",
 				Err:          err,
 			}
 		}
@@ -129,7 +129,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 				Code:         453,
 				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 				Message:      "Storage access serialiation problem, try again later",
-				TargetName:   "sql",
+				TargetName:   "imapsql",
 				Err:          err,
 			}
 		}
@@ -160,7 +160,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 					Code:         453,
 					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 					Message:      "Storage access serialiation problem, try again later",
-					TargetName:   "sql",
+					TargetName:   "imapsql",
 					Err:          err,
 				}
 			}
@@ -176,7 +176,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 			Code:         453,
 			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 			Message:      "Storage access serialiation problem, try again later",
-			TargetName:   "sql",
+			TargetName:   "imapsql",
 			Err:          err,
 		}
 	}
