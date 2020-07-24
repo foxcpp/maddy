@@ -1,4 +1,4 @@
-site_name: maddy documentation
+site_name: maddy
 
 repo_url: https://github.com/foxcpp/maddy
 
@@ -9,7 +9,6 @@ markdown_extensions:
       guess_lang: false
 
 nav:
-  - Maddy Mail Server: README.md
   - Tutorials:
     - tutorials/setting-up.md
     - tutorials/manual-installation.md
