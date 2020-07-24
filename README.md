@@ -1,70 +1,26 @@
-maddy [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?) [![codecov](https://img.shields.io/codecov/c/github/foxcpp/maddy)](https://codecov.io/gh/foxcpp/maddy)
+Maddy Mail Server
 =====================
+> Composable all-in-one mail server.
 
-Composable all-in-one mail server.
+Maddy Mail Server implements all functionality required to run a e-mail
+server. It can send messages via SMTP (works as MTA), accept messages via SMTP
+(works as MX) and store messages while providing access to them via IMAP.
+In addition to that it implements auxiliary protocols that are mandatory
+to keep email reasonably secure (DKIM, SPF, DMARC, DANE, MTA-STS).
 
-## Features
+It replaces Postfix, Dovecot, OpenDKIM, OpenSPF, OpenDMARC and more with one
+daemon with uniform configuration and minimal maintenance cost.
 
-- IMAP4rev1 & SMTP server in one binary
-- Comprehensive & Secure
-  - [DKIM][dkim] signing and verification
-  - [SPF][spf] policy enforcement
-  - [DMARC][dmarc] policy enforcement
-  - [MTA-STS][mtasts] policy enforcement
-  - [DANE][dane] support
-- Simple to deploy
-  - Two steps (excluding messing with DNS) to get your own
-    _secure_ mail server running
-  - Virtual users > system users
-  - Single daemon that is easy to manage
-- Fast
-  - Optimized for concurrency
-  - Single process model allows more efficient implementation
-- Useful
-  - [Subaddressing][subaddr] support
-  - [DNSBL][dnsbl] checking support
-  - Messages compression (LZ4, Zstd)
-  - First-class Unicode support (SMTPUTF8, IDNA2008)
-- Flexible
-  - Intuitive syntax for complex message routing (SMTP)
-  - Same meaningful configuration scheme for all filters
-  - Any builtin functionality can be replaced with
-    third-party implementation if you need it
+**Note:** IMAP storage is "beta". If you are looking for stable and
+feature-packed implementation you may want to use Dovecot instead. maddy still
+can handle message delivery business.
 
-## Installation & configuration
+[![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
+[![License text](https://img.shields.io/github/license/foxcpp/maddy)](https://github.com/foxcpp/maddy/blob/master/LICENSE)
+[![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
 
-Detailed explaination of what you need to do to get it running can be found
-[here][setup-tutorial].
+* [Setup tutorial](https://foxcpp.dev/maddy/tutorials/setting-up/)
+* [Documentation](https://foxcpp.dev/maddy/)
 
-## Documentation
-
-The full documentation is published [here](https://foxcpp.dev/maddy/)
-
-Manual pages with reference documentation will be installed by build.sh if
-scdoc utility is available on the system.
-
-## Community
-
-There is IRC channel on freenode.net named
-[#maddy](https://webchat.freenode.net/#maddy). You can join it if you have
-any questions or just want to talk.
-
-Also there is public mailing list for maddy-related discussions on
-https://lists.sr.ht/~foxcpp/maddy. You can use it too.
-
-## License
-
-Maddy Mail Server is published under the terms of the GNU Public License
-Version 3. See [COPYING](COPYING) for license text.
-
-
-[dkim]: https://www.validity.com/blog/how-to-explain-dkim-in-plain-english/
-[spf]: https://blog.returnpath.com/how-to-explain-spf-in-plain-english/
-[dmarc]: https://blog.returnpath.com/how-to-explain-dmarc-in-plain-english/
-[mtasts]: https://www.hardenize.com/blog/mta-sts
-[dane]: https://halon.io/blog/what-is-dane/
-[subaddr]: https://en.wikipedia.org/wiki/Email_address#Sub-addressing
-[dnsbl]: https://en.wikipedia.org/wiki/DNSBL
-[backscatter]: https://en.wikipedia.org/wiki/Backscatter_(e-mail)
-
-[setup-tutorial]: https://foxcpp.dev/maddy/tutorials/setting-up/
+* [IRC channel](https://webchat.freenode.net/#maddy)
+* [Mailing list](https://lists.sr.ht/~foxcpp/maddy)
