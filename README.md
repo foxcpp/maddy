@@ -29,7 +29,7 @@ Composable all-in-one mail server.
   - Intuitive syntax for complex message routing (SMTP)
   - Same meaningful configuration scheme for all filters
   - Any builtin functionality can be replaced with
-    third-party implementation if it you need it
+    third-party implementation if you need it
 
 ## Installation & configuration
 
