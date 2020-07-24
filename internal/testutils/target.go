@@ -243,10 +243,10 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	return encodedID
 }
 
-const DeliveryData = "A: 1\n" +
-	"B: 2\n" +
-	"\n" +
-	"foobar\n"
+const DeliveryData = "A: 1\r\n" +
+	"B: 2\r\n" +
+	"\r\n" +
+	"foobar\r\n"
 
 func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
 	return DoTestDeliveryErrMeta(t, tgt, from, to, &module.MsgMetadata{})
@@ -259,7 +259,7 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	encodedID := hex.EncodeToString(IDRaw[:])
 	testCtx := context.Background()
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	msgMeta.DontTraceSender = true
 	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
@@ -336,8 +336,8 @@ func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string)
 	if !reflect.DeepEqual(msg.RcptTo, rcpt) {
 		t.Errorf("wrong recipients, want %v, got %v", rcpt, msg.RcptTo)
 	}
-	if string(msg.Body) != "foobar\n" {
-		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.Body))
+	if string(msg.Body) != "foobar\r\n" {
+		t.Errorf("wrong body, want '%s', got '%s' (%v)", "foobar\r\n", string(msg.Body), msg.Body)
 	}
 
 	return msg.MsgMeta.ID
