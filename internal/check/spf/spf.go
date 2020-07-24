@@ -153,6 +153,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "No SPF policy",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -164,6 +165,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "Neutral SPF result is not permitted",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -178,6 +180,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "SPF authentication failed",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -189,6 +192,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "SPF authentication soft-failed",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -200,6 +204,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
 				Message:      "SPF authentication failed with a temporary error",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -211,6 +216,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 23},
 				Message:      "SPF authentication failed with a permanent error",
 				CheckName:    modName,
+				Err:          err,
 			},
 			AuthResult: []authres.Result{spfAuth},
 		})
@@ -222,6 +228,7 @@ func (s *state) spfResult(res spf.Result, err error) module.CheckResult {
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 23},
 			Message:      fmt.Sprintf("Unknown SPF status: %s", res),
 			CheckName:    modName,
+			Err:          err,
 		},
 		AuthResult: []authres.Result{spfAuth},
 	}
