@@ -53,6 +53,7 @@ func TestBasic(tt *testing.T) {
 	conn.ExpectPattern("250-PIPELINING")
 	conn.ExpectPattern("250-8BITMIME")
 	conn.ExpectPattern("250-ENHANCEDSTATUSCODES")
+	conn.ExpectPattern("250-CHUNKING")
 	conn.ExpectPattern("250-SMTPUTF8")
 	conn.ExpectPattern("250 SIZE *")
 	conn.Writeln("QUIT")
