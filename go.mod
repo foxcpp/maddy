@@ -3,7 +3,7 @@ module github.com/foxcpp/maddy
 go 1.14
 
 require (
-	blitiri.com.ar/go/spf v1.1.0
+	blitiri.com.ar/go/spf v1.1.1
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/emersion/go-imap v1.0.6-0.20200708083111-011063d6c9df
