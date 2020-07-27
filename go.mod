@@ -11,6 +11,7 @@ require (
 	github.com/emersion/go-imap-compress v0.0.0-20170105185004-f036eda44681
 	github.com/emersion/go-imap-idle v0.0.0-20200601154248-f05f54664cc4
 	github.com/emersion/go-imap-move v0.0.0-20190710073258-6e5a51a5b342
+	github.com/emersion/go-imap-sortthread v1.1.1-0.20200727121200-18e5fb409fed
 	github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.12.0
@@ -21,7 +22,7 @@ require (
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200722130255-93092adf35f1
-	github.com/foxcpp/go-imap-sql v0.4.1-0.20200719153150-6551cd572c1c
+	github.com/foxcpp/go-imap-sql v0.4.1-0.20200727131639-9d2bcb71fca8
 	github.com/foxcpp/go-mockdns v0.0.0-20200531120619-ae750bbf9d73
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.5.0

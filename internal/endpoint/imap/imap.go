@@ -31,6 +31,7 @@ import (
 	compress "github.com/emersion/go-imap-compress"
 	idle "github.com/emersion/go-imap-idle"
 	move "github.com/emersion/go-imap-move"
+	sortthread "github.com/emersion/go-imap-sortthread"
 	specialuse "github.com/emersion/go-imap-specialuse"
 	unselect "github.com/emersion/go-imap-unselect"
 	imapbackend "github.com/emersion/go-imap/backend"
@@ -267,6 +268,11 @@ func (endp *Endpoint) enableExtensions() error {
 			endp.serv.Enable(specialuse.NewExtension())
 		case "I18NLEVEL=1", "I18NLEVEL=2":
 			endp.serv.Enable(i18nlevel.NewExtension())
+		case "SORT":
+			endp.serv.Enable(sortthread.NewSortExtension())
+		}
+		if strings.HasPrefix(ext, "THREAD") {
+			endp.serv.Enable(sortthread.NewThreadExtension())
 		}
 	}
 
@@ -276,6 +282,15 @@ func (endp *Endpoint) enableExtensions() error {
 	endp.serv.Enable(namespace.NewExtension())
 
 	return nil
+}
+
+func (endp *Endpoint) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
+	be, ok := endp.Store.(sortthread.ThreadBackend)
+	if !ok {
+		return nil
+	}
+
+	return be.SupportedThreadAlgorithms()
 }
 
 func init() {

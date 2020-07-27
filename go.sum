@@ -24,6 +24,7 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/emersion/go-imap v1.0.0-beta.4.0.20190504114255-4d5af3d05147/go.mod h1:mOPegfAgLVXbhRm1bh2JTX08z2Y3HYmKYpbrKDeAzsQ=
+github.com/emersion/go-imap v1.0.0/go.mod h1:MEiDDwwQFcZ+L45Pa68jNGv0qU9kbW+SJzwDpvSfX1s=
 github.com/emersion/go-imap v1.0.3 h1:5eEee8/DTSIPfliiWqwfvjPGkU8bBtvOy/Wx+eeXzO4=
 github.com/emersion/go-imap v1.0.3/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
 github.com/emersion/go-imap v1.0.4 h1:uiCAIHM6Z5Jwkma1zdNDWWXxSCqb+/xHBkHflD7XBro=
@@ -40,6 +41,10 @@ github.com/emersion/go-imap-move v0.0.0-20180601155324-5eb20cb834bf h1:TmRfuPmhr
 github.com/emersion/go-imap-move v0.0.0-20180601155324-5eb20cb834bf/go.mod h1:QuMaZcKFDVI0yCrnAbPLfbwllz1wtOrZH8/vZ5yzp4w=
 github.com/emersion/go-imap-move v0.0.0-20190710073258-6e5a51a5b342 h1:5p1t3e1PomYgLWwEwhwEU5kVBwcyAcVrOpexv8AeZx0=
 github.com/emersion/go-imap-move v0.0.0-20190710073258-6e5a51a5b342/go.mod h1:QuMaZcKFDVI0yCrnAbPLfbwllz1wtOrZH8/vZ5yzp4w=
+github.com/emersion/go-imap-sortthread v1.1.0 h1:uRbmnQkeRny5ihKfLWBPJ/1jJdTZnCdh1zYpOagbubw=
+github.com/emersion/go-imap-sortthread v1.1.0/go.mod h1:opHOzblOHZKQM1JEy+GPk1217giNLa7kleyWTN06qnc=
+github.com/emersion/go-imap-sortthread v1.1.1-0.20200727121200-18e5fb409fed h1:O1GZQnAy76K/DHEp2+S8ZI5hRmkTVNkCLc4Xb0c/RL8=
+github.com/emersion/go-imap-sortthread v1.1.1-0.20200727121200-18e5fb409fed/go.mod h1:opHOzblOHZKQM1JEy+GPk1217giNLa7kleyWTN06qnc=
 github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62 h1:4ZAfwfc8aDlj26kkEap1UDSwwDnJp9Ie8Uj1MSXAkPk=
 github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62/go.mod h1:/nybxhI8kXom8Tw6BrHMl42usALvka6meORflnnYwe4=
 github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26 h1:FiSb8+XBQQSkcX3ubr+1tAtlRJBYaFmRZqOAweZ9Wy8=
@@ -48,6 +53,7 @@ github.com/emersion/go-message v0.9.1 h1:s6HoJ6t+1wHWEs0G/QVR1r5bb6nvx2/b6DuQfkn
 github.com/emersion/go-message v0.9.1/go.mod h1:m3cK90skCWxm5sIMs1sXxly4Tn9Plvcf6eayHZJ1NzM=
 github.com/emersion/go-message v0.10.3 h1:4pajGb3Rq+gHLfRcWysgcwtGRNgLpB8LC6X/vRZ89d0=
 github.com/emersion/go-message v0.10.3/go.mod h1:3h+HsGTCFHmk4ngJ2IV/YPhdlaOcR6hcgqM3yca9v7c=
+github.com/emersion/go-message v0.10.4-0.20190609165112-592ace5bc1ca/go.mod h1:3h+HsGTCFHmk4ngJ2IV/YPhdlaOcR6hcgqM3yca9v7c=
 github.com/emersion/go-message v0.11.1 h1:0C/S4JIXDTSfXB1vpqdimAYyK4+79fgEAMQ0dSL+Kac=
 github.com/emersion/go-message v0.11.1/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-message v0.11.2 h1:oxO9SQ+3wgBAQRdk07eqfkCJ26Tl8ZHF7CcpGVoE00o=
@@ -61,6 +67,8 @@ github.com/emersion/go-msgauth v0.5.0 h1:sYB3vvl+Lrs5zhKXhbp10ChQHxCdK13KLh7fjLN
 github.com/emersion/go-msgauth v0.5.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL/Wt71kdolp6yaD4fLIQz638E6JEt0=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
+github.com/emersion/go-sasl v0.0.0-20190520160400-47d427600317/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
+github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b h1:uhWtEWBHgop1rqEk2klKaxPAkVDCXexai6hSuRQ7Nvs=
 github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 h1:OJyUGMJTzHTd1XQp98QTaHernxMYzRaOasRir9hUlFQ=
@@ -84,12 +92,18 @@ github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtk
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200722130255-93092adf35f1 h1:B4zNQ2r4qC7FLn8J8+LWt09fFW0tXddypBPS0+HI50s=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200722130255-93092adf35f1/go.mod h1:WJYkFIdxyljR/byiqcYMKUF4iFDej4CaIKe2JJrQxu8=
+github.com/foxcpp/go-imap-sortthread v1.1.1-0.20200720160710-8fb7dccfecfc h1:KBHo7sLBqAYplqZc2dgA6vsa9esTFp3yPcwrOcP/V+w=
+github.com/foxcpp/go-imap-sortthread v1.1.1-0.20200720160710-8fb7dccfecfc/go.mod h1:opHOzblOHZKQM1JEy+GPk1217giNLa7kleyWTN06qnc=
+github.com/foxcpp/go-imap-sortthread v1.1.1-0.20200721100531-a34cd4e99342 h1:49wfUZk/6IR03WmTZSPEfqsNBL2Nnz166o/F/qfqNLs=
+github.com/foxcpp/go-imap-sortthread v1.1.1-0.20200721100531-a34cd4e99342/go.mod h1:opHOzblOHZKQM1JEy+GPk1217giNLa7kleyWTN06qnc=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200616221550-090ab5cc9d2c h1:3wyt0bf0DRtGKqCbIUKRMOlUEC++3mNSdnT4SecvW0E=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200616221550-090ab5cc9d2c/go.mod h1:LfXhVsDbgYtxpiBcnNCeXFpNiNab+7Yq3UmpBr0lctU=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200717190338-17ce9f4538cb h1:DWbllOQ5R/cZSZxkCc0Ns5oLeyHwtDrVh9gRNbUPHXU=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200717190338-17ce9f4538cb/go.mod h1:DzvgUTpe2fNZOgerzHVb3tTvJHNtfzHnwB6FpEXXOUA=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200719153150-6551cd572c1c h1:lIc4L5GIuw1cDXp0TRarwQfhIZkHAp8O8yNpnBf+Sx0=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20200719153150-6551cd572c1c/go.mod h1:DzvgUTpe2fNZOgerzHVb3tTvJHNtfzHnwB6FpEXXOUA=
+github.com/foxcpp/go-imap-sql v0.4.1-0.20200727131639-9d2bcb71fca8 h1:YnkYA86UKtEi5rW2dZaW2k/k38irrQKJv5/L3Sxq1gw=
+github.com/foxcpp/go-imap-sql v0.4.1-0.20200727131639-9d2bcb71fca8/go.mod h1:1dHCAq3XRkYRwTDOtL/vCgvvQ13gLqNt2+nLjL1UHyk=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f h1:b/CFmrdqIGU6eV774xeaQwd1VfgiLuR/8jiY3LyLiMc=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20200531120619-ae750bbf9d73 h1:rZE8KRqNsxz1Jqd782wLMK4FgZ8BKMwPCQjIEpA1bUs=

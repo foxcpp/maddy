@@ -37,6 +37,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emersion/go-imap"
+	sortthread "github.com/emersion/go-imap-sortthread"
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
@@ -417,7 +419,7 @@ func (store *Storage) I18NLevel() int {
 }
 
 func (store *Storage) IMAPExtensions() []string {
-	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE", "I18NLEVEL=1"}
+	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE", "I18NLEVEL=1", "SORT", "THREAD=ORDEREDSUBJECT"}
 }
 
 func (store *Storage) CreateMessageLimit() *uint32 {
@@ -507,6 +509,14 @@ func (store *Storage) Close() error {
 	}
 
 	return nil
+}
+
+func (store *Storage) Login(_ *imap.ConnInfo, usenrame, password string) (backend.User, error) {
+	panic("This method should not be called and is added only to satisfy backend.Backend interface")
+}
+
+func (store *Storage) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
+	return []sortthread.ThreadAlgorithm{sortthread.OrderedSubject}
 }
 
 func init() {
