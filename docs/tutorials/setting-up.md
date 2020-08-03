@@ -51,13 +51,20 @@ Your options are:
 
 ## Host name + domain
 
-Open /etc/maddy/maddy.conf with ~~vim~~ your favorite editor and change
+Open /etc/maddy/maddy.conf with vim^W your favorite editor and change
 the following lines to match your server name and domain you want to handle
 mail for.
 
 ```
 $(hostname) = mx.example.org
 $(primary_domain) = example.org
+```
+
+If you want to handle multiple domains, you still need to designate
+one as "primary". Add all other domains to the `local_domains` line:
+
+```
+$(local_domains) = $(primary_domain) example.com other.example.com
 ```
 
 ## TLS certificates
