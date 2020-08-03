@@ -1,5 +1,4 @@
 SHELL := bash
-.OHESHELL:
 #.SHELLFLAGS := -eu -o pipefail
 .DELETE_ON_ERROR:
 MAKEFLAGS += --warn-undefined-variables
@@ -10,6 +9,7 @@ DESTDIR ?= /
 PREFIX ?= /usr/local
 SYSTEMDUNITS ?= $(PREFIX)/lib/systemd
 FAIL2BANDIR ?= /etc/fail2ban
+HAVE_SCDOC = $(shell command -v scdoc | grep -c "scdoc" || true)
 
 # Build configuration
 TAGS ?= ""
@@ -71,8 +71,10 @@ check:
 
 install: cmd/maddy/maddy cmd/maddyctl/maddyctl man-pages
 	install -Dm 0755 -t "$(DESTDIR)/$(PREFIX)/bin" cmd/maddy/maddy cmd/maddyctl/maddyctl
+ifeq ($(strip $(HAVE_SCDOC)),1)
 	install -Dm 0644 -t "$(DESTDIR)/$(PREFIX)/share/man/man1" docs/man/*.1
 	install -Dm 0644 -t "$(DESTDIR)/$(PREFIX)/share/man/man5" docs/man/*.5
+endif
 	install -Dm 0644 -t "$(DESTDIR)/$(PREFIX)/share/vim/vimfiles/ftdetect/" dist/vim/ftdetect/*.vim
 	install -Dm 0644 -t "$(DESTDIR)/$(PREFIX)/share/vim/vimfiles/ftplugin/" dist/vim/ftplugin/*.vim
 	install -Dm 0644 -t "$(DESTDIR)/$(PREFIX)/share/vim/vimfiles/syntax/" dist/vim/syntax/*.vim
