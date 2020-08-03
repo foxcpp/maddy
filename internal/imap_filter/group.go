@@ -47,7 +47,7 @@ func NewGroup(_, instName string, _, _ []string) (module.Module, error) {
 func (g *Group) IMAPFilter(accountName string, meta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
 	var (
 		finalFolder string
-		finalFlags  []string
+		finalFlags  = make([]string, 0, len(g.Filters))
 	)
 	for _, f := range g.Filters {
 		folder, flags, err := f.IMAPFilter(accountName, meta, hdr, body)

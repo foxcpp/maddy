@@ -222,11 +222,7 @@ func (c *mtastsDelivery) Reset(msgMeta *module.MsgMetadata) {
 
 // Stub that will be removed in 0.5.
 type stsPreloadPolicy struct {
-	log log.Logger
-
-	sourcePath     string
-	enforceTesting bool
-
+	log      log.Logger
 	instName string
 }
 
@@ -252,9 +248,12 @@ func (c *stsPreloadPolicy) Weight() int {
 func (c *stsPreloadPolicy) Init(cfg *config.Map) error {
 	c.log.Println("sts_preload module is deprecated and is no-op as the list is expired and unmaintained")
 
-	var sourcePath string
+	var (
+		sourcePath     string
+		enforceTesting bool
+	)
 	cfg.String("source", false, false, "eff", &sourcePath)
-	cfg.Bool("enforce_testing", false, true, &c.enforceTesting)
+	cfg.Bool("enforce_testing", false, true, &enforceTesting)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -264,7 +263,6 @@ func (c *stsPreloadPolicy) Init(cfg *config.Map) error {
 
 type preloadDelivery struct {
 	*stsPreloadPolicy
-	mtastsPresent bool
 }
 
 func (p *stsPreloadPolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
