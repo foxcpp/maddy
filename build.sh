@@ -525,6 +525,17 @@ EOF
 
 }
 
+# Checks if sudo is installed and sets the elevate variable for 
+# later use in the create_user and install_pkg functions
+check_if_sudo_is_installed() {
+    if sudo -n true
+    then
+      export elevate=1
+    else
+      export elevate=0
+    fi
+}
+
 run() {
     IFS=$'\n'
     read_config "$@"
@@ -547,7 +558,7 @@ run() {
     fi
 
     package
-    export elevate=1
+    check_if_sudo_is_installed
     create_user
     install_pkg
 
