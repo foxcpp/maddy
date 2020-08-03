@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo '!!! build.sh script is deprecated and will be removed in the next release.'
+
 options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,tags:,prefix:,gitversion:,version:,source:,sudo -- "$@")
 eval set -- "$options"
 print_help() {

@@ -24,6 +24,12 @@ _testmain.go
 cmd/maddy/maddy
 cmd/maddyctl/maddyctl
 cmd/maddy-*-helper/maddy-*-helper
+maddy
+maddyctl
+
+# Man pages
+docs/man/*.1
+docs/man/*.5
 
 # Certificates and private keys.
 *.pem
