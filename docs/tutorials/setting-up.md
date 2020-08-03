@@ -26,33 +26,28 @@ there are a few things to keep in mind:
 
 ## Installing maddy
 
-Since there are currently no pre-compiled binaries for maddy, we are going to
-build it from the source. Nothing scary, this is relatively easy to do with Go.
+Your options are:
 
-System dependencies you need to have installed is C toolchain, Git and curl.
-On Debian-based distributions, this should be enough:
-```
-# apt-get install gcc git curl libc6-dev
-```
+* Pre-built tarball (Linux, amd64)
 
-If you want manual pages with reference docs, install scdoc too:
-```
-# apt-get install scdoc
-```
+    Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
+    [foxcpp.dev](https://foxcpp.dev/maddy-builds/).
 
-build.sh script will do the rest for you:
+    The tarball contains the full filesystem tree so you can directly
+    extract it into root directory (or you can take just executable).
 
-```
-$ curl 'https://foxcpp.dev/maddy/build.sh' | bash
-```
+* Docker image (Linux, amd64)
 
-Alternatively, you can download the pre-built tarball from
-[GitHub](https://github.com/foxcpp/maddy/releases) and extract its contents into
-the root directory.
+    ```
+    docker pull foxcpp/maddy:latest
+    ```
 
-*Note:* If you can't / don't use this script for some reason, instructions for
-manual installation can be found
-[here](../manual-installation)
+    See README at [hub.docker.com](https://hub.docker.com/r/foxcpp/maddy)
+    for Docker-specific instructions.
+
+* Building from source
+
+    See [here](../building-from-source) for instructions.
 
 ## Host name + domain
 
