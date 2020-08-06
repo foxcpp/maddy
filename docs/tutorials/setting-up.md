@@ -9,7 +9,7 @@ For purposes of clarity, these values are used in this tutorial as examples,
 wherever you see them, you need to replace them with your actual values:
 
 - Domain: example.org
-- MX domain (hostname): mx.example.org
+- MX domain (hostname): example.org
 - IPv4 address: 10.2.3.4
 - IPv6 address: 2001:beef::1
 
@@ -61,7 +61,7 @@ the following lines to match your server name and domain you want to handle
 mail for.
 
 ```
-$(hostname) = mx.example.org
+$(hostname) = example.org
 $(primary_domain) = example.org
 ```
 
