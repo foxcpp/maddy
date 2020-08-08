@@ -1,8 +1,27 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package remote
 
 import (
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // PolicyGroup is a module container for a group of Policy implementations.
@@ -15,9 +34,9 @@ import (
 // implement any standard module interfaces besides module.Module and is
 // specific to the remote target.
 type PolicyGroup struct {
-	L        []Policy
+	L        []module.MXAuthPolicy
 	instName string
-	pols     map[string]Policy
+	pols     map[string]module.MXAuthPolicy
 }
 
 func (pg *PolicyGroup) Init(cfg *config.Map) error {
@@ -38,7 +57,8 @@ func (pg *PolicyGroup) Init(cfg *config.Map) error {
 			return config.NodeErr(block, "duplicate policy block: %v", block.Name)
 		}
 
-		policy, err := policyFromNode(debugLog, cfg, block)
+		var policy module.MXAuthPolicy
+		err := modconfig.ModuleFromNode("mx_auth", append([]string{block.Name}, block.Args...), block, cfg.Globals, &policy)
 		if err != nil {
 			return err
 		}
@@ -79,7 +99,7 @@ func init() {
 	module.Register("mx_auth", func(_, instName string, _, _ []string) (module.Module, error) {
 		return &PolicyGroup{
 			instName: instName,
-			pols:     map[string]Policy{},
+			pols:     map[string]module.MXAuthPolicy{},
 		}, nil
 	})
 }

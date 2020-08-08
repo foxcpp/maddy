@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,prefix:,gitversion:,version:,source:,sudo -- "$@")
+echo '!!! build.sh script is deprecated and will be removed in the next release.'
+
+options=$(getopt -o hb:p:d: -l help,builddir:,prefix:,destdir:,systemddir:,configdir:,statedir:,runtimedir:,fail2bandir:,tags:,prefix:,gitversion:,version:,source:,sudo -- "$@")
 eval set -- "$options"
 print_help() {
     cat >&2 <<EOF
@@ -26,6 +28,7 @@ Options:
                                (default: /run/maddy, \$RUNTIMEDIR)
     --fail2bandir <path>      directory to install fail2ban configuration to
                                (default: /etc/fail2ban, \$FAIL2BANDIR)
+    --tags <string>           Go build tags to use
     --gitversion <revision>   git commit or tag to checkout if not building inside
                                existing tree (default: master, \$GITVERSION)
     --version <revision>      bypass Git tag version detection and use specified string
@@ -85,7 +88,9 @@ read_config() {
     # if it is not defined, the empty value is fine.
     export DESTDIR=$DESTDIR
 
-    # Most variables are exported so they are accessible when we cann "$0" with
+    export TAGS=""
+
+    # Most variables are exported so they are accessible when we call "$0" with
     # sudo.
 
     if [ -z "$GITVERSION" ]; then
@@ -158,6 +163,10 @@ read_config() {
             --fail2bandir)
                 shift
                 export FAIL2BANDIR="$1"
+                ;;
+            --tags)
+                shift
+                export TAGS="$1"
                 ;;
             --gitversion)
                 shift
@@ -262,6 +271,7 @@ ensure_source_tree() {
     fi
 
     gomod="$(go env GOMOD)"
+    downloaded=0
     # /dev/null is used when Go module mode is forced, otherwise it is just an
     # empty string. Check both to avoid depending on environment.
     if [ "$gomod" = "/dev/null" ] || [ "$gomod" = "" ]; then
@@ -277,6 +287,7 @@ ensure_source_tree() {
         if [ "$GITVERSION" != "" ]; then
             git checkout --quiet "$GITVERSION"
         fi
+        downloaded=1
     else
         MADDY_SRC="$(dirname "$gomod")"
         export MADDY_SRC
@@ -307,6 +318,17 @@ ensure_source_tree() {
 
     MADDY_MAJOR=$(sed 's/^v//' <<<$DESCR | cut -f1 -d '.')
     MADDY_MINOR=$(cut -f2 -d '.' <<<$DESCR )
+
+    if [ "$GITVERSION" == "master" ] && [ "$downloaded" -eq 1 ]; then
+        set +e
+        if git branch -r | grep "origin/$MADDY_MAJOR.$MADDY_MINOR-fixes" >/dev/null; then
+            echo "--- Using $MADDY_MAJOR.$MADDY_MINOR-fixes tree" >&2
+            git checkout "$MADDY_MAJOR.$MADDY_MINOR-fixes"
+            DESCR=$(git describe --long 2>/dev/null)
+        fi
+        set -e
+    fi
+
     MADDY_PATCH=$(cut -f1 -d '-' <<<$DESCR | sed 's/-.+//' | cut -f3 -d '.')
     MADDY_SNAPSHOT=$(cut -f2 -d '-' <<<$DESCR)
     MADDY_COMMIT=$(cut -f3 -d '-' <<<$DESCR)
@@ -334,7 +356,7 @@ compile_binaries() {
     go get -d ./...
 
     echo '--- Building main executable...' >&2
-    go build -trimpath -buildmode=pie \
+    go build -trimpath -buildmode=pie -tags "$TAGS" \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
@@ -344,7 +366,7 @@ compile_binaries() {
         -o "$PKGDIR/$PREFIX/bin/maddy" ./cmd/maddy
 
     echo '--- Building management utility executable...' >&2
-    go build -trimpath -buildmode=pie \
+    go build -trimpath -buildmode=pie -tags "$TAGS" \
         -ldflags "-extldflags \"$LDFLAGS\" \
             -X \"github.com/foxcpp/maddy.DefaultLibexecDirectory=$PREFIX/lib/maddy\" \
             -X \"github.com/foxcpp/maddy.DefaultStateDirectory=$STATEDIR\" \
@@ -395,9 +417,6 @@ prepare_misc() {
     install -Dm 0644 -t "$PKGDIR/$FAIL2BANDIR/filter.d/" fail2ban/filter.d/*
 
     install -Dm 0644 -t "$PKGDIR/$PREFIX/lib/systemd/system/" systemd/maddy.service systemd/maddy@.service
-
-    install -Dm 0644 -t "$PKGDIR/$CONFDIR/integration/" integration/rspamd.conf
-    install -Dm 0755 -t "$PKGDIR/$PREFIX/lib/maddy/" scripts/rspamd-hook
 
     sed -Ei "s!/usr/bin!$PREFIX/bin!g;\
         s!/usr/lib/maddy!$PREFIX/lib/maddy!g;\
@@ -508,6 +527,17 @@ EOF
 
 }
 
+# Checks if sudo is installed and sets the elevate variable for 
+# later use in the create_user and install_pkg functions
+check_if_sudo_is_installed() {
+    if sudo -n true
+    then
+      export elevate=1
+    else
+      export elevate=0
+    fi
+}
+
 run() {
     IFS=$'\n'
     read_config "$@"
@@ -530,7 +560,7 @@ run() {
     fi
 
     package
-    export elevate=1
+    check_if_sudo_is_installed
     create_user
     install_pkg
 

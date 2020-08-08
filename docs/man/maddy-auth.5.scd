@@ -16,7 +16,7 @@ that contains all usernames known to the module. Exceptions are extauth and
 pam as underlying interfaces do not define a way to check credentials
 existence.
 
-# External authentication module (extauth)
+# External authentication module (auth.external)
 
 Module for authentication using external helper binary. It looks for binary
 named maddy-auth-helper in $PATH and libexecdir and uses it for authentication
@@ -30,7 +30,7 @@ authentication is failed. If the status code is 2 - another unrelated error has
 happened. Additional information should be written to stderr.
 
 ```
-extauth {
+auth.external {
     helper /usr/bin/ldap-helper
     perdomain no
     domains example.org
@@ -63,7 +63,7 @@ If used without 'perdomain', domain part will be removed from login before
 check with underlying auth. mechanism. If 'perdomain' is set, then
 domains must be also set and domain part WILL NOT be removed before check.
 
-# PAM module (pam)
+# PAM module (auth.pam)
 
 Implements authentication using libpam. Alternatively it can be configured to
 use helper binary like extauth module does.
@@ -75,7 +75,7 @@ go get -tags 'libpam' ...
 ```
 
 ```
-pam {
+auth.pam {
     debug no
     use_helper no
 }
@@ -107,13 +107,13 @@ chown root:maddy /usr/lib/maddy/maddy-pam-helper
 chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 ```
 
-# Shadow database authentication module (shadow)
+# Shadow database authentication module (auth.shadow)
 
 Implements authentication by reading /etc/shadow. Alternatively it can be
 configured to use helper binary like extauth does.
 
 ```
-shadow {
+auth.shadow {
     debug no
     use_helper no
 }
@@ -143,7 +143,7 @@ chown root:maddy /usr/lib/maddy/maddy-shadow-helper
 chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-shadow-helper
 ```
 
-# Table-based password hash lookup (pass_table)
+# Table-based password hash lookup (auth.pass_table)
 
 This module implements username:password authentication by looking up the
 password hash using a table module (maddy-tables(5)). It can be used
@@ -153,7 +153,7 @@ to load user credentials from text file (file module) or SQL query
 
 Definition:
 ```
-pass_table [block name] {
+auth.pass_table [block name] {
 	table <table config>
 
 }
@@ -188,14 +188,14 @@ the 'maddyctl creds' command can be used to modify the underlying tables
 via pass_table module. It will act a "local credentials store" and will write
 appropriate hash values to the table.
 
-# Separate username and password lookup (plain_separate)
+# Separate username and password lookup (auth.plain_separate)
 
 This module implements authentication using username:password pairs but can
 use zero or more "table modules" (maddy-tables(5)) and one or more
 authentication providers to verify credentials.
 
 ```
-plain_separate {
+auth.plain_separate {
 	user ...
 	user ...
 	...
@@ -231,7 +231,7 @@ Configuration block for any auth. provider module can be used here, even
 The used auth. provider must provide username:password pair-based
 authentication.
 
-# Dovecot authentication client (dovecot_sasl)
+# Dovecot authentication client (auth.dovecot_sasl)
 
 The 'dovecot_sasl' module implements the client side of the Dovecot
 authentication protocol, allowing maddy to use it as a credentials source.
@@ -240,7 +240,7 @@ Currently SASL mechanisms support is limited to mechanisms supported by maddy
 so you cannot get e.g. SCRAM-MD5 this way.
 
 ```
-dovecot_sasl {
+auth.dovecot_sasl {
 	endpoint unix://socket_path
 }
 

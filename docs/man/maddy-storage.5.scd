@@ -19,7 +19,7 @@ auto-creation will not happen when delivering incoming messages via SMTP as
 there is no authentication to confirm that this account should indeed be
 created.
 
-# SQL-based database module (imapsql)
+# SQL-based database module (storage.imapsql)
 
 The imapsql module implements unified database for IMAP index and message
 metadata using SQL-based relational database.
@@ -37,7 +37,7 @@ case-insensitive. UTF-8 names are supported with restrictions defined in the
 PRECIS UsernameCaseMapped profile.
 
 ```
-imapsql {
+storage.imapsql {
 	driver sqlite3
 	dsn imapsql.db
 }
@@ -140,3 +140,18 @@ of cache size in KiB.
 
 SQLite-specific performance tuning option. Amount of milliseconds to wait
 before giving up on DB lock.
+
+*Syntax*: imap_filters { ... } ++
+*Default*: not set
+
+Specifies IMAP filters to apply for messages delivered from SMTP pipeline.
+
+See *maddy-imap*(5) for filter modules usable here.
+
+Ex.
+```
+imap_filters {
+	command /etc/maddy/sieve.sh {account_name}
+}
+}
+```

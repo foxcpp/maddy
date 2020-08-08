@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // Package dsn contains the utilities used for dsn message (DSN) generation.
 //
 // It implements RFC 3464 and RFC 3462.
@@ -7,13 +25,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/dns"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/dns"
 )
 
 type ReportingMTAInfo struct {
@@ -133,14 +152,19 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	h.Add("Status", fmt.Sprintf("%d.%d.%d", info.Status[0], info.Status[1], info.Status[2]))
 
 	if smtpErr, ok := info.DiagnosticCode.(*smtp.SMTPError); ok {
+		// Error message may contain newlines if it is received from another SMTP server.
+		// But we cannot directly insert CR/LF into Disagnostic-Code so rewrite it.
 		h.Add("Diagnostic-Code", fmt.Sprintf("smtp; %d %d.%d.%d %s",
 			smtpErr.Code, smtpErr.EnhancedCode[0], smtpErr.EnhancedCode[1], smtpErr.EnhancedCode[2],
-			smtpErr.Message))
+			strings.ReplaceAll(strings.ReplaceAll(smtpErr.Message, "\n", " "), "\r", " ")))
 	} else if utf8 {
 		// It might contain Unicode, so don't include it if we are not allowed to.
 		// ... I didn't bother implementing mangling logic to remove Unicode
 		// characters.
-		h.Add("Diagnostic-Code", "X-Maddy; "+info.DiagnosticCode.Error())
+		errorDesc := info.DiagnosticCode.Error()
+		errorDesc = strings.ReplaceAll(strings.ReplaceAll(errorDesc, "\n", " "), "\r", " ")
+
+		h.Add("Diagnostic-Code", "X-Maddy; "+errorDesc)
 	}
 
 	if info.RemoteMTA != "" {

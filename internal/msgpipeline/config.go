@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package msgpipeline
 
 import (
@@ -5,13 +23,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/modify"
-	"github.com/foxcpp/maddy/internal/module"
 )
 
 type sourceIn struct {
@@ -52,7 +70,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 			cfg.globalModifiers.Modifiers = append(cfg.globalModifiers.Modifiers, globalModifiers.Modifiers...)
 		case "source_in":
 			var tbl module.Table
-			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+			if err := modconfig.ModuleFromNode("table", node.Args, config.Node{}, globals, &tbl); err != nil {
 				return msgpipelineCfg{}, err
 			}
 			srcBlock, err := parseMsgPipelineSrcCfg(globals, node.Children)
@@ -88,7 +106,7 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				}
 
 				if _, ok := cfg.perSource[rule]; ok {
-					return msgpipelineCfg{}, config.NodeErr(node, "duplicate source routing rule: %v", rule)
+					continue
 				}
 
 				cfg.perSource[rule] = srcBlock
@@ -163,7 +181,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 			src.modifiers.Modifiers = append(src.modifiers.Modifiers, modifiers.Modifiers...)
 		case "destination_in":
 			var tbl module.Table
-			if err := modconfig.ModuleFromNode(node.Args, config.Node{}, globals, &tbl); err != nil {
+			if err := modconfig.ModuleFromNode("table", node.Args, config.Node{}, globals, &tbl); err != nil {
 				return sourceBlock{}, err
 			}
 			rcptBlock, err := parseMsgPipelineRcptCfg(globals, node.Children)
@@ -199,7 +217,7 @@ func parseMsgPipelineSrcCfg(globals map[string]interface{}, nodes []config.Node)
 				}
 
 				if _, ok := src.perRcpt[rule]; ok {
-					return sourceBlock{}, config.NodeErr(node, "duplicate destination match rule: %v", rule)
+					continue
 				}
 
 				src.perRcpt[rule] = rcptBlock

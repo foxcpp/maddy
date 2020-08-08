@@ -1,10 +1,28 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package table
 
 import (
 	"fmt"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 	_ "github.com/lib/pq"
 )
 
@@ -67,11 +85,11 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 			},
 			{
 				Name: "lookup",
-				Args: []string{fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1", valueColumn, tableName, keyColumn)},
+				Args: []string{fmt.Sprintf("SELECT %s FROM %s WHERE %s = :key", valueColumn, tableName, keyColumn)},
 			},
 			{
 				Name: "add",
-				Args: []string{fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES($1, $2)", tableName, keyColumn, valueColumn)},
+				Args: []string{fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES(:key, :value)", tableName, keyColumn, valueColumn)},
 			},
 			{
 				Name: "list",
@@ -79,11 +97,11 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 			},
 			{
 				Name: "set",
-				Args: []string{fmt.Sprintf("UPDATE %s SET %s = $2 WHERE %s = $1", tableName, valueColumn, keyColumn)},
+				Args: []string{fmt.Sprintf("UPDATE %s SET %s = :value WHERE %s = :key", tableName, valueColumn, keyColumn)},
 			},
 			{
 				Name: "del",
-				Args: []string{fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tableName, keyColumn)},
+				Args: []string{fmt.Sprintf("DELETE FROM %s WHERE %s = :key", tableName, keyColumn)},
 			},
 			{
 				Name: "init",
@@ -117,5 +135,6 @@ func (s *SQLTable) SetKey(k, v string) error {
 }
 
 func init() {
-	module.Register("sql_table", NewSQLTable)
+	module.RegisterDeprecated("sql_table", "table.sql_table", NewSQLTable)
+	module.Register("table.sql_table", NewSQLTable)
 }

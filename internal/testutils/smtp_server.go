@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package testutils
 
 import (
@@ -12,7 +30,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
 type SMTPMessage struct {
@@ -28,6 +46,8 @@ type SMTPMessage struct {
 type SMTPBackend struct {
 	Messages        []*SMTPMessage
 	MailFromCounter int
+	SessionCounter  int
+	SourceEndpoints map[string]struct{}
 
 	AuthErr     error
 	MailErr     error
@@ -40,6 +60,11 @@ func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password str
 	if be.AuthErr != nil {
 		return nil, be.AuthErr
 	}
+	be.SessionCounter++
+	if be.SourceEndpoints == nil {
+		be.SourceEndpoints = make(map[string]struct{})
+	}
+	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{
 		backend:  be,
 		user:     username,
@@ -49,6 +74,11 @@ func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password str
 }
 
 func (be *SMTPBackend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
+	be.SessionCounter++
+	if be.SourceEndpoints == nil {
+		be.SourceEndpoints = make(map[string]struct{})
+	}
+	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{backend: be, state: state}, nil
 }
 
@@ -72,7 +102,7 @@ func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []st
 		t.Errorf("Wrong RCPT TO: %v", msg.To)
 	}
 	if string(msg.Data) != DeliveryData {
-		t.Errorf("Wrong DATA payload: %v", string(msg.Data))
+		t.Errorf("Wrong DATA payload: %v (%v)", string(msg.Data), msg.Data)
 	}
 }
 

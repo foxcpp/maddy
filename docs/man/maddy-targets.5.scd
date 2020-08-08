@@ -5,18 +5,18 @@ maddy-targets(5) "maddy mail server" "maddy reference documentation"
 This man page describes modules that can used with 'deliver_to' directive
 of SMTP endpoint module.
 
-# SQL module (sql)
+# SQL module (target.imapsql)
 
 SQL module described in *maddy-storage*(5) can also be used as a delivery
 target.
 
-# Queue module (queue)
+# Queue module (target.queue)
 
 Queue module buffers messages on disk and retries delivery multiple times to
 another target to ensure reliable delivery.
 
 ```
-queue {
+target.queue {
     target remote
     location ...
     max_parallelism 16
@@ -98,7 +98,7 @@ Module that implements message delivery to remote MTAs discovered via DNS MX
 records. You probably want to use it with queue module for reliability.
 
 ```
-remote {
+target.remote {
     hostname mx.example.org
     debug no
 }
@@ -132,6 +132,40 @@ Choose the local IP to bind for outbound SMTP connections.
 *Default*: global directive value
 
 Enable verbose logging.
+
+*Syntax*: requiretls_override _boolean_ ++
+*Default*: true
+
+Allow local security policy to be disabled using 'TLS-Required' header field in
+sent messages. Note that the field has no effect if transparent forwarding is
+used, message body should be processed before outbound delivery starts for it
+to take effect (e.g. message should be queued using 'queue' module).
+
+*Syntax*: relaxed_requiretls _boolean_ ++
+*Default*: true
+
+This option disables strict conformance with REQUIRETLS specification and
+allows forwarding of messages 'tagged' with REQUIRETLS to MXes that are not
+advertising REQUIRETLS support. It is meant to allow REQUIRETLS use without the
+need to have support from all servers. It is based on the assumption that
+server referenced by MX record is likely the final destination and therefore
+there is only need to secure communication towards it and not beyond.
+
+*Syntax*: conn_reuse_limit _integer_ ++
+*Default*: 10
+
+Amount of times the same SMTP connection can be used.
+Connections are never reused if the previous DATA command failed.
+
+*Syntax*: conn_max_idle_count _integer_ ++
+*Default*: 10
+
+Max. amount of idle connections per recipient domains to keep in cache.
+
+*Syntax*: conn_max_idle_time _integer_ ++
+*Default*: 150 (2.5 min)
+
+Amount of time the idle connection is still considered potentially usable.
 
 ## Security policies
 
@@ -218,40 +252,6 @@ cache can make sense for high-load configurations with good uptime.
 
 Filesystem directory to use for policies caching if 'cache' is set to 'fs'.
 
-## Security policies: STARTTLS Everywhere
-
-Apply rules from the STARTTLS Everywhere list or from any other similarly
-structured list.
-
-See https://starttls-everywhere.org for details.
-
-```
-sts_preload {
-	source eff
-	early_adopter yes
-}
-```
-
-*Syntax*: source eff | file://path | https://path ++
-*Default*: eff
-
-Source to download the list from. 'eff' is the alias to use the STARTTLS
-Everywhere list maintained by EFF. In addition to that, 'eff' alias enables
-verification of PGP signature using hardcoded PGP key.
-
-When the argument starts with file://, it should point to the local FS file
-with the list.
-When HTTPS URI is used, the list is downloaded from that location.
-
-In all cases, the list is checked for updates when it is about to expiry.
-
-*Syntax*: enforce_testing _boolean_ ++
-*Default*: yes
-
-Interpret 'testing' records as enforced ones. Using this makes list actually
-useful for security at the risk of deliverability problems if record becomes
-out-of-date and host does not publish an MTA-STS policy .
-
 ## Security policies: DNSSEC
 
 Checks whether MX records are signed. Sets MX level to "dnssec" is they are.
@@ -310,21 +310,21 @@ Set the minimal MX security level required for all outbound messages.
 
 See [Security levels](../../seclevels) page for details.
 
-# SMTP transparent forwarding module (smtp_downstream)
+# SMTP transparent forwarding module (target.smtp)
 
 Module that implements transparent forwarding of messages over SMTP.
 
 Use in pipeline configuration:
 ```
-deliver_to smtp_downstream tcp://127.0.0.1:5353
+deliver_to smtp tcp://127.0.0.1:5353
 # or
-deliver_to smtp_downstream tcp://127.0.0.1:5353 {
+deliver_to smtp tcp://127.0.0.1:5353 {
   # Other settings, see below.
 }
 ```
 
 ```
-smtp_downstream {
+target.smtp {
     debug no
     tls_client {
         ...
@@ -332,7 +332,7 @@ smtp_downstream {
     attempt_starttls yes
     require_yes no
     auth off
-    target tcp://127.0.0.1:2525
+    targets tcp://127.0.0.1:2525
 }
 ```
 
@@ -392,7 +392,7 @@ Valid values:
 	authentication using TLS client certificates. See *maddy-tls*(5)
 	for how to specify the client certificate.
 
-*Syntax*: target _endpoints..._ ++
+*Syntax*: targets _endpoints..._ ++
 *Default:* not specified
 
 REQUIRED.
@@ -405,7 +405,7 @@ TLS).
 Multiple addresses can be specified, they will be tried in order until connection to
 one succeeds (including TLS handshake if TLS is required).
 
-# LMTP transparent forwarding module (lmtp_downstream)
+# LMTP transparent forwarding module (target.lmtp)
 
-The 'lmtp_downstream' module is similar to 'smtp_downstream' and supports all
+The 'target.lmtp' module is similar to 'target.smtp' and supports all
 its options and syntax but speaks LMTP instead of SMTP.

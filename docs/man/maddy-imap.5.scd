@@ -59,3 +59,39 @@ Use the specified module for authentication.
 
 Use the specified module for message storage.
 *Required.*
+
+## IMAP filters
+
+Most storage backends support application of custom code late in delivery
+process. As opposed to using SMTP pipeline modifiers or checks, it allows
+modifying IMAP-specific message attributes. In particular, it allows
+code to change target folder and add IMAP flags (keywords) to the message.
+
+There is no way to reject message using IMAP filters, this should be done
+eariler in SMTP pipeline logic. Quarantined messages are not processed
+by IMAP filters and are unconditionally delivered to Junk folder (or other
+folder with \Junk special-use attribute).
+
+## System command filter (imap.filter.command)
+
+This filter is similar to check.command module described in *maddy-filters*(5)
+and runs system command
+
+```
+command executable_name args... { }
+```
+
+Same as check.command, following placeholders are supported for command
+arguments: {source_ip}, {source_host}, {source_rdns}, {msg_id}, {auth_user},
+{sender}.
+
+Additionally, for imap.filter.command, {account_name} placeholder is replaced
+with effective IMAP account name.
+
+Command cutput consists of zero or more lines. First one, if non-empty, overrides
+destination folder. All other lines contain additional IMAP flags to add
+to the message. If command wants to add flags without changing folder - first
+line should be empty.
+
+It is valid for command to not write anything to stdout. In this case its
+execution will have no effect on delivery.

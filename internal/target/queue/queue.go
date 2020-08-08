@@ -1,4 +1,22 @@
 /*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+/*
 Package queue implements module which keeps messages on disk and tries delivery
 to the configured target (usually remote) multiple times until all recipients
 are succeeded.
@@ -58,13 +76,13 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/dsn"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/target"
 )
@@ -918,7 +936,8 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	dsnMeta := &module.MsgMetadata{
 		ID: dsnID,
 		SMTPOpts: smtp.MailOptions{
-			UTF8: meta.MsgMeta.SMTPOpts.UTF8,
+			UTF8:       meta.MsgMeta.SMTPOpts.UTF8,
+			RequireTLS: meta.MsgMeta.SMTPOpts.RequireTLS,
 		},
 	}
 	dl.Msg("generated failed DSN", "dsn_id", dsnID)
@@ -963,5 +982,6 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 }
 
 func init() {
-	module.Register("queue", NewQueue)
+	module.RegisterDeprecated("queue", "target.queue", NewQueue)
+	module.Register("target.queue", NewQueue)
 }

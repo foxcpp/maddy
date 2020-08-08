@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // Package imapsql implements SQL-based storage module
 // using go-imap-sql library (github.com/foxcpp/go-imap-sql).
 //
@@ -19,17 +37,20 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emersion/go-imap"
+	sortthread "github.com/emersion/go-imap-sortthread"
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
 	imapsql "github.com/foxcpp/go-imap-sql"
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 	"golang.org/x/text/secure/precis"
@@ -53,6 +74,8 @@ type Storage struct {
 	updates     <-chan backend.Update
 	updPipe     updatepipe.P
 	updPushStop chan struct{}
+
+	filters module.IMAPFilter
 }
 
 type delivery struct {
@@ -77,7 +100,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 			Code:         501,
 			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
 			Message:      "User does not exist",
-			TargetName:   "sql",
+			TargetName:   "imapsql",
 			Err:          err,
 		}
 	}
@@ -99,7 +122,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
 				Message:      "User does not exist",
-				TargetName:   "sql",
+				TargetName:   "imapsql",
 				Err:          err,
 			}
 		}
@@ -108,7 +131,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 				Code:         453,
 				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 				Message:      "Storage access serialiation problem, try again later",
-				TargetName:   "sql",
+				TargetName:   "imapsql",
 				Err:          err,
 			}
 		}
@@ -122,6 +145,16 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	defer trace.StartRegion(ctx, "sql/Body").End()
 
+	if !d.msgMeta.Quarantine {
+		for rcpt := range d.addedRcpts {
+			folder, flags, err := d.store.filters.IMAPFilter(rcpt, d.msgMeta, header, body)
+			if err != nil {
+				return err
+			}
+			d.d.UserMailbox(rcpt, folder, flags)
+		}
+	}
+
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
 			if _, ok := err.(imapsql.SerializationError); ok {
@@ -129,7 +162,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 					Code:         453,
 					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 					Message:      "Storage access serialiation problem, try again later",
-					TargetName:   "sql",
+					TargetName:   "imapsql",
 					Err:          err,
 				}
 			}
@@ -145,7 +178,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 			Code:         453,
 			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
 			Message:      "Storage access serialiation problem, try again later",
-			TargetName:   "sql",
+			TargetName:   "imapsql",
 			Err:          err,
 		}
 	}
@@ -232,6 +265,13 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Int("sqlite3_busy_timeout", false, false, 5000, &opts.BusyTimeout)
 	cfg.Bool("sqlite3_exclusive_lock", false, false, &opts.ExclusiveLock)
 	cfg.String("junk_mailbox", false, false, "Junk", &store.junkMbox)
+	cfg.Custom("imap_filter", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, func(m *config.Map, node config.Node) (interface{}, error) {
+		var filter module.IMAPFilter
+		err := modconfig.GroupFromNode("imap_filters", node.Args, node, m.Globals, &filter)
+		return filter, err
+	}, &store.filters)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -379,7 +419,7 @@ func (store *Storage) I18NLevel() int {
 }
 
 func (store *Storage) IMAPExtensions() []string {
-	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE", "I18NLEVEL=1"}
+	return []string{"APPENDLIMIT", "MOVE", "CHILDREN", "SPECIAL-USE", "I18NLEVEL=1", "SORT", "THREAD=ORDEREDSUBJECT"}
 }
 
 func (store *Storage) CreateMessageLimit() *uint32 {
@@ -471,6 +511,16 @@ func (store *Storage) Close() error {
 	return nil
 }
 
+func (store *Storage) Login(_ *imap.ConnInfo, usenrame, password string) (backend.User, error) {
+	panic("This method should not be called and is added only to satisfy backend.Backend interface")
+}
+
+func (store *Storage) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
+	return []sortthread.ThreadAlgorithm{sortthread.OrderedSubject}
+}
+
 func init() {
-	module.Register("imapsql", New)
+	module.RegisterDeprecated("imapsql", "storage.imapsql", New)
+	module.Register("storage.imapsql", New)
+	module.Register("target.imapsql", New)
 }

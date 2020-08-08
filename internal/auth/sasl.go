@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package auth
 
 import (
@@ -6,10 +24,10 @@ import (
 	"net"
 
 	"github.com/emersion/go-sasl"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 var (
@@ -93,7 +111,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 // the 'auth' configuration directive.
 func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 	var any interface{}
-	if err := modconfig.ModuleFromNode(node.Args, node, m.Globals, &any); err != nil {
+	if err := modconfig.ModuleFromNode("auth", node.Args, node, m.Globals, &any); err != nil {
 		return err
 	}
 

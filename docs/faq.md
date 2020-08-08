@@ -81,9 +81,9 @@ are fine with alpha-quality but extremely easy to deploy webmail.
 No. maddy moves email messages around, it does not classify
 them as bad or good with the notable exception of sender policies.
 
-It should not be hard to integrate rspamd by calling `rspamc` command
-on delivery. Check
-https://github.com/foxcpp/maddy/blob/master/dist/integration/rspamd.conf
+It is possible to integrate rspamd using 'rspamd' module. Just add
+`rspamd` line to `checks` in `local_routing`, it should just work
+in most cases.
 
 ## Is it production-ready?
 

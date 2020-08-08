@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package smtp
 
 import (
@@ -16,16 +34,17 @@ import (
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/future"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/future"
 	"github.com/foxcpp/maddy/internal/limits"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"golang.org/x/net/idna"
 )
@@ -83,6 +102,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.serv.ErrorLog = endp.Log
 	endp.serv.LMTP = endp.lmtp
 	endp.serv.EnableSMTPUTF8 = true
+	endp.serv.EnableREQUIRETLS = true
 	if err := endp.setConfig(cfg); err != nil {
 		return err
 	}
@@ -223,7 +243,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		}
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
 	}, bufferModeDirective, &endp.buffer)
-	cfg.Custom("tls", true, endp.name != "lmtp", nil, config.TLSDirective, &endp.serv.TLSConfig)
+	cfg.Custom("tls", true, endp.name != "lmtp", nil, tls2.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
@@ -278,7 +298,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		endp.serv.EnableAuth(mech, func(c *smtp.Conn) sasl.Server {
 			state := c.State()
 			if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {
-				return auth.FailingSASLServ{Err: endp.wrapErr("", true, err)}
+				return auth.FailingSASLServ{Err: endp.wrapErr("", true, "AUTH", err)}
 			}
 
 			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
@@ -335,12 +355,14 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, err)
+		return nil, endp.wrapErr("", true, "AUTH", err)
 	}
 
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
+
+		failedLogins.WithLabelValues(endp.name).Inc()
 
 		if exterrors.IsTemporary(err) {
 			return nil, &smtp.SMTPError{
@@ -367,7 +389,7 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 
 	// Executed before authentication and session initialization.
 	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, err)
+		return nil, endp.wrapErr("", true, "MAIL", err)
 	}
 
 	return endp.newSession(true, "", "", state), nil

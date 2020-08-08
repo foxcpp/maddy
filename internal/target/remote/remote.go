@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // Package remote implements module which does outgoing
 // message delivery using servers discovered using DNS MX records.
 //
@@ -16,64 +34,20 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/limits"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/internal/smtpconn/pool"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
-
-const (
-	AuthDisabled     = "off"
-	AuthMTASTS       = "mtasts"
-	AuthDNSSEC       = "dnssec"
-	AuthCommonDomain = "common_domain"
-)
-
-type (
-	TLSLevel int
-	MXLevel  int
-)
-
-const (
-	TLSNone TLSLevel = iota
-	TLSEncrypted
-	TLSAuthenticated
-
-	MXNone MXLevel = iota
-	MX_MTASTS
-	MX_DNSSEC
-)
-
-func (l TLSLevel) String() string {
-	switch l {
-	case TLSNone:
-		return "none"
-	case TLSEncrypted:
-		return "encrypted"
-	case TLSAuthenticated:
-		return "authenticated"
-	}
-	return "???"
-}
-
-func (l MXLevel) String() string {
-	switch l {
-	case MXNone:
-		return "none"
-	case MX_MTASTS:
-		return "mtasts"
-	case MX_DNSSEC:
-		return "dnssec"
-	}
-	return "???"
-}
 
 var smtpPort = "25"
 
@@ -93,8 +67,13 @@ type Target struct {
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
 
-	policies []Policy
-	limits   *limits.Group
+	policies          []module.MXAuthPolicy
+	limits            *limits.Group
+	allowSecOverride  bool
+	relaxedREQUIRETLS bool
+
+	pool           *pool.P
+	connReuseLimit int
 
 	Log log.Logger
 }
@@ -105,6 +84,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	if len(inlineArgs) != 0 {
 		return nil, errors.New("remote: inline arguments are not used")
 	}
+	// Keep this synchronized with testTarget.
 	return &Target{
 		name:     instName,
 		resolver: dns.DefaultResolver(),
@@ -125,7 +105,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
-	}, config.TLSClientBlock, &rt.tlsConfig)
+	}, tls2.TLSClientBlock, &rt.tlsConfig)
 	cfg.Custom("mx_auth", false, false, func() (interface{}, error) {
 		// Default is "no policies" to follow the principles of explicit
 		// configuration (if it is not requested - it is not done).
@@ -147,10 +127,23 @@ func (rt *Target) Init(cfg *config.Map) error {
 		}
 		return g, nil
 	}, &rt.limits)
+	cfg.Bool("requiretls_override", false, true, &rt.allowSecOverride)
+	cfg.Bool("relaxed_requiretls", false, true, &rt.relaxedREQUIRETLS)
+	cfg.Int("conn_reuse_limit", false, false, 10, &rt.connReuseLimit)
+
+	poolCfg := pool.Config{
+		MaxKeys:             20000,
+		MaxConnsPerKey:      10,     // basically, max. amount of idle connections in cache
+		MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
+		StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
+	}
+	cfg.Int("conn_max_idle_count", false, false, 10, &poolCfg.MaxConnsPerKey)
+	cfg.Int64("conn_max_idle_time", false, false, 150, &poolCfg.MaxConnLifetimeSec)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
+	rt.pool = pool.New(poolCfg)
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
 	rt.hostname, err = idna.ToASCII(rt.hostname)
@@ -172,9 +165,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 }
 
 func (rt *Target) Close() error {
-	for _, p := range rt.policies {
-		p.Close()
-	}
+	rt.pool.Close()
 
 	return nil
 }
@@ -194,15 +185,17 @@ type remoteDelivery struct {
 	Log      log.Logger
 
 	recipients  []string
-	connections map[string]mxConn
+	connections map[string]*mxConn
 
-	policies []DeliveryPolicy
+	policies []module.DeliveryMXAuthPolicy
 }
 
 func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	policies := make([]DeliveryPolicy, 0, len(rt.policies))
-	for _, p := range rt.policies {
-		policies = append(policies, p.Start(msgMeta))
+	policies := make([]module.DeliveryMXAuthPolicy, 0, len(rt.policies))
+	if !(msgMeta.TLSRequireOverride && rt.allowSecOverride) {
+		for _, p := range rt.policies {
+			policies = append(policies, p.Start(msgMeta))
+		}
 	}
 
 	var (
@@ -252,7 +245,7 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 		mailFrom:    mailFrom,
 		msgMeta:     msgMeta,
 		Log:         target.DeliveryLogger(rt.Log, msgMeta),
-		connections: map[string]mxConn{},
+		connections: map[string]*mxConn{},
 		policies:    policies,
 	}, nil
 }
@@ -391,7 +384,8 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 
 	var wg sync.WaitGroup
 
-	for _, conn := range rd.connections {
+	for i, conn := range rd.connections {
+		i := i
 		conn := conn
 		wg.Add(1)
 		go func() {
@@ -410,6 +404,7 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 			for _, rcpt := range conn.Rcpts() {
 				c.SetStatus(rcpt, err)
 			}
+			rd.connections[i].errored = err != nil
 		}()
 	}
 
@@ -428,11 +423,17 @@ func (rd *remoteDelivery) Commit(ctx context.Context) error {
 
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
-		rd.Log.Debugf("disconnected from %s", conn.ServerName())
-
 		rd.rt.limits.ReleaseDest(conn.domain)
+		conn.transactions++
 
-		conn.Close()
+		if conn.C == nil || conn.transactions > rd.rt.connReuseLimit || conn.C.Client() == nil || conn.errored {
+			rd.Log.Debugf("disconnected from %s (errored=%v,transactions=%v,disconnected before=%v)",
+				conn.ServerName(), conn.errored, conn.transactions, conn.C.Client() == nil)
+			conn.Close()
+		} else {
+			rd.Log.Debugf("returning connection for %s to pool", conn.ServerName())
+			rd.rt.pool.Return(conn.domain, conn)
+		}
 	}
 
 	var (
@@ -459,5 +460,6 @@ func (rd *remoteDelivery) Close() error {
 }
 
 func init() {
-	module.Register("remote", New)
+	module.RegisterDeprecated("remote", "target.remote", New)
+	module.Register("target.remote", New)
 }

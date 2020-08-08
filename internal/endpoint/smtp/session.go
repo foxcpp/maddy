@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package smtp
 
 import (
@@ -8,17 +26,18 @@ import (
 	"io"
 	"net"
 	"runtime/trace"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
-	"github.com/foxcpp/maddy/internal/address"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 type Session struct {
@@ -76,6 +95,12 @@ func (s *Session) abort(ctx context.Context) {
 		s.endp.Log.Error("delivery abort failed", err)
 	}
 	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
+	abortedSMTPTransactions.WithLabelValues(s.endp.name).Inc()
+	s.cleanSession()
+}
+
+func (s *Session) cleanSession() {
+	s.releaseLimits()
 
 	s.mailFrom = ""
 	s.opts = smtp.MailOptions{}
@@ -155,6 +180,8 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
 	defer mailTask.End()
 
+	startedSMTPTransactions.WithLabelValues(s.endp.name).Inc()
+
 	delivery, err := s.endp.pipeline.Start(mailCtx, msgMeta, cleanFrom)
 	if err != nil {
 		s.msgCtx = nil
@@ -180,7 +207,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
 			}
-			return s.endp.wrapErr(msgID, !opts.UTF8, err)
+			return s.endp.wrapErr(msgID, !opts.UTF8, "MAIL", err)
 		}
 	}
 
@@ -210,7 +237,13 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		misc["reason"] = reason
-		s.log.Error("rDNS error", exterrors.WithFields(err, misc), "src_ip", s.connState.RemoteAddr)
+		if !strings.HasSuffix(reason, "canceled") {
+			// Often occurs when transaction completes before rDNS lookup and
+			// rDNS name was not actually needed. So do not log cancelation
+			// error if that's the case.
+
+			s.log.Error("rDNS error", exterrors.WithFields(err, misc), "src_ip", s.connState.RemoteAddr)
+		}
 		s.connState.RDNSName.Set(nil, err)
 		return
 	}
@@ -238,7 +271,7 @@ func (s *Session) Rcpt(to string) error {
 			if err != context.DeadlineExceeded {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
 			}
-			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, err)
+			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, "RCPT", err)
 			return s.deliveryErr
 		}
 	}
@@ -248,13 +281,13 @@ func (s *Session) Rcpt(to string) error {
 
 	if err := s.rcpt(rcptCtx, to); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
-			s.log.Error("RCPT error", err, "rcpt", to)
+			s.log.Error("RCPT error", err, "rcpt", to, "msg_id", s.msgMeta.ID)
 			s.loggedRcptErrors++
 			if s.loggedRcptErrors == s.endp.maxLoggedRcptErrors {
 				s.log.Msg("too many RCPT errors, possible dictonary attack", "src_ip", s.connState.RemoteAddr, "msg_id", s.msgMeta.ID)
 			}
 		}
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "RCPT", err)
 	}
 	s.endp.Log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
 	return nil
@@ -322,12 +355,15 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 }
 
 func (s *Session) Data(r io.Reader) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
 	defer bodyTask.End()
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
 	header, buf, err := s.prepareBody(bodyCtx, r)
@@ -340,15 +376,15 @@ func (s *Session) Data(r io.Reader) error {
 		}
 
 		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.delivery = nil
-		s.msgCtx = nil
-		s.msgTask.End()
-		s.msgTask = nil
-		s.releaseLimits()
+		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
 		return wrapErr(err)
+	}
+
+	if strings.EqualFold(header.Get("TLS-Required"), "No") {
+		s.msgMeta.TLSRequireOverride = true
 	}
 
 	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
@@ -370,16 +406,19 @@ type statusWrapper struct {
 }
 
 func (sw statusWrapper) SetStatus(rcpt string, err error) {
-	sw.sc.SetStatus(rcpt, sw.s.endp.wrapErr(sw.s.msgMeta.ID, !sw.s.opts.UTF8, err))
+	sw.sc.SetStatus(rcpt, sw.s.endp.wrapErr(sw.s.msgMeta.ID, !sw.s.opts.UTF8, "DATA", err))
 }
 
 func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
 	bodyCtx, bodyTask := trace.NewTask(s.msgCtx, "DATA")
 	defer bodyTask.End()
 
 	wrapErr := func(err error) error {
 		s.log.Error("DATA error", err, "msg_id", s.msgMeta.ID)
-		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, err)
+		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
 	header, buf, err := s.prepareBody(bodyCtx, r)
@@ -392,12 +431,12 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		}
 
 		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.delivery = nil
-		s.msgCtx = nil
-		s.msgTask.End()
-		s.msgTask = nil
-		s.releaseLimits()
+		s.cleanSession()
 	}()
+
+	if strings.EqualFold(header.Get("TLS-Required"), "No") {
+		s.msgMeta.TLSRequireOverride = true
+	}
 
 	if err := s.checkRoutingLoops(header); err != nil {
 		return wrapErr(err)
@@ -436,7 +475,7 @@ func (s *Session) checkRoutingLoops(header textproto.Header) error {
 	return nil
 }
 
-func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
+func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, command string, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -486,6 +525,12 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, err error) error {
 	if msgId != "" {
 		res.Message += " (msg ID = " + msgId + ")"
 	}
+
+	failedCmds.WithLabelValues(endp.name, command, strconv.Itoa(res.Code),
+		fmt.Sprintf("%d.%d.%d",
+			res.EnhancedCode[0],
+			res.EnhancedCode[1],
+			res.EnhancedCode[2])).Inc()
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.4.1.
 	if mangleUTF8 {

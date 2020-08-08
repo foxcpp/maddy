@@ -1,104 +1,37 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package remote
 
 import (
 	"context"
 	"crypto/tls"
-	"errors"
-	"fmt"
-	"net"
-	"net/http"
 	"os"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/foxcpp/go-mtasts"
-	"github.com/foxcpp/go-mtasts/preload"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/dns"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/future"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/future"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
-)
-
-type (
-	// Policy is an object that provides security check for outbound connections.
-	// It can do one of the following:
-	//
-	// - Check effective TLS level or MX level against some configured or
-	// discovered value.
-	// E.g. local policy.
-	//
-	// - Raise the security level if certain condition about used MX or
-	// connection is met.
-	// E.g. DANE Policy raises TLS level to Authenticated is a matching
-	// TLSA record is discovered.
-	//
-	// - Reject the connection if certain condition about used MX or
-	// connection is _not_ met.
-	// E.g. An enforced MTA-STS Policy rejects MX records not matching it.
-	//
-	// It is not recommended to mix different types of behavior described above
-	// in the same implementation.
-	// Specifically, the first type is used mostly for local policies and not
-	// really practical.
-	Policy interface {
-		Start(*module.MsgMetadata) DeliveryPolicy
-		Close() error
-	}
-
-	// DeliveryPolicy is an interface of per-delivery object that estabilishes
-	// and verifies required and effective security for MX records and TLS
-	// connections.
-	DeliveryPolicy interface {
-		// PrepareDomain is called before DNS MX lookup and may asynchronously
-		// start additional lookups necessary for policy application in CheckMX
-		// or CheckConn.
-		//
-		// If there any errors - they should be deferred to the CheckMX or
-		// CheckConn call.
-		PrepareDomain(ctx context.Context, domain string)
-
-		// PrepareDomain is called before connection and may asynchronously
-		// start additional lookups necessary for policy application in
-		// CheckConn.
-		//
-		// If there any errors - they should be deferred to the CheckConn
-		// call.
-		PrepareConn(ctx context.Context, mx string)
-
-		// CheckMX is called to check whether the policy permits to use a MX.
-		//
-		// mxLevel contains the MX security level estabilished by checks
-		// executed before.
-		//
-		// domain is passed to the CheckMX to allow simpler implementation
-		// of stateless policy objects.
-		//
-		// dnssec is true if the MX lookup was performed using DNSSEC-enabled
-		// resolver and the zone is signed and its signature is valid.
-		CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error)
-
-		// CheckConn is called to check whether the policy permits to use this
-		// connection.
-		//
-		// tlsLevel and mxLevel contain the TLS security level estabilished by
-		// checks executed before.
-		//
-		// domain is passed to the CheckConn to allow simpler implementation
-		// of stateless policy objects.
-		//
-		// If tlsState.HandshakeCompleted is false, TLS is not used. If
-		// tlsState.VerifiedChains is nil, InsecureSkipVerify was used (no
-		// ServerName or PKI check was done).
-		CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error)
-
-		// Reset cleans the internal object state for use with another message.
-		// newMsg may be nil if object is not needed anymore.
-		Reset(newMsg *module.MsgMetadata)
-	}
 )
 
 type (
@@ -107,6 +40,7 @@ type (
 		mtastsGet   func(context.Context, string) (*mtasts.Policy, error)
 		updaterStop chan struct{}
 		log         log.Logger
+		instName    string
 	}
 	mtastsDelivery struct {
 		c         *mtastsPolicy
@@ -116,11 +50,26 @@ type (
 	}
 )
 
-func NewMTASTSPolicy(r dns.Resolver, debug bool, cfg *config.Map) (*mtastsPolicy, error) {
-	c := &mtastsPolicy{
-		log: log.Logger{Name: "remote/mtasts", Debug: debug},
-	}
+func NewMTASTSPolicy(_, instName string, _, _ []string) (module.Module, error) {
+	return &mtastsPolicy{
+		instName: instName,
+		log:      log.Logger{Name: "mx_auth.mtasts", Debug: log.DefaultLogger.Debug},
+	}, nil
+}
 
+func (c *mtastsPolicy) Name() string {
+	return c.log.Name
+}
+
+func (c *mtastsPolicy) InstanceName() string {
+	return c.instName
+}
+
+func (c *mtastsPolicy) Weight() int {
+	return 10
+}
+
+func (c *mtastsPolicy) Init(cfg *config.Map) error {
 	var (
 		storeType string
 		storeDir  string
@@ -128,13 +77,13 @@ func NewMTASTSPolicy(r dns.Resolver, debug bool, cfg *config.Map) (*mtastsPolicy
 	cfg.Enum("cache", false, false, []string{"ram", "fs"}, "fs", &storeType)
 	cfg.String("fs_dir", false, false, "mtasts_cache", &storeDir)
 	if _, err := cfg.Process(); err != nil {
-		return nil, err
+		return err
 	}
 
 	switch storeType {
 	case "fs":
 		if err := os.MkdirAll(storeDir, os.ModePerm); err != nil {
-			return nil, err
+			return err
 		}
 		c.cache = mtasts.NewFSCache(storeDir)
 	case "ram":
@@ -145,7 +94,7 @@ func NewMTASTSPolicy(r dns.Resolver, debug bool, cfg *config.Map) (*mtastsPolicy
 	c.cache.Resolver = dns.DefaultResolver()
 	c.mtastsGet = c.cache.Get
 
-	return c, nil
+	return nil
 }
 
 // StartUpdater starts a goroutine to update MTA-STS cache periodically until
@@ -182,7 +131,7 @@ func (c *mtastsPolicy) updater() {
 	}
 }
 
-func (c *mtastsPolicy) Start(msgMeta *module.MsgMetadata) DeliveryPolicy {
+func (c *mtastsPolicy) Start(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &mtastsDelivery{
 		c:   c,
 		log: target.DeliveryLogger(c.log, msgMeta),
@@ -207,42 +156,42 @@ func (c *mtastsDelivery) PrepareDomain(ctx context.Context, domain string) {
 
 func (c *mtastsDelivery) PrepareConn(ctx context.Context, mx string) {}
 
-func (c *mtastsDelivery) CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error) {
+func (c *mtastsDelivery) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
 	policyI, err := c.policyFut.GetContext(ctx)
 	if err != nil {
 		c.log.DebugMsg("MTA-STS error", "err", err)
-		return MXNone, nil
+		return module.MXNone, nil
 	}
 	policy := policyI.(*mtasts.Policy)
 
 	if !policy.Match(mx) {
 		if policy.Mode == mtasts.ModeEnforce {
-			return MXNone, &exterrors.SMTPError{
+			return module.MXNone, &exterrors.SMTPError{
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-				Message:      "Failed to estabilish the MX record authenticity (MTA-STS)",
+				Message:      "Failed to estabilish the module.MX record authenticity (MTA-STS)",
 			}
 		}
 		c.log.Msg("MX does not match published non-enforced MTA-STS policy", "mx", mx, "domain", c.domain)
-		return MXNone, nil
+		return module.MXNone, nil
 	}
-	return MX_MTASTS, nil
+	return module.MX_MTASTS, nil
 }
 
-func (c *mtastsDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error) {
+func (c *mtastsDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
 	policyI, err := c.policyFut.GetContext(ctx)
 	if err != nil {
 		c.c.log.DebugMsg("MTA-STS error", "err", err)
-		return TLSNone, nil
+		return module.TLSNone, nil
 	}
 	policy := policyI.(*mtasts.Policy)
 
 	if policy.Mode != mtasts.ModeEnforce {
-		return TLSNone, nil
+		return module.TLSNone, nil
 	}
 
 	if !tlsState.HandshakeComplete {
-		return TLSNone, &exterrors.SMTPError{
+		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
 			Message:      "TLS is required but unavailable or failed (MTA-STS)",
@@ -250,10 +199,10 @@ func (c *mtastsDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLeve
 	}
 
 	if tlsState.VerifiedChains == nil {
-		return TLSNone, &exterrors.SMTPError{
+		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message: "Recipient server TLS certificate is not trusted but " +
+			Message: "Recipient server module.TLS certificate is not trusted but " +
 				"authentication is required by MTA-STS",
 			Misc: map[string]interface{}{
 				"tls_level": tlsLevel,
@@ -261,7 +210,7 @@ func (c *mtastsDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLeve
 		}
 	}
 
-	return TLSNone, nil
+	return module.TLSNone, nil
 }
 
 func (c *mtastsDelivery) Reset(msgMeta *module.MsgMetadata) {
@@ -271,286 +220,98 @@ func (c *mtastsDelivery) Reset(msgMeta *module.MsgMetadata) {
 	}
 }
 
-var (
-	// Delay between list expiry and first update attempt.
-	preloadUpdateGrace = 5 * time.Minute
-
-	// Minimal time between preload list update attempts.
-	//
-	// This is adjusted for preloadUpdateGrace so we will have the chance to make 10
-	// attempts to update list before it expires.
-	preloadUpdateCooldown = 30 * time.Second
-)
-
-type (
-	FuncPreloadList  = func(*http.Client, preload.Source) (*preload.List, error)
-	stsPreloadPolicy struct {
-		l     *preload.List
-		lLock sync.RWMutex
-		log   log.Logger
-
-		updaterStop chan struct{}
-
-		sourcePath     string
-		client         *http.Client
-		listDownload   FuncPreloadList
-		enforceTesting bool
-	}
-)
-
-func NewSTSPreloadPolicy(debug bool, client *http.Client, listDownload FuncPreloadList, cfg *config.Map) (*stsPreloadPolicy, error) {
-	p := &stsPreloadPolicy{
-		log:          log.Logger{Name: "remote/preload", Debug: debug},
-		client:       client,
-		listDownload: preload.Download,
-	}
-
-	var sourcePath string
-	cfg.String("source", false, false, "eff", &sourcePath)
-	cfg.Bool("enforce_testing", false, true, &p.enforceTesting)
-	if _, err := cfg.Process(); err != nil {
-		return nil, err
-	}
-
-	var err error
-	p.l, err = p.load(client, listDownload, sourcePath)
-	if err != nil {
-		return nil, err
-	}
-
-	p.sourcePath = sourcePath
-
-	return p, nil
+// Stub that will be removed in 0.5.
+type stsPreloadPolicy struct {
+	log      log.Logger
+	instName string
 }
 
-func (p *stsPreloadPolicy) load(client *http.Client, listDownload FuncPreloadList, sourcePath string) (*preload.List, error) {
+func NewSTSPreload(_, instName string, _, _ []string) (module.Module, error) {
+	return &stsPreloadPolicy{
+		instName: instName,
+		log:      log.Logger{Name: "mx_auth.sts_preload", Debug: log.DefaultLogger.Debug},
+	}, nil
+}
+
+func (c *stsPreloadPolicy) Name() string {
+	return c.log.Name
+}
+
+func (c *stsPreloadPolicy) InstanceName() string {
+	return c.instName
+}
+
+func (c *stsPreloadPolicy) Weight() int {
+	return 30 // after MTA-STS
+}
+
+func (c *stsPreloadPolicy) Init(cfg *config.Map) error {
+	c.log.Println("sts_preload module is deprecated and is no-op as the list is expired and unmaintained")
+
 	var (
-		l   *preload.List
-		err error
+		sourcePath     string
+		enforceTesting bool
 	)
-	src := preload.Source{
-		ListURI: sourcePath,
+	cfg.String("source", false, false, "eff", &sourcePath)
+	cfg.Bool("enforce_testing", false, true, &enforceTesting)
+	if _, err := cfg.Process(); err != nil {
+		return err
 	}
-	switch {
-	case strings.HasPrefix(sourcePath, "file://"):
-		// Load list from FS.
-		path := strings.TrimPrefix(sourcePath, "file://")
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, err
-		}
-
-		// If the list is provided by an external FS source, it is its
-		// responsibility to make sure it is valid. Hard-fail if it is not.
-		l, err = preload.Read(f)
-		if err != nil {
-			return nil, fmt.Errorf("remote/preload: %w", err)
-		}
-		defer f.Close()
-
-		p.log.DebugMsg("loaded list from FS", "entries", len(l.Policies), "path", path)
-	case sourcePath == "eff":
-		src = preload.STARTTLSEverywhere
-		fallthrough
-	case strings.HasPrefix(sourcePath, "https://"):
-		// Download list using HTTPS.
-		// TODO(GH #207): Cache on disk and update it asynchronously to reduce start-up
-		// time. This will also reduce persistent attacker ability to prevent
-		// list (re-)discovery
-		p.log.DebugMsg("downloading list", "uri", sourcePath)
-
-		l, err = listDownload(client, src)
-		if err != nil {
-			return nil, fmt.Errorf("remote/preload: %w", err)
-		}
-
-		p.log.DebugMsg("downloaded list", "entries", len(l.Policies), "uri", sourcePath)
-	default:
-		return nil, fmt.Errorf("remote/preload: unknown list source or unsupported schema: %v", sourcePath)
-	}
-
-	return l, nil
-}
-
-// StartUpdater starts a goroutine to update the used list periodically until Close is
-// called.
-//
-// It can be called only once per stsPreloadPolicy instance.
-func (p *stsPreloadPolicy) StartUpdater() {
-	p.updaterStop = make(chan struct{})
-	go p.updater()
-}
-
-func (p *stsPreloadPolicy) updater() {
-	for {
-		updateDelay := time.Until(time.Time(p.l.Expires)) - preloadUpdateGrace
-		if updateDelay <= 0 {
-			updateDelay = preloadUpdateCooldown
-		}
-		// TODO(GH #210): Increase update delay for multiple failures.
-
-		t := time.NewTimer(updateDelay)
-
-		p.log.DebugMsg("sleeping to update", "delay", updateDelay)
-
-		select {
-		case <-t.C:
-			// Attempt to update the list.
-			newList, err := p.load(p.client, p.listDownload, p.sourcePath)
-			if err != nil {
-				p.log.Error("failed to update list", err)
-				continue
-			}
-			if err := p.update(newList); err != nil {
-				p.log.Error("failed to update list", err)
-				continue
-			}
-			p.log.DebugMsg("updated list", "entries", len(newList.Policies))
-		case <-p.updaterStop:
-			t.Stop()
-			p.updaterStop <- struct{}{}
-			return
-		}
-	}
-}
-
-func (p *stsPreloadPolicy) update(newList *preload.List) error {
-	if newList.Expired() {
-		return exterrors.WithFields(errors.New("the new STARTLS Everywhere list is expired"),
-			map[string]interface{}{
-				"timestamp": newList.Timestamp,
-				"expires":   newList.Expires,
-			})
-	}
-
-	p.lLock.Lock()
-	defer p.lLock.Unlock()
-
-	if time.Time(newList.Timestamp).Before(time.Time(p.l.Timestamp)) {
-		return exterrors.WithFields(errors.New("the new list is older than the currently used one"),
-			map[string]interface{}{
-				"old_timestamp": p.l.Timestamp,
-				"new_timestamp": newList.Timestamp,
-				"expires":       newList.Expires,
-			})
-	}
-
-	p.l = newList
 
 	return nil
 }
 
 type preloadDelivery struct {
 	*stsPreloadPolicy
-	mtastsPresent bool
 }
 
-func (p *stsPreloadPolicy) Start(*module.MsgMetadata) DeliveryPolicy {
+func (p *stsPreloadPolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &preloadDelivery{stsPreloadPolicy: p}
 }
 
 func (p *preloadDelivery) Reset(*module.MsgMetadata)                        {}
 func (p *preloadDelivery) PrepareDomain(ctx context.Context, domain string) {}
 func (p *preloadDelivery) PrepareConn(ctx context.Context, mx string)       {}
-func (p *preloadDelivery) CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error) {
-	// MTA-STS policy was discovered and took effect already. Do not use
-	// preload list.
-	if mxLevel == MX_MTASTS {
-		p.mtastsPresent = true
-		return MXNone, nil
-	}
-
-	p.lLock.RLock()
-	defer p.lLock.RUnlock()
-
-	if p.l.Expired() {
-		p.log.Msg("STARTTLS Everywhere list is expired, ignoring")
-		return MXNone, nil
-	}
-
-	ent, ok := p.l.Lookup(domain)
-	if !ok {
-		p.log.DebugMsg("no entry", "domain", domain)
-		return MXNone, nil
-	}
-	sts := ent.STS(p.l)
-	if !sts.Match(mx) {
-		if sts.Mode == mtasts.ModeEnforce || p.enforceTesting {
-			return MXNone, &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-				Message:      "Failed to estabilish the MX record authenticity (STARTTLS Everywhere)",
-			}
-		}
-		p.log.Msg("MX does not match published non-enforced STARTLS Everywhere entry", "mx", mx, "domain", domain)
-		return MXNone, nil
-	}
-	p.log.DebugMsg("MX OK", "domain", domain)
-	return MX_MTASTS, nil
+func (p *preloadDelivery) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
+	return mxLevel, nil
 }
 
-func (p *preloadDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error) {
-	// MTA-STS policy was discovered and took effect already. Do not use
-	// preload list. We cannot check level for MX_MTASTS because we can set
-	// it too in CheckMX.
-	if p.mtastsPresent {
-		return TLSNone, nil
-	}
-
-	p.lLock.RLock()
-	defer p.lLock.RUnlock()
-
-	if p.l.Expired() {
-		p.log.Msg("STARTTLS Everywhere list is expired, ignoring")
-		return TLSNone, nil
-	}
-
-	ent, ok := p.l.Lookup(domain)
-	if !ok {
-		p.log.DebugMsg("no entry", "domain", domain)
-		return TLSNone, nil
-	}
-	if ent.Mode != mtasts.ModeEnforce && !p.enforceTesting {
-		return TLSNone, nil
-	}
-
-	if !tlsState.HandshakeComplete {
-		return TLSNone, &exterrors.SMTPError{
-			Code:         451,
-			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message:      "TLS is required but unavailable or failed (STARTTLS Everywhere)",
-		}
-	}
-
-	if tlsState.VerifiedChains == nil {
-		return TLSNone, &exterrors.SMTPError{
-			Code:         451,
-			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message: "Recipient server TLS certificate is not trusted but " +
-				"authentication is required by STARTTLS Everywhere list",
-			Misc: map[string]interface{}{
-				"tls_level": tlsLevel,
-			},
-		}
-	}
-
-	p.log.DebugMsg("TLS OK", "domain", domain)
-
-	return TLSNone, nil
+func (p *preloadDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
+	return tlsLevel, nil
 }
 
 func (p *stsPreloadPolicy) Close() error {
-	if p.updaterStop != nil {
-		p.updaterStop <- struct{}{}
-		<-p.updaterStop
-		p.updaterStop = nil
-	}
 	return nil
 }
 
-type dnssecPolicy struct{}
+type dnssecPolicy struct {
+	instName string
+}
 
-func (dnssecPolicy) Start(*module.MsgMetadata) DeliveryPolicy {
+func NewDNSSECPolicy(_, instName string, _, _ []string) (module.Module, error) {
+	return &dnssecPolicy{
+		instName: instName,
+	}, nil
+}
+
+func (c *dnssecPolicy) Name() string {
+	return "mx_auth.dnssec"
+}
+
+func (c *dnssecPolicy) InstanceName() string {
+	return c.instName
+}
+
+func (c *dnssecPolicy) Weight() int {
+	return 1
+}
+
+func (c *dnssecPolicy) Init(cfg *config.Map) error {
+	_, err := cfg.Process() // will fail if there is any directive
+	return err
+}
+
+func (dnssecPolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return dnssecPolicy{}
 }
 
@@ -562,21 +323,22 @@ func (dnssecPolicy) Reset(*module.MsgMetadata)                        {}
 func (dnssecPolicy) PrepareDomain(ctx context.Context, domain string) {}
 func (dnssecPolicy) PrepareConn(ctx context.Context, mx string)       {}
 
-func (dnssecPolicy) CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error) {
+func (dnssecPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
 	if dnssec {
-		return MX_DNSSEC, nil
+		return module.MX_DNSSEC, nil
 	}
-	return MXNone, nil
+	return module.MXNone, nil
 }
 
-func (dnssecPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error) {
-	return TLSNone, nil
+func (dnssecPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
+	return module.TLSNone, nil
 }
 
 type (
 	danePolicy struct {
 		extResolver *dns.ExtResolver
 		log         log.Logger
+		instName    string
 	}
 	daneDelivery struct {
 		c       *danePolicy
@@ -584,19 +346,37 @@ type (
 	}
 )
 
-func NewDANEPolicy(debug bool) *danePolicy {
-	extR, err := dns.NewExtResolver()
-	if err != nil {
-		log.DefaultLogger.Error("DANE support is no-op: unable to init EDNS resolver", err)
-	}
-
+func NewDANEPolicy(_, instName string, _, _ []string) (module.Module, error) {
 	return &danePolicy{
-		log:         log.Logger{Name: "remote/dane", Debug: debug},
-		extResolver: extR,
-	}
+		instName: instName,
+		log:      log.Logger{Name: "remote/dane", Debug: log.DefaultLogger.Debug},
+	}, nil
 }
 
-func (c *danePolicy) Start(*module.MsgMetadata) DeliveryPolicy {
+func (c *danePolicy) Name() string {
+	return "mx_auth.dane"
+}
+
+func (c *danePolicy) InstanceName() string {
+	return c.instName
+}
+
+func (c *danePolicy) Weight() int {
+	return 10
+}
+
+func (c *danePolicy) Init(cfg *config.Map) error {
+	var err error
+	c.extResolver, err = dns.NewExtResolver()
+	if err != nil {
+		c.log.Error("DANE support is no-op: unable to init EDNS resolver", err)
+	}
+
+	_, err = cfg.Process() // will fail if there is any directive
+	return err
+}
+
+func (c *danePolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &daneDelivery{c: c}
 }
 
@@ -635,21 +415,21 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	}()
 }
 
-func (c *daneDelivery) CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error) {
-	return MXNone, nil
+func (c *daneDelivery) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
+	return module.MXNone, nil
 }
 
-func (c *daneDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error) {
+func (c *daneDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
 	// No DNSSEC support.
 	if c.c.extResolver == nil {
-		return TLSNone, nil
+		return module.TLSNone, nil
 	}
 
 	recsI, err := c.tlsaFut.GetContext(ctx)
 	if err != nil {
 		// No records.
 		if dns.IsNotFound(err) {
-			return TLSNone, nil
+			return module.TLSNone, nil
 		}
 
 		// Lookup error here indicates a resolution failure or may also
@@ -659,32 +439,49 @@ func (c *daneDelivery) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel 
 		// We assume DANE failure in both cases as a safety measure.
 		// However, there is a possibility of a temporary error condition,
 		// so we mark it as such.
-		return TLSNone, exterrors.WithTemporary(err, true)
+		return module.TLSNone, exterrors.WithTemporary(err, true)
 	}
 	recs := recsI.([]dns.TLSA)
 
 	overridePKIX, err := verifyDANE(recs, mx, tlsState)
 	if err != nil {
-		return TLSNone, err
+		return module.TLSNone, err
 	}
 	if overridePKIX {
-		return TLSAuthenticated, nil
+		return module.TLSAuthenticated, nil
 	}
-	return TLSNone, nil
+	return module.TLSNone, nil
 }
 
 func (c *daneDelivery) Reset(*module.MsgMetadata) {}
 
 type (
 	localPolicy struct {
-		minTLSLevel TLSLevel
-		minMXLevel  MXLevel
+		instName    string
+		minTLSLevel module.TLSLevel
+		minMXLevel  module.MXLevel
 	}
 )
 
-func NewLocalPolicy(cfg *config.Map) (localPolicy, error) {
-	l := localPolicy{}
+func NewLocalPolicy(_, instName string, _, _ []string) (module.Module, error) {
+	return &localPolicy{
+		instName: instName,
+	}, nil
+}
 
+func (c *localPolicy) Name() string {
+	return "mx_auth.local_policy"
+}
+
+func (c *localPolicy) InstanceName() string {
+	return c.instName
+}
+
+func (c *localPolicy) Weight() int {
+	return 1000
+}
+
+func (c *localPolicy) Init(cfg *config.Map) error {
 	var (
 		minTLSLevel string
 		minMXLevel  string
@@ -695,31 +492,31 @@ func NewLocalPolicy(cfg *config.Map) (localPolicy, error) {
 	cfg.Enum("min_mx_level", false, false,
 		[]string{"none", "mtasts", "dnssec"}, "none", &minMXLevel)
 	if _, err := cfg.Process(); err != nil {
-		return localPolicy{}, err
+		return err
 	}
 
 	// Enum checks the value against allowed list, no 'default' necessary.
 	switch minTLSLevel {
 	case "none":
-		l.minTLSLevel = TLSNone
+		c.minTLSLevel = module.TLSNone
 	case "encrypted":
-		l.minTLSLevel = TLSEncrypted
+		c.minTLSLevel = module.TLSEncrypted
 	case "authenticated":
-		l.minTLSLevel = TLSAuthenticated
+		c.minTLSLevel = module.TLSAuthenticated
 	}
 	switch minMXLevel {
 	case "none":
-		l.minMXLevel = MXNone
+		c.minMXLevel = module.MXNone
 	case "mtasts":
-		l.minMXLevel = MX_MTASTS
+		c.minMXLevel = module.MX_MTASTS
 	case "dnssec":
-		l.minMXLevel = MX_DNSSEC
+		c.minMXLevel = module.MX_DNSSEC
 	}
 
-	return l, nil
+	return nil
 }
 
-func (l localPolicy) Start(msgMeta *module.MsgMetadata) DeliveryPolicy {
+func (l localPolicy) Start(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return l
 }
 
@@ -731,25 +528,25 @@ func (l localPolicy) Reset(*module.MsgMetadata)                        {}
 func (l localPolicy) PrepareDomain(ctx context.Context, domain string) {}
 func (l localPolicy) PrepareConn(ctx context.Context, mx string)       {}
 
-func (l localPolicy) CheckMX(ctx context.Context, mxLevel MXLevel, domain, mx string, dnssec bool) (MXLevel, error) {
+func (l localPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
 	if mxLevel < l.minMXLevel {
-		return MXNone, &exterrors.SMTPError{
+		return module.MXNone, &exterrors.SMTPError{
 			// Err on the side of caution if policy evaluation was messed up by
 			// a temporary error (we can't know with the current design).
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 0},
-			Message:      "Failed to estabilish the MX record authenticity",
+			Message:      "Failed to estabilish the module.MX record authenticity",
 			Misc: map[string]interface{}{
 				"mx_level": mxLevel,
 			},
 		}
 	}
-	return MXNone, nil
+	return module.MXNone, nil
 }
 
-func (l localPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TLSLevel, domain, mx string, tlsState tls.ConnectionState) (TLSLevel, error) {
+func (l localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
 	if tlsLevel < l.minTLSLevel {
-		return TLSNone, &exterrors.SMTPError{
+		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
 			Message:      "TLS it not available or unauthenticated but required",
@@ -758,42 +555,13 @@ func (l localPolicy) CheckConn(ctx context.Context, mxLevel MXLevel, tlsLevel TL
 			},
 		}
 	}
-	return TLSNone, nil
+	return module.TLSNone, nil
 }
 
-func policyFromNode(debugLog bool, m *config.Map, node config.Node) (Policy, error) {
-	if len(node.Args) != 0 {
-		return nil, config.NodeErr(node, "no arguments allowed")
-	}
-
-	var (
-		policy Policy
-		err    error
-	)
-	switch node.Name {
-	case "mtasts":
-		policy, err = NewMTASTSPolicy(net.DefaultResolver, log.DefaultLogger.Debug, config.NewMap(m.Globals, node))
-	case "dane":
-		if node.Children != nil {
-			return nil, config.NodeErr(node, "policy offers no additional configuration")
-		}
-		policy = NewDANEPolicy(debugLog)
-	case "dnssec":
-		if node.Children != nil {
-			return nil, config.NodeErr(node, "policy offers no additional configuration")
-		}
-		policy = &dnssecPolicy{}
-	case "sts_preload":
-		policy, err = NewSTSPreloadPolicy(log.DefaultLogger.Debug, http.DefaultClient, preload.Download,
-			config.NewMap(m.Globals, node))
-	case "local_policy":
-		policy, err = NewLocalPolicy(config.NewMap(m.Globals, node))
-	default:
-		return nil, config.NodeErr(node, "unknown policy module: %v", node.Name)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return policy, nil
+func init() {
+	module.Register("mx_auth.mtasts", NewMTASTSPolicy)
+	module.Register("mx_auth.sts_preload", NewSTSPreload)
+	module.Register("mx_auth.dnssec", NewDNSSECPolicy)
+	module.Register("mx_auth.dane", NewDANEPolicy)
+	module.Register("mx_auth.local_policy", NewLocalPolicy)
 }

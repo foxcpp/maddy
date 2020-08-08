@@ -1,4 +1,4 @@
-site_name: maddy documentation
+site_name: maddy
 
 repo_url: https://github.com/foxcpp/maddy
 
@@ -9,18 +9,20 @@ markdown_extensions:
       guess_lang: false
 
 nav:
-  - README.md
   - Tutorials:
     - tutorials/setting-up.md
-    - tutorials/manual-installation.md
+    - tutorials/building-from-source.md
     - tutorials/alias-to-remote.md
     - tutorials/multiple-domains.md
-    - tutorials/upgrading.md
-    - tutorials/smtp-only.md
-    - tutorials/imap-only.md
+  - Integration with software:
+    - third-party/dovecot.md
+    - third-party/smtp-servers.md
+    - third-party/rspamd.md
+    - third-party/mailman3.md
   - seclevels.md
   - faq.md
   - unicode.md
+  - upgrading.md
   - specifications.md
   - Manual pages:
     - man/_generated_maddy.1.md
@@ -31,6 +33,7 @@ nav:
     - man/_generated_maddy-smtp.5.md
     - man/_generated_maddy-storage.5.md
     - man/_generated_maddy-targets.5.md
+    - man/_generated_maddy-tables.5.md
     - man/_generated_maddy-tls.5.md
   - Internals:
     - internals/quirks.md

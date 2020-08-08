@@ -26,37 +26,32 @@ there are a few things to keep in mind:
 
 ## Installing maddy
 
-Since there are currently no pre-compiled binaries for maddy, we are going to
-build it from the source. Nothing scary, this is relatively easy to do with Go.
+Your options are:
 
-System dependencies you need to have installed is C toolchain, Git and curl.
-On Debian-based distributions, this should be enough:
-```
-# apt-get install gcc git curl libc6-dev
-```
+* Pre-built tarball (Linux, amd64)
 
-If you want manual pages with reference docs, install scdoc too:
-```
-# apt-get install scdoc
-```
+    Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
+    [foxcpp.dev](https://foxcpp.dev/maddy-builds/).
 
-build.sh script will do the rest for you:
+    The tarball contains the full filesystem tree so you can directly
+    extract it into root directory (or you can take just executable).
 
-```
-$ curl 'https://foxcpp.dev/maddy/build.sh' | bash
-```
+* Docker image (Linux, amd64)
 
-Alternatively, you can download the pre-built tarball from
-[GitHub](https://github.com/foxcpp/maddy/releases) and extract its contents into
-the root directory.
+    ```
+    docker pull foxcpp/maddy:latest
+    ```
 
-*Note:* If you can't / don't use this script for some reason, instructions for
-manual installation can be found
-[here](../manual-installation)
+    See README at [hub.docker.com](https://hub.docker.com/r/foxcpp/maddy)
+    for Docker-specific instructions.
+
+* Building from source
+
+    See [here](../building-from-source) for instructions.
 
 ## Host name + domain
 
-Open /etc/maddy/maddy.conf with ~~vim~~ your favorite editor and change
+Open /etc/maddy/maddy.conf with vim^W your favorite editor and change
 the following lines to match your server name and domain you want to handle
 mail for.
 If you setup a very small mail server you can use example.org in both fields.
@@ -69,6 +64,13 @@ to another server (as long as you configure it to handle your domain).
 ```
 $(hostname) = mx1.example.org
 $(primary_domain) = example.org
+```
+
+If you want to handle multiple domains, you still need to designate
+one as "primary". Add all other domains to the `local_domains` line:
+
+```
+$(local_domains) = $(primary_domain) example.com other.example.com
 ```
 
 ## TLS certificates
@@ -168,6 +170,7 @@ mx: mx1.example.org
 it will be the same as your hostname example.org.
 In a more complex setups, you would have multiple MX servers - add them all once
 per line, like that:
+=======
 ```
 mx: mx1.example.org
 mx: mx2.example.org
@@ -195,7 +198,7 @@ After registering the user credentials, you also need to create a local
 storage account:
 ```
 $ maddyctl imap-acct create postmaster@example.org
-``
+```
 
 That is it. Now you have your first e-mail address. when authenticating using
 your e-mail client, do not forget the username is "postmaster@example.org", not
@@ -205,40 +208,3 @@ You may find running `maddyctl creds --help` and `maddyctl imap-acct --help`
 useful to learn about other commands. Note that IMAP accounts and credentials
 are managed separately yet usernames should match by default for things to
 work.
-
-## Optional: Install and use fail2ban
-
-The email world is full of annoying bots just like Web (these annoying scanners
-looking for PhpMyAdmin on your blog). fail2ban can help you get rid of them by
-temporary blocking offending IPs.
-
-1. Install the fail2ban package and the python systemd module using your distribution package manager
-For Debian-based distributions:
-```
-apt-get install fail2ban python3-systemd
-```
-
-2. build.sh already installed necessary jail configuration files, but you have to
-   enable them. Open /etc/fail2ban/jail.d/common.local (create one if needed)
-   and add the following lines:
-```
-[maddy-auth]
-enabled = true
-
-[maddy-dictonary-attack]
-enabled = true
-```
-
-Now start or restart the fail2ban daemon:
-```
-systemctl restart fail2ban
-```
-
-Keep in mind that the maddy jail configuration uses a different much longer
-bantime value. This means users will get IP-banned for quite a long time (4
-days) after 5 failed login attempts. You might want to change that to a smaller
-period by editing /etc/fail2ban/jail.d/common.local:
-```
-[maddy-auth]
-bantime = 1h
-```

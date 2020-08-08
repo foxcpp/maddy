@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package command
 
 import (
@@ -16,16 +34,16 @@ import (
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/check"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
-const modName = "command"
+const modName = "check.command"
 
 type Stage string
 
@@ -43,7 +61,7 @@ type Check struct {
 	log      log.Logger
 
 	stage   Stage
-	actions map[int]check.FailAction
+	actions map[int]modconfig.FailAction
 	cmd     string
 	cmdArgs []string
 }
@@ -51,11 +69,11 @@ type Check struct {
 func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
-		actions: map[int]check.FailAction{
-			1: check.FailAction{
+		actions: map[int]modconfig.FailAction{
+			1: modconfig.FailAction{
 				Reject: true,
 			},
-			2: check.FailAction{
+			2: modconfig.FailAction{
 				Quarantine: true,
 			},
 		},
@@ -105,7 +123,7 @@ func (c *Check) Init(cfg *config.Map) error {
 			if err != nil {
 				return config.NodeErr(node, "%v", err)
 			}
-			action, err := check.ParseActionDirective(node.Args[1:])
+			action, err := modconfig.ParseActionDirective(node.Args[1:])
 			if err != nil {
 				return config.NodeErr(node, "%v", err)
 			}
@@ -379,5 +397,6 @@ func (s *state) Close() error {
 }
 
 func init() {
+	module.RegisterDeprecated("command", "check.command", New)
 	module.Register(modName, New)
 }

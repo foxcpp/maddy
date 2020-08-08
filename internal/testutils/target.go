@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package testutils
 
 import (
@@ -12,10 +30,10 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/foxcpp/maddy/internal/buffer"
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 type Msg struct {
@@ -225,10 +243,10 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	return encodedID
 }
 
-const DeliveryData = "A: 1\n" +
-	"B: 2\n" +
-	"\n" +
-	"foobar\n"
+const DeliveryData = "A: 1\r\n" +
+	"B: 2\r\n" +
+	"\r\n" +
+	"foobar\r\n"
 
 func DoTestDeliveryErr(t *testing.T, tgt module.DeliveryTarget, from string, to []string) (string, error) {
 	return DoTestDeliveryErrMeta(t, tgt, from, to, &module.MsgMetadata{})
@@ -241,7 +259,7 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	encodedID := hex.EncodeToString(IDRaw[:])
 	testCtx := context.Background()
 
-	body := buffer.MemoryBuffer{Slice: []byte("foobar\n")}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 	msgMeta.DontTraceSender = true
 	msgMeta.ID = encodedID
 	t.Log("-- tgt.Start", from)
@@ -318,8 +336,8 @@ func CheckMsgID(t *testing.T, msg *Msg, sender string, rcpt []string, id string)
 	if !reflect.DeepEqual(msg.RcptTo, rcpt) {
 		t.Errorf("wrong recipients, want %v, got %v", rcpt, msg.RcptTo)
 	}
-	if string(msg.Body) != "foobar\n" {
-		t.Errorf("wrong body, want '%s', got '%s'", "foobar", string(msg.Body))
+	if string(msg.Body) != "foobar\r\n" {
+		t.Errorf("wrong body, want '%s', got '%s' (%v)", "foobar\r\n", string(msg.Body), msg.Body)
 	}
 
 	return msg.MsgMeta.ID

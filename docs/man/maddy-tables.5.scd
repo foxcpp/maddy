@@ -11,7 +11,7 @@ change the source of data, effectively turning the table into a complete
 interface to a key-value store for maddy. Such tables are referred to as
 "mutable tables".
 
-# File mapping (file)
+# File mapping (table.file)
 
 This module builds string-string mapping from a text file.
 
@@ -58,13 +58,13 @@ aaa: bbb
 aaa
 ```
 
-# SQL query mapping (sql_query)
+# SQL query mapping (table.sql_query)
 
 The sql_query module implements table interface using SQL queries.
 
 Definition:
 ```
-sql_query {
+table.sql_query {
 	driver <driver name>
 	dsn <data source name>
 	lookup <lookup query>
@@ -111,7 +111,7 @@ https://pkg.go.dev/github.com/lib/pq?tab=doc#hdr-Connection_String_Parameters
 
 SQL query to use to obtain the lookup result.
 
-It will get one positional argument containing the lookup key. Use $1
+It will get one named argument containing the lookup key. Use :key
 placeholder to access it in SQL. The result row set should contain one row, one
 column with the string that will be used as a lookup result. If there are more
 rows, they will be ignored. If there are more columns, lookup will fail.  If
@@ -125,7 +125,7 @@ List of queries to execute on initialization. Can be used to configure RDBMS.
 
 Example, to improve SQLite3 performance:
 ```
-sql_query {
+table.sql_query {
 	driver sqlite3
 	dsn whatever.db
 	init "PRAGMA journal_mode=WAL" \
@@ -143,25 +143,25 @@ sql_query {
 If queries are set to implement corresponding table operations - table becomes
 "mutable" and can be used in contexts that require writable key-value store.
 
-'add' query gets two ordered arguments - key and value strings to store.
+'add' query gets :key, :value named arguments - key and value strings to store.
 They should be added to the store. The query *should* not add multiple values
 for the same key and *should* fail if the key already exists.
 
 'list' query gets no arguments and should return a column with all keys in
 the store.
 
-'set' query gets two arguments - key and value and should replace the existing
+'set' query gets :key, :value named arguments - key and value and should replace the existing
 entry in the database.
 
-'del' query gets one argument - key and should remove it from the database.
+'del' query gets :key argument - key and should remove it from the database.
 
-# Static table (static)
+# Static table (table.static)
 
 The 'static' module implements table lookups using key-value pairs in its
 configuration.
 
 ```
-static {
+table.static {
 	entry KEY1 VALUE1
 	entry KEY2 VALUE2
 	...
@@ -176,7 +176,7 @@ Add an entry to the table.
 
 If the same key is used multiple times, the last one takes effect.
 
-# Regexp rewrite table (regexp)
+# Regexp rewrite table (table.regexp)
 
 The 'regexp' module implements table lookups by applying a regular expression
 to the key value. If it matches - 'replacement' value is returned with $N
@@ -187,10 +187,20 @@ The regular expression syntax is the subset of PCRE. See
 https://golang.org/pkg/regexp/syntax/ for details.
 
 ```
-regexp <regexp> <replacement> {
+table.regexp <regexp> [replacement] {
 	full_match yes
 	case_insensitive yes
 	expand_placeholders yes
+}
+```
+
+Note that [replacement] is optional. If it is not included - table.regexp
+will return the original string, therefore acting as a regexp match check.
+This can be useful in combination in destination_in (*maddy-smtp*(5)) for
+advanced matching:
+```
+destination_in regexp ".*-bounce+.*@example.com" {
+	...
 }
 ```
 
@@ -216,12 +226,12 @@ corresponding capture groups from the match.
 
 To insert a literal $ in the output, use $$ in the template.
 
-# Identity table (identity)
+# Identity table (table.identity)
 
 The module 'identity' is a table module that just returns the key looked up.
 
 ```
-identity { }
+table.identity { }
 ```
 
 # No-op table (dummy)

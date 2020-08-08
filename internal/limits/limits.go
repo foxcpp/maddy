@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // Package limit provides a module object that can be used to restrict the
 // concurrency and rate of the messages flow globally or on per-source,
 // per-destination basis.
@@ -14,9 +32,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/foxcpp/maddy/internal/config"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/limits/limiters"
-	"github.com/foxcpp/maddy/internal/module"
 )
 
 type Group struct {
@@ -122,6 +140,7 @@ func rateCtor(node config.Node, args []string) (func() limiters.L, error) {
 		if err != nil {
 			return nil, config.NodeErr(node, "%v", err)
 		}
+		fallthrough
 	case 1:
 		var err error
 		burst, err = strconv.Atoi(args[0])
@@ -130,6 +149,8 @@ func rateCtor(node config.Node, args []string) (func() limiters.L, error) {
 		}
 	case 0:
 		return nil, config.NodeErr(node, "at least burst size is needed")
+	default:
+		return nil, config.NodeErr(node, "too many arguments")
 	}
 
 	return func() limiters.L {

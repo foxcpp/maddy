@@ -4,16 +4,46 @@ maddy-tls(5) "maddy mail server" "maddy reference documentation"
 
 # TLS server configuration
 
-You can specify other TLS-related options in a configuration block for 'tls'
-directive:
+TLS certificates are obtained by modules called "certificate loaders". 'tls' directive
+arguments specify name of loader to use and arguments. Due to syntax limitations
+advanced configuration for loader should be specified using 'loader' directive, see
+below.
 
 ```
-tls cert.pem cert.pem {
-    protocols tls1.2 tls1.3
-    curve X25519
-    ciphers ...
+tls file cert.pem key.pem {
+	protocols tls1.2 tls1.3
+	curve X25519
+	ciphers ...
+}
+
+tls {
+	loader file cert.pem key.pem {
+		# Options for loader go here.
+	}
+	protocols tls1.2 tls1.3
+	curve X25519
+	ciphers ...
 }
 ```
+
+## Available certificate loaders
+
+- file
+
+	Accepts argument pairs specifying certificate and then key.
+	E.g. 'tls file certA.pem keyA.pem certB.pem keyB.pem'
+
+	If multiple certificates are listed, SNI will be used.
+
+- off
+
+	Not really a loader but a special value for tls directive, explicitly disables TLS for
+	endpoint(s).
+
+## Advanced TLS configuration
+
+*Note: maddy uses secure defaults and TLS handshake is resistant to active downgrade attacks.*
+*There is no need to change anything in most cases.*
 
 *Syntax*: ++
     protocols _min_version_ _max_version_ ++

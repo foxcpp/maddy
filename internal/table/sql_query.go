@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package table
 
 import (
@@ -5,8 +23,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/module"
 	_ "github.com/lib/pq"
 )
 
@@ -150,7 +168,7 @@ func (s *SQL) RemoveKey(k string) error {
 		return fmt.Errorf("%s: table is not mutable (no 'del' query)", s.modName)
 	}
 
-	_, err := s.del.Exec(k)
+	_, err := s.del.Exec(sql.Named("key", k))
 	if err != nil {
 		return fmt.Errorf("%s: del %s: %w", s.modName, k, err)
 	}
@@ -165,8 +183,8 @@ func (s *SQL) SetKey(k, v string) error {
 		return fmt.Errorf("%s: table is not mutable (no 'add' query)", s.modName)
 	}
 
-	if _, err := s.add.Exec(k, v); err != nil {
-		if _, err := s.set.Exec(k, v); err != nil {
+	if _, err := s.add.Exec(sql.Named("key", k), sql.Named("value", v)); err != nil {
+		if _, err := s.set.Exec(sql.Named("key", k), sql.Named("value", v)); err != nil {
 			return fmt.Errorf("%s: add %s: %w", s.modName, k, err)
 		}
 		return nil
@@ -175,5 +193,6 @@ func (s *SQL) SetKey(k, v string) error {
 }
 
 func init() {
-	module.Register("sql_query", NewSQL)
+	module.RegisterDeprecated("sql_query", "table.sql_query", NewSQL)
+	module.Register("table.sql_query", NewSQL)
 }

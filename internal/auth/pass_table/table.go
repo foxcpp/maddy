@@ -1,12 +1,30 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package pass_table
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/module"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/module"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/secure/precis"
 )
@@ -29,7 +47,7 @@ func New(modName, instName string, _, inlineArgs []string) (module.Module, error
 
 func (a *Auth) Init(cfg *config.Map) error {
 	if len(a.inlineArgs) != 0 {
-		return modconfig.ModuleFromNode(a.inlineArgs, cfg.Block, cfg.Globals, &a.table)
+		return modconfig.ModuleFromNode("table", a.inlineArgs, cfg.Block, cfg.Globals, &a.table)
 	}
 
 	cfg.Custom("table", false, true, nil, modconfig.TableDirective, &a.table)
@@ -168,5 +186,6 @@ func (a *Auth) DeleteUser(username string) error {
 }
 
 func init() {
-	module.Register("pass_table", New)
+	module.RegisterDeprecated("pass_table", "auth.pass_table", New)
+	module.Register("auth.pass_table", New)
 }

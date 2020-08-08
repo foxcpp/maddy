@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package remote
 
 import (
@@ -8,8 +26,9 @@ import (
 	"runtime/trace"
 	"sort"
 
-	"github.com/foxcpp/maddy/internal/config"
-	"github.com/foxcpp/maddy/internal/exterrors"
+	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 )
 
@@ -19,6 +38,29 @@ type mxConn struct {
 	// Domain this MX belongs to.
 	domain   string
 	dnssecOk bool
+
+	// Errors occurred previously on this connection.
+	errored bool
+
+	reuseLimit int
+
+	// Amount of times connection was used for an SMTP transaction.
+	transactions int
+
+	// MX/TLS security level established for this connection.
+	mxLevel  module.MXLevel
+	tlsLevel module.TLSLevel
+}
+
+func (c *mxConn) Usable() bool {
+	if c.C == nil || c.transactions > c.reuseLimit || c.C.Client() == nil {
+		return false
+	}
+	return c.C.Client().Reset() == nil
+}
+
+func (c *mxConn) Close() error {
+	return c.C.Close()
 }
 
 func isVerifyError(err error) bool {
@@ -45,8 +87,8 @@ func isVerifyError(err error) bool {
 // Return values:
 // - tlsLevel    TLS security level that was estabilished.
 // - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
-func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel TLSLevel, tlsErr error, err error) {
-	tlsLevel = TLSAuthenticated
+func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr error, err error) {
+	tlsLevel = module.TLSAuthenticated
 	if rd.rt.tlsConfig != nil {
 		tlsCfg = rd.rt.tlsConfig.Clone()
 		tlsCfg.ServerName = host
@@ -62,7 +104,7 @@ retry:
 		Port: smtpPort,
 	}, false, nil)
 	if err != nil {
-		return TLSNone, nil, err
+		return module.TLSNone, nil, err
 	}
 
 	starttlsOk, _ := conn.Client().Extension("STARTTLS")
@@ -77,10 +119,10 @@ retry:
 			// Check tlsLevel is to avoid looping forever if the same verify
 			// error happens with InsecureSkipVerify too (e.g. certificate is
 			// *too* broken).
-			if isVerifyError(err) && tlsLevel == TLSAuthenticated {
+			if isVerifyError(err) && tlsLevel == module.TLSAuthenticated {
 				rd.Log.Error("TLS verify error, trying without authentication", err, "remote_server", host, "domain", conn.domain)
 				tlsCfg.InsecureSkipVerify = true
-				tlsLevel = TLSEncrypted
+				tlsLevel = module.TLSEncrypted
 
 				// TODO: Check go-smtp code to make TLS verification errors
 				// non-sticky so we can properly send QUIT in this case.
@@ -91,20 +133,20 @@ retry:
 
 			rd.Log.Error("TLS error, trying plaintext", err, "remote_server", host, "domain", conn.domain)
 			tlsCfg = nil
-			tlsLevel = TLSNone
+			tlsLevel = module.TLSNone
 			conn.DirectClose()
 
 			goto retry
 		}
 	} else {
-		tlsLevel = TLSNone
+		tlsLevel = module.TLSNone
 	}
 
 	return tlsLevel, tlsErr, nil
 }
 
-func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *net.MX) error {
-	mxLevel := MXNone
+func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *net.MX) error {
+	mxLevel := module.MXNone
 
 	connCtx, cancel := context.WithCancel(ctx)
 	// Cancel async policy lookups if rd.connect fails.
@@ -122,7 +164,7 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		p.PrepareConn(ctx, record.Host)
 	}
 
-	tlsLevel, tlsErr, err := rd.connect(connCtx, conn, record.Host, rd.rt.tlsConfig)
+	tlsLevel, tlsErr, err := rd.connect(connCtx, *conn, record.Host, rd.rt.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -144,6 +186,12 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn mxConn, record *ne
 		}
 	}
 
+	conn.mxLevel = mxLevel
+	conn.tlsLevel = tlsLevel
+
+	mxLevelCnt.WithLabelValues(rd.rt.Name(), mxLevel.String()).Inc()
+	tlsLevelCnt.WithLabelValues(rd.rt.Name(), tlsLevel.String()).Inc()
+
 	return nil
 }
 
@@ -152,9 +200,84 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		return c.C, nil
 	}
 
+	pooledConn, err := rd.rt.pool.Get(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var conn *mxConn
+	// Ignore pool for connections with REQUIRETLS to avoid "pool poisoning"
+	// where attacker can make messages indeliverable by forcing reuse of old
+	// connection with weaker security.
+	if pooledConn != nil && !rd.msgMeta.SMTPOpts.RequireTLS {
+		conn = pooledConn.(*mxConn)
+		rd.Log.Msg("reusing cached connection", "domain", domain, "transactions_counter", conn.transactions)
+	} else {
+		rd.Log.DebugMsg("opening new connection", "domain", domain, "cache_ignored", pooledConn != nil)
+		conn, err = rd.newConn(ctx, domain)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if rd.msgMeta.SMTPOpts.RequireTLS {
+		if conn.tlsLevel < module.TLSAuthenticated {
+			conn.Close()
+			return nil, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "TLS it not available or unauthenticated but required (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"tls_level": conn.tlsLevel,
+				},
+			}
+		}
+		if conn.mxLevel < module.MX_MTASTS {
+			conn.Close()
+			return nil, &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
+				Message:      "Failed to estabilish the MX record authenticity (REQUIRETLS)",
+				Misc: map[string]interface{}{
+					"mx_level": conn.mxLevel,
+				},
+			}
+		}
+	}
+
+	region := trace.StartRegion(ctx, "remote/limits.TakeDest")
+	if err := rd.rt.limits.TakeDest(ctx, domain); err != nil {
+		region.End()
+		return nil, err
+	}
+	region.End()
+
+	// Relaxed REQUIRETLS mode is not conforming to the specification strictly
+	// but allows to start deploying client support for REQUIRETLS without the
+	// requirement for servers in the whole world to support it. The assumption
+	// behind it is that MX for the recipient domain is the final destination
+	// and all other forwarders behind it already have secure connection to
+	// each other. Therefore it is enough to enforce strict security only on
+	// the path to the MX even if it does not support the REQUIRETLS to propagate
+	// this requirement further.
+	if ok, _ := conn.Client().Extension("REQUIRETLS"); rd.rt.relaxedREQUIRETLS && !ok {
+		rd.msgMeta.SMTPOpts.RequireTLS = false
+	}
+
+	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	rd.connections[domain] = conn
+	return conn.C, nil
+}
+
+func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, error) {
 	conn := mxConn{
-		C:      smtpconn.New(),
-		domain: domain,
+		reuseLimit: rd.rt.connReuseLimit,
+		C:          smtpconn.New(),
+		domain:     domain,
 	}
 
 	conn.Dialer = rd.rt.dialer
@@ -174,13 +297,6 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	}
 	conn.dnssecOk = dnssecOk
 
-	region = trace.StartRegion(ctx, "remote/limits.TakeDest")
-	if err := rd.rt.limits.TakeDest(ctx, domain); err != nil {
-		region.End()
-		return nil, err
-	}
-	region.End()
-
 	var lastErr error
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")
 	for _, record := range records {
@@ -192,7 +308,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			}
 		}
 
-		if err := rd.attemptMX(ctx, conn, record); err != nil {
+		if err := rd.attemptMX(ctx, &conn, record); err != nil {
 			if len(records) != 0 {
 				rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
 			}
@@ -217,13 +333,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		}
 	}
 
-	if err := conn.Mail(ctx, rd.mailFrom, rd.msgMeta.SMTPOpts); err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	rd.connections[domain] = conn
-	return conn.C, nil
+	return &conn, nil
 }
 
 func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk bool, records []*net.MX, err error) {

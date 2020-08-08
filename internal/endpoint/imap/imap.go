@@ -1,3 +1,21 @@
+/*
+Maddy Mail Server - Composable all-in-one email server.
+Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package imap
 
 import (
@@ -13,6 +31,7 @@ import (
 	compress "github.com/emersion/go-imap-compress"
 	idle "github.com/emersion/go-imap-idle"
 	move "github.com/emersion/go-imap-move"
+	sortthread "github.com/emersion/go-imap-sortthread"
 	specialuse "github.com/emersion/go-imap-specialuse"
 	unselect "github.com/emersion/go-imap-unselect"
 	imapbackend "github.com/emersion/go-imap/backend"
@@ -21,12 +40,14 @@ import (
 	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-sasl"
 	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
+	namespace "github.com/foxcpp/go-imap-namespace"
 	"github.com/foxcpp/go-imap-sql/children"
+	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
-	"github.com/foxcpp/maddy/internal/config"
-	modconfig "github.com/foxcpp/maddy/internal/config/module"
-	"github.com/foxcpp/maddy/internal/log"
-	"github.com/foxcpp/maddy/internal/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 
@@ -68,7 +89,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
-	cfg.Custom("tls", true, true, nil, config.TLSDirective, &endp.tlsConfig)
+	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)
@@ -247,14 +268,29 @@ func (endp *Endpoint) enableExtensions() error {
 			endp.serv.Enable(specialuse.NewExtension())
 		case "I18NLEVEL=1", "I18NLEVEL=2":
 			endp.serv.Enable(i18nlevel.NewExtension())
+		case "SORT":
+			endp.serv.Enable(sortthread.NewSortExtension())
+		}
+		if strings.HasPrefix(ext, "THREAD") {
+			endp.serv.Enable(sortthread.NewThreadExtension())
 		}
 	}
 
 	endp.serv.Enable(compress.NewExtension())
 	endp.serv.Enable(unselect.NewExtension())
 	endp.serv.Enable(idle.NewExtension())
+	endp.serv.Enable(namespace.NewExtension())
 
 	return nil
+}
+
+func (endp *Endpoint) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
+	be, ok := endp.Store.(sortthread.ThreadBackend)
+	if !ok {
+		return nil
+	}
+
+	return be.SupportedThreadAlgorithms()
 }
 
 func init() {
