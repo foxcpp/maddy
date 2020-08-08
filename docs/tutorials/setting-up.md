@@ -9,7 +9,7 @@ For purposes of clarity, these values are used in this tutorial as examples,
 wherever you see them, you need to replace them with your actual values:
 
 - Domain: example.org
-- MX domain (hostname): example.org
+- MX domain (hostname): mx1.example.org
 - IPv4 address: 10.2.3.4
 - IPv6 address: 2001:beef::1
 
@@ -59,9 +59,15 @@ manual installation can be found
 Open /etc/maddy/maddy.conf with ~~vim~~ your favorite editor and change
 the following lines to match your server name and domain you want to handle
 mail for.
+If you setup a very small mail server you can use example.org in both fields.
+However, to easier a future migration of service, it's recommended to use a
+separate DNS entry for that purpose. It's usually mx1.example.org, mx2, etc.
+You can of course use another subdomain, for instance: smtp1.example.org.
+An email failover server will become possible if you forward mx2.example.org
+to another server (as long as you configure it to handle your domain).
 
 ```
-$(hostname) = example.org
+$(hostname) = mx1.example.org
 $(primary_domain) = example.org
 ```
 
@@ -73,8 +79,12 @@ paths in. You need to make sure maddy can read them while running as
 unprivileged user (maddy never runs as root, even during start-up), one way to
 do so is to use ACLs (replace with your actual paths):
 ```
-$ sudo setfacl -R -m u:maddy:rX /etc/ssl/example.org.crt /etc/ssl/example.org.key
+$ sudo setfacl -R -m u:maddy:rX /etc/ssl/mx1.example.org.crt /etc/ssl/mx1.example.org.key
 ```
+
+maddy reloads TLS certificates from disk once in a minute so it will notice
+renewal. It is possible to force reload via `systemctl reload maddy` (or just
+`killall -USR2 maddy`).
 
 ### Let's Encrypt and certbot
 
@@ -87,9 +97,16 @@ You still need to make keys readable for maddy, though:
 $ sudo setfacl -R -m u:maddy:rX /etc/letsencrypt/{live,archive}
 ```
 
-maddy reloads TLS certificates from disk once in a minute so it will notice
-renewal. It is possible to force reload via `systemctl reload maddy` (or just
-`killall -USR2 maddy`).
+### ACME.sh
+
+If you use acme.sh to manage your certificates, you could simply run:
+
+```
+mkdir -p /etc/maddy/certs/mx1.example.org
+acme.sh --force --install-cert -d mx1.example.org \
+  --key-file       /etc/maddy/certs/mx1.example.org/privkey.pem  \
+  --fullchain-file /etc/maddy/certs/mx1.example.org/fullchain.pem
+```
 
 ## First run
 
@@ -110,8 +127,8 @@ own). Here is how your DNS zone should look like:
 example.org.   A     10.2.3.4
 example.org.   AAAA  2001:beef::1
 
-; It says that "server example.org is handling messages for example.org".
-example.org.   MX    10 example.org.
+; It says that "server mx1.example.org is handling messages for example.org".
+example.org.   MX    10 mx1.example.org.
 
 ; Use SPF to say that the servers in "MX" above are allowed to send email
 ; for this domain, and nobody else.
@@ -142,13 +159,13 @@ at https://mta-sts.example.org/.well-known/mta-sts.txt:
 ```
 mode: enforce
 max_age: 604800
-mx: example.org
+mx: mx1.example.org
 ```
 
-**Note**: example.org in the file is your MX hostname, example.org in URL is
-the domain you are receiving messages for. In simple configurations, they are
-going to be the same, but this is not the case for more complex setups.
-If you have multiple MX servers - add them all once per line, like that:
+**Note**: mx1.example.org in the file is your MX hostname, In a simple configuration,
+it will be the same as your hostname example.org.
+In a more complex setups, you would have multiple MX servers - add them all once
+per line, like that:
 ```
 mx: mx1.example.org
 mx: mx2.example.org
