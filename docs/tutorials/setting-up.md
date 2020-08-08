@@ -129,6 +129,8 @@ example.org.   AAAA  2001:beef::1
 
 ; It says that "server mx1.example.org is handling messages for example.org".
 example.org.   MX    10 mx1.example.org.
+; Of course, mx1 should have an entry as well:
+mx1.example.org.   A     10.2.3.4
 
 ; Use SPF to say that the servers in "MX" above are allowed to send email
 ; for this domain, and nobody else.
