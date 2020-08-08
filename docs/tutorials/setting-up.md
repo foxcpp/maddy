@@ -170,7 +170,7 @@ mx: mx1.example.org
 it will be the same as your hostname example.org.
 In a more complex setups, you would have multiple MX servers - add them all once
 per line, like that:
-=======
+
 ```
 mx: mx1.example.org
 mx: mx2.example.org
