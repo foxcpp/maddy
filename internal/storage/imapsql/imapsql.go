@@ -145,11 +145,12 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	defer trace.StartRegion(ctx, "sql/Body").End()
 
-	if !d.msgMeta.Quarantine {
+	if !d.msgMeta.Quarantine && d.store.filters != nil {
 		for rcpt := range d.addedRcpts {
 			folder, flags, err := d.store.filters.IMAPFilter(rcpt, d.msgMeta, header, body)
 			if err != nil {
-				return err
+				d.store.Log.Error("IMAPFilter failed", err, "rcpt", rcpt)
+				continue
 			}
 			d.d.UserMailbox(rcpt, folder, flags)
 		}

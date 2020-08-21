@@ -45,6 +45,9 @@ func NewGroup(_, instName string, _, _ []string) (module.Module, error) {
 }
 
 func (g *Group) IMAPFilter(accountName string, meta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
+	if g == nil {
+		return "", nil, nil
+	}
 	var (
 		finalFolder string
 		finalFlags  = make([]string, 0, len(g.Filters))
