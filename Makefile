@@ -24,7 +24,12 @@ RUNTIMEDIR ?= /run/maddy
 
 .PHONY: all test check install man-pages clean
 
+ifeq ($(strip $(HAVE_SCDOC)),1)
 all: cmd/maddy/maddy cmd/maddyctl/maddyctl man-pages
+else
+all: cmd/maddy/maddy cmd/maddyctl/maddyctl
+endif
+
 
 man-pages:
 	@$(MAKE) -s $(shell find docs/man -name '*.scd' | sed 's/.scd//')
