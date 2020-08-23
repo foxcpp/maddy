@@ -34,14 +34,19 @@ git clone https://github.com/foxcpp/maddy.git
 cd maddy
 ```
 
-2. Build it
+3. Switch to the corresponding release.
+e.g.
 ```
-make
+git checkout v0.4.0
+```
+or to in-development version:
+```
+git checkout dev
 ```
 
-3. Install it
+2. Build & install it
 ```
-sudo make install
+./build.sh
 ```
 
-Have fun!
+3. Have fun!
