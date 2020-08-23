@@ -72,7 +72,7 @@ var (
 			Namespace: "maddy",
 			Subsystem: "smtp",
 			Name:      "failed_commands",
-			Help:      "Messages rejected with 4xx code due to ratelimiting",
+			Help:      "Failed transaction commands (MAIL, RCPT, DATA)",
 		},
 		[]string{"module", "command", "smtp_code", "smtp_enchcode"},
 	)

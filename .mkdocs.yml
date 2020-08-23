@@ -24,6 +24,7 @@ nav:
   - unicode.md
   - upgrading.md
   - specifications.md
+  - openmetrics.md
   - Manual pages:
     - man/_generated_maddy.1.md
     - man/_generated_maddy-auth.5.md

@@ -181,6 +181,17 @@ logrotate daemon. Send SIGUSR1 to maddy process to make it reopen log files.
 Enable verbose logging for all modules. You don't need that unless you are
 reporting a bug.
 
+# Prometheus/OpenMetrics endpoint
+
+```
+openmetrics tcp://127.0.0.1:9749 { }
+```
+
+This will enable HTTP listener that will serve telemetry in OpenMetrics format.
+(It is compatible with Prometheus).
+
+See openmetrics.md documentation page the list of metrics exposed.
+
 # Signals
 
 *SIGTERM, SIGINT, SIGHUP*
