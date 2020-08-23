@@ -152,12 +152,6 @@ func (c *Conn) fatal(f string, args ...interface{}) {
 	c.T.FailNow()
 }
 
-func (c *Conn) error(f string, args ...interface{}) {
-	c.T.Helper()
-	c.log('-', f, args...)
-	c.T.Fail()
-}
-
 func (c *Conn) log(direction rune, f string, args ...interface{}) {
 	c.T.Helper()
 
