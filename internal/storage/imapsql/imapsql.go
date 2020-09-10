@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"runtime/trace"
 	"strconv"
 	"strings"
@@ -387,6 +388,11 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 		defer func() {
 			store.updPushStop <- struct{}{}
 			close(wrapped)
+
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during imapsql update push: %v\n%s", err, stack)
+			}
 		}()
 
 		for {
