@@ -29,7 +29,7 @@ utility.
 
 ## How maddy IMAP server compares to WildDuck?
 
-Both are "more secure by defintion": root access is not required,
+Both are "more secure by definition": root access is not required,
 implementation is in memory-safe language, etc.
 
 Both support message compression.
@@ -50,7 +50,7 @@ performed via CLI utility.
 ## How maddy SMTP server compares to ZoneMTA?
 
 maddy SMTP server has a lot of similarities to ZoneMTA.
-Both have powerful mechanisms for message routing (altought designed
+Both have powerful mechanisms for message routing (although designed
 differently).
 
 maddy does not require MongoDB server for deployment.
