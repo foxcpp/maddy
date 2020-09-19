@@ -241,3 +241,23 @@ The module 'dummy' represents an empty table.
 ```
 dummy { }
 ```
+
+# Table chaining module (table.chain)
+
+The table.chain module allows chaining together multiple table modules
+by using value returned by a previous table as an input for the second
+table.
+
+Example:
+```
+table.chain {
+	step regexp "(.+)(\+.+)?@example.org" "$1@example.org"
+	step file /etc/maddy/emails
+}
+```
+
+## Configuration directives
+
+*Syntax*: step _table_ ++
+
+Adds a table module to the chain.
