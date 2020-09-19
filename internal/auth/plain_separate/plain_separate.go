@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
@@ -64,6 +65,26 @@ func (a *Auth) InstanceName() string {
 
 func (a *Auth) Init(cfg *config.Map) error {
 	cfg.Bool("debug", false, false, &a.Log.Debug)
+	cfg.Callback("user", func(m *config.Map, node config.Node) error {
+		var tbl module.Table
+		err := modconfig.ModuleFromNode("table", node.Args, node, m.Globals, &tbl)
+		if err != nil {
+			return err
+		}
+
+		a.userTbls = append(a.userTbls, tbl)
+		return nil
+	})
+	cfg.Callback("pass", func(m *config.Map, node config.Node) error {
+		var auth module.PlainAuth
+		err := modconfig.ModuleFromNode("auth", node.Args, node, m.Globals, &auth)
+		if err != nil {
+			return err
+		}
+
+		a.passwd = append(a.passwd, auth)
+		return nil
+	})
 
 	if _, err := cfg.Process(); err != nil {
 		return err
