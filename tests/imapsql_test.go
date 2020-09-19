@@ -111,3 +111,74 @@ func TestImapsqlDelivery(tt *testing.T) {
 	imapConn.Expect(")")
 	imapConn.ExpectPattern(`. OK *`)
 }
+
+func TestImapsqlAuthMap(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+
+	t.DNS(nil)
+	t.Port("imap")
+	t.Port("smtp")
+	t.Config(`
+		storage.imapsql test_store {
+			auth_map regexp "(.*)" "$1@maddy.test"
+			auth_normalize precis
+
+			driver sqlite3
+			dsn imapsql.db
+		}
+
+		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+			tls off
+
+			auth dummy
+			storage &test_store
+		}
+
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname maddy.test
+			tls off
+
+			deliver_to &test_store
+		}
+	`)
+	t.Run(2)
+	defer t.Close()
+
+	imapConn := t.Conn("imap")
+	defer imapConn.Close()
+	imapConn.ExpectPattern(`\* OK *`)
+	imapConn.Writeln(". LOGIN testusr 1234")
+	imapConn.ExpectPattern(". OK *")
+	imapConn.Writeln(". SELECT INBOX")
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`. OK *`)
+
+	smtpConn := t.Conn("smtp")
+	defer smtpConn.Close()
+	smtpConn.SMTPNegotation("localhost", nil, nil)
+	smtpConn.Writeln("MAIL FROM:<sender@maddy.test>")
+	smtpConn.ExpectPattern("2*")
+	smtpConn.Writeln("RCPT TO:<testusr@maddy.test>")
+	smtpConn.ExpectPattern("2*")
+	smtpConn.Writeln("DATA")
+	smtpConn.ExpectPattern("354 *")
+	smtpConn.Writeln("From: <sender@maddy.test>")
+	smtpConn.Writeln("To: <testusr@maddy.test>")
+	smtpConn.Writeln("Subject: Hi!")
+	smtpConn.Writeln("")
+	smtpConn.Writeln("Hi!")
+	smtpConn.Writeln(".")
+	smtpConn.ExpectPattern("2*")
+
+	time.Sleep(500 * time.Millisecond)
+
+	imapConn.Writeln(". NOOP")
+	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(". OK *")
+}

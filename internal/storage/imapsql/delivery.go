@@ -21,7 +21,6 @@ package imapsql
 import (
 	"context"
 	"runtime/trace"
-	"strings"
 
 	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
@@ -46,21 +45,24 @@ func (d *delivery) String() string {
 	return d.store.Name() + ":" + d.store.InstanceName()
 }
 
+func userDoesNotExist(actual error) error {
+	return &exterrors.SMTPError{
+		Code:         501,
+		EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
+		Message:      "User does not exist",
+		TargetName:   "imapsql",
+		Err:          actual,
+	}
+}
+
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
 
-	accountName, err := prepareUsername(rcptTo)
+	accountName, err := d.store.deliveryNormalize(rcptTo)
 	if err != nil {
-		return &exterrors.SMTPError{
-			Code:         501,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-			Message:      "User does not exist",
-			TargetName:   "imapsql",
-			Err:          err,
-		}
+		return userDoesNotExist(err)
 	}
 
-	accountName = strings.ToLower(accountName)
 	if _, ok := d.addedRcpts[accountName]; ok {
 		return nil
 	}
@@ -73,19 +75,13 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 
 	if err := d.d.AddRcpt(accountName, userHeader); err != nil {
 		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
-			return &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-				Message:      "User does not exist",
-				TargetName:   "imapsql",
-				Err:          err,
-			}
+			return userDoesNotExist(err)
 		}
 		if _, ok := err.(imapsql.SerializationError); ok {
 			return &exterrors.SMTPError{
 				Code:         453,
 				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-				Message:      "Storage access serialiation problem, try again later",
+				Message:      "Internal server error, try again later",
 				TargetName:   "imapsql",
 				Err:          err,
 			}

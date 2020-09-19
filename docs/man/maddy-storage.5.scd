@@ -153,5 +153,48 @@ Ex.
 imap_filters {
 	command /etc/maddy/sieve.sh {account_name}
 }
-}
 ```
+
+*Syntax*: auth_map *table* ++
+*Default*: not set
+
+Use specified table module (*maddy-tables*(5)) to map authentication
+usernames to mailbox names.
+
+Normalization algorithm specified in auth_normalize is applied before
+auth_map.
+
+imapsql unconditionally requires a full email as an account name as they are
+used to determine the right mailboxes for inbound messages. If you do not
+want domain-specific accounts then you can use a dummy domain like
+foxcpp@maddy.invalid. But you will need to ensure that on delivery recipient
+addresses are rewritten appropriately (e.g.
+foxcpp@example.org => foxcpp@maddy.invalid).
+
+*Syntax*: auth_normalize precis_email|precis|casefold|no ++
+*Default*: precis_email
+
+Normalization algorithm to apply to authentication usernames before mapping
+them to mailboxes.
+
+Options are:
+
+- precis_email
+
+RFC 8265 "UsernameCaseMapped" profile + additional logic to normalize domain
+part of a full email (converted to U-labels, case-folded and NFC-normalized).
+
+- precis
+
+RFC 8265 "UsernameCaseMapped" profile applied to the whole string.
+
+- casefold
+
+Username is just converted to lower case.
+
+- no
+
+No normalization.
+
+Note: On message delivery, recipient address is unconditionally normalized
+using precis_email algorithm.

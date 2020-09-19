@@ -40,14 +40,12 @@ import (
 	sortthread "github.com/emersion/go-imap-sortthread"
 	"github.com/emersion/go-imap/backend"
 	imapsql "github.com/foxcpp/go-imap-sql"
-	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
-	"golang.org/x/text/secure/precis"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -70,6 +68,10 @@ type Storage struct {
 	updPushStop chan struct{}
 
 	filters module.IMAPFilter
+
+	deliveryNormalize func(string) (string, error)
+	authMap           module.Table
+	authNormalize     func(string) (string, error)
 }
 
 func (store *Storage) Name() string {
@@ -104,6 +106,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		fsstoreLocation string
 		appendlimitVal  = -1
 		compression     []string
+		authNormalize   string
 	)
 
 	opts := imapsql.Opts{
@@ -135,6 +138,11 @@ func (store *Storage) Init(cfg *config.Map) error {
 		err := modconfig.GroupFromNode("imap_filters", node.Args, node, m.Globals, &filter)
 		return filter, err
 	}, &store.filters)
+	cfg.Custom("auth_map", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, modconfig.TableDirective, &store.authMap)
+	cfg.Enum("auth_normalize", false, false,
+		[]string{"precis_email", "precis", "casefold", "no"}, "precis_email", &authNormalize)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -145,6 +153,23 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	if driver == "" {
 		return errors.New("imapsql: driver is required")
+	}
+
+	store.deliveryNormalize = normalizeFuncs["precis_email"]
+	authNormFunc := normalizeFuncs[authNormalize]
+	store.authNormalize = authNormFunc
+	if store.authMap != nil {
+		store.authNormalize = func(username string) (string, error) {
+			username, err := authNormFunc(username)
+			if err != nil {
+				return "", err
+			}
+			mapped, ok, err := store.authMap.Lookup(username)
+			if err != nil || !ok {
+				return "", userDoesNotExist(err)
+			}
+			return mapped, nil
+		}
 	}
 
 	opts.Log = &store.Log
@@ -307,34 +332,8 @@ func (store *Storage) EnableChildrenExt() bool {
 	return store.Back.EnableChildrenExt()
 }
 
-func prepareUsername(username string) (string, error) {
-	mbox, domain, err := address.Split(username)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	// PRECIS is not included in the regular address.ForLookup since it reduces
-	// the range of valid addresses to a subset of actually valid values.
-	// PRECIS is a matter of our own local policy, not a general rule for all
-	// email addresses.
-
-	// Side note: For used profiles, there is no practical difference between
-	// CompareKey and String.
-	mbox, err = precis.UsernameCaseMapped.CompareKey(mbox)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	domain, err = dns.ForLookup(domain)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	return mbox + "@" + domain, nil
-}
-
 func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error) {
-	accountName, err := prepareUsername(username)
+	accountName, err := store.authNormalize(username)
 	if err != nil {
 		return nil, backend.ErrInvalidCredentials
 	}
@@ -343,7 +342,7 @@ func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error)
 }
 
 func (store *Storage) Lookup(key string) (string, bool, error) {
-	accountName, err := prepareUsername(key)
+	accountName, err := store.authNormalize(key)
 	if err != nil {
 		return "", false, nil
 	}
