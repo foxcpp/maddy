@@ -58,7 +58,7 @@ var validGraphic = map[rune]bool{
 	'^': true, '_': true,
 	'`': true, '{': true,
 	'|': true, '}': true,
-	'~': true,
+	'~': true, '.': true,
 }
 
 // ValidMailboxName checks whether the specified string is a valid mailbox-name
