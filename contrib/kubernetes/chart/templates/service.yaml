@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maddy.fullname" . }}
+  labels:
+    {{- include "maddy.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 25
+      targetPort: smtp
+      protocol: TCP
+      name: smtp
+    - port: 993
+      targetPort: imaps
+      protocol: TCP
+      name: imaps
+    - port: 587
+      targetPort: starttls
+      protocol: TCP
+      name: starttls
+  selector:
+    {{- include "maddy.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.externalIPs }}
+  externalIPs:
+  {{- toYaml . | nindent 6 }}
+  {{- end -}}
