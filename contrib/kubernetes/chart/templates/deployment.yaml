@@ -53,11 +53,6 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: MADDY_HOSTNAME
-              value: {{ .Values.hostname }}
-            - name: MADDY_DOMAIN
-              value: {{ .Values.domain }}
           ports:
             - name: smtp
               containerPort: 25
@@ -85,10 +80,10 @@ spec:
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
             - name: tls
-              mountPath: /etc/maddy/certs/mx.ectobit.com/fullchain.pem
+              mountPath: /etc/maddy/certs/fullchain.pem
               subPath: tls.crt
             - name: tls
-              mountPath: /etc/maddy/certs/mx.ectobit.com/privkey.pem
+              mountPath: /etc/maddy/certs/privkey.pem
               subPath: tls.key
       volumes:
         - name: data
