@@ -95,15 +95,15 @@ func TestMsgPipeline_SourceIn(t *testing.T) {
 	d := MsgPipeline{
 		msgpipelineCfg: msgpipelineCfg{
 			sourceIn: []sourceIn{
-				sourceIn{
+				{
 					t:     testutils.Table{},
 					block: sourceBlock{rejectErr: errors.New("non-matching block was used")},
 				},
-				sourceIn{
+				{
 					t:     testutils.Table{Err: errors.New("this one will fail")},
 					block: sourceBlock{rejectErr: errors.New("failing block was used")},
 				},
-				sourceIn{
+				{
 					t: testutils.Table{
 						M: map[string]string{
 							"specific@example.com": "",

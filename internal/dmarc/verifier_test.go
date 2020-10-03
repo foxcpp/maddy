@@ -60,7 +60,7 @@ func TestDMARC(t *testing.T) {
 
 	// Policy present & identifiers align => DMARC 'pass'
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=DMARC1; p=none"},
 		},
 	}, "From: hello@example.org\r\n\r\n", []authres.Result{
@@ -70,7 +70,7 @@ func TestDMARC(t *testing.T) {
 
 	// No SPF check run => DMARC 'none', no action taken
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=DMARC1; p=reject"},
 		},
 	}, "From: hello@example.org\r\n\r\n", []authres.Result{
@@ -79,7 +79,7 @@ func TestDMARC(t *testing.T) {
 
 	// No DKIM check run => DMARC 'none', no action taken
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=DMARC1; p=reject"},
 		},
 	}, "From: hello@example.org\r\n\r\n", []authres.Result{
@@ -89,7 +89,7 @@ func TestDMARC(t *testing.T) {
 	// Check org. domain and from domain, prefer from domain.
 	// https://tools.ietf.org/html/rfc7489#section-6.6.3
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=DMARC1; p=none"},
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
@@ -97,7 +97,7 @@ func TestDMARC(t *testing.T) {
 		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, PolicyNone, authres.ResultPass)
 	test(map[string]mockdns.Zone{
-		"_dmarc.sub.example.org.": mockdns.Zone{
+		"_dmarc.sub.example.org.": {
 			TXT: []string{"v=DMARC1; p=none"},
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
@@ -105,10 +105,10 @@ func TestDMARC(t *testing.T) {
 		&authres.SPFResult{Value: authres.ResultNone, From: "example.org", Helo: "mx.example.org"},
 	}, PolicyNone, authres.ResultPass)
 	test(map[string]mockdns.Zone{
-		"_dmarc.sub.example.org.": mockdns.Zone{
+		"_dmarc.sub.example.org.": {
 			TXT: []string{"v=DMARC1; p=none"},
 		},
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=malformed"},
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
@@ -119,7 +119,7 @@ func TestDMARC(t *testing.T) {
 	// Non-DMARC records are ignored.
 	// https://tools.ietf.org/html/rfc7489#section-6.6.3
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"ignore", "v=DMARC1; p=none"},
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
@@ -130,7 +130,7 @@ func TestDMARC(t *testing.T) {
 	// Multiple policies => no policy.
 	// https://tools.ietf.org/html/rfc7489#section-6.6.3
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.org.": mockdns.Zone{
+		"_dmarc.example.org.": {
 			TXT: []string{"v=DMARC1; p=reject", "v=DMARC1; p=none"},
 		},
 	}, "From: hello@sub.example.org\r\n\r\n", []authres.Result{
@@ -140,7 +140,7 @@ func TestDMARC(t *testing.T) {
 
 	// Malformed policy => no policy
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			TXT: []string{"v=aaaa"},
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
@@ -151,7 +151,7 @@ func TestDMARC(t *testing.T) {
 	// Policy fetch error => DMARC 'permerror' but the message
 	// is accepted.
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			Err: errors.New("the dns server is going insane"),
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
@@ -162,7 +162,7 @@ func TestDMARC(t *testing.T) {
 	// Policy fetch error => DMARC 'temperror' but the message
 	// is accepted ("fail closed")
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			Err: &net.DNSError{
 				Err:         "the dns server is going insane, temporary",
 				IsTemporary: true,
@@ -178,7 +178,7 @@ func TestDMARC(t *testing.T) {
 	// can be found in check/dmarc/evaluate_test.go. This test merely checks
 	// that the correct action is taken based on the policy.
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			TXT: []string{"v=DMARC1; p=none"},
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
@@ -188,7 +188,7 @@ func TestDMARC(t *testing.T) {
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to reject
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			TXT: []string{"v=DMARC1; p=reject"},
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{
@@ -199,7 +199,7 @@ func TestDMARC(t *testing.T) {
 	// Misaligned From vs DKIM => DMARC 'fail'
 	// Subdomain policy requests no action, main domain policy says to reject.
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			TXT: []string{"v=DMARC1; sp=none; p=reject"},
 		},
 	}, "From: hello@sub.example.com\r\n\r\n", []authres.Result{
@@ -209,7 +209,7 @@ func TestDMARC(t *testing.T) {
 
 	// Misaligned From vs DKIM => DMARC 'fail', policy says to quarantine.
 	test(map[string]mockdns.Zone{
-		"_dmarc.example.com.": mockdns.Zone{
+		"_dmarc.example.com.": {
 			TXT: []string{"v=DMARC1; p=quarantine"},
 		},
 	}, "From: hello@example.com\r\n\r\n", []authres.Result{

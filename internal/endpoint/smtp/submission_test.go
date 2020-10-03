@@ -92,74 +92,74 @@ func TestSubmissionPrepare(t *testing.T) {
 
 	// Malformed From field.
 	test(map[string][]string{
-		"From": []string{"<hello@example.org>, \"\""},
+		"From": {"<hello@example.org>, \"\""},
 	}, nil)
 	test(map[string][]string{
-		"From": []string{" adasda"},
+		"From": {" adasda"},
 	}, nil)
 
 	// Malformed Reply-To.
 	test(map[string][]string{
-		"From":     []string{"<hello@example.org>"},
-		"Reply-To": []string{"<hello@example.org>, \"\""},
+		"From":     {"<hello@example.org>"},
+		"Reply-To": {"<hello@example.org>, \"\""},
 	}, nil)
 
 	// Malformed CC.
 	test(map[string][]string{
-		"From":     []string{"<hello@example.org>"},
-		"Reply-To": []string{"<hello@example.org>"},
-		"Cc":       []string{"<hello@example.org>, \"\""},
+		"From":     {"<hello@example.org>"},
+		"Reply-To": {"<hello@example.org>"},
+		"Cc":       {"<hello@example.org>, \"\""},
 	}, nil)
 
 	// Malformed Sender.
 	test(map[string][]string{
-		"From":     []string{"<hello@example.org>"},
-		"Reply-To": []string{"<hello@example.org>"},
-		"Cc":       []string{"<hello@example.org>"},
-		"Sender":   []string{"<hello@example.org> asd"},
+		"From":     {"<hello@example.org>"},
+		"Reply-To": {"<hello@example.org>"},
+		"Cc":       {"<hello@example.org>"},
+		"Sender":   {"<hello@example.org> asd"},
 	}, nil)
 
 	// Multiple From + no Sender.
 	test(map[string][]string{
-		"From": []string{"<hello@example.org>, <hello2@example.org>"},
+		"From": {"<hello@example.org>, <hello2@example.org>"},
 	}, nil)
 
 	// Multiple From + valid Sender.
 	test(map[string][]string{
-		"From":       []string{"<hello@example.org>, <hello2@example.org>"},
-		"Sender":     []string{"<hello@example.org>"},
-		"Date":       []string{"Fri, 22 Nov 2019 20:51:31 +0800"},
-		"Message-Id": []string{"<foobar@example.org>"},
+		"From":       {"<hello@example.org>, <hello2@example.org>"},
+		"Sender":     {"<hello@example.org>"},
+		"Date":       {"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"Message-Id": {"<foobar@example.org>"},
 	}, map[string][]string{
-		"From":       []string{"<hello@example.org>, <hello2@example.org>"},
-		"Sender":     []string{"<hello@example.org>"},
-		"Date":       []string{"Fri, 22 Nov 2019 20:51:31 +0800"},
-		"Message-Id": []string{"<foobar@example.org>"},
+		"From":       {"<hello@example.org>, <hello2@example.org>"},
+		"Sender":     {"<hello@example.org>"},
+		"Date":       {"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"Message-Id": {"<foobar@example.org>"},
 	})
 
 	// Add missing Message-Id.
 	test(map[string][]string{
-		"From": []string{"<hello@example.org>"},
-		"Date": []string{"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"From": {"<hello@example.org>"},
+		"Date": {"Fri, 22 Nov 2019 20:51:31 +0800"},
 	}, map[string][]string{
-		"From":       []string{"<hello@example.org>"},
-		"Date":       []string{"Fri, 22 Nov 2019 20:51:31 +0800"},
-		"Message-Id": []string{"<A@mx.example.com>"},
+		"From":       {"<hello@example.org>"},
+		"Date":       {"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"Message-Id": {"<A@mx.example.com>"},
 	})
 
 	// Malformed Date.
 	test(map[string][]string{
-		"From": []string{"<hello@example.org>"},
-		"Date": []string{"not a date"},
+		"From": {"<hello@example.org>"},
+		"Date": {"not a date"},
 	}, nil)
 
 	// Add missing Date.
 	test(map[string][]string{
-		"From":       []string{"<hello@example.org>"},
-		"Message-Id": []string{"<A@mx.example.org>"},
+		"From":       {"<hello@example.org>"},
+		"Message-Id": {"<A@mx.example.org>"},
 	}, map[string][]string{
-		"From":       []string{"<hello@example.org>"},
-		"Message-Id": []string{"<A@mx.example.org>"},
-		"Date":       []string{"Thu, 1 Jan 1970 00:00:00 +0000"},
+		"From":       {"<hello@example.org>"},
+		"Message-Id": {"<A@mx.example.org>"},
+		"Date":       {"Thu, 1 Jan 1970 00:00:00 +0000"},
 	})
 }

@@ -221,7 +221,6 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 				// purposes of deployment testing.
 				cr.log.Error("no check action", subCheckRes.Reason)
 			}
-
 		}()
 	}
 

@@ -44,7 +44,7 @@ func TestRequireMatchingRDNS(t *testing.T) {
 		res := requireMatchingRDNS(check.StatelessCheckContext{
 			Resolver: &mockdns.Resolver{
 				Zones: map[string]mockdns.Zone{
-					"4.3.2.1.in-addr.arpa.": mockdns.Zone{
+					"4.3.2.1.in-addr.arpa.": {
 						PTR: ptr,
 					},
 				},
@@ -85,7 +85,7 @@ func TestRequireMXRecord(t *testing.T) {
 		res := requireMXRecord(check.StatelessCheckContext{
 			Resolver: &mockdns.Resolver{
 				Zones: map[string]mockdns.Zone{
-					mxDomain + ".": mockdns.Zone{
+					mxDomain + ".": {
 						MX: mx,
 					},
 				},
