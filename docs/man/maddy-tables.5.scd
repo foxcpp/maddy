@@ -251,13 +251,15 @@ table.
 Example:
 ```
 table.chain {
-	step regexp "(.+)(\+.+)?@example.org" "$1@example.org"
+	step regexp "(.+)(\\+[^+"@]+)?@example.org" "$1@example.org"
 	step file /etc/maddy/emails
 }
 ```
+This will strip +prefix from mailbox before looking it up
+in /etc/maddy/emails list.
 
 ## Configuration directives
 
-*Syntax*: step _table_ ++
+*Syntax*: step _table_
 
 Adds a table module to the chain.
