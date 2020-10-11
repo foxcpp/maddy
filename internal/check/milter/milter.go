@@ -115,7 +115,7 @@ type state struct {
 	log        log.Logger
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	session, err := c.cl.Session()
 	if err != nil {
 		return nil, err
@@ -424,6 +424,11 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 func (s *state) Close() error {
 	return s.session.Close()
 }
+
+var (
+	_ module.Check      = &Check{}
+	_ module.CheckState = &state{}
+)
 
 func init() {
 	module.RegisterDeprecated("milter", "check.milter", New)
