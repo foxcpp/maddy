@@ -55,7 +55,8 @@ func (f *Future) Set(val interface{}, err error) {
 
 	if f.set {
 		stack := debug.Stack()
-		log.Println("Future.Set called multiple times")
+		log.Println("Future.Set called multiple times", stack)
+		log.Println("value=", val, "err=", err)
 		return
 	}
 
