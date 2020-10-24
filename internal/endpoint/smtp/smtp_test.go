@@ -418,6 +418,45 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	}
 }
 
+func TestSMTPDelivery_EmptyMessage(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
+	defer endp.Close()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cl.Close()
+
+	if err := cl.Hello("mx.example.org"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Mail("sender@example.org", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Rcpt("test@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := cl.Data()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := data.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(250 * time.Millisecond)
+
+	if len(tgt.Messages) != 1 {
+		t.Fatal("Expected 1 message, got", len(tgt.Messages))
+	}
+	msg := tgt.Messages[0]
+	if len(msg.Body) != 0 {
+		t.Fatal("Expected an empty body, got", len(msg.Body))
+	}
+}
+
 func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)

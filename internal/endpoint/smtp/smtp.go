@@ -149,16 +149,20 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 	return func(r io.Reader) (buffer.Buffer, error) {
 		// First try to read up to N bytes.
 		initial := make([]byte, maxSize)
-		actualSize, err := io.ReadFull(r, initial)
+		actualSize, err := r.Read(initial)
 		if err != nil {
-			if err == io.ErrUnexpectedEOF {
-				// Ok, the message is smaller than N. Make a MemoryBuffer and
-				// handle it in RAM.
+			if err == io.EOF {
 				log.Debugln("autobuffer: keeping the message in RAM")
 				return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
 			}
 			// Some I/O error happened, bail out.
 			return nil, err
+		}
+		if actualSize < maxSize {
+			// Ok, the message is smaller than N. Make a MemoryBuffer and
+			// handle it in RAM.
+			log.Debugln("autobuffer: keeping the message in RAM")
+			return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
 		}
 
 		log.Debugln("autobuffer: spilling the message to the FS")
@@ -181,6 +185,9 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 		return buffer.BufferInMemory, nil
 	case "fs":
 		path := filepath.Join(config.StateDirectory, "buffer")
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
 		switch len(node.Args) {
 		case 2:
 			path = node.Args[1]
