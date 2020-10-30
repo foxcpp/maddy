@@ -112,8 +112,21 @@ func (t *T) Port(name string) uint16 {
 		return port
 	}
 
-	// TODO: Try to bind on port to test its usability.
-	port := rand.Int31n(45536) + 20000
+	// Check if the port can be used.
+	// We check until we find a free port.
+	// However, if the port is used somewhere in the interval
+	// after this check and transfer of information - there will be an oopsie.
+	var port int32
+	for {
+		port = rand.Int31n(45536) + 20000
+		ln, err := net.Listen("tcp", ":"+strconv.Itoa(int(port)))
+		if err != nil {
+			continue
+		}
+		_ = ln.Close()
+		break
+	}
+
 	t.ports[name] = uint16(port)
 	t.portsRev[uint16(port)] = name
 	return uint16(port)
