@@ -152,6 +152,20 @@ func (s *state) handleAction(act *milter.Action) module.CheckResult {
 	case milter.ActDiscard:
 		s.log.Msg("silent discard is not supported, rejecting message")
 		fallthrough
+	case milter.ActTempFail:
+		return module.CheckResult{
+			Reject: true,
+			Reason: &exterrors.SMTPError{
+				Code:         450,
+				EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
+				Message:      "Message rejected due to local policy",
+				Reason:       "reject action",
+				CheckName:    "milter",
+				Misc: map[string]interface{}{
+					"milter": s.c.milterUrl,
+				},
+			},
+		}
 	case milter.ActReject:
 		return module.CheckResult{
 			Reject: true,
