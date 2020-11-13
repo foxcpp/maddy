@@ -97,6 +97,8 @@ github.com/emersion/go-message v0.12.0/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-milter v0.2.0 h1:TaKXziGFoIZmYz0iWb80GxXBFQsUjrQdk9skw4+D8VM=
 github.com/emersion/go-milter v0.2.0/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
+github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999 h1:cL+JecgLKP8wA5viOQXEHlF6k7R5EGWqHjJ7QX0hcfU=
+github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
 github.com/emersion/go-msgauth v0.5.0 h1:sYB3vvl+Lrs5zhKXhbp10ChQHxCdK13KLh7fjLNE/SE=
 github.com/emersion/go-msgauth v0.5.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL/Wt71kdolp6yaD4fLIQz638E6JEt0=

@@ -15,7 +15,7 @@ require (
 	github.com/emersion/go-imap-specialuse v0.0.0-20200722111535-598ff00e4075
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
 	github.com/emersion/go-message v0.12.0
-	github.com/emersion/go-milter v0.2.0
+	github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999
 	github.com/emersion/go-msgauth v0.5.0
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/emersion/go-smtp v0.13.1-0.20200724113925-09421d11e5b0
