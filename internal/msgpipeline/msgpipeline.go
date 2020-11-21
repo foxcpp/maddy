@@ -343,6 +343,15 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 	}
 
 	for _, tgt := range rcptBlock.targets {
+		// Do not wrap errors coming from nested pipeline target delivery since
+		// that pipeline itself will insert effective_rcpt field and could do
+		// its own rewriting - we do not want to hide it from the admin in
+		// error messages.
+		wrapErr := wrapErr
+		if _, ok := tgt.(*MsgPipeline); ok {
+			wrapErr = func(err error) error { return err }
+		}
+
 		delivery, err := dd.getDelivery(ctx, tgt)
 		if err != nil {
 			return wrapErr(err)
