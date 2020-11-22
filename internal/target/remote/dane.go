@@ -64,7 +64,7 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 	validRecs := recs[:0]
 	for _, rec := range recs {
 		switch rec.Usage {
-		case 0, 1, 2, 3:
+		case 2, 3:
 		default:
 			continue
 		}
@@ -79,7 +79,7 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 
 	for _, rec := range validRecs {
 		switch rec.Usage {
-		case 0, 2: // CA constraint (PKIX-TA) and Trust Anchor Assertion (DANE-TA)
+		case 2: // Trust Anchor Assertion (DANE-TA)
 			chains := connState.VerifiedChains
 			if len(chains) == 0 { // Happens if InsecureSkipVerify=true
 				chains = [][]*x509.Certificate{connState.PeerCertificates}
@@ -90,17 +90,16 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 					if cert.IsCA && rec.Verify(cert) == nil {
 						// DANE-TA requires ServerName match, so verify it to
 						// override PKIX.
-						return rec.Usage == 2 &&
-							chain[0].VerifyHostname(serverName) == nil, nil
+						return chain[0].VerifyHostname(serverName) == nil, nil
 					}
 				}
 			}
-		case 1, 3: // Service certificate constraint (PKIX-EE) and Domain issued certificate (DANE-EE)
+		case 3: // Domain issued certificate (DANE-EE)
 			if rec.Verify(connState.PeerCertificates[0]) == nil {
 				// https://tools.ietf.org/html/rfc7672#section-3.1.1
 				// - SAN/CN are not considered so always override.
 				// - Expired certificates are fine too.
-				return rec.Usage == 3, nil
+				return true, nil
 			}
 		}
 	}
