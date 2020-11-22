@@ -73,6 +73,11 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 		default:
 			continue
 		}
+		switch rec.Selector {
+		case 0, 1:
+		default:
+			continue
+		}
 
 		validRecs = append(validRecs, rec)
 	}
