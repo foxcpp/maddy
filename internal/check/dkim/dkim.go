@@ -53,9 +53,13 @@ type Check struct {
 	resolver dns.Resolver
 }
 
+var (
+	ErrNoArgs = errors.New("verify_dkim: inline arguments are not used")
+)
+
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	if len(inlineArgs) != 0 {
-		return nil, errors.New("verify_dkim: inline arguments are not used")
+		return nil, ErrNoArgs
 	}
 	return &Check{
 		instName: instName,

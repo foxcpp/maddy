@@ -54,7 +54,10 @@ const (
 	StageBody       = "body"
 )
 
-var placeholderRe = regexp.MustCompile(`{[a-zA-Z0-9_]+?}`)
+var (
+	ErrNoArgs     = errors.New("command: at least one argument is required (command name)")
+	placeholderRe = regexp.MustCompile(`{[a-zA-Z0-9_]+?}`)
+)
 
 type Check struct {
 	instName string
@@ -80,7 +83,7 @@ func New(modName, instName string, aliases, inlineArgs []string) (module.Module,
 	}
 
 	if len(inlineArgs) == 0 {
-		return nil, errors.New("command: at least one argument is required (command name)")
+		return nil, ErrNoArgs
 	}
 
 	c.cmd = inlineArgs[0]

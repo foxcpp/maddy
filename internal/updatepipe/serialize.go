@@ -28,6 +28,10 @@ import (
 	"github.com/emersion/go-imap/backend"
 )
 
+var (
+	ErrPartsMismatch = errors.New("updatepipe: mismatched parts count")
+)
+
 func unescapeName(s string) string {
 	return strings.ReplaceAll(s, "\x10", ";")
 }
@@ -44,7 +48,7 @@ type message struct {
 func parseUpdate(s string) (id string, upd backend.Update, err error) {
 	parts := strings.SplitN(s, ";", 5)
 	if len(parts) != 5 {
-		return "", nil, errors.New("updatepipe: mismatched parts count")
+		return "", nil, ErrPartsMismatch
 	}
 
 	updBase := backend.NewUpdate(unescapeName(parts[2]), unescapeName(parts[3]))

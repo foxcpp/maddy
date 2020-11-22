@@ -52,13 +52,20 @@ type ReportingMTAInfo struct {
 	LastAttemptDate time.Time
 }
 
+var (
+	ErrNoMTA       = errors.New("dsn: Reporting-MTA field is mandatory")
+	ErrNoRecipient = errors.New("dsn: Final-Recipient is required")
+	ErrNoAction    = errors.New("dsn: Action is required")
+	ErrNoStatus    = errors.New("dsn: Status is required")
+)
+
 func (info ReportingMTAInfo) WriteTo(utf8 bool, w io.Writer) error {
 	// DSN format uses structure similar to MIME header, so we reuse
 	// MIME generator here.
 	h := textproto.Header{}
 
 	if info.ReportingMTA == "" {
-		return errors.New("dsn: Reporting-MTA field is mandatory")
+		return ErrNoMTA
 	}
 
 	reportingMTA, err := dns.SelectIDNA(utf8, info.ReportingMTA)
@@ -130,7 +137,7 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	h := textproto.Header{}
 
 	if info.FinalRecipient == "" {
-		return errors.New("dsn: Final-Recipient is required")
+		return ErrNoRecipient
 	}
 	finalRcpt, err := address.SelectIDNA(utf8, info.FinalRecipient)
 	if err != nil {
@@ -143,11 +150,11 @@ func (info RecipientInfo) WriteTo(utf8 bool, w io.Writer) error {
 	}
 
 	if info.Action == "" {
-		return errors.New("dsn: Action is required")
+		return ErrNoAction
 	}
 	h.Add("Action", string(info.Action))
 	if info.Status[0] == 0 {
-		return errors.New("dsn: Status is required")
+		return ErrNoStatus
 	}
 	h.Add("Status", fmt.Sprintf("%d.%d.%d", info.Status[0], info.Status[1], info.Status[2]))
 

@@ -32,6 +32,11 @@ import (
 	"github.com/foxcpp/maddy/internal/auth/external"
 )
 
+var (
+	ErrAccountExpired  = fmt.Errorf("shadow: account is expired")
+	ErrPasswordExpired = fmt.Errorf("shadow: password is expired")
+)
+
 type Auth struct {
 	instName   string
 	useHelper  bool
@@ -112,11 +117,11 @@ func (a *Auth) AuthPlain(username, password string) error {
 	}
 
 	if !ent.IsAccountValid() {
-		return fmt.Errorf("shadow: account is expired")
+		return ErrAccountExpired
 	}
 
 	if !ent.IsPasswordValid() {
-		return fmt.Errorf("shadow: password is expired")
+		return ErrPasswordExpired
 	}
 
 	if err := ent.VerifyPassword(password); err != nil {

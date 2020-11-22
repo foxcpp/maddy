@@ -27,8 +27,11 @@ import (
 	"strings"
 )
 
-var ErrNoSuchUser = errors.New("shadow: user entry is not present in database")
-var ErrWrongPassword = errors.New("shadow: wrong password")
+var (
+	ErrNoSuchUser     = errors.New("shadow: user entry is not present in database")
+	ErrWrongPassword  = errors.New("shadow: wrong password")
+	ErrMalformedEntry = errors.New("read: malformed entry")
+)
 
 // Read reads system shadow passwords database and returns all entires in it.
 func Read() ([]Entry, error) {
@@ -56,7 +59,7 @@ func Read() ([]Entry, error) {
 func parseEntry(line string) (*Entry, error) {
 	parts := strings.Split(line, ":")
 	if len(parts) != 9 {
-		return nil, errors.New("read: malformed entry")
+		return nil, ErrMalformedEntry
 	}
 
 	res := &Entry{
