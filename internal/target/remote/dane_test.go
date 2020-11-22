@@ -138,7 +138,8 @@ func TestRemoteDelivery_DANE_Mismatch(t *testing.T) {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
 		},
 		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
+			AD: true,
+			A:  []string{"127.0.0.1"},
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
@@ -171,7 +172,36 @@ func TestRemoteDelivery_DANE_NoRecord(t *testing.T) {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
 		},
 		"mx.example.invalid.": {
+			AD: true,
+			A:  []string{"127.0.0.1"},
+		},
+	}
+
+	dnsSrv, tgt := targetWithExtResolver(t, zones)
+	defer dnsSrv.Close()
+	tgt.tlsConfig = clientCfg
+
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_DANE_NoADOnAAAA(t *testing.T) {
+	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
 			A: []string{"127.0.0.1"},
+		},
+		"_25._tcp.mx.example.invalid.": {
+			AD: true,
+			Misc: tlsaRecord(
+				"_25._tcp.mx.example.invalid.",
+				3, 1, 1, "a9b5cb4d02f996f6385debe9a8952f1af1f4aec7eae0f37c2cd6d0d8ee8391cf"),
 		},
 	}
 
@@ -193,7 +223,8 @@ func TestRemoteDelivery_DANE_LookupErr(t *testing.T) {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
 		},
 		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
+			AD: true,
+			A:  []string{"127.0.0.1"},
 		},
 		"_25._tcp.mx.example.invalid.": {
 			Err: &net.DNSError{},
@@ -223,7 +254,8 @@ func TestRemoteDelivery_DANE_NoTLS(t *testing.T) {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
 		},
 		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
+			AD: true,
+			A:  []string{"127.0.0.1"},
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,
@@ -255,7 +287,8 @@ func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
 		},
 		"mx.example.invalid.": {
-			A: []string{"127.0.0.1"},
+			AD: true,
+			A:  []string{"127.0.0.1"},
 		},
 		"_25._tcp.mx.example.invalid.": {
 			AD: true,

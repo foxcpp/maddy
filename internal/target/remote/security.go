@@ -395,9 +395,25 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	c.tlsaFut = future.New()
 
 	go func() {
+		adA, _, err := c.c.extResolver.AuthLookupHost(ctx, mx)
+		if err != nil {
+			// This may indicate a bogus DNSSEC signature or other lookup issue
+			// (including non-existing domain).
+			c.tlsaFut.Set([]dns.TLSA(nil), err)
+			return
+		}
+		if !adA {
+			// If A/AAAA lookup is not DNSSEC-authenticated we assume the server cannot
+			// have TLSA record and skip trying to actually lookup TLSA
+			// to avoid hitting weird errors like SERVFAIL, NOTIMP
+			// e.g. see https://github.com/foxcpp/maddy/issues/287
+			c.tlsaFut.Set([]dns.TLSA(nil), nil)
+			return
+		}
+
 		ad, recs, err := c.c.extResolver.AuthLookupTLSA(ctx, "25", "tcp", mx)
 		if err != nil {
-			c.tlsaFut.Set([]dns.TLSA{}, err)
+			c.tlsaFut.Set([]dns.TLSA(nil), err)
 			return
 		}
 		if !ad {
@@ -405,7 +421,7 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 			// a non-authenticated RRset just like an empty RRset. Side note:
 			// "bogus" signatures are expected to be caught by the upstream
 			// resolver.
-			c.tlsaFut.Set([]dns.TLSA{}, err)
+			c.tlsaFut.Set([]dns.TLSA(nil), err)
 			return
 		}
 
