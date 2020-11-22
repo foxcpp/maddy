@@ -85,18 +85,29 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 	for _, rec := range validRecs {
 		switch rec.Usage {
 		case 2: // Trust Anchor Assertion (DANE-TA)
-			chains := connState.VerifiedChains
-			if len(chains) == 0 { // Happens if InsecureSkipVerify=true
-				chains = [][]*x509.Certificate{connState.PeerCertificates}
+			certs := connState.PeerCertificates
+			// Find the CA certificate that matches the record - add it as a
+			// "root". Add all other certificates as intermediates.
+			foundTA := false
+			opts := x509.VerifyOptions{
+				DNSName:       serverName,
+				Intermediates: x509.NewCertPool(),
+				Roots:         x509.NewCertPool(),
+			}
+			for _, cert := range certs {
+				if !foundTA && cert.IsCA && rec.Verify(cert) == nil {
+					opts.Roots.AddCert(cert)
+					foundTA = true
+				}
+				opts.Intermediates.AddCert(cert)
 			}
 
-			for _, chain := range chains {
-				for _, cert := range chain {
-					if cert.IsCA && rec.Verify(cert) == nil {
-						// DANE-TA requires ServerName match, so verify it to
-						// override PKIX.
-						return chain[0].VerifyHostname(serverName) == nil, nil
-					}
+			if foundTA {
+				// ... then run the standard X.509 verification.
+				// This will verify that the server certificate chains to
+				// the asserted TA certificate.
+				if _, err := certs[0].Verify(opts); err == nil {
+					return true, nil
 				}
 			}
 		case 3: // Domain issued certificate (DANE-EE)
