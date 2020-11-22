@@ -214,14 +214,14 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 		return false, nil, err
 	}
 
-	ad = resp.AuthenticatedData
-	addrs = make([]net.IPAddr, 0, len(resp.Answer))
+	v6addrs := make([]net.IPAddr, 0, len(resp.Answer))
+	v6ad := resp.AuthenticatedData
 	for _, rr := range resp.Answer {
 		aaaaRR, ok := rr.(*dns.AAAA)
 		if !ok {
 			continue
 		}
-		addrs = append(addrs, net.IPAddr{IP: aaaaRR.AAAA})
+		v6addrs = append(v6addrs, net.IPAddr{IP: aaaaRR.AAAA})
 	}
 
 	// Then repeat query with IPv4.
@@ -235,18 +235,32 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 		return false, nil, err
 	}
 
-	// Both queries should be authenticated.
-	ad = ad && resp.AuthenticatedData
-
+	v4ad := resp.AuthenticatedData
+	v4addrs := make([]net.IPAddr, 0, len(resp.Answer))
 	for _, rr := range resp.Answer {
 		aRR, ok := rr.(*dns.A)
 		if !ok {
 			continue
 		}
-		addrs = append(addrs, net.IPAddr{IP: aRR.A})
+		v4addrs = append(v4addrs, net.IPAddr{IP: aRR.A})
 	}
 
-	return ad, addrs, err
+	// A little bit of careful handling is required if AD is inconsistent
+	// for A and AAAA queries. This unfortunatenly happens in practice. For
+	// purposes of DANE handling (A/AAAA check) we disregard AAAA records
+	// if they are not authenctiated and return only A records with AD=true.
+
+	addrs = make([]net.IPAddr, 0, len(v4addrs)+len(v6addrs))
+	if !v6ad && !v4ad {
+		addrs = append(addrs, v6addrs...)
+		addrs = append(addrs, v4addrs...)
+	} else {
+		addrs = append(addrs, v4addrs...)
+		if v6ad {
+			addrs = append(addrs, v6addrs...)
+		}
+	}
+	return v4ad, addrs, nil
 }
 
 func (e ExtResolver) AuthLookupTLSA(ctx context.Context, service, network, domain string) (ad bool, recs []TLSA, err error) {
