@@ -32,6 +32,7 @@ import (
 
 var (
 	ErrUnsupportedMech = errors.New("Unsupported SASL mechanism")
+	ErrInvalidAuthCred = errors.New("auth: invalid credentials")
 )
 
 // SASLAuth is a wrapper that initializes sasl.Server using authenticators that
@@ -63,13 +64,9 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 
 	var lastErr error
 	for _, p := range s.Plain {
-		err := p.AuthPlain(username, password)
-		if err == nil {
+		lastErr = p.AuthPlain(username, password)
+		if lastErr == nil {
 			return nil
-		}
-		if err != nil {
-			lastErr = err
-			continue
 		}
 	}
 
@@ -88,7 +85,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
-				return errors.New("auth: invalid credentials")
+				return ErrInvalidAuthCred
 			}
 
 			return successCb(identity)
@@ -98,7 +95,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
-				return errors.New("auth: invalid credentials")
+				return ErrInvalidAuthCred
 			}
 
 			return successCb(username)
