@@ -94,13 +94,19 @@ github.com/emersion/go-message v0.11.2 h1:oxO9SQ+3wgBAQRdk07eqfkCJ26Tl8ZHF7CcpGV
 github.com/emersion/go-message v0.11.2/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-message v0.12.0 h1:mZnv35eZ6lB6EftTQBgYXspOH0FQdhpFhSUhA9i6/Zg=
 github.com/emersion/go-message v0.12.0/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
+github.com/emersion/go-message v0.13.0 h1:R4+CZv4Msxfk9tMaERjMkapdvdO2faWLuB5KHFsNLZE=
+github.com/emersion/go-message v0.13.0/go.mod h1:kYIioST9GDHte9/BRWgi93rpqbDuFftMjKSMaXS8ABo=
 github.com/emersion/go-milter v0.0.0-20190311184326-c3095a41a6fe/go.mod h1:aEaq7U51ARlk+2UeXTtdrDYeYWAUn/QjEwWzs7lD8OU=
 github.com/emersion/go-milter v0.2.0 h1:TaKXziGFoIZmYz0iWb80GxXBFQsUjrQdk9skw4+D8VM=
 github.com/emersion/go-milter v0.2.0/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
 github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999 h1:cL+JecgLKP8wA5viOQXEHlF6k7R5EGWqHjJ7QX0hcfU=
 github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
+github.com/emersion/go-milter v0.3.0 h1:A1C13tTpbSXjwUtEHlBc5cRyumdPJif46q22lHKS0Og=
+github.com/emersion/go-milter v0.3.0/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
 github.com/emersion/go-msgauth v0.5.0 h1:sYB3vvl+Lrs5zhKXhbp10ChQHxCdK13KLh7fjLNE/SE=
 github.com/emersion/go-msgauth v0.5.0/go.mod h1:7r9HUSXL1dq+KK7Xqg0JlyBxNFGf5+JouRvSz4wBZCQ=
+github.com/emersion/go-msgauth v0.6.3-0.20201124115313-816fefe10e5d h1:SDBI/aOUNK2Q0Fy9vcLkIuSypJmJzWzHZSlmKTPv55Q=
+github.com/emersion/go-msgauth v0.6.3-0.20201124115313-816fefe10e5d/go.mod h1:KPs+CkLjyikc4cJYdnJDYNV4yr3M//yrGZDx5C2RU6M=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL/Wt71kdolp6yaD4fLIQz638E6JEt0=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-sasl v0.0.0-20190520160400-47d427600317/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
@@ -410,6 +416,8 @@ golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413/go.mod h1:LzIPMQfyMNhhGPh
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a h1:vclmkQCjlDX5OydZ9wv8rBCcS0QyQY66Mpf/7BZbInM=
 golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 h1:phUcVbl53swtrUN8kQEXFhUxPlIlWyBfKmidCu7P95o=
+golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9/go.mod h1:jdWPYTVW3xRLrWPugEBEK3UY2ZEsg3UU495nc5E+M+I=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvxsM5YxQ5yQlVC4a0KAMCusXpPoU=
@@ -466,6 +474,7 @@ golang.org/x/sys v0.0.0-20190726091711-fc99dfbffb4e/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190922100055-0a153f010e69/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20191026070338-33540a1f6037/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191220142924-d4481acd189f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200106162015-b016eb3dc98e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
@@ -474,6 +483,7 @@ golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200821140526-fda516888d29 h1:mNuhGagCf3lDDm5C0376C/sxh6V7fy9WbdEu/YDNA04=
 golang.org/x/sys v0.0.0-20200821140526-fda516888d29/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.2 h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=

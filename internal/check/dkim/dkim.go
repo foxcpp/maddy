@@ -45,7 +45,6 @@ type Check struct {
 	log      log.Logger
 
 	requiredFields  map[string]struct{}
-	allowBodySubset bool
 	brokenSigAction modconfig.FailAction
 	noSigAction     modconfig.FailAction
 	failOpen        bool
@@ -69,7 +68,6 @@ func (c *Check) Init(cfg *config.Map) error {
 
 	cfg.Bool("debug", true, false, &c.log.Debug)
 	cfg.StringList("required_fields", false, false, []string{"From", "Subject"}, &requiredFields)
-	cfg.Bool("allow_body_subset", false, false, &c.allowBodySubset)
 	cfg.Bool("fail_open", false, false, &c.failOpen)
 	cfg.Custom("broken_sig_action", false, false,
 		func() (interface{}, error) {
@@ -226,11 +224,6 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 				val = authres.ResultPermError
 				reason = "some header fields are not signed"
 			}
-		}
-
-		if verif.BodyLength >= 0 && !d.c.allowBodySubset {
-			val = authres.ResultPermError
-			reason = "body limit it used"
 		}
 
 		if val == authres.ResultPass {

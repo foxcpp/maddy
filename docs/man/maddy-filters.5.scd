@@ -120,15 +120,6 @@ lacks any field listed in that directive, it will be considered invalid.
 Note that From is always required to be signed, even if it is not included in
 this directive.
 
-*Syntax*: allow_body_subset _boolean_ ++
-*Default*: no
-
-By default signatures that cover only body subset (using l= "body limit" tag)
-are considered invalid ("broken"). This directive allows such signatures.
-
-It should be noted that allowing use of "body limit" allows arbitrary
-data to be appended to the message body.
-
 *Syntax*: no_sig_action _action_ ++
 *Default*: ignore (recommended by RFC 6376)
 

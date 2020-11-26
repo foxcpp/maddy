@@ -14,9 +14,9 @@ require (
 	github.com/emersion/go-imap-sortthread v1.1.1-0.20200727121200-18e5fb409fed
 	github.com/emersion/go-imap-specialuse v0.0.0-20200722111535-598ff00e4075
 	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
-	github.com/emersion/go-message v0.12.0
-	github.com/emersion/go-milter v0.2.1-0.20201102093416-5464446c9999
-	github.com/emersion/go-msgauth v0.5.0
+	github.com/emersion/go-message v0.13.0
+	github.com/emersion/go-milter v0.3.0
+	github.com/emersion/go-msgauth v0.6.3-0.20201124115313-816fefe10e5d
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/emersion/go-smtp v0.13.1-0.20200724113925-09421d11e5b0
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
@@ -36,7 +36,7 @@ require (
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/common v0.13.0 // indirect
 	github.com/urfave/cli v1.22.4
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20200822124328-c89045814202
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200821140526-fda516888d29 // indirect
