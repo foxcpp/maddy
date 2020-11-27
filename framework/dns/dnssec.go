@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/miekg/dns"
 )
 
@@ -210,18 +211,26 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	msg.AuthenticatedData = true
 
 	resp, err := e.exchange(ctx, msg)
+	aaaaFailed := false
+	var (
+		v6ad    bool
+		v6addrs []net.IPAddr
+	)
 	if err != nil {
-		return false, nil, err
-	}
-
-	v6addrs := make([]net.IPAddr, 0, len(resp.Answer))
-	v6ad := resp.AuthenticatedData
-	for _, rr := range resp.Answer {
-		aaaaRR, ok := rr.(*dns.AAAA)
-		if !ok {
-			continue
+		// Disregard the error for AAAA lookups.
+		resp = &dns.Msg{}
+		aaaaFailed = true
+		log.DefaultLogger.Error("Network I/O error during AAAA lookup", err, "host", host)
+	} else {
+		v6addrs = make([]net.IPAddr, 0, len(resp.Answer))
+		v6ad = resp.AuthenticatedData
+		for _, rr := range resp.Answer {
+			aaaaRR, ok := rr.(*dns.AAAA)
+			if !ok {
+				continue
+			}
+			v6addrs = append(v6addrs, net.IPAddr{IP: aaaaRR.AAAA})
 		}
-		v6addrs = append(v6addrs, net.IPAddr{IP: aaaaRR.AAAA})
 	}
 
 	// Then repeat query with IPv4.
@@ -231,18 +240,26 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	msg.AuthenticatedData = true
 
 	resp, err = e.exchange(ctx, msg)
+	var (
+		v4ad    bool
+		v4addrs []net.IPAddr
+	)
 	if err != nil {
-		return false, nil, err
-	}
-
-	v4ad := resp.AuthenticatedData
-	v4addrs := make([]net.IPAddr, 0, len(resp.Answer))
-	for _, rr := range resp.Answer {
-		aRR, ok := rr.(*dns.A)
-		if !ok {
-			continue
+		if aaaaFailed {
+			return false, nil, err
 		}
-		v4addrs = append(v4addrs, net.IPAddr{IP: aRR.A})
+		// Disregard A lookup error if AAAA succeeded.
+		log.DefaultLogger.Error("Network I/O error during A lookup, using AAAA records", err, "host", host)
+	} else {
+		v4ad = resp.AuthenticatedData
+		v4addrs = make([]net.IPAddr, 0, len(resp.Answer))
+		for _, rr := range resp.Answer {
+			aRR, ok := rr.(*dns.A)
+			if !ok {
+				continue
+			}
+			v4addrs = append(v4addrs, net.IPAddr{IP: aRR.A})
+		}
 	}
 
 	// A little bit of careful handling is required if AD is inconsistent
@@ -255,10 +272,10 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 		addrs = append(addrs, v6addrs...)
 		addrs = append(addrs, v4addrs...)
 	} else {
-		addrs = append(addrs, v4addrs...)
 		if v6ad {
 			addrs = append(addrs, v6addrs...)
 		}
+		addrs = append(addrs, v4addrs...)
 	}
 	return v4ad, addrs, nil
 }
