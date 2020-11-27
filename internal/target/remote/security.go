@@ -395,7 +395,7 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	c.tlsaFut = future.New()
 
 	go func() {
-		adA, _, err := c.c.extResolver.AuthLookupHost(ctx, mx)
+		adA, _, err := c.c.extResolver.AuthLookupIPAddr(ctx, mx)
 		if err != nil {
 			// This may indicate a bogus DNSSEC signature or other lookup issue
 			// (including non-existing domain).
