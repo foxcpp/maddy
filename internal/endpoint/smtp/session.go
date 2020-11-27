@@ -336,7 +336,7 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 	bufr := bufio.NewReader(r)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
-		return textproto.Header{}, nil, err
+		return textproto.Header{}, nil, fmt.Errorf("I/O error while parsing header: %w", err)
 	}
 
 	if s.endp.submission {
@@ -348,7 +348,7 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 
 	buf, err := s.endp.buffer(bufr)
 	if err != nil {
-		return textproto.Header{}, nil, err
+		return textproto.Header{}, nil, fmt.Errorf("I/O error while writing buffer: %w", err)
 	}
 
 	return header, buf, nil

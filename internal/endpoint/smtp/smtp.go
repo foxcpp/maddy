@@ -149,11 +149,15 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 	return func(r io.Reader) (buffer.Buffer, error) {
 		// First try to read up to N bytes.
 		initial := make([]byte, maxSize)
-		actualSize, err := r.Read(initial)
+		actualSize, err := io.ReadFull(r, initial)
 		if err != nil {
-			if err == io.EOF {
-				log.Debugln("autobuffer: keeping the message in RAM")
+			if err == io.ErrUnexpectedEOF {
+				log.Debugln("autobuffer: keeping the message in RAM (read", actualSize, "bytes, got EOF)")
 				return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
+			}
+			if err == io.EOF {
+				// Special case: message with empty body.
+				return buffer.MemoryBuffer{}, nil
 			}
 			// Some I/O error happened, bail out.
 			return nil, err
@@ -161,7 +165,7 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 		if actualSize < maxSize {
 			// Ok, the message is smaller than N. Make a MemoryBuffer and
 			// handle it in RAM.
-			log.Debugln("autobuffer: keeping the message in RAM")
+			log.Debugln("autobuffer: keeping the message in RAM (read", actualSize, "bytes, got short read)")
 			return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
 		}
 
