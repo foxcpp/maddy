@@ -459,7 +459,7 @@ func (c *daneDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel, tl
 	}
 	recs := recsI.([]dns.TLSA)
 
-	overridePKIX, err := verifyDANE(recs, mx, tlsState)
+	overridePKIX, err := verifyDANE(recs, tlsState)
 	if err != nil {
 		return module.TLSNone, err
 	}
