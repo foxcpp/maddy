@@ -50,7 +50,7 @@ service auth {
 Then just configure `dovecot_sasl` module for `submission`:
 ```
 submission ... {
-    auth dovecot_sasl unix:///var/run/dovecot/auth-client
+    auth dovecot_sasl unix:///var/run/dovecot/auth-maddy-client
     ... other configuration ...
 }
 ```
