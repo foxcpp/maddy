@@ -137,6 +137,8 @@ github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f h1:b/CFmrdqIGU6e
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v0.0.0-20200531120619-ae750bbf9d73 h1:rZE8KRqNsxz1Jqd782wLMK4FgZ8BKMwPCQjIEpA1bUs=
 github.com/foxcpp/go-mockdns v0.0.0-20200531120619-ae750bbf9d73/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
+github.com/foxcpp/go-mockdns v0.0.0-20201129203541-9b1391edef7e h1:zOfwjGk0A3wTpOLNreIEXonIinY+oqJ2R0/QeAbgYmc=
+github.com/foxcpp/go-mockdns v0.0.0-20201129203541-9b1391edef7e/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8 h1:k8w0iy6GP9oeSZWUH3p2DqZHaXDKZGNs3NZGZMGfQHc=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8/go.mod h1:HO1YOCbBM8KjpgThMMFejHx6K/UsnEv2Oh9YGtBIlOU=
 github.com/franela/goblin v0.0.0-20200105215937-c9ffbefa60db/go.mod h1:7dvUGVsVBjqR7JHJk0brhHOZYGmfBYOrK0ZhYMEtBr4=

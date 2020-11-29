@@ -21,6 +21,7 @@ package remote
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"os"
 	"time"
 
@@ -372,7 +373,9 @@ func (c *danePolicy) Init(cfg *config.Map) error {
 		c.log.Error("DANE support is no-op: unable to init EDNS resolver", err)
 	}
 
-	_, err = cfg.Process() // will fail if there is any directive
+	cfg.Bool("debug", true, log.DefaultLogger.Debug, &c.log.Debug)
+
+	_, err = cfg.Process()
 	return err
 }
 
@@ -386,6 +389,75 @@ func (c *danePolicy) Close() error {
 
 func (c *daneDelivery) PrepareDomain(ctx context.Context, domain string) {}
 
+func (c *daneDelivery) discoverTLSA(ctx context.Context, mx string) ([]dns.TLSA, error) {
+	adA, rname, err := c.c.extResolver.CheckCNAMEAD(ctx, mx)
+	if err != nil {
+		// This may indicate a bogus DNSSEC signature or other lookup issue
+		// (including non-existing domain).
+		// Per RFC 7672, any I/O errors (including SERVFAIL) should
+		// cause delivery to be delayed.
+		return nil, err
+	}
+	if rname == "" {
+		// No A/AAAA records, short-circut discovery instead of doing useless
+		// queries.
+		return nil, errors.New("no address associated with the host")
+	}
+	if !adA {
+		// If A lookup is not DNSSEC-authenticated we assume the server cannot
+		// have TLSA record and skip trying to actually lookup TLSA
+		// to avoid hitting weird errors like SERVFAIL, NOTIMP
+		// e.g. see https://github.com/foxcpp/maddy/issues/287
+		if rname == mx {
+			c.c.log.Debugln("skipping DANE for", mx, "due to non-authenticated A records")
+			return nil, nil
+		}
+
+		// But if it is CNAME'd then we may not want to skip it and actually
+		// consider initial name since it may be signed. To confirm the
+		// initial name is signed, do CNAME lookup.
+		cnameAD, _, err := c.c.extResolver.AuthLookupCNAME(ctx, mx)
+		if err != nil {
+			return nil, err
+		}
+		if !cnameAD {
+			c.c.log.Debugln("skipping DANE for", mx, "due to non-authenticated CNAME record")
+			return nil, nil
+		}
+	}
+
+	// If there was a CNAME - try it first.
+	if rname != mx {
+		ad, recs, err := c.c.extResolver.AuthLookupTLSA(ctx, "25", "tcp", rname)
+		if err != nil && !dns.IsNotFound(err) {
+			return nil, err
+		}
+		if ad && len(recs) != 0 {
+			// recs may be empty or contain only unusable records - this is
+			// okay per RFC 7672, no fallback to initial name is done.
+			c.c.log.Debugln("using", len(recs), "DANE records at", rname, "to authenticate", mx)
+			return recs, nil
+		}
+		// Per RFC 7672 Section 2.2 we interpret a non-authenticated RRset just
+		// like an empty RRset and fallback to trying original name.
+		c.c.log.Debugln("ignoring non-authenticated TLSA records for", rname)
+	}
+
+	// If initial name is not a CNAME or final canonical name is not "secure"
+	// - we consider TLSA under the initial name.
+	ad, recs, err := c.c.extResolver.AuthLookupTLSA(ctx, "25", "tcp", mx)
+	if err != nil && !dns.IsNotFound(err) {
+		return nil, err
+	}
+	if !ad {
+		c.c.log.Debugln("ignoring non-authenticated TLSA records for", mx)
+		return nil, nil
+	}
+
+	c.c.log.Debugln("using", len(recs), "DANE records at original name to authenticate", mx)
+	return recs, nil
+}
+
 func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	// No DNSSEC support.
 	if c.c.extResolver == nil {
@@ -395,39 +467,7 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	c.tlsaFut = future.New()
 
 	go func() {
-		adA, _, err := c.c.extResolver.AuthLookupIPAddr(ctx, mx)
-		if err != nil {
-			// This may indicate a bogus DNSSEC signature or other lookup issue
-			// (including non-existing domain).
-			c.tlsaFut.Set([]dns.TLSA(nil), err)
-			return
-		}
-		if !adA {
-			// If A/AAAA lookup is not DNSSEC-authenticated we assume the server cannot
-			// have TLSA record and skip trying to actually lookup TLSA
-			// to avoid hitting weird errors like SERVFAIL, NOTIMP
-			// e.g. see https://github.com/foxcpp/maddy/issues/287
-			c.tlsaFut.Set([]dns.TLSA(nil), nil)
-			return
-		}
-
-		ad, recs, err := c.c.extResolver.AuthLookupTLSA(ctx, "25", "tcp", mx)
-		if err != nil {
-			c.tlsaFut.Set([]dns.TLSA(nil), err)
-			return
-		}
-		if !ad {
-			// Per https://tools.ietf.org/html/rfc7672#section-2.2 we interpret
-			// a non-authenticated RRset just like an empty RRset. Side note:
-			// "bogus" signatures are expected to be caught by the upstream
-			// resolver.
-			c.tlsaFut.Set([]dns.TLSA(nil), err)
-			return
-		}
-
-		// recs can be empty indicating absence of records.
-
-		c.tlsaFut.Set(recs, err)
+		c.tlsaFut.Set(c.discoverTLSA(ctx, mx))
 	}()
 }
 

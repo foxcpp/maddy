@@ -23,7 +23,7 @@ require (
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200722130255-93092adf35f1
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200823124337-2f57903a7ed0
-	github.com/foxcpp/go-mockdns v0.0.0-20200531120619-ae750bbf9d73
+	github.com/foxcpp/go-mockdns v0.0.0-20201129203541-9b1391edef7e
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.1

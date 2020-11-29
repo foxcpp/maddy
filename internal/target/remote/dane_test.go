@@ -129,12 +129,29 @@ func TestVerifyDANE(t *testing.T) {
 		})
 	}
 
+	// RFC 7672, Section 2.2:
+	// An "insecure" TLSA RRset or DNSSEC-authenticated denial of existence
+	// of the TLSA records:
+	//    A connection to the MTA SHOULD be made using (pre-DANE)
+	// opportunistic TLS;
+	//
+	// "Insecure" TLSA RRset results in verifyDANE not being called at all,
+	// but for the latter (authenticated denial of existence) it is still
+	// called and should be tested for.
+	//
+	// More specific tests for TLSA RRset discovery (including CNAME
+	// shenanigans) are in dane_delivery_test.go.
 	test("no TLSA, TLS", []dns.TLSA{}, tls.ConnectionState{
 		HandshakeComplete: true,
 	}, false)
 	test("no TLSA, no TLS", []dns.TLSA{}, tls.ConnectionState{
 		HandshakeComplete: false,
 	}, false)
+
+	// RFC 7272, Section 2.2:
+	// A "secure" non-empty TLSA RRset where all the records are unusable:
+	//  Any connection to the MTA MUST be made via TLS, but authentication
+	//  is not required.
 	test("unusable TLSA, TLS", []dns.TLSA{
 		singleTlsaRecord(4, 1, 2, "whatever"),
 		singleTlsaRecord(4, 5, 2, "whatever"),
@@ -142,12 +159,18 @@ func TestVerifyDANE(t *testing.T) {
 	}, tls.ConnectionState{
 		HandshakeComplete: true,
 		PeerCertificates:  []*x509.Certificate{parsePEMCert(leafA)},
-	}, true)
+	}, false)
 	test("unusable TLSA, no TLS", []dns.TLSA{
 		singleTlsaRecord(4, 1, 2, "whatever"),
 	}, tls.ConnectionState{
 		HandshakeComplete: false,
 	}, true)
+
+	// RFC 7672, Section 2.2:
+	// A "secure" TLSA RRset with at least one usable record:  Any
+	//  connection to the MTA MUST employ TLS encryption and MUST
+	//  authenticate the SMTP server using the techniques discussed in the
+	//  rest of this document.
 	test("DANE-EE, non-self-signed", []dns.TLSA{
 		singleTlsaRecord(3, 1, 1, keySHA256(leafA)),
 	}, tls.ConnectionState{
@@ -189,6 +212,8 @@ func TestVerifyDANE(t *testing.T) {
 	test("DANE-TA, intermediate TA, multiple records", []dns.TLSA{
 		singleTlsaRecord(2, 1, 1, keySHA256(rootB)),
 		singleTlsaRecord(2, 1, 1, keySHA256(intermediateA)),
+		// Add multiple times to make sure that multiple records matching the
+		// same cert do not break anything.
 		singleTlsaRecord(2, 1, 1, keySHA256(intermediateA)),
 	}, tls.ConnectionState{
 		HandshakeComplete: true,

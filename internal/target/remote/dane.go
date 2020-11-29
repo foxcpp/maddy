@@ -88,6 +88,12 @@ func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) (overridePKIX bo
 		}
 	}
 
+	// Authentication is not required if all records are unusable, see
+	// RFC 7672 Section 2.1.1.
+	if len(eeRecs) == 0 && len(taRecs) == 0 {
+		return false, nil
+	}
+
 	for _, rec := range eeRecs {
 		if rec.Verify(connState.PeerCertificates[0]) == nil {
 			// https://tools.ietf.org/html/rfc7672#section-3.1.1

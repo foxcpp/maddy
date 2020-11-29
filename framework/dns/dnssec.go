@@ -203,6 +203,71 @@ func (e ExtResolver) AuthLookupTXT(ctx context.Context, name string) (ad bool, r
 	return
 }
 
+// CheckCNAMEAD is a special function for use in DANE lookups. It attempts to determine final
+// (canonical) name of the host and also reports whether the whole chain of CNAME's and final zone
+// are "secure".
+//
+// If there are no A or AAAA records for host, rname = "" is returned.
+func (e ExtResolver) CheckCNAMEAD(ctx context.Context, host string) (ad bool, rname string, err error) {
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+	msg.SetEdns0(4096, false)
+	msg.AuthenticatedData = true
+	resp, err := e.exchange(ctx, msg)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, r := range resp.Answer {
+		switch r := r.(type) {
+		case *dns.A:
+			rname = r.Hdr.Name
+			ad = resp.AuthenticatedData // Use AD flag from response we used to determine rname
+		}
+	}
+
+	if rname == "" {
+		// IPv6-only host? Try to find out rname using AAAA lookup.
+		msg := new(dns.Msg)
+		msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+		msg.SetEdns0(4096, false)
+		msg.AuthenticatedData = true
+		resp, err := e.exchange(ctx, msg)
+		if err == nil {
+			for _, r := range resp.Answer {
+				switch r := r.(type) {
+				case *dns.AAAA:
+					rname = r.Hdr.Name
+					ad = resp.AuthenticatedData
+				}
+			}
+		}
+	}
+
+	return ad, rname, nil
+}
+
+func (e ExtResolver) AuthLookupCNAME(ctx context.Context, host string) (ad bool, cname string, err error) {
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn(host), dns.TypeCNAME)
+	msg.SetEdns0(4096, false)
+	msg.AuthenticatedData = true
+	resp, err := e.exchange(ctx, msg)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, r := range resp.Answer {
+		cnameR, ok := r.(*dns.CNAME)
+		if !ok {
+			continue
+		}
+		return resp.AuthenticatedData, cnameR.Target, nil
+	}
+
+	return resp.AuthenticatedData, "", nil
+}
+
 func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool, addrs []net.IPAddr, err error) {
 	// First, query IPv6.
 	msg := new(dns.Msg)
