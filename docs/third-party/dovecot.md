@@ -17,7 +17,7 @@ protocols = imap lmtp
 
 # /etc/dovecot/conf.d/10-master.conf
 service lmtp {
- unix_listener /var/run/maddy/dovecot-lmtp.sock {
+ unix_listener lmtp-maddy {
    mode = 0600
    user = maddy
   }
@@ -27,7 +27,7 @@ service lmtp {
 Add `local_mailboxes` block to maddy config using `target.lmtp` module:
 ```
 target.lmtp local_mailboxes {
-    targets unix:///var/run/maddy/dovecot-lmtp.sock
+    targets unix:///var/run/dovecot/lmtp-maddy
 }
 ```
 
