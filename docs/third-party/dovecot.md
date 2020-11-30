@@ -28,6 +28,7 @@ Add `local_mailboxes` block to maddy config using `target.lmtp` module:
 ```
 target.lmtp local_mailboxes {
     targets unix:///var/run/maddy/dovecot-lmtp.sock
+    attempt_starttls no
 }
 ```
 
