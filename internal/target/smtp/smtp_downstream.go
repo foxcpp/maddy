@@ -68,12 +68,6 @@ func (u *Downstream) moduleError(err error) error {
 		return nil
 	}
 
-	if u.lmtp {
-		return exterrors.WithFields(err, map[string]interface{}{
-			"target": u.modName,
-		})
-	}
-
 	return exterrors.WithFields(err, map[string]interface{}{
 		"target": u.modName,
 	})
@@ -83,7 +77,7 @@ func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Mod
 	return &Downstream{
 		modName:    modName,
 		instName:   instName,
-		lmtp:       modName == "lmtp",
+		lmtp:       modName == "target.lmtp",
 		targetsArg: inlineArgs,
 		log:        log.Logger{Name: modName},
 	}, nil

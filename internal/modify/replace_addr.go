@@ -34,8 +34,8 @@ import (
 // replaceAddr is a simple module that replaces matching sender (or recipient) address
 // in messages using module.Table implementation.
 //
-// If created with modName = "replace_sender", it will change sender address.
-// If created with modName = "replace_rcpt", it will change recipient addresses.
+// If created with modName = "modify.replace_sender", it will change sender address.
+// If created with modName = "modify.replace_rcpt", it will change recipient addresses.
 type replaceAddr struct {
 	modName    string
 	instName   string
@@ -51,8 +51,8 @@ func NewReplaceAddr(modName, instName string, _, inlineArgs []string) (module.Mo
 		modName:       modName,
 		instName:      instName,
 		inlineArgs:    inlineArgs,
-		replaceSender: modName == "replace_sender",
-		replaceRcpt:   modName == "replace_rcpt",
+		replaceSender: modName == "modify.replace_sender",
+		replaceRcpt:   modName == "modify.replace_rcpt",
 	}
 
 	return &r, nil

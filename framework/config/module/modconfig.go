@@ -42,21 +42,23 @@ import (
 // createInlineModule is a helper function for config matchers that can create inline modules.
 func createInlineModule(preferredNamespace string, modName string, args []string) (module.Module, error) {
 	var newMod module.FuncNewModule
+	var originalModName = modName
 
 	// First try to extend the name with preferred namespace unless the name
 	// already contains it.
 	if !strings.Contains(modName, ".") && preferredNamespace != "" {
-		newMod = module.Get(preferredNamespace + "." + modName)
+		modName = preferredNamespace + "." + modName
+		newMod = module.Get(modName)
 	}
 
 	// Then try global namespace for compatibility and complex modules.
 	if newMod == nil {
-		newMod = module.Get(modName)
+		newMod = module.Get(originalModName)
 	}
 
 	// Bail if both failed.
 	if newMod == nil {
-		return nil, fmt.Errorf("unknown module: %s (namespace: %s)", modName, preferredNamespace)
+		return nil, fmt.Errorf("unknown module: %s (namespace: %s)", originalModName, preferredNamespace)
 	}
 
 	return newMod(modName, "", nil, args)
