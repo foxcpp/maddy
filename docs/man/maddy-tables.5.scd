@@ -33,7 +33,7 @@ Usage example:
 ```
 # Resolve SMTP address aliases using text file mapping.
 modify {
-	alias file /etc/maddy/aliases
+	replace_rcpt file /etc/maddy/aliases
 }
 ```
 
@@ -82,7 +82,7 @@ Usage example:
 ```
 # Resolve SMTP address aliases using PostgreSQL DB.
 modify {
-	alias sql_query {
+	replace_rcpt sql_query {
 		driver postgres
 		dsn "dbname=maddy user=maddy"
 		lookup "SELECT alias FROM aliases WHERE address = $1"

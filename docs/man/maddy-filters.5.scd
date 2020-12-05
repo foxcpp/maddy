@@ -597,7 +597,7 @@ replace_sender <table> [table arguments] {
 Use examples:
 ```
 modify {
-	replace_rcpt file_map /etc/maddy/aliases
+	replace_rcpt file /etc/maddy/aliases
 	replace_rcpt static {
 		entry a@example.org b@example.org
 	}

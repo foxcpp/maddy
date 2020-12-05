@@ -426,7 +426,7 @@ It is also possible to define the block of modifiers at the top level
 as "modiifers" module and reference it using & syntax. Example:
 ```
 modifiers local_modifiers {
-	alias_file /etc/maddy/aliases
+	replace_rcpt file /etc/maddy/aliases
 }
 
 # ... somewhere else ...
@@ -521,7 +521,7 @@ Here is the concrete example how it can be useful:
 ```
 destination example.org {
     modify {
-        alias_file /etc/maddy/aliases
+        replace_rcpt file /etc/maddy/aliases
     }
     reroute {
         destination example.org {

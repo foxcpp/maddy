@@ -7,7 +7,7 @@ Here is the minimal configuration that creates a local IMAP index, credentials
 database and IMAP endpoint:
 ```
 # Credentials DB.
-pass_table local_authdb {
+table.pass_table local_authdb {
     table sql_table {
         driver sqlite3
         dsn credentials.db
@@ -16,7 +16,7 @@ pass_table local_authdb {
 }
 
 # IMAP storage/index.
-imapsql local_mailboxes {
+storage.imapsql local_mailboxes {
     driver sqlite3
     dsn imapsql.db
 }
