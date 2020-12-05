@@ -151,9 +151,11 @@ install() {
 
 # Old build.sh compatibility
 install_pkg() {
+	echo '-- [!] Replace install_pkg with just install in build.sh invocation' >&2
 	install
 }
 package() {
+	echo '-- [!] Replace package with build in build.sh invocation' >&2
 	build
 }
 
