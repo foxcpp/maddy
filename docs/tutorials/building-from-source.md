@@ -6,7 +6,7 @@ You need C toolchain, Go toolchain and Make:
 
 On Debian-based system this should work:
 ```
-apt-get install golang-1.14 gcc libc6-dev make
+apt-get install golang-1.15 gcc libc6-dev make
 ```
 
 Additionally, if you want manual pages, you should also have scdoc installed.
@@ -30,23 +30,21 @@ export PATH="$PWD/go/bin:$PATH"
 
 1. Clone repository
 ```
-git clone https://github.com/foxcpp/maddy.git
-cd maddy
+$ git clone https://github.com/foxcpp/maddy.git
+$ cd maddy
 ```
 
-3. Switch to the corresponding release.
-e.g.
+3. Select the appropriate version to build:
 ```
-git checkout v0.4.0
-```
-or to in-development version:
-```
-git checkout dev
+$ git checkout v0.4.0      # a specific release
+$ git checkout master      # next bugfix release
+$ git checkout dev         # next feature release
 ```
 
 2. Build & install it
 ```
-./build.sh
+$ ./build.sh
+# ./build.sh install
 ```
 
 3. Have fun!
