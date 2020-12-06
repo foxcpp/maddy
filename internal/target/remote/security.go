@@ -399,7 +399,7 @@ func (c *daneDelivery) discoverTLSA(ctx context.Context, mx string) ([]dns.TLSA,
 		return nil, err
 	}
 	if rname == "" {
-		// No A/AAAA records, short-circut discovery instead of doing useless
+		// No A/AAAA records, short-circuit discovery instead of doing useless
 		// queries.
 		return nil, errors.New("no address associated with the host")
 	}

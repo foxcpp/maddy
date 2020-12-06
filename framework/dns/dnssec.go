@@ -283,7 +283,6 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	)
 	if err != nil {
 		// Disregard the error for AAAA lookups.
-		resp = &dns.Msg{}
 		aaaaFailed = true
 		log.DefaultLogger.Error("Network I/O error during AAAA lookup", err, "host", host)
 	} else {

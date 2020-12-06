@@ -52,7 +52,7 @@ func (s *IPAddrTestServer) Run() {
 	}
 	s.udpServ.PacketConn = pconn
 	s.udpServ.Handler = s
-	go s.udpServ.ActivateAndServe()
+	go s.udpServ.ActivateAndServe() //nolint:errcheck
 }
 
 func (s *IPAddrTestServer) Close() {
@@ -117,7 +117,9 @@ func (s *IPAddrTestServer) ServeDNS(w dns.ResponseWriter, m *dns.Msg) {
 		}
 	}
 
-	w.WriteMsg(reply)
+	if err := w.WriteMsg(reply); err != nil {
+		panic(err)
+	}
 }
 
 func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
