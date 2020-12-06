@@ -10,6 +10,10 @@ tasks:
   - build: |
       cd maddy
       go build ./...
+  - build.sh: |
+      ./build.sh
+      ./build.sh --destdir destdir/ install
+      find destdir/
   - test: |
       cd maddy
       go test ./... -coverprofile=coverage.out -covermode=atomic -race
@@ -17,7 +21,7 @@ tasks:
       cd maddy/tests
       ./run.sh
   - lint: |
-      curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.8
+      curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.33.0
       cd maddy/
       $(go env GOPATH)/bin/golangci-lint run || true
   - build-man-pages: |
