@@ -5,7 +5,9 @@ builddir="$PWD/build"
 prefix=/usr/local
 version=
 static=0
-goflags="-trimpath" # set some flags to avoid passing "" to go
+if [ "${GOFLAGS}" = "" ]; then
+	GOFLAGS="-trimpath" # set some flags to avoid passing "" to go
+fi
 
 print_help() {
 	cat >&2 <<EOF
@@ -21,6 +23,8 @@ Options:
 Options for ./build.sh build:
     --static                build static self-contained executables (musl-libc recommended)
     --version <version>     version tag to embed into executables (default: auto-detect)
+
+Additional flags for "go build" can be provided using GOFLAGS environment variable.
 
 Options for ./build.sh install:
     --prefix <path>         installation prefix (default: $prefix)
@@ -109,20 +113,20 @@ build() {
 
 	if [ "$static" -eq 1 ]; then
 		echo "-- Building main server executable..." >&2
-		# This is literally impossible to specify this line of arguments as part of ${goflags}
+		# This is literally impossible to specify this line of arguments as part of ${GOFLAGS}
 		# using only POSIX sh features (and even with Bash extensions I can't figure it out).
-		go build ${goflags} -trimpath \
+		go build -trimpath \
 			-buildmode pie -tags 'osusergo netgo static_build' -ldflags '-extldflags="-fnoPIC -static"' \
-			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ./cmd/maddy
+			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
 		echo "-- Building management utility (maddyctl)..." >&2
-		go build ${goflags} -trimpath \
+		go build -trimpath \
 			-buildmode pie -tags 'osusergo netgo static_build' -ldflags '-extldflags="-fnoPIC -static"' \
-			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ./cmd/maddyctl
+			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	else
 		echo "-- Building main server executable..." >&2
-		go build ${goflags} -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ./cmd/maddy
+		go build -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
 		echo "-- Building management utility (maddyctl)..." >&2
-		go build ${goflags} -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ./cmd/maddyctl
+		go build -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	fi
 
 	build_man_pages
