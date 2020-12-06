@@ -83,7 +83,7 @@ set -e
 build_man_pages() {
 	set +e
 	if ! command -v scdoc >/dev/null 2>/dev/null; then
-		echo '--- No scdoc utility found. Skipping man pages building.' >&2
+		echo '-- [!] No scdoc utility found. Skipping man pages building.' >&2
 		set -e
 		return
 	fi
@@ -91,8 +91,7 @@ build_man_pages() {
 
 	echo '-- Building man pages...' >&2
 
-	mkdir -p "${builddir}"/man/man1 "${builddir}"/man/man5
-
+	mkdir -p "${builddir}/man"
 	for f in ./docs/man/*.1.scd; do
 		scdoc < "$f" > "${builddir}/man/$(basename "$f" .scd)"
 	done
@@ -105,7 +104,7 @@ build() {
 	mkdir -p "${builddir}"
 	echo "-- Version: ${version}" >&2
 	if [ "$(go env CC)" = "" ]; then
-        echo '-- [!] WARNING: No C compiler available. maddy will be built without SQLite3 support and default configuration will be unusable.' >&2
+        echo '-- [!] No C compiler available. maddy will be built without SQLite3 support and default configuration will be unusable.' >&2
     fi
 
 	if [ "$static" -eq 1 ]; then
@@ -120,9 +119,9 @@ build() {
 			-buildmode pie -tags 'osusergo netgo static_build' -ldflags '-extldflags="-fnoPIC -static"' \
 			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ./cmd/maddyctl
 	else
-		echo "-- Building maddy" >&2
+		echo "-- Building main server executable..." >&2
 		go build ${goflags} -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ./cmd/maddy
-		echo "-- Building maddyctl" >&2
+		echo "-- Building management utility (maddyctl)..." >&2
 		go build ${goflags} -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ./cmd/maddyctl
 	fi
 
@@ -131,31 +130,42 @@ build() {
 	echo "-- Copying misc files..." >&2
 
 	mkdir -p "${builddir}/systemd"
-	command install -Dm 0644 -t "${builddir}/systemd" dist/systemd/*
-
-	command install -Dm 0644 -t "${builddir}/" maddy.conf
+	cp dist/systemd/*.service "${builddir}/systemd/"
+	cp maddy.conf "${builddir}/maddy.conf"
 }
 
 install() {
-	command install -Dm 0755 "${builddir}/maddy" "${destdir}/${prefix}/bin/maddy"
-	command install -Dm 0755 "${builddir}/maddyctl" "${destdir}/${prefix}/bin/maddyctl"
+	echo "-- Installing built files..." >&2
+
+	command install -m 0755 -d "${destdir}/${prefix}/bin/"
+	command install -m 0755 "${builddir}/maddy" "${builddir}/maddyctl" "${destdir}/${prefix}/bin/"
+	command install -m 0755 -d "${destdir}/${prefix}/share/man/man1/"
 	for f in "${builddir}"/man/*.1; do
-		command install -Dm 0644 "$f" "${destdir}/${prefix}/share/man/man1/$(basename "$f")"
+		command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man1/"
 	done
+	command install -m 0755 -d "${destdir}/${prefix}/share/man/man5/"
 	for f in "${builddir}"/man/*.5; do
-		command install -Dm 0644 "$f" "${destdir}/${prefix}/share/man/man5/$(basename "$f")"
+		command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man5/"
 	done
-	command install -Dm 0644 ./maddy.conf "${destdir}/etc/maddy/maddy.conf"
-	command install -Dm 0644 -t "${destdir}/${prefix}/lib/systemd/system/" "${builddir}"/systemd/*.service
+	command install -m 0755 -d "${destdir}/etc/maddy/"
+	command install -m 0644 ./maddy.conf "${destdir}/etc/maddy/maddy.conf"
+
+	# Attempt to install systemd units only for Linux.
+	# Check is done using GOOS instead of uname -s to account for possible
+	# package cross-compilation.
+	if [ "$(go env GOOS)" = "linux" ]; then
+		command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
+		command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+	fi
 }
 
 # Old build.sh compatibility
 install_pkg() {
-	echo '-- [!] Replace install_pkg with just install in build.sh invocation' >&2
+	echo '-- [!] Replace 'install_pkg' with 'install' in build.sh invocation' >&2
 	install
 }
 package() {
-	echo '-- [!] Replace package with build in build.sh invocation' >&2
+	echo '-- [!] Replace 'package' with 'build' in build.sh invocation' >&2
 	build
 }
 
