@@ -87,7 +87,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	var targetsArg []string
 	cfg.Bool("debug", true, false, &u.log.Debug)
 	cfg.Bool("require_tls", false, false, &u.requireTLS)
-	cfg.Bool("attempt_starttls", false, true, &u.attemptStartTLS)
+	cfg.Bool("attempt_starttls", false, !u.lmtp, &u.attemptStartTLS)
 	cfg.String("hostname", true, true, "", &u.hostname)
 	cfg.StringList("targets", false, false, nil, &targetsArg)
 	cfg.Custom("auth", false, false, func() (interface{}, error) {

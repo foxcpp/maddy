@@ -351,10 +351,10 @@ Enable verbose logging.
 Advanced TLS client configuration options. See *maddy-tls*(5) for details.
 
 *Syntax*: attempt_starttls _boolean_ ++
-*Default*: yes
+*Default*: yes (no for target.lmtp)
 
 Attempt to use STARTTLS if it is supported by the remote server.
-If TLS handshake fails, connection will be retried without STARTTLS use
+If TLS handshake fails, connection will be retried without STARTTLS
 unless 'require_tls' is also specified.
 
 *Syntax*: require_tls _boolean_ ++
