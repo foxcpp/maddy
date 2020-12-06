@@ -44,28 +44,47 @@ hi def link maddyReferenceSign	Special
 
 " grep --no-file -E 'Register.*\(".+", ' **.go | sed -E 's/.+Register.*\("([^"]+)", .+/\1/' | sort -u
 syn keyword maddyModule
+	\ checks
+	\ command
+	\ dane
+	\ dkim
 	\ dnsbl
+	\ dnssec
 	\ dummy
 	\ extauth
+	\ external
+	\ file
+	\ identity
 	\ imap
+	\ imap_filters
+	\ imapsql
+	\ limits
 	\ lmtp
+	\ loader
+	\ local_policy
+	\ milter
+	\ modifiers
+	\ msgpipeline
+	\ mtasts
+	\ mx_auth
 	\ pam
+	\ pass_table
+	\ plain_separate
 	\ queue
+	\ regexp
 	\ remote
 	\ replace_rcpt
 	\ replace_sender
-	\ require_matching_ehlo
 	\ require_matching_rdns
 	\ require_mx_record
+	\ require_tls
+	\ rspamd
 	\ shadow
-	\ sign_dkim
 	\ smtp
-	\ smtp_downstream
-	\ sql
+	\ sql_query
+	\ sql_table
+	\ static
 	\ submission
-	\ test_check
-	\ test_modifier
-	\ verify_dkim
 
 syn keyword maddyDispatchDir
 	\ check
@@ -81,8 +100,10 @@ syn keyword maddyDispatchDir
 
 " grep --no-file -E 'cfg..+\(".+", ' **.go | sed -E 's/.+cfg..+\("([^"]+)", .+/\1/' | sort -u
 syn keyword maddyModDir
-	\ allow_body_subset
+	\ add
+	\ add_header_action
 	\ allow_multiple_from
+	\ api_path
 	\ appendlimit
 	\ attempt_starttls
 	\ auth
@@ -90,73 +111,110 @@ syn keyword maddyModDir
 	\ body_canon
 	\ bounce
 	\ broken_sig_action
+	\ buffer
+	\ cache
+	\ case_insensitive
+	\ certs
 	\ check_early
 	\ client_ipv4
 	\ client_ipv6
 	\ compression
-	\ concurrency
+	\ conn_max_idle_count
+	\ conn_max_idle_time
+	\ conn_reuse_limit
 	\ debug
 	\ defer_sender_reject
-	\ domain
+	\ del
 	\ domains
 	\ driver
 	\ dsn
 	\ ehlo
+	\ endpoint
 	\ enforce_early
+	\ enforce_testing
+	\ entry
+	\ error_resp_action
+	\ expand_replaceholders
 	\ fail_action
 	\ fail_open
-	\ files
+	\ file
+	\ flags
+	\ fs_dir
 	\ fsstore
+	\ full_match
 	\ hash
 	\ header_canon
 	\ helper
 	\ hostname
+	\ imap_filter
+	\ init
 	\ insecure_auth
 	\ io_debug
+	\ io_error_action
 	\ io_errors
 	\ junk_mailbox
+	\ key_column
 	\ key_path
+	\ keys
+	\ limits
+	\ list
+	\ local_ip
 	\ location
+	\ lookup
 	\ mailfrom
 	\ max_logged_rcpt_errors
 	\ max_message_size
 	\ max_parallelism
+	\ max_received
 	\ max_recipients
 	\ max_tries
 	\ min_mx_level
 	\ min_tls_level
-	\ mtasts_cache
+	\ mx_auth
 	\ neutral_action
 	\ newkey_algo
 	\ none_action
 	\ no_sig_action
 	\ oversign_fields
+	\ pass
 	\ perdomain
 	\ permerr_action
-	\ quarantine_threadhold
-	\ ratelimit
+	\ quarantine_threshold
 	\ read_timeout
-	\ reject_threadhold
+	\ reject_threshold
+	\ relaxed_requiretls
 	\ required_fields
 	\ require_sender_match
 	\ require_tls
+	\ requiretls_override
 	\ responses
+	\ rewrite_subj_action
 	\ run_on
 	\ score
 	\ selector
+	\ set
+	\ settings_id
 	\ sig_expiry
 	\ sign_fields
+	\ sign_subdomains
 	\ softfail_action
+	\ SOME_action
+	\ source
 	\ sqlite3_busy_timeout
 	\ sqlite3_cache_size
 	\ sqlite3_exclusive_lock
 	\ storage
+	\ table
+	\ table_name
+	\ tag
 	\ target
 	\ targets
 	\ temperr_action
 	\ tls
 	\ tls_client
 	\ use_helper
+	\ user
+	\ value_column
 	\ write_timeout
 
 hi def link maddyModDir		Identifier
