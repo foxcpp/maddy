@@ -11,6 +11,7 @@ tasks:
       cd maddy
       go build ./...
   - buildsh: |
+      cd maddy
       ./build.sh
       ./build.sh --destdir destdir/ install
       find destdir/
