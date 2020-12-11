@@ -27,6 +27,7 @@ import (
 	"sort"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/smtpconn"
@@ -340,7 +341,7 @@ func (rd *remoteDelivery) lookupMX(ctx context.Context, domain string) (dnssecOk
 	if rd.rt.extResolver != nil {
 		dnssecOk, records, err = rd.rt.extResolver.AuthLookupMX(context.Background(), domain)
 	} else {
-		records, err = rd.rt.resolver.LookupMX(ctx, domain)
+		records, err = rd.rt.resolver.LookupMX(ctx, dns.FQDN(domain))
 	}
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)

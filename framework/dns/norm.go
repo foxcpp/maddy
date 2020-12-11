@@ -21,9 +21,14 @@ package dns
 import (
 	"strings"
 
+	"github.com/miekg/dns"
 	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )
+
+func FQDN(domain string) string {
+	return dns.Fqdn(domain)
+}
 
 // ForLookup converts the domain into a canonical form suitable for table
 // lookups and other comparisons.

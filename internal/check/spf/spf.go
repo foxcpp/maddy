@@ -291,7 +291,7 @@ func prepareMailFrom(from string) (string, error) {
 		fromMbox = ""
 	}
 
-	return fromMbox + "@" + fromDomain, nil
+	return fromMbox + "@" + dns.FQDN(fromDomain), nil
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
@@ -317,7 +317,8 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	}
 
 	if s.c.enforceEarly {
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
+		res, err := spf.CheckHostWithSender(ip.IP,
+			dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
@@ -338,7 +339,7 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 
 		defer trace.StartRegion(ctx, "apply_spf/CheckConnection (Async)").End()
 
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()

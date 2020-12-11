@@ -112,3 +112,10 @@ func IsASCII(s string) bool {
 	}
 	return true
 }
+
+func FQDNDomain(addr string) string {
+	if strings.HasSuffix(addr, ".") {
+		return addr
+	}
+	return addr + "."
+}

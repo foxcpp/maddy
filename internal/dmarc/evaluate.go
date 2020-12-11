@@ -30,6 +30,7 @@ import (
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/emersion/go-msgauth/dmarc"
 	"github.com/foxcpp/maddy/framework/address"
+	"github.com/foxcpp/maddy/framework/dns"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -40,7 +41,7 @@ func FetchRecord(ctx context.Context, r Resolver, fromDomain string) (policyDoma
 	policyDomain = fromDomain
 
 	// 1. Lookup using From Domain.
-	txts, err := r.LookupTXT(ctx, "_dmarc."+fromDomain)
+	txts, err := r.LookupTXT(ctx, dns.FQDN("_dmarc."+fromDomain))
 	if err != nil {
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok || !dnsErr.IsNotFound {
@@ -56,7 +57,7 @@ func FetchRecord(ctx context.Context, r Resolver, fromDomain string) (policyDoma
 
 		policyDomain = orgDomain
 
-		txts, err = r.LookupTXT(ctx, "_dmarc."+orgDomain)
+		txts, err = r.LookupTXT(ctx, dns.FQDN("_dmarc."+orgDomain))
 		if err != nil {
 			dnsErr, ok := err.(*net.DNSError)
 			if !ok || !dnsErr.IsNotFound {
