@@ -1,4 +1,7 @@
 #!/bin/sh
+
+set -e
+
 ./build_cover.sh
 
 clean() {
