@@ -295,7 +295,7 @@ func prepareMailFrom(from string) (string, error) {
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
-	defer trace.StartRegion(ctx, "apply_spf/CheckConnection").End()
+	defer trace.StartRegion(ctx, "check.spf/CheckConnection").End()
 
 	if s.msgMeta.Conn == nil {
 		s.log.Println("locally generated message, skipping")
@@ -337,7 +337,7 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 			}
 		}()
 
-		defer trace.StartRegion(ctx, "apply_spf/CheckConnection (Async)").End()
+		defer trace.StartRegion(ctx, "check.spf/CheckConnection (Async)").End()
 
 		res, err := spf.CheckHostWithSender(ip.IP, dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom)
 		s.log.Debugf("result: %s (%v)", res, err)
@@ -361,7 +361,7 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 		return module.CheckResult{}
 	}
 
-	defer trace.StartRegion(ctx, "apply_spf/CheckBody").End()
+	defer trace.StartRegion(ctx, "check.spf/CheckBody").End()
 
 	res, ok := <-s.spfFetch
 	if !ok {

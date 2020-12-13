@@ -54,11 +54,11 @@ type Check struct {
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	if len(inlineArgs) != 0 {
-		return nil, errors.New("verify_dkim: inline arguments are not used")
+		return nil, errors.New("check.dkim: inline arguments are not used")
 	}
 	return &Check{
 		instName: instName,
-		log:      log.Logger{Name: "verify_dkim"},
+		log:      log.Logger{Name: "check.dkim"},
 		resolver: dns.DefaultResolver(),
 	}, nil
 }
@@ -91,7 +91,7 @@ func (c *Check) Init(cfg *config.Map) error {
 }
 
 func (c *Check) Name() string {
-	return "verify_dkim"
+	return "check.dkim"
 }
 
 func (c *Check) InstanceName() string {
@@ -117,7 +117,7 @@ func (d *dkimCheckState) CheckRcpt(ctx context.Context, rcptTo string) module.Ch
 }
 
 func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
-	defer trace.StartRegion(ctx, "verify_dkim/CheckBody").End()
+	defer trace.StartRegion(ctx, "check.dkim/CheckBody").End()
 
 	if !header.Has("DKIM-Signature") {
 		if d.c.noSigAction.Reject || d.c.noSigAction.Quarantine {
@@ -130,7 +130,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 20},
 				Message:      "No DKIM signatures",
-				CheckName:    "verify_dkim",
+				CheckName:    "check.dkim",
 			},
 			AuthResult: []authres.Result{
 				&authres.DKIMResult{
@@ -148,7 +148,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 			Reject: true,
 			Reason: exterrors.WithTemporary(
 				exterrors.WithFields(err, map[string]interface{}{
-					"check":    "verify_dkim",
+					"check":    "check.dkim",
 					"smtp_msg": "Internal I/O error",
 				}),
 				true,
@@ -166,7 +166,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 			Reject: true,
 			Reason: exterrors.WithTemporary(
 				exterrors.WithFields(err, map[string]interface{}{
-					"check":    "verify_dkim",
+					"check":    "check.dkim",
 					"smtp_msg": "Internal error during policy check",
 				}),
 				true,
@@ -198,7 +198,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 							Code:         421,
 							EnhancedCode: exterrors.EnhancedCode{4, 7, 20},
 							Message:      "Temporary error during DKIM verification",
-							CheckName:    "verify_dkim",
+							CheckName:    "check.dkim",
 							Err:          verif.Err,
 						},
 					}
@@ -244,7 +244,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 			Code:         550,
 			EnhancedCode: exterrors.EnhancedCode{5, 7, 20},
 			Message:      "No passing DKIM signatures",
-			CheckName:    "verify_dkim",
+			CheckName:    "check.dkim",
 		}
 		return d.c.brokenSigAction.Apply(res)
 	}
@@ -252,7 +252,7 @@ func (d *dkimCheckState) CheckBody(ctx context.Context, header textproto.Header,
 }
 
 func (d *dkimCheckState) Name() string {
-	return "verify_dkim"
+	return "check.dkim"
 }
 
 func (d *dkimCheckState) Close() error {

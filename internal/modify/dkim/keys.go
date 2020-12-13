@@ -52,7 +52,7 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 
 	block, _ := pem.Decode(pemBlob)
 	if block == nil {
-		return nil, false, fmt.Errorf("sign_dkim: %s: invalid PEM block", keyPath)
+		return nil, false, fmt.Errorf("modify.dkim: %s: invalid PEM block", keyPath)
 	}
 
 	var key interface{}
@@ -60,20 +60,20 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 	case "PRIVATE KEY": // RFC 5208 aka PKCS #8
 		key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("modify.dkim: %s: %w", keyPath, err)
 		}
 	case "RSA PRIVATE KEY": // RFC 3447 aka PKCS #1
 		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("modify.dkim: %s: %w", keyPath, err)
 		}
 	case "EC PRIVATE KEY": // RFC 5915
 		key, err = x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return nil, false, fmt.Errorf("sign_dkim: %s: %w", keyPath, err)
+			return nil, false, fmt.Errorf("modify.dkim: %s: %w", keyPath, err)
 		}
 	default:
-		return nil, false, fmt.Errorf("sign_dkim: %s: not a private key or unsupported format", keyPath)
+		return nil, false, fmt.Errorf("modify.dkim: %s: not a private key or unsupported format", keyPath)
 	}
 
 	switch key := key.(type) {
@@ -86,15 +86,15 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 	case ed25519.PrivateKey:
 		return key, false, nil
 	case *ecdsa.PublicKey:
-		return nil, false, fmt.Errorf("sign_dkim: %s: ECDSA keys are not supported", keyPath)
+		return nil, false, fmt.Errorf("modify.dkim: %s: ECDSA keys are not supported", keyPath)
 	default:
-		return nil, false, fmt.Errorf("sign_dkim: %s: unknown key type: %T", keyPath, key)
+		return nil, false, fmt.Errorf("modify.dkim: %s: unknown key type: %T", keyPath, key)
 	}
 }
 
 func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, error) {
 	wrapErr := func(err error) error {
-		return fmt.Errorf("sign_dkim: generate %s: %w", keyPath, err)
+		return fmt.Errorf("modify.dkim: generate %s: %w", keyPath, err)
 	}
 
 	m.log.Printf("generating a new %s keypair...", newKeyAlgo)
@@ -166,7 +166,7 @@ func writeDNSRecord(keyPath, dkimAlgoName string, pkey crypto.Signer) (string, e
 	case ed25519.PublicKey:
 		keyBlob = pubkey
 	default:
-		panic("sign_dkim.writeDNSRecord: unknown key algorithm")
+		panic("modify.dkim.writeDNSRecord: unknown key algorithm")
 	}
 
 	dnsPath := keyPath + ".dns"

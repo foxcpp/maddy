@@ -101,7 +101,7 @@ func TestCheckSPF(tt *testing.T) {
 			defer_sender_reject no
 
 			check {
-				apply_spf {
+				spf {
 					enforce_early yes
 
 					none_action reject 551
@@ -191,7 +191,7 @@ func TestSPF_DMARCDefer(tt *testing.T) {
 			defer_sender_reject no
 
 			check {
-				apply_spf {
+				spf {
 					enforce_early no
 
 					none_action ignore

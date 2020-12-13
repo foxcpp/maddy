@@ -90,10 +90,10 @@ func signTestMsg(t *testing.T, m *Modifier, envelopeFrom string) (textproto.Head
 	testHdr.Add("To", "<heya@heya>")
 	body := []byte("hello there\r\n")
 
-	// sign_dkim expects RewriteSender to be called to get envelope sender
+	// modify.dkim expects RewriteSender to be called to get envelope sender
 	//  (see module.Modifier docs)
 
-	// RewriteSender does not fail for modify_dkim. It just sets envelopeFrom.
+	// RewriteSender does not fail for modify.dkim. It just sets envelopeFrom.
 	if _, err := state.RewriteSender(context.Background(), envelopeFrom); err != nil {
 		panic(err)
 	}

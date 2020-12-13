@@ -77,7 +77,7 @@ func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Mod
 	return &Downstream{
 		modName:    modName,
 		instName:   instName,
-		lmtp:       modName == "target.lmtp",
+		lmtp:       modName == "target.lmtp" || modName == "lmtp_downstream", /* compatibility with 0.3 configs */
 		targetsArg: inlineArgs,
 		log:        log.Logger{Name: modName},
 	}, nil

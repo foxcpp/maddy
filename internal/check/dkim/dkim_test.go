@@ -84,7 +84,7 @@ Joe.
 
 func testCheck(t *testing.T, zones map[string]mockdns.Zone, cfg []config.Node) *Check {
 	t.Helper()
-	mod, err := New("verify_dkim", "", nil, nil)
+	mod, err := New("check.dkim", "", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

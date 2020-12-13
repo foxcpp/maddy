@@ -14,5 +14,5 @@ IMAP index and authentication database inspection and manipulation utility.
 __Deprecated: Currently they are unusable due to changes made to the storage
 implementation.__
 
-Utilities compatible with the extauth module that call libpam or read
+Utilities compatible with the auth.external module that call libpam or read
 /etc/shadow on Unix systems.

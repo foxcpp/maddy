@@ -87,7 +87,7 @@ func TestDownstreamDelivery_LMTP(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		modName: "lmtp_downstream",
+		modName: "target.lmtp",
 		lmtp:    true,
 		log:     testutils.Logger(t, "lmtp_downstream"),
 	}
