@@ -143,14 +143,6 @@ install() {
 
 	command install -m 0755 -d "${destdir}/${prefix}/bin/"
 	command install -m 0755 "${builddir}/maddy" "${builddir}/maddyctl" "${destdir}/${prefix}/bin/"
-	command install -m 0755 -d "${destdir}/${prefix}/share/man/man1/"
-	for f in "${builddir}"/man/*.1; do
-		command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man1/"
-	done
-	command install -m 0755 -d "${destdir}/${prefix}/share/man/man5/"
-	for f in "${builddir}"/man/*.5; do
-		command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man5/"
-	done
 	command install -m 0755 -d "${destdir}/etc/maddy/"
 	command install -m 0644 ./maddy.conf "${destdir}/etc/maddy/maddy.conf"
 
@@ -160,6 +152,17 @@ install() {
 	if [ "$(go env GOOS)" = "linux" ]; then
 		command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
 		command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+	fi
+
+	if [ -e "${builddir}"/man ]; then
+		command install -m 0755 -d "${destdir}/${prefix}/share/man/man1/"
+		for f in "${builddir}"/man/*.1; do
+			command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man1/"
+		done
+		command install -m 0755 -d "${destdir}/${prefix}/share/man/man5/"
+		for f in "${builddir}"/man/*.5; do
+			command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man5/"
+		done
 	fi
 }
 
