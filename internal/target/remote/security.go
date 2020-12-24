@@ -467,7 +467,7 @@ func (c *daneDelivery) PrepareConn(ctx context.Context, mx string) {
 	c.tlsaFut = future.New()
 
 	go func() {
-		c.tlsaFut.Set(c.discoverTLSA(ctx, mx))
+		c.tlsaFut.Set(c.discoverTLSA(ctx, dns.FQDN(mx)))
 	}()
 }
 
