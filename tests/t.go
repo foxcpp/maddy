@@ -278,6 +278,7 @@ func (t *T) Close() {
 	go func() {
 		time.Sleep(5 * time.Second)
 		if t.servProc != nil {
+			t.Log("Killing possibly hung server process")
 			t.servProc.Process.Kill() //nolint:errcheck
 		}
 	}()
