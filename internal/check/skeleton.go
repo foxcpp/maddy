@@ -26,6 +26,8 @@ See HACKING.md in the repo root for implementation recommendations.
 package directory_name_here
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -73,19 +75,19 @@ func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState
 	}, nil
 }
 
-func (s *state) CheckConnection() module.CheckResult {
+func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckSender(addr string) module.CheckResult {
+func (s *state) CheckSender(ctx context.Context, addr string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckRcpt(addr string) module.CheckResult {
+func (s *state) CheckRcpt(ctx context.Context, addr string) module.CheckResult {
 	return module.CheckResult{}
 }
 
-func (s *state) CheckBody(hdr textproto.Header, body buffer.Buffer) module.CheckResult {
+func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer.Buffer) module.CheckResult {
 	return module.CheckResult{}
 }
 
