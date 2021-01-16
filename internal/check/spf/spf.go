@@ -119,6 +119,8 @@ type state struct {
 	msgMeta  *module.MsgMetadata
 	spfFetch chan spfRes
 	log      log.Logger
+
+	skip bool
 }
 
 func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -298,18 +300,21 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	defer trace.StartRegion(ctx, "check.spf/CheckConnection").End()
 
 	if s.msgMeta.Conn == nil {
+		s.skip = true
 		s.log.Println("locally generated message, skipping")
 		return module.CheckResult{}
 	}
 
 	ip, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
+		s.skip = true
 		s.log.Println("non-IP SrcAddr")
 		return module.CheckResult{}
 	}
 
 	mailFrom, err := prepareMailFrom(s.msgMeta.OriginalFrom)
 	if err != nil {
+		s.skip = true
 		return module.CheckResult{
 			Reason: err,
 			Reject: true,
@@ -356,7 +361,7 @@ func (s *state) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult
 }
 
 func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
-	if s.c.enforceEarly {
+	if s.c.enforceEarly || s.skip {
 		// Already applied in CheckConnection.
 		return module.CheckResult{}
 	}
