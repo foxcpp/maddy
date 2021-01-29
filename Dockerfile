@@ -1,7 +1,7 @@
 FROM golang:1.15.6-alpine3.12 AS build-env
 
-COPY . maddy/
-WORKDIR maddy/
+WORKDIR /maddy/
+COPY . .
 
 ENV LDFLAGS -static
 RUN apk --no-cache add bash git gcc musl-dev
@@ -17,7 +17,7 @@ RUN echo -e "state_dir /data\nruntime_dir /tmp" >> /pkg/data/maddy.conf
 RUN ./build.sh --builddir /tmp --destdir /pkg/ build install
 
 FROM alpine:3.12.2
-LABEL maintainer="fox.cpp@disroot.org"
+LABEL maintainer="fox.cpp@disroot.org, kz@khaledez.net"
 
 RUN apk --no-cache add ca-certificates
 COPY --from=build-env /pkg/data/maddy.conf /data/maddy.conf
