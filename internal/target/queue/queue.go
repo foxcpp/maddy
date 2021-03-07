@@ -67,6 +67,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"runtime/trace"
 	"strconv"
@@ -767,9 +768,19 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	metaPath := filepath.Join(q.location, meta.MsgMeta.ID+".meta")
-	file, err := os.Create(metaPath + ".new")
-	if err != nil {
-		return err
+
+	var file *os.File
+	var err error
+	if runtime.GOOS == "windows" {
+		file, err = os.Create(metaPath)
+		if err != nil {
+			return err
+		}
+	} else {
+		file, err = os.Create(metaPath + ".new")
+		if err != nil {
+			return err
+		}
 	}
 	defer file.Close()
 
@@ -785,8 +796,10 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 		return err
 	}
 
-	if err := os.Rename(metaPath+".new", metaPath); err != nil {
-		return err
+	if runtime.GOOS != "windows" {
+		if err := os.Rename(metaPath+".new", metaPath); err != nil {
+			return err
+		}
 	}
 
 	return nil
