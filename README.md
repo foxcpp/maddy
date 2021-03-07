@@ -18,8 +18,8 @@ can handle message delivery business.
 [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
 [![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
 
-* [Setup tutorial](https://foxcpp.dev/maddy/tutorials/setting-up/)
-* [Documentation](https://foxcpp.dev/maddy/)
+* [Setup tutorial](https://maddy.email/tutorials/setting-up/)
+* [Documentation](https://maddy.email/)
 
 * [IRC channel](https://webchat.freenode.net/#maddy)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)

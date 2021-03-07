@@ -31,7 +31,7 @@ Your options are:
 * Pre-built tarball (Linux, amd64)
 
     Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
-    [foxcpp.dev](https://foxcpp.dev/maddy-builds/).
+    [maddy.email](https://maddy.email/).
 
     The tarball contains the full filesystem tree so you can directly
     extract it into root directory (or you can take just executable).
