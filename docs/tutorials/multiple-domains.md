@@ -30,7 +30,7 @@ so on. The idea is to redirect all messages from non-primary domains to the
 primary one.
 
 For each handled domain, the following line should be added to the
-`local_modifiers` block:
+`modify` block that gets applied for local recipients:
 ```
 replace_rcpt regexp /(.+)@example.com/ $1@$(primary_domain)
 ```
@@ -41,7 +41,8 @@ E.g.
 ```
 $(primary_domain) = example.org
 
-modifiers local_modifiers {
+# Probably somewhere in local_routing
+modify {
     replace_rcpt regexp /(.+)@example.net/ $1@$(primary_domain)
     replace_rcpt regexp /(.+)@example.com/ $1@$(primary_domain)
 }
