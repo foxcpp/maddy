@@ -22,6 +22,7 @@ Options:
 
 Options for ./build.sh build:
     --static                build static self-contained executables (musl-libc recommended)
+    --tags <tags>           build tags to use
     --version <version>     version tag to embed into executables (default: auto-detect)
 
 Additional flags for "go build" can be provided using GOFLAGS environment variable.
@@ -56,6 +57,10 @@ while :; do
 			;;
 		--static)
 			static=1
+			;;
+		--tags)
+			shift
+			tags="$1"
 			;;
 		--)
 			break
@@ -116,17 +121,17 @@ build() {
 		# This is literally impossible to specify this line of arguments as part of ${GOFLAGS}
 		# using only POSIX sh features (and even with Bash extensions I can't figure it out).
 		go build -trimpath \
-			-buildmode pie -tags 'osusergo netgo static_build' -ldflags '-extldflags="-fnoPIC -static"' \
+			-buildmode pie -tags "$tags osusergo netgo static_build" -ldflags '-extldflags="-fnoPIC -static"' \
 			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
 		echo "-- Building management utility (maddyctl)..." >&2
 		go build -trimpath \
-			-buildmode pie -tags 'osusergo netgo static_build' -ldflags '-extldflags="-fnoPIC -static"' \
+			-buildmode pie -tags "$tags osusergo netgo static_build" -ldflags '-extldflags="-fnoPIC -static"' \
 			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	else
 		echo "-- Building main server executable..." >&2
-		go build -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
+		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
 		echo "-- Building management utility (maddyctl)..." >&2
-		go build -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
+		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	fi
 
 	build_man_pages

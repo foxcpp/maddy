@@ -2,7 +2,7 @@
 Description=maddy mail server (using %i.conf)
 Documentation=man:maddy(1)
 Documentation=man:maddy.conf(5)
-Documentation=https://foxcpp.dev/maddy/
+Documentation=https://maddy.email
 After=network.target
 
 [Service]

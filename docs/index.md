@@ -17,6 +17,6 @@ can handle message delivery business.
 [![License text](https://img.shields.io/github/license/foxcpp/maddy)](https://github.com/foxcpp/maddy/blob/master/LICENSE)
 [![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
 
-* [Setup tutorial](https://foxcpp.dev/maddy/tutorials/setting-up/)
+* [Setup tutorial](https://maddy.email/tutorials/setting-up/)
 * [IRC channel](https://webchat.freenode.net/#maddy)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)

@@ -118,46 +118,6 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		SMTPOpts: opts,
 	}
 
-	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
-	// used.
-	for _, ch := range from {
-		if ch > 128 && !opts.UTF8 {
-			return "", &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-				Message:      "SMTPUTF8 is required for non-ASCII senders",
-			}
-		}
-	}
-
-	// Decode punycode, normalize to NFC and case-fold address.
-	cleanFrom, err := address.CleanDomain(from)
-	if err != nil {
-		return "", &exterrors.SMTPError{
-			Code:         553,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
-			Message:      "Unable to normalize the sender address",
-		}
-	}
-
-	msgMeta.ID, err = module.GenerateMsgID()
-	if err != nil {
-		return "", err
-	}
-	msgMeta.OriginalFrom = from
-
-	_, domain, err := address.Split(cleanFrom)
-	if err != nil {
-		return "", err
-	}
-	remoteIP, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		remoteIP = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
-	}
-	if err := s.endp.limits.TakeMsg(context.Background(), remoteIP.IP, domain); err != nil {
-		return "", err
-	}
-
 	if s.connState.AuthUser != "" {
 		s.log.Msg("incoming message",
 			"src_host", msgMeta.Conn.Hostname,
@@ -173,6 +133,52 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 			"sender", from,
 			"msg_id", msgMeta.ID,
 		)
+	}
+
+	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
+	// used.
+	for _, ch := range from {
+		if ch > 128 && !opts.UTF8 {
+			return "", &exterrors.SMTPError{
+				Code:         550,
+				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+				Message:      "SMTPUTF8 is required for non-ASCII senders",
+			}
+		}
+	}
+
+	// Decode punycode, normalize to NFC and case-fold address.
+	cleanFrom := from
+	if from != "" {
+		cleanFrom, err = address.CleanDomain(from)
+		if err != nil {
+			return "", &exterrors.SMTPError{
+				Code:         553,
+				EnhancedCode: exterrors.EnhancedCode{5, 1, 7},
+				Message:      "Unable to normalize the sender address",
+			}
+		}
+	}
+
+	msgMeta.ID, err = module.GenerateMsgID()
+	if err != nil {
+		return "", err
+	}
+	msgMeta.OriginalFrom = from
+
+	domain := ""
+	if cleanFrom != "" {
+		_, domain, err = address.Split(cleanFrom)
+		if err != nil {
+			return "", err
+		}
+	}
+	remoteIP, ok := msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
+	if !ok {
+		remoteIP = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	}
+	if err := s.endp.limits.TakeMsg(context.Background(), remoteIP.IP, domain); err != nil {
+		return "", err
 	}
 
 	s.msgCtx, s.msgTask = trace.NewTask(ctx, "Incoming Message")

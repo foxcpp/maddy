@@ -388,6 +388,10 @@ func NewExtResolver() (*ExtResolver, error) {
 		cfg.Port = port
 	}
 
+	if len(cfg.Servers) == 0 {
+		cfg.Servers = []string{"127.0.0.1"}
+	}
+
 	cl := new(dns.Client)
 	cl.Dialer = &net.Dialer{
 		Timeout: time.Duration(cfg.Timeout) * time.Second,
