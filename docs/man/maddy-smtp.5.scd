@@ -581,7 +581,7 @@ table.sql_table remote_addrs {
 }
 
 whatever {
-	destination_to &remote_addrs {
+	destination_in &remote_addrs {
 		deliver_to whatever
 	}
 }
