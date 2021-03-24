@@ -21,8 +21,8 @@ and has no dependency on Docker or similar technologies for deployment.
 
 maddy may have more bugs than 20 years old battle-tested software.
 
-It is easier to get help with MailCow/MITB since underying implementations
-are well-undestood and have active community.
+It is easier to get help with MailCow/MITB since underlying implementations
+are well-understood and have active community.
 
 maddy has no Web interface for administration, that is currently done via CLI
 utility.
@@ -58,7 +58,7 @@ maddy does not require MongoDB server for deployment.
 maddy has no web interface for queue inspection. However, it can
 easily inspected by looking at files in /var/lib/maddy.
 
-ZoneMTA has a number of features that may make it easiler to integrate
+ZoneMTA has a number of features that may make it easier to integrate
 with HTTP-based services. maddy speaks standard email protocols (SMTP,
 Submission).
 
