@@ -64,10 +64,10 @@ Your options are:
 
 If you built maddy from source and used `./build.sh install` then
 systemd unit files should be already installed. If you used
-a pre-built tarball - copy `systemd/*.service` to /etc/systemd/system
+a pre-built tarball - copy `systemd/*.service` to `/etc/systemd/system`
 manually.
 
-You need to reload service manager configuration to service available:
+You need to reload service manager configuration to make service available:
 
 ```
 systemctl daemon-reload
