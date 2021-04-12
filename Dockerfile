@@ -1,4 +1,4 @@
-FROM golang:1.15.6-alpine3.12 AS build-env
+FROM golang:1.16.3-alpine3.13 AS build-env
 
 COPY . maddy/
 WORKDIR maddy/
@@ -15,7 +15,7 @@ RUN sed -Ei 's!^tls .+!tls file /data/tls_cert.pem /data/tls_key.pem!' /pkg/data
 
 RUN ./build.sh --builddir /tmp --destdir /pkg/ --tags docker build install
 
-FROM alpine:3.12.2
+FROM alpine:3.13.4
 LABEL maintainer="fox.cpp@disroot.org"
 
 RUN apk --no-cache add ca-certificates
