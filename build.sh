@@ -120,13 +120,13 @@ build() {
 		echo "-- Building main server executable..." >&2
 		# This is literally impossible to specify this line of arguments as part of ${GOFLAGS}
 		# using only POSIX sh features (and even with Bash extensions I can't figure it out).
-		go build -trimpath \
-			-buildmode pie -tags "$tags osusergo netgo static_build" -ldflags '-extldflags="-fnoPIC -static"' \
-			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
+		go build -trimpath -buildmode pie -tags "$tags osusergo netgo static_build" \
+			-ldflags "-extldflags '-fno-PIC -static' -X \"github.com/foxcpp/maddy.Version=${version}\"" \
+			-o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
 		echo "-- Building management utility (maddyctl)..." >&2
-		go build -trimpath \
-			-buildmode pie -tags "$tags osusergo netgo static_build" -ldflags '-extldflags="-fnoPIC -static"' \
-			-ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
+		go build -trimpath -buildmode pie -tags "$tags osusergo netgo static_build" \
+			-ldflags "-extldflags '-fno-PIC -static' -X \"github.com/foxcpp/maddy.Version=${version}\"" \
+			-o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	else
 		echo "-- Building main server executable..." >&2
 		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy

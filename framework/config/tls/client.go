@@ -51,7 +51,7 @@ func TLSClientBlock(m *config.Map, node config.Node) (interface{}, error) {
 		return nil, nil
 	}, TLSCurvesDirective, &cfg.CurvePreferences)
 
-	if _, err := m.Process(); err != nil {
+	if _, err := childM.Process(); err != nil {
 		return nil, err
 	}
 
@@ -69,7 +69,7 @@ func TLSClientBlock(m *config.Map, node config.Node) (interface{}, error) {
 		cfg.RootCAs = pool
 	}
 
-	if certPath != "" || keyPath == "" {
+	if certPath != "" && keyPath != "" {
 		keypair, err := tls.LoadX509KeyPair(certPath, keyPath)
 		if err != nil {
 			return nil, err
