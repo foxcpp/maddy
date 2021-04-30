@@ -153,7 +153,7 @@ check.spf {
     debug no
     enforce_early no
     fail_action quarantine
-    softfail_action quarantine
+    softfail_action ignore
     permerr_action reject
     temperr_action reject
 }
@@ -207,7 +207,7 @@ SPF results.
 Action to take when SPF policy evaluates to a 'fail' result.
 
 *Syntax*: softfail_action reject|qurantine|ignore ++
-*Default*: quarantine
+*Default*: ignore
 
 Action to take when SPF policy evaluates to a 'softfail' result.
 
