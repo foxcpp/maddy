@@ -256,6 +256,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	}, bufferModeDirective, &endp.buffer)
 	cfg.Custom("tls", true, endp.name != "lmtp", nil, tls2.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
+	cfg.Int("smtp_max_line_length", false, false, 4000, &endp.serv.MaxLineLength)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
