@@ -21,10 +21,11 @@ smtp tcp://0.0.0.0:25 {
     auth pam
     defer_sender_reject yes
     dmarc yes
-	limits {
-		endpoint rate 10
-		endpoint concurrency 500
-	}
+    smtp_max_line_length 4000
+    limits {
+        endpoint rate 10
+        endpoint concurrency 500
+    }
 
     # Example pipeline ocnfiguration.
     destination example.org {
@@ -138,6 +139,19 @@ _path_ can be omitted and defaults to StateDirectory/buffer.
 Store message bodies smaller than _max_size_ entirely in RAM, otherwise write
 them out to the FS.
 _path_ can be omitted and defaults to StateDirectory/buffer.
+
+*Syntax*: smtp_max_line_length _integer_ ++
+*Default*: 4000
+
+The maximum line length allowed in the SMTP input stream. If client sends a
+longer line - connection will be closed and message (if any) will be rejected
+with a permanent error.
+
+RFC 5321 has the recommended limit of 998 bytes. Servers are not required
+to handle longer lines correctly but some senders may produce them.
+
+Unless BDAT extension is used by the sender, this limitation also applies to
+the message body.
 
 *Syntax*: dmarc _boolean_ ++
 *Default*: yes

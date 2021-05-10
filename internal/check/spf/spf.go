@@ -91,7 +91,7 @@ func (c *Check) Init(cfg *config.Map) error {
 		}, modconfig.FailActionDirective, &c.failAction)
 	cfg.Custom("softfail_action", false, false,
 		func() (interface{}, error) {
-			return modconfig.FailAction{Quarantine: true}, nil
+			return modconfig.FailAction{}, nil
 		}, modconfig.FailActionDirective, &c.softfailAction)
 	cfg.Custom("permerr_action", false, false,
 		func() (interface{}, error) {

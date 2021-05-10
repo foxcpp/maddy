@@ -51,7 +51,7 @@ addresses (this is a bad idea to do so, this is just an example):
 destination_in &local_mailboxes {
 	deliver_to &local_mailboxes
 }
-destination_in example.org {
+destination example.org {
 	modify {
 		replace_rcpt regexp ".*" "catchall@example.org"
 	}
