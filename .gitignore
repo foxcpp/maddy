@@ -45,3 +45,5 @@ build/
 
 tests/maddy.cover
 tests/maddy
+
+.idea/
