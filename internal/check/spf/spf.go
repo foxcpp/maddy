@@ -56,13 +56,15 @@ type Check struct {
 	permerrAction  modconfig.FailAction
 	temperrAction  modconfig.FailAction
 
-	log log.Logger
+	log      log.Logger
+	resolver dns.Resolver
 }
 
 func New(_, instName string, _, _ []string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: modName},
+		resolver: dns.DefaultResolver(),
 	}, nil
 }
 
@@ -243,7 +245,7 @@ func (s *state) relyOnDMARC(ctx context.Context, hdr textproto.Header) bool {
 		return false
 	}
 
-	policyDomain, record, err := maddydmarc.FetchRecord(ctx, dns.DefaultResolver(), fromDomain)
+	policyDomain, record, err := maddydmarc.FetchRecord(ctx, s.c.resolver, fromDomain)
 	if err != nil {
 		s.log.Error("DMARC fetch", err, "from_domain", fromDomain)
 		return false
@@ -323,7 +325,8 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 
 	if s.c.enforceEarly {
 		res, err := spf.CheckHostWithSender(ip.IP,
-			dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom)
+			dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom,
+			spf.WithContext(ctx), spf.WithResolver(s.c.resolver))
 		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
@@ -344,7 +347,8 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 
 		defer trace.StartRegion(ctx, "check.spf/CheckConnection (Async)").End()
 
-		res, err := spf.CheckHostWithSender(ip.IP, dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom,
+			spf.WithContext(ctx), spf.WithResolver(s.c.resolver))
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()
