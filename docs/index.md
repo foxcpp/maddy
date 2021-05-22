@@ -18,5 +18,5 @@ can handle message delivery business.
 [![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
 
 * [Setup tutorial](https://maddy.email/tutorials/setting-up/)
-* [IRC channel](https://webchat.freenode.net/#maddy)
+* [IRC channel](https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)
