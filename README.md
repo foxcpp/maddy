@@ -21,5 +21,5 @@ can handle message delivery business.
 * [Setup tutorial](https://maddy.email/tutorials/setting-up/)
 * [Documentation](https://maddy.email/)
 
-* [IRC channel](https://webchat.freenode.net/#maddy)
+* [IRC channel](https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)
