@@ -37,7 +37,7 @@ introduction by the new developers/contributors. It is recommended to read
 user documentation to understand how things work from the user perspective as
 well.
 
-- User documentation: [maddy.conf(5)](maddy.conf.5.scd)
+- User documentation: [maddy.conf(5)](docs/man/maddy.5.scd)
 - Design rationale: [Comments on design (Wiki)][1]
 
 There are components called "modules". They are represented by objects
@@ -63,7 +63,7 @@ initialization path, so they are always initialized directly.
 
 ## Error handling
 
-Familiarize yourself with the `github.com/foxcpp/maddy/internal/exterrors`
+Familiarize yourself with the `github.com/foxcpp/maddy/framework/exterrors`
 package and make sure you have the following for returned errors:
 - SMTP status information (smtp\_code, smtp\_enchcode, smtp\_msg fields)
   - SMTP message text should contain a generic description of the error
@@ -109,7 +109,7 @@ If you don't need any per-message state, you can use `StatelessCheck` wrapper.
 See `check/dns` directory for a working example.
 
 Here are some guidelines to make sure your check works well:
-- RTFM, docs well tell you about any caveats.
+- RTFM, docs will tell you about any caveats.
 - Don't share any state _between_ messages, your code will be executed in
   parallel.
 - Use `github.com/foxcpp/maddy/check.FailAction` to select behavior on check
