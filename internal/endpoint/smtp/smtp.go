@@ -67,6 +67,7 @@ type Endpoint struct {
 	deferServerReject   bool
 	maxLoggedRcptErrors int
 	maxReceived         int
+	maxHeaderBytes      int
 
 	listenersWg sync.WaitGroup
 
@@ -245,6 +246,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
+	cfg.DataSize("max_header_size", false, false, 1*1024*1024, &endp.maxHeaderBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
 	cfg.Int("max_received", false, false, 50, &endp.maxReceived)
 	cfg.Custom("buffer", false, false, func() (interface{}, error) {
