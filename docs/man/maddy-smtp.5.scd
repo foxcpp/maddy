@@ -18,6 +18,7 @@ smtp tcp://0.0.0.0:25 {
     read_timeout 10m
     write_timeout 1m
     max_message_size 32M
+    max_header_size 1M
     auth pam
     defer_sender_reject yes
     dmarc yes
@@ -89,6 +90,11 @@ I/O write timeout.
 *Default*: 32M
 
 Limit the size of incoming messages to 'size'.
+
+*Syntax*: max_header_size _size_ ++
+*Default*: 1M
+
+Limit the size of incoming message headers to 'size'.
 
 *Syntax*: auth _module_reference_ ++
 *Default*: not specified
