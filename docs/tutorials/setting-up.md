@@ -170,7 +170,7 @@ example.org.   TXT   "v=spf1 mx -all"
 
 ; Opt-in into DMARC with permissive policy and request reports about broken
 ; messages.
-_dmarc.example.org.   TXT    "v=DMARC1; p=none; ruf=postmaster@example.org"
+_dmarc.example.org.   TXT    "v=DMARC1; p=none; ruf=mailto:postmaster@example.org"
 ```
 
 And the last one, DKIM key, is a bit tricky. maddy generated a key for you on
