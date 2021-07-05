@@ -20,8 +20,6 @@ package tls
 
 import (
 	"crypto/tls"
-	"os"
-	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
@@ -78,11 +76,6 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 	if len(blockNode.Args) > 0 {
 		if blockNode.Args[0] == "off" {
 			return nil, nil
-		}
-
-		if _, err := os.Stat(blockNode.Args[0]); err == nil || strings.Contains(blockNode.Args[0], "/") {
-			log.Println("'tls cert_path key_path' syntax is deprecated, use 'tls file cert_path key_path'")
-			blockNode.Args = append([]string{"file"}, blockNode.Args...)
 		}
 
 		err := modconfig.ModuleFromNode("tls.loader", blockNode.Args, config.Node{}, globals, &loader)
