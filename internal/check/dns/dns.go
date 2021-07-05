@@ -158,6 +158,8 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 }
 
 func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
+	ctx.Logger.Printf("require_matching_echo is deprecated and will be removed in the next release")
+
 	if ctx.MsgMeta.Conn == nil {
 		ctx.Logger.Printf("locally-generated message, skipping")
 		return module.CheckResult{}

@@ -55,14 +55,6 @@ Action to take when check fails. See Check actions for details.
 Log both sucessfull and unsucessfull check executions instead of just
 unsucessfull.
 
-## require_matching_ehlo
-
-Check that source server hostname (from EHLO/HELO command) resolves to source
-server IP.
-
-By default, quarantines messages coming from servers with mismatched
-EHLO hostname, use 'fail_action' directive to change that.
-
 ## require_mx_record
 
 Check that domain in MAIL FROM command does have a MX record and none of them
