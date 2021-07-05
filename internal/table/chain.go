@@ -28,7 +28,8 @@ type Chain struct {
 	modName  string
 	instName string
 
-	chain []module.Table
+	chain    []module.Table
+	optional []bool
 }
 
 func NewChain(modName, instName string, _, _ []string) (module.Module, error) {
@@ -47,6 +48,18 @@ func (s *Chain) Init(cfg *config.Map) error {
 		}
 
 		s.chain = append(s.chain, tbl)
+		s.optional = append(s.optional, false)
+		return nil
+	})
+	cfg.Callback("optional_step", func(m *config.Map, node config.Node) error {
+		var tbl module.Table
+		err := modconfig.ModuleFromNode("table", node.Args, node, m.Globals, &tbl)
+		if err != nil {
+			return err
+		}
+
+		s.chain = append(s.chain, tbl)
+		s.optional = append(s.optional, true)
 		return nil
 	})
 
@@ -63,10 +76,16 @@ func (s *Chain) InstanceName() string {
 }
 
 func (s *Chain) Lookup(key string) (string, bool, error) {
-	for _, step := range s.chain {
+	for i, step := range s.chain {
 		val, ok, err := step.Lookup(key)
-		if !ok || err != nil {
-			return "", ok, err
+		if err != nil {
+			return "", false, err
+		}
+		if !ok {
+			if s.optional[i] {
+				continue
+			}
+			return "", false, nil
 		}
 		key = val
 	}

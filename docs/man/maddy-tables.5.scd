@@ -262,4 +262,20 @@ in /etc/maddy/emails list.
 
 *Syntax*: step _table_
 
-Adds a table module to the chain.
+Adds a table module to the chain. If input value is not in the table
+(e.g. file) - return "not exists" error.
+
+*Syntax*: optional_step _table_
+
+Same as step but if input value is not in the table - it is passed to the
+next step without changes.
+
+Example:
+Something like this can be used to map emails to usernames
+after translating them via aliases map:
+```
+table.chain {
+    optional_step file /etc/maddy/aliases
+    step regexp "(.+)@(.+)" "$1"
+}
+```
