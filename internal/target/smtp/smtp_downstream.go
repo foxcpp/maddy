@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"net"
 	"runtime/trace"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -59,6 +60,10 @@ type Downstream struct {
 	endpoints       []config.Endpoint
 	saslFactory     saslClientFactory
 	tlsConfig       tls.Config
+
+	connectTimeout    time.Duration
+	commandTimeout    time.Duration
+	submissionTimeout time.Duration
 
 	log log.Logger
 }
@@ -102,6 +107,9 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return tls.Config{}, nil
 	}, tls2.TLSClientBlock, &u.tlsConfig)
+	cfg.Duration("connect_timeout", false, false, 5*time.Minute, &u.connectTimeout)
+	cfg.Duration("command_timeout", false, false, 5*time.Minute, &u.commandTimeout)
+	cfg.Duration("submission_timeout", false, false, 5*time.Minute, &u.submissionTimeout)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -188,6 +196,15 @@ func (d *delivery) connect(ctx context.Context) error {
 	conn.Log = d.log
 	conn.Hostname = d.u.hostname
 	conn.AddrInSMTPMsg = false
+	if d.u.connectTimeout != 0 {
+		conn.ConnectTimeout = d.u.connectTimeout
+	}
+	if d.u.commandTimeout != 0 {
+		conn.CommandTimeout = d.u.commandTimeout
+	}
+	if d.u.submissionTimeout != 0 {
+		conn.SubmissionTimeout = d.u.submissionTimeout
+	}
 
 	for _, endp := range d.u.endpoints {
 		var (

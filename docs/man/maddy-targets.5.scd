@@ -128,6 +128,34 @@ per-source/per-destination are as observed when message exits the server.
 
 Choose the local IP to bind for outbound SMTP connections.
 
+*Syntax*: connect_timeout _duration_ ++
+*Default*: 5m
+
+Timeout for TCP connection establishment.
+
+RFC 5321 recommends 5 minutes for "initial greeting" that includes TCP
+handshake. maddy uses two separate timers - one for "dialing" (DNS A/AAAA
+lookup + TCP handshake) and another for "initial greeting". This directive
+configures the former. The latter is not configurable and is hardcoded to be
+5 minutes.
+
+*Syntax*: command_timeout _duration_ ++
+*Default*: 5m
+
+Timeout for any SMTP command (EHLO, MAIL, RCPT, DATA, etc).
+
+If STARTTLS is used this timeout also applies to TLS handshake.
+
+RFC 5321 recommends 5 minutes for MAIL/RCPT and 3 minutes for
+DATA.
+
+*Syntax*: submission_timeout _duration_ ++
+*Default*: 12m
+
+Time to wait after the entire message is sent (after "final dot").
+
+RFC 5321 recommends 10 minutes.
+
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
 
@@ -333,6 +361,9 @@ target.smtp {
     require_yes no
     auth off
     targets tcp://127.0.0.1:2525
+    connect_timeout 5m
+    command_timeout 5m
+    submission_timeout 12m
 }
 ```
 
@@ -404,6 +435,21 @@ TLS).
 
 Multiple addresses can be specified, they will be tried in order until connection to
 one succeeds (including TLS handshake if TLS is required).
+
+*Syntax*: connect_timeout _duration_ ++
+*Default*: 5m
+
+Same as for target.remote.
+
+*Syntax*: command_timeout _duration_ ++
+*Default*: 5m
+
+Same as for target.remote.
+
+*Syntax*: submission_timeout _duration_ ++
+*Default*: 12m
+
+Same as for target.remote.
 
 # LMTP transparent forwarding module (target.lmtp)
 
