@@ -72,26 +72,59 @@ eariler in SMTP pipeline logic. Quarantined messages are not processed
 by IMAP filters and are unconditionally delivered to Junk folder (or other
 folder with \Junk special-use attribute).
 
+To use an IMAP filter, specify it in the 'imap_filter' directive for the
+used storage backend, like this:
+```
+storage.imapsql local_mailboxes {
+   ...
+   
+   imap_filter {
+       command /etc/maddy/sieve.sh {account_name}
+   }
+}
+```
+
 ## System command filter (imap.filter.command)
 
 This filter is similar to check.command module described in *maddy-filters*(5)
 and runs system command
 
+Usage:
 ```
 command executable_name args... { }
 ```
 
 Same as check.command, following placeholders are supported for command
 arguments: {source_ip}, {source_host}, {source_rdns}, {msg_id}, {auth_user},
-{sender}.
+{sender}. Note: placeholders in command name are not processed to avoid 
+possible command injection attacks.
 
 Additionally, for imap.filter.command, {account_name} placeholder is replaced
 with effective IMAP account name.
 
-Command cutput consists of zero or more lines. First one, if non-empty, overrides
+Note that if you use provided systemd units on Linux, maddy executable is 
+sandboxed - all commands will be executed with heavily restricted filesystem
+acccess and other privileges. Notably, /tmp is isolated and all directories
+except for /var/lib/maddy and /run/maddy are read-only. You will need to modify
+systemd unit if your command needs more privileges.
+
+Command output should consist of zero or more lines. First one, if non-empty, overrides
 destination folder. All other lines contain additional IMAP flags to add
 to the message. If command wants to add flags without changing folder - first
 line should be empty.
 
 It is valid for command to not write anything to stdout. In this case its
 execution will have no effect on delivery.
+
+Output example:
+```
+Junk
+```
+In this case, message will be placed in the Junk folder.
+
+```
+
+$Label1
+```
+In this case, message will be placed in inbox and will have 
+'$Label1' added.
