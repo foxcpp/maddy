@@ -61,6 +61,7 @@ func NewFile(_, instName string, _, inlineArgs []string) (module.Module, error) 
 	switch len(inlineArgs) {
 	case 1:
 		m.file = inlineArgs[0]
+	case 0:
 	default:
 		return nil, fmt.Errorf("%s: cannot use multiple files with single %s, use %s multiple times to do so", FileModName, FileModName, FileModName)
 	}
