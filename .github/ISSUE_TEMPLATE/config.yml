@@ -1,0 +1,7 @@
+contact_links:
+  - name: Questions 
+    url: "https://github.com/foxcpp/maddy/discussions/new?category=q-a"
+    about: "Use GitHub discussions for any questions"
+  - name: IRC channel
+    url: "https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1"
+    about: "... or there is also an IRC channel for any discussions"

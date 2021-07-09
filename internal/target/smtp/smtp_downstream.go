@@ -73,12 +73,6 @@ func (u *Downstream) moduleError(err error) error {
 		return nil
 	}
 
-	if u.lmtp {
-		return exterrors.WithFields(err, map[string]interface{}{
-			"target": u.modName,
-		})
-	}
-
 	return exterrors.WithFields(err, map[string]interface{}{
 		"target": u.modName,
 	})
@@ -88,7 +82,7 @@ func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Mod
 	return &Downstream{
 		modName:    modName,
 		instName:   instName,
-		lmtp:       modName == "lmtp",
+		lmtp:       modName == "target.lmtp" || modName == "lmtp_downstream", /* compatibility with 0.3 configs */
 		targetsArg: inlineArgs,
 		log:        log.Logger{Name: modName},
 	}, nil
@@ -98,7 +92,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 	var targetsArg []string
 	cfg.Bool("debug", true, false, &u.log.Debug)
 	cfg.Bool("require_tls", false, false, &u.requireTLS)
-	cfg.Bool("attempt_starttls", false, true, &u.attemptStartTLS)
+	cfg.Bool("attempt_starttls", false, !u.lmtp, &u.attemptStartTLS)
 	cfg.String("hostname", true, true, "", &u.hostname)
 	cfg.StringList("targets", false, false, nil, &targetsArg)
 	cfg.Custom("auth", false, false, func() (interface{}, error) {

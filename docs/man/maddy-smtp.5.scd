@@ -21,10 +21,11 @@ smtp tcp://0.0.0.0:25 {
     auth pam
     defer_sender_reject yes
     dmarc yes
-	limits {
-		endpoint rate 10
-		endpoint concurrency 500
-	}
+    smtp_max_line_length 4000
+    limits {
+        endpoint rate 10
+        endpoint concurrency 500
+    }
 
     # Example pipeline ocnfiguration.
     destination example.org {
@@ -138,6 +139,19 @@ _path_ can be omitted and defaults to StateDirectory/buffer.
 Store message bodies smaller than _max_size_ entirely in RAM, otherwise write
 them out to the FS.
 _path_ can be omitted and defaults to StateDirectory/buffer.
+
+*Syntax*: smtp_max_line_length _integer_ ++
+*Default*: 4000
+
+The maximum line length allowed in the SMTP input stream. If client sends a
+longer line - connection will be closed and message (if any) will be rejected
+with a permanent error.
+
+RFC 5321 has the recommended limit of 998 bytes. Servers are not required
+to handle longer lines correctly but some senders may produce them.
+
+Unless BDAT extension is used by the sender, this limitation also applies to
+the message body.
 
 *Syntax*: dmarc _boolean_ ++
 *Default*: yes
@@ -426,7 +440,7 @@ It is also possible to define the block of modifiers at the top level
 as "modiifers" module and reference it using & syntax. Example:
 ```
 modifiers local_modifiers {
-	alias_file /etc/maddy/aliases
+	replace_rcpt file /etc/maddy/aliases
 }
 
 # ... somewhere else ...
@@ -521,7 +535,7 @@ Here is the concrete example how it can be useful:
 ```
 destination example.org {
     modify {
-        alias_file /etc/maddy/aliases
+        replace_rcpt file /etc/maddy/aliases
     }
     reroute {
         destination example.org {
@@ -581,7 +595,7 @@ table.sql_table remote_addrs {
 }
 
 whatever {
-	destination_to &remote_addrs {
+	destination_in &remote_addrs {
 		deliver_to whatever
 	}
 }

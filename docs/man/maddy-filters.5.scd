@@ -112,15 +112,6 @@ lacks any field listed in that directive, it will be considered invalid.
 Note that From is always required to be signed, even if it is not included in
 this directive.
 
-*Syntax*: allow_body_subset _boolean_ ++
-*Default*: no
-
-By default signatures that cover only body subset (using l= "body limit" tag)
-are considered invalid ("broken"). This directive allows such signatures.
-
-It should be noted that allowing use of "body limit" allows arbitrary
-data to be appended to the message body.
-
 *Syntax*: no_sig_action _action_ ++
 *Default*: ignore (recommended by RFC 6376)
 
@@ -154,7 +145,7 @@ check.spf {
     debug no
     enforce_early no
     fail_action quarantine
-    softfail_action quarantine
+    softfail_action ignore
     permerr_action reject
     temperr_action reject
 }
@@ -208,7 +199,7 @@ SPF results.
 Action to take when SPF policy evaluates to a 'fail' result.
 
 *Syntax*: softfail_action reject|qurantine|ignore ++
-*Default*: quarantine
+*Default*: ignore
 
 Action to take when SPF policy evaluates to a 'softfail' result.
 
@@ -381,7 +372,7 @@ and override results of other blocklists.
 
 # DKIM signing module (modify.dkim)
 
-sign_dkim module is a modifier that signs messages using DKIM
+modify.dkim module is a modifier that signs messages using DKIM
 protocol (RFC 6376).
 
 ```
@@ -402,7 +393,7 @@ modify.dkim {
 
 ## Arguments
 
-domains and selector can be specified in arguments, so actual sign_dkim use can
+domains and selector can be specified in arguments, so actual modify.dkim use can
 be shortened to the following:
 ```
 modify {
@@ -415,7 +406,7 @@ modify {
 *Syntax*: debug _boolean_ ++
 *Default*: global directive value
 
-Enable verbose logging for sign_dkim.
+Enable verbose logging.
 
 *Syntax*: domains _string list_ ++
 *Default*: not specified
@@ -451,7 +442,7 @@ Placeholders '{domain}' and '{selector}' will be replaced with corresponding
 values from domain and selector directives.
 
 Additionally, keys in PKCS#1 ("RSA PRIVATE KEY") and
-RFC 5915 ("EC PRIVATE KEY") can be read by sign_dkim. Note, however that
+RFC 5915 ("EC PRIVATE KEY") can be read by modify.dkim. Note, however that
 newly generated keys are always in PKCS#8.
 
 *Syntax*: oversign_fields _list..._ ++
@@ -563,7 +554,7 @@ require_sender_match checks. Only first address will be checked, however.
 
 Sign emails from subdomains using a top domain key.
 
-Allows only one domain to be specified (can be workarounded using sign_dkim
+Allows only one domain to be specified (can be workarounded using modify.dkim
 multiple times).
 
 # Envelope sender / recipient rewriting (modify.replace_sender, modify.replace_rcpt)
@@ -598,7 +589,7 @@ replace_sender <table> [table arguments] {
 Use examples:
 ```
 modify {
-	replace_rcpt file_map /etc/maddy/aliases
+	replace_rcpt file /etc/maddy/aliases
 	replace_rcpt static {
 		entry a@example.org b@example.org
 	}

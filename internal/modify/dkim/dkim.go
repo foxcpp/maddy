@@ -116,14 +116,14 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	m := &Modifier{
 		instName: instName,
 		signers:  map[string]crypto.Signer{},
-		log:      log.Logger{Name: "sign_dkim"},
+		log:      log.Logger{Name: "modify.dkim"},
 	}
 
 	if len(inlineArgs) == 0 {
 		return m, nil
 	}
 	if len(inlineArgs) == 1 {
-		return nil, errors.New("sign_dkim: at least two arguments required")
+		return nil, errors.New("modify.dkim: at least two arguments required")
 	}
 
 	m.domains = inlineArgs[0 : len(inlineArgs)-1]
@@ -133,7 +133,7 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 }
 
 func (m *Modifier) Name() string {
-	return "sign_dkim"
+	return "modify.dkim"
 }
 
 func (m *Modifier) InstanceName() string {
@@ -194,7 +194,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 
 	m.hash = hashFuncs[hashName]
 	if m.hash == 0 {
-		panic("sign_dkim.Init: Hash function allowed by config matcher but not present in hashFuncs")
+		panic("modify.dkim.Init: Hash function allowed by config matcher but not present in hashFuncs")
 	}
 
 	for _, domain := range m.domains {
@@ -288,7 +288,7 @@ func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 }
 
 func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
-	defer trace.StartRegion(ctx, "sign_dkim/RewriteBody").End()
+	defer trace.StartRegion(ctx, "modify.dkim/RewriteBody").End()
 
 	var domain string
 	if s.from != "" {
@@ -351,24 +351,24 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 	}
 	signer, err := dkim.NewSigner(&opts)
 	if err != nil {
-		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	if err := textproto.WriteHeader(signer, *h); err != nil {
 		signer.Close()
-		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	r, err := body.Open()
 	if err != nil {
 		signer.Close()
-		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	if _, err := io.Copy(signer, r); err != nil {
 		signer.Close()
-		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 
 	if err := signer.Close(); err != nil {
-		return exterrors.WithFields(err, map[string]interface{}{"modifier": "sign_dkim"})
+		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 
 	h.AddRaw([]byte(signer.Signature()))

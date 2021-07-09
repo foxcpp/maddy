@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/miekg/dns"
 )
 
@@ -202,6 +203,71 @@ func (e ExtResolver) AuthLookupTXT(ctx context.Context, name string) (ad bool, r
 	return
 }
 
+// CheckCNAMEAD is a special function for use in DANE lookups. It attempts to determine final
+// (canonical) name of the host and also reports whether the whole chain of CNAME's and final zone
+// are "secure".
+//
+// If there are no A or AAAA records for host, rname = "" is returned.
+func (e ExtResolver) CheckCNAMEAD(ctx context.Context, host string) (ad bool, rname string, err error) {
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+	msg.SetEdns0(4096, false)
+	msg.AuthenticatedData = true
+	resp, err := e.exchange(ctx, msg)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, r := range resp.Answer {
+		switch r := r.(type) {
+		case *dns.A:
+			rname = r.Hdr.Name
+			ad = resp.AuthenticatedData // Use AD flag from response we used to determine rname
+		}
+	}
+
+	if rname == "" {
+		// IPv6-only host? Try to find out rname using AAAA lookup.
+		msg := new(dns.Msg)
+		msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+		msg.SetEdns0(4096, false)
+		msg.AuthenticatedData = true
+		resp, err := e.exchange(ctx, msg)
+		if err == nil {
+			for _, r := range resp.Answer {
+				switch r := r.(type) {
+				case *dns.AAAA:
+					rname = r.Hdr.Name
+					ad = resp.AuthenticatedData
+				}
+			}
+		}
+	}
+
+	return ad, rname, nil
+}
+
+func (e ExtResolver) AuthLookupCNAME(ctx context.Context, host string) (ad bool, cname string, err error) {
+	msg := new(dns.Msg)
+	msg.SetQuestion(dns.Fqdn(host), dns.TypeCNAME)
+	msg.SetEdns0(4096, false)
+	msg.AuthenticatedData = true
+	resp, err := e.exchange(ctx, msg)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, r := range resp.Answer {
+		cnameR, ok := r.(*dns.CNAME)
+		if !ok {
+			continue
+		}
+		return resp.AuthenticatedData, cnameR.Target, nil
+	}
+
+	return resp.AuthenticatedData, "", nil
+}
+
 func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool, addrs []net.IPAddr, err error) {
 	// First, query IPv6.
 	msg := new(dns.Msg)
@@ -210,18 +276,25 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	msg.AuthenticatedData = true
 
 	resp, err := e.exchange(ctx, msg)
+	aaaaFailed := false
+	var (
+		v6ad    bool
+		v6addrs []net.IPAddr
+	)
 	if err != nil {
-		return false, nil, err
-	}
-
-	ad = resp.AuthenticatedData
-	addrs = make([]net.IPAddr, 0, len(resp.Answer))
-	for _, rr := range resp.Answer {
-		aaaaRR, ok := rr.(*dns.AAAA)
-		if !ok {
-			continue
+		// Disregard the error for AAAA lookups.
+		aaaaFailed = true
+		log.DefaultLogger.Error("Network I/O error during AAAA lookup", err, "host", host)
+	} else {
+		v6addrs = make([]net.IPAddr, 0, len(resp.Answer))
+		v6ad = resp.AuthenticatedData
+		for _, rr := range resp.Answer {
+			aaaaRR, ok := rr.(*dns.AAAA)
+			if !ok {
+				continue
+			}
+			v6addrs = append(v6addrs, net.IPAddr{IP: aaaaRR.AAAA})
 		}
-		addrs = append(addrs, net.IPAddr{IP: aaaaRR.AAAA})
 	}
 
 	// Then repeat query with IPv4.
@@ -231,22 +304,44 @@ func (e ExtResolver) AuthLookupIPAddr(ctx context.Context, host string) (ad bool
 	msg.AuthenticatedData = true
 
 	resp, err = e.exchange(ctx, msg)
+	var (
+		v4ad    bool
+		v4addrs []net.IPAddr
+	)
 	if err != nil {
-		return false, nil, err
-	}
-
-	// Both queries should be authenticated.
-	ad = ad && resp.AuthenticatedData
-
-	for _, rr := range resp.Answer {
-		aRR, ok := rr.(*dns.A)
-		if !ok {
-			continue
+		if aaaaFailed {
+			return false, nil, err
 		}
-		addrs = append(addrs, net.IPAddr{IP: aRR.A})
+		// Disregard A lookup error if AAAA succeeded.
+		log.DefaultLogger.Error("Network I/O error during A lookup, using AAAA records", err, "host", host)
+	} else {
+		v4ad = resp.AuthenticatedData
+		v4addrs = make([]net.IPAddr, 0, len(resp.Answer))
+		for _, rr := range resp.Answer {
+			aRR, ok := rr.(*dns.A)
+			if !ok {
+				continue
+			}
+			v4addrs = append(v4addrs, net.IPAddr{IP: aRR.A})
+		}
 	}
 
-	return ad, addrs, err
+	// A little bit of careful handling is required if AD is inconsistent
+	// for A and AAAA queries. This unfortunatenly happens in practice. For
+	// purposes of DANE handling (A/AAAA check) we disregard AAAA records
+	// if they are not authenctiated and return only A records with AD=true.
+
+	addrs = make([]net.IPAddr, 0, len(v4addrs)+len(v6addrs))
+	if !v6ad && !v4ad {
+		addrs = append(addrs, v6addrs...)
+		addrs = append(addrs, v4addrs...)
+	} else {
+		if v6ad {
+			addrs = append(addrs, v6addrs...)
+		}
+		addrs = append(addrs, v4addrs...)
+	}
+	return v4ad, addrs, nil
 }
 
 func (e ExtResolver) AuthLookupTLSA(ctx context.Context, service, network, domain string) (ad bool, recs []TLSA, err error) {
@@ -291,6 +386,10 @@ func NewExtResolver() (*ExtResolver, error) {
 		}
 		cfg.Servers = []string{host}
 		cfg.Port = port
+	}
+
+	if len(cfg.Servers) == 0 {
+		cfg.Servers = []string{"127.0.0.1"}
 	}
 
 	cl := new(dns.Client)

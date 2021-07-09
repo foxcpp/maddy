@@ -135,6 +135,33 @@ func TestRemoteDelivery(t *testing.T) {
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 
+func TestRemoteDelivery_NoMXFallback(t *testing.T) {
+	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
+	defer tarpit.Close()
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	defer tgt.Close()
+
+	delivery, err := tgt.Start(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := delivery.AddRcpt(context.Background(), "test@example.invalid"); err == nil {
+		t.Fatal("Expected an error, got none")
+	}
+
+	if err := delivery.Abort(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRemoteDelivery_EmptySender(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
 	defer srv.Close()

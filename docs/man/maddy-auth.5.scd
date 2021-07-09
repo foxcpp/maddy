@@ -12,7 +12,7 @@ Most likely, you are going to use these modules with 'auth' directive of IMAP
 (*maddy-imap*(5)) or SMTP endpoint (*maddy-smtp*(5)).
 
 Most modules listed here are also usable as a table (see *maddy-tables*(5))
-that contains all usernames known to the module. Exceptions are extauth and
+that contains all usernames known to the module. Exceptions are auth.external and
 pam as underlying interfaces do not define a way to check credentials
 existence.
 
@@ -66,7 +66,7 @@ domains must be also set and domain part WILL NOT be removed before check.
 # PAM module (auth.pam)
 
 Implements authentication using libpam. Alternatively it can be configured to
-use helper binary like extauth module does.
+use helper binary like auth.external module does.
 
 maddy should be built with libpam build tag to use this module without
 'use_helper' directive.
@@ -110,7 +110,7 @@ chmod u+xs,g+x,o-x /usr/lib/maddy/maddy-pam-helper
 # Shadow database authentication module (auth.shadow)
 
 Implements authentication by reading /etc/shadow. Alternatively it can be
-configured to use helper binary like extauth does.
+configured to use helper binary like auth.external does.
 
 ```
 auth.shadow {

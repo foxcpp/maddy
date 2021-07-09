@@ -115,6 +115,13 @@ func IsASCII(s string) bool {
 	return true
 }
 
+func FQDNDomain(addr string) string {
+	if strings.HasSuffix(addr, ".") {
+		return addr
+	}
+	return addr + "."
+}
+
 // PRECISFold applies UsernameCaseMapped to the local part and dns.ForLookup
 // to domain part of the address.
 func PRECISFold(addr string) (string, error) {

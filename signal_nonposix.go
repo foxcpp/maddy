@@ -1,4 +1,4 @@
-//+build windows
+//+build windows plan9
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

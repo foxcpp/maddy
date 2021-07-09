@@ -19,10 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package rspamd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -63,6 +65,7 @@ func New(modName, instName string, aliases, inlineArgs []string) (module.Module,
 	c := &Check{
 		instName: instName,
 		client:   http.DefaultClient,
+		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
 	}
 
 	switch len(inlineArgs) {
@@ -208,7 +211,15 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 		}
 	}
 
-	r, err := http.NewRequest("POST", s.c.apiPath+"/checkv2", bodyR)
+	var buf bytes.Buffer
+	if err := textproto.WriteHeader(&buf, hdr); err != nil {
+		return module.CheckResult{
+			Reject: true,
+			Reason: exterrors.WithFields(err, map[string]interface{}{"check": modName}),
+		}
+	}
+
+	r, err := http.NewRequest("POST", s.c.apiPath+"/checkv2", io.MultiReader(&buf, bodyR))
 	if err != nil {
 		return module.CheckResult{
 			Reject: true,
@@ -272,6 +283,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 
 	switch respData.Action {
 	case "no action":
+		return module.CheckResult{}
 	case "greylist":
 		// uuh... TODO: Implement greylisting?
 		hdrAdd := textproto.Header{}
@@ -331,7 +343,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 		}
 	}
 
-	s.log.Msg("unhandled action", respData.Action)
+	s.log.Msg("unhandled action", "action", respData.Action)
 
 	return module.CheckResult{}
 }

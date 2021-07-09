@@ -103,7 +103,7 @@ func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textpro
 		return &exterrors.SMTPError{
 			Code:         554,
 			EnhancedCode: exterrors.EnhancedCode{5, 6, 0},
-			Message:      fmt.Sprintf("Invalid address in From"),
+			Message:      "Invalid address in From",
 			Misc: map[string]interface{}{
 				"modifier": "submission_prepare",
 				"addr":     header.Get("From"),

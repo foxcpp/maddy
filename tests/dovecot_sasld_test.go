@@ -88,14 +88,6 @@ Xi3olS9rB0J+Rvjz
 -----END PRIVATE KEY-----`
 
 func runChasquid(t *testing.T, authClientPath string) (string, *exec.Cmd) {
-	chasquidExec, err := exec.LookPath(ChasquidExecutable)
-	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
-			t.Skip("No chasquid executable found, skipping interop. tests")
-		}
-		t.Fatal(err)
-	}
-
 	tempDir, err := ioutil.TempDir("", "maddy-chasquid-interop-")
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +121,7 @@ func runChasquid(t *testing.T, authClientPath string) (string, *exec.Cmd) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(chasquidExec, "-v=2", "-config_dir", tempDir)
+	cmd := exec.Command(ChasquidExecutable, "-v=2", "-config_dir", tempDir)
 	t.Log("Launching", cmd.String())
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -172,6 +164,14 @@ func cleanChasquid(t *testing.T, tempDir string, cmd *exec.Cmd) {
 
 func TestSASLServerWithChasquid(tt *testing.T) {
 	tt.Parallel()
+
+	_, err := exec.LookPath(ChasquidExecutable)
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			tt.Skip("No chasquid executable found, skipping interop. tests")
+		}
+		tt.Fatal(err)
+	}
 
 	t := tests.NewT(tt)
 	t.DNS(nil)

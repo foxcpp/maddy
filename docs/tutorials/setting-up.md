@@ -22,7 +22,9 @@ there are a few things to keep in mind:
 - Make sure your provider does not block SMTP traffic (25 TCP port). Most VPS
   providers don't do it, but some "cloud" providers (such as Google Cloud) do
   it, so you can't host your mail there.
-- ...
+
+- It is recommended to run your own DNS resolver with DNSSEC verification
+  enabled.
 
 ## Installing maddy
 
@@ -31,10 +33,13 @@ Your options are:
 * Pre-built tarball (Linux, amd64)
 
     Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
-    [foxcpp.dev](https://foxcpp.dev/maddy-builds/).
+    [maddy.email](https://maddy.email/).
 
-    The tarball contains the full filesystem tree so you can directly
-    extract it into root directory (or you can take just executable).
+	The tarball includes maddy and maddyctl executables you can
+	copy into /usr/local/bin as well as systemd unit file you can
+	use on systemd-based distributions for automatic startup and service
+	supervision. You should also create "maddy" user and group.
+	See below for more detailed instructions.
 
 * Docker image (Linux, amd64)
 
@@ -48,6 +53,32 @@ Your options are:
 * Building from source
 
     See [here](../building-from-source) for instructions.
+
+* Arch Linux packages
+
+	For Arch Linux users, `maddy` and `maddy-git` PKGBUILDs are available
+	in AUR. Additionally, binary packages are available in 3rd-party
+	repository at https://foxcpp.dev/archlinux/
+
+## System configuration (systemd-based distribution)
+
+If you built maddy from source and used `./build.sh install` then
+systemd unit files should be already installed. If you used
+a pre-built tarball - copy `systemd/*.service` to `/etc/systemd/system`
+manually.
+
+You need to reload service manager configuration to make service available:
+
+```
+systemctl daemon-reload
+```
+
+Additionally, you should create maddy user and group. Unlike most other
+Linux mail servers, maddy never runs as root.
+
+```
+useradd -mrU -s /sbin/nologin -d /var/lib/maddy -c "maddy mail server" maddy
+```
 
 ## Host name + domain
 
@@ -113,11 +144,10 @@ acme.sh --force --install-cert -d mx1.example.org \
 ## First run
 
 ```
-systemctl daemon-reload
 systemctl start maddy
 ```
 
-Well, it should be running now, except that it is useless because we haven't
+The daemon should be running now, except that it is useless because we haven't
 configured DNS records.
 
 ## DNS records

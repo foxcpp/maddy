@@ -21,10 +21,14 @@ package remote
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"time"
 
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 )
+
+// Used to override verification time for DANE-TA tests.
+var verifyDANETime time.Time
 
 // verifyDANE checks whether TLSA records require TLS use and match the
 // certificate and name used by the server.
@@ -33,7 +37,7 @@ import (
 // succeed even if PKIX/X.509 verification fails. That is, if InsecureSkipVerify
 // is used and verifyDANE returns overridePKIX=true, the server certificate
 // should trusted.
-func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionState) (overridePKIX bool, err error) {
+func verifyDANE(recs []dns.TLSA, connState tls.ConnectionState) (overridePKIX bool, err error) {
 	tlsErr := &exterrors.SMTPError{
 		Code:         550,
 		EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
@@ -43,9 +47,6 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 			"remote_server": connState.ServerName,
 		},
 	}
-
-	// See https://tools.ietf.org/html/rfc6698#appendix-B.2
-	// for pseudocode this function is based on.
 
 	// See https://tools.ietf.org/html/rfc7672#section-2.2 for requirements of
 	// TLS discovery.
@@ -61,48 +62,87 @@ func verifyDANE(recs []dns.TLSA, serverName string, connState tls.ConnectionStat
 	}
 
 	// Ignore invalid records.
-	validRecs := recs[:0]
+	var (
+		eeRecs []dns.TLSA
+		taRecs []dns.TLSA
+	)
 	for _, rec := range recs {
-		switch rec.Usage {
-		case 0, 1, 2, 3:
-		default:
-			continue
-		}
 		switch rec.MatchingType {
 		case 0, 1, 2:
 		default:
 			continue
 		}
+		switch rec.Selector {
+		case 0, 1:
+		default:
+			continue
+		}
 
-		validRecs = append(validRecs, rec)
+		switch rec.Usage {
+		case 2:
+			taRecs = append(taRecs, rec)
+		case 3:
+			eeRecs = append(eeRecs, rec)
+		default:
+			continue
+		}
 	}
 
-	for _, rec := range validRecs {
-		switch rec.Usage {
-		case 0, 2: // CA constraint (PKIX-TA) and Trust Anchor Assertion (DANE-TA)
-			chains := connState.VerifiedChains
-			if len(chains) == 0 { // Happens if InsecureSkipVerify=true
-				chains = [][]*x509.Certificate{connState.PeerCertificates}
-			}
+	// Authentication is not required if all records are unusable, see
+	// RFC 7672 Section 2.1.1.
+	if len(eeRecs) == 0 && len(taRecs) == 0 {
+		return false, nil
+	}
 
-			for _, chain := range chains {
-				for _, cert := range chain {
-					if cert.IsCA && rec.Verify(cert) == nil {
-						// DANE-TA requires ServerName match, so verify it to
-						// override PKIX.
-						return rec.Usage == 2 &&
-							chain[0].VerifyHostname(serverName) == nil, nil
-					}
-				}
-			}
-		case 1, 3: // Service certificate constraint (PKIX-EE) and Domain issued certificate (DANE-EE)
-			if rec.Verify(connState.PeerCertificates[0]) == nil {
-				// https://tools.ietf.org/html/rfc7672#section-3.1.1
-				// - SAN/CN are not considered so always override.
-				// - Expired certificates are fine too.
-				return rec.Usage == 3, nil
+	for _, rec := range eeRecs {
+		if rec.Verify(connState.PeerCertificates[0]) == nil {
+			// https://tools.ietf.org/html/rfc7672#section-3.1.1
+			// - SAN/CN are not considered.
+			// - Expired certificates are fine too.
+			return true, nil
+		}
+	}
+
+	// Don't bother building a temporary certificate pool if there are no
+	// records to check.
+	if len(taRecs) == 0 {
+		return true, &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+			Message:      "No matching TLSA records",
+			TargetName:   "remote",
+			Misc: map[string]interface{}{
+				"remote_server": connState.ServerName,
+			},
+		}
+	}
+
+	// Collect certificates presented by the server as possible intermediates.
+	// Add all certificates from the chain that match any record to the root
+	// pool.
+	opts := x509.VerifyOptions{
+		DNSName:       connState.ServerName,
+		Intermediates: x509.NewCertPool(),
+		Roots:         x509.NewCertPool(),
+		CurrentTime:   verifyDANETime,
+	}
+	for _, cert := range connState.PeerCertificates {
+		root := false
+		for _, rec := range taRecs {
+			if cert.IsCA && rec.Verify(cert) == nil {
+				opts.Roots.AddCert(cert)
+				root = true
 			}
 		}
+		if !root {
+			opts.Intermediates.AddCert(cert)
+		}
+	}
+
+	// ... then run the standard X.509 verification. This will verify that the
+	// server certificate chains to any of asserted TA certificates.
+	if _, err := connState.PeerCertificates[0].Verify(opts); err == nil {
+		return true, nil
 	}
 
 	// There are valid records, but none matched.

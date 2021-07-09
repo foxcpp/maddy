@@ -93,7 +93,7 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 		t.dnsServ.Close()
 	}
 
-	dnsServ, err := mockdns.NewServer(zones)
+	dnsServ, err := mockdns.NewServer(zones, false)
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
@@ -278,6 +278,7 @@ func (t *T) Close() {
 	go func() {
 		time.Sleep(5 * time.Second)
 		if t.servProc != nil {
+			t.Log("Killing possibly hung server process")
 			t.servProc.Process.Kill() //nolint:errcheck
 		}
 	}()

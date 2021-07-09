@@ -16,11 +16,10 @@ feature-packed implementation you may want to use Dovecot instead. maddy still
 can handle message delivery business.
 
 [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
-[![License text](https://img.shields.io/github/license/foxcpp/maddy)](https://github.com/foxcpp/maddy/blob/master/LICENSE)
 [![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
 
-* [Setup tutorial](https://foxcpp.dev/maddy/tutorials/setting-up/)
-* [Documentation](https://foxcpp.dev/maddy/)
+* [Setup tutorial](https://maddy.email/tutorials/setting-up/)
+* [Documentation](https://maddy.email/)
 
-* [IRC channel](https://webchat.freenode.net/#maddy)
+* [IRC channel](https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)

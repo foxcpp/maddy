@@ -56,13 +56,15 @@ type Check struct {
 	permerrAction  modconfig.FailAction
 	temperrAction  modconfig.FailAction
 
-	log log.Logger
+	log      log.Logger
+	resolver dns.Resolver
 }
 
 func New(_, instName string, _, _ []string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: modName},
+		resolver: dns.DefaultResolver(),
 	}, nil
 }
 
@@ -91,7 +93,7 @@ func (c *Check) Init(cfg *config.Map) error {
 		}, modconfig.FailActionDirective, &c.failAction)
 	cfg.Custom("softfail_action", false, false,
 		func() (interface{}, error) {
-			return modconfig.FailAction{Quarantine: true}, nil
+			return modconfig.FailAction{}, nil
 		}, modconfig.FailActionDirective, &c.softfailAction)
 	cfg.Custom("permerr_action", false, false,
 		func() (interface{}, error) {
@@ -119,6 +121,8 @@ type state struct {
 	msgMeta  *module.MsgMetadata
 	spfFetch chan spfRes
 	log      log.Logger
+
+	skip bool
 }
 
 func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -241,7 +245,7 @@ func (s *state) relyOnDMARC(ctx context.Context, hdr textproto.Header) bool {
 		return false
 	}
 
-	policyDomain, record, err := maddydmarc.FetchRecord(ctx, dns.DefaultResolver(), fromDomain)
+	policyDomain, record, err := maddydmarc.FetchRecord(ctx, s.c.resolver, fromDomain)
 	if err != nil {
 		s.log.Error("DMARC fetch", err, "from_domain", fromDomain)
 		return false
@@ -291,25 +295,28 @@ func prepareMailFrom(from string) (string, error) {
 		fromMbox = ""
 	}
 
-	return fromMbox + "@" + fromDomain, nil
+	return fromMbox + "@" + dns.FQDN(fromDomain), nil
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
-	defer trace.StartRegion(ctx, "apply_spf/CheckConnection").End()
+	defer trace.StartRegion(ctx, "check.spf/CheckConnection").End()
 
 	if s.msgMeta.Conn == nil {
+		s.skip = true
 		s.log.Println("locally generated message, skipping")
 		return module.CheckResult{}
 	}
 
 	ip, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
+		s.skip = true
 		s.log.Println("non-IP SrcAddr")
 		return module.CheckResult{}
 	}
 
 	mailFrom, err := prepareMailFrom(s.msgMeta.OriginalFrom)
 	if err != nil {
+		s.skip = true
 		return module.CheckResult{
 			Reason: err,
 			Reject: true,
@@ -317,7 +324,9 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	}
 
 	if s.c.enforceEarly {
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
+		res, err := spf.CheckHostWithSender(ip.IP,
+			dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom,
+			spf.WithContext(ctx), spf.WithResolver(s.c.resolver))
 		s.log.Debugf("result: %s (%v)", res, err)
 		return s.spfResult(res, err)
 	}
@@ -336,9 +345,10 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 			}
 		}()
 
-		defer trace.StartRegion(ctx, "apply_spf/CheckConnection (Async)").End()
+		defer trace.StartRegion(ctx, "check.spf/CheckConnection (Async)").End()
 
-		res, err := spf.CheckHostWithSender(ip.IP, s.msgMeta.Conn.Hostname, mailFrom)
+		res, err := spf.CheckHostWithSender(ip.IP, dns.FQDN(s.msgMeta.Conn.Hostname), mailFrom,
+			spf.WithContext(ctx), spf.WithResolver(s.c.resolver))
 		s.log.Debugf("result: %s (%v)", res, err)
 		s.spfFetch <- spfRes{res, err}
 	}()
@@ -355,12 +365,12 @@ func (s *state) CheckRcpt(ctx context.Context, rcptTo string) module.CheckResult
 }
 
 func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buffer.Buffer) module.CheckResult {
-	if s.c.enforceEarly {
+	if s.c.enforceEarly || s.skip {
 		// Already applied in CheckConnection.
 		return module.CheckResult{}
 	}
 
-	defer trace.StartRegion(ctx, "apply_spf/CheckBody").End()
+	defer trace.StartRegion(ctx, "check.spf/CheckBody").End()
 
 	res, ok := <-s.spfFetch
 	if !ok {

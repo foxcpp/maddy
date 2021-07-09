@@ -31,29 +31,30 @@ If you want to do it anyway, here is the part of the configuration that needs
 tweaking:
 
 ```
-smtp tcp://0.0.0.0:25 {
-    ... global limits ...
-    ... local source check ...
-
-    default_source {
-        destination $(local_domains) {
-            ... local checks ...
-            modify &local_modifiers
-            deliver_to &local_mailboxes
+msgpipeline local_routing {
+    destination postmaster $(local_domains) {
+        modify {
+            replace_rcpt regexp "(.+)\+(.+)@(.+)" "$1@$3"
+            replace_rcpt file /etc/maddy/aliases
         }
 
-        default_destination {
-            reject 550 5.1.1 "User not local"
-        }
+        deliver_to &local_mailboxes
+    }
+
+    default_destination {
+        reject 550 5.1.1 "User doesn't exist"
     }
 }
 ```
 
-Here is the quick explanation of what is going on here: When maddy receives a
-message on port 25, it runs a set of checks, checks the recipients against
-'destination' blocks, runs what is specified in local_modifiers
-(that includes replace_rcpt file) and finally delivers the message to targets inside
-the matching 'destination' blocks.
+In default configuration, `local_routing` block is responsible for handling
+messages that are received via SMTP or Submission and have the initial
+destination address at a local domain.
+
+Note the `modify { }` block being nested inside `destination` and then followed
+by unconditional `deliver_to &local_mailboxes`. This means: if address is
+on `$(local_domains)`, apply aliases and deliver to mailboxes from
+`&local_mailboxes`.
 
 The problem here is that recipients are matched before aliases are resolved so
 in the end, maddy attempts to look up foxcpp@example.com locally. The solution
@@ -61,28 +62,25 @@ is to insert another step into the pipeline configuration to rerun matching
 *after* aliases are resolved. This can be done using the 'reroute' directive:
 
 ```
-smtp tcp://0.0.0.0:25 {
-    ... global limits ...
-    ... local source check ...
-
-    default_source {
-        destination $(local_domains) {
-            ... local checks ...
-            modify &local_modifiers
-
-            reroute {
-                destination $(local_domains) {
-                    deliver_to &local_mailboxes
-                }
-                default_destination {
-                    deliver_to &remote_queue
-                }
-            }
+msgpipeline local_routing {
+    destination postmaster $(local_domains) {
+        modify {
+            replace_rcpt file /etc/maddy/aliases
+			...
         }
 
-        default_destination {
-            reject 550 5.1.1 "User not local"
-        }
+		reroute {
+			destination postmaster $(local_domains) {
+				deliver_to &local_mailboxes
+			}
+			default_destination {
+				deliver_to &remote_queue
+			}
+		}
+    }
+
+    default_destination {
+        reject 550 5.1.1 "User doesn't exist"
     }
 }
 ```
@@ -120,5 +118,6 @@ deliver_to &remote_queue
 ```
 with
 ```
-deliver_to remote
+deliver_to &outbound_delivery
 ```
+(assuming outbound_delivery refers to target.remote block)

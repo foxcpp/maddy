@@ -20,7 +20,10 @@ package future
 
 import (
 	"context"
+	"runtime/debug"
 	"sync"
+
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 // The Future object implements a container for (value, error) pair that "will
@@ -51,7 +54,10 @@ func (f *Future) Set(val interface{}, err error) {
 	defer f.mu.Unlock()
 
 	if f.set {
-		panic("Future.Set called multiple times")
+		stack := debug.Stack()
+		log.Println("Future.Set called multiple times", stack)
+		log.Println("value=", val, "err=", err)
+		return
 	}
 
 	f.set = true

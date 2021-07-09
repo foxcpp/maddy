@@ -205,7 +205,7 @@ func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	srcIPs, err := ctx.Resolver.LookupIPAddr(ctx, ehlo)
+	srcIPs, err := ctx.Resolver.LookupIPAddr(ctx, dns.FQDN(ehlo))
 	if err != nil {
 		reason, misc := exterrors.UnwrapDNSErr(err)
 		return module.CheckResult{

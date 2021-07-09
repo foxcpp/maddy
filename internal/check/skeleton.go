@@ -26,6 +26,8 @@ See HACKING.md in the repo root for implementation recommendations.
 package directory_name_here
 
 import (
+	"context"
+
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"

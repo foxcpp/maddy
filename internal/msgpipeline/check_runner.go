@@ -36,8 +36,9 @@ import (
 // checkRunner runs groups of checks, collects and merges results.
 // It also makes sure that each check gets only one state object created.
 type checkRunner struct {
-	msgMeta  *module.MsgMetadata
-	mailFrom string
+	msgMeta          *module.MsgMetadata
+	mailFrom         string
+	mailFromReceived bool
 
 	checkedRcpts         []string
 	checkedRcptsPerCheck map[module.CheckState]map[string]struct{}
@@ -103,7 +104,7 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 	//
 	// Done outside of check loop above to make sure we can run these for multiple
 	// checks in parallel.
-	if cr.mailFrom != "" {
+	if cr.mailFromReceived {
 		err := cr.runAndMergeResults(newStates, func(s module.CheckState) module.CheckResult {
 			res := s.CheckConnection(ctx)
 			return res
@@ -239,6 +240,7 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 
 func (cr *checkRunner) checkConnSender(ctx context.Context, checks []module.Check, mailFrom string) error {
 	cr.mailFrom = mailFrom
+	cr.mailFromReceived = true
 
 	// checkStates will run CheckConnection and CheckSender.
 	_, err := cr.checkStates(ctx, checks)

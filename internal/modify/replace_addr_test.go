@@ -41,13 +41,13 @@ func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, c
 		m.table = testutils.Table{M: aliases}
 
 		var actual string
-		if modName == "replace_sender" {
+		if modName == "modify.replace_sender" {
 			actual, err = m.RewriteSender(context.Background(), addr)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
-		if modName == "replace_rcpt" {
+		if modName == "modify.replace_rcpt" {
 			actual, err = m.RewriteRcpt(context.Background(), addr)
 			if err != nil {
 				t.Fatal(err)
@@ -95,9 +95,9 @@ func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, c
 }
 
 func TestReplaceAddr_RewriteSender(t *testing.T) {
-	testReplaceAddr(t, "replace_sender", (*replaceAddr).RewriteSender)
+	testReplaceAddr(t, "modify.replace_sender", (*replaceAddr).RewriteSender)
 }
 
 func TestReplaceAddr_RewriteRcpt(t *testing.T) {
-	testReplaceAddr(t, "replace_rcpt", (*replaceAddr).RewriteRcpt)
+	testReplaceAddr(t, "modify.replace_rcpt", (*replaceAddr).RewriteRcpt)
 }

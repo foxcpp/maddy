@@ -152,13 +152,21 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 		actualSize, err := io.ReadFull(r, initial)
 		if err != nil {
 			if err == io.ErrUnexpectedEOF {
-				// Ok, the message is smaller than N. Make a MemoryBuffer and
-				// handle it in RAM.
-				log.Debugln("autobuffer: keeping the message in RAM")
+				log.Debugln("autobuffer: keeping the message in RAM (read", actualSize, "bytes, got EOF)")
 				return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
+			}
+			if err == io.EOF {
+				// Special case: message with empty body.
+				return buffer.MemoryBuffer{}, nil
 			}
 			// Some I/O error happened, bail out.
 			return nil, err
+		}
+		if actualSize < maxSize {
+			// Ok, the message is smaller than N. Make a MemoryBuffer and
+			// handle it in RAM.
+			log.Debugln("autobuffer: keeping the message in RAM (read", actualSize, "bytes, got short read)")
+			return buffer.MemoryBuffer{Slice: initial[:actualSize]}, nil
 		}
 
 		log.Debugln("autobuffer: spilling the message to the FS")
@@ -181,6 +189,9 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 		return buffer.BufferInMemory, nil
 	case "fs":
 		path := filepath.Join(config.StateDirectory, "buffer")
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
 		switch len(node.Args) {
 		case 2:
 			path = node.Args[1]
@@ -245,6 +256,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	}, bufferModeDirective, &endp.buffer)
 	cfg.Custom("tls", true, endp.name != "lmtp", nil, tls2.TLSDirective, &endp.serv.TLSConfig)
 	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
+	cfg.Int("smtp_max_line_length", false, false, 4000, &endp.serv.MaxLineLength)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
