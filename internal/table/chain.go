@@ -72,7 +72,7 @@ func (s *Chain) Name() string {
 }
 
 func (s *Chain) InstanceName() string {
-	return s.modName
+	return s.instName
 }
 
 func (s *Chain) Lookup(key string) (string, bool, error) {
