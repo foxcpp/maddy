@@ -171,30 +171,19 @@ foxcpp@maddy.invalid. But you will need to ensure that on delivery recipient
 addresses are rewritten appropriately (e.g.
 foxcpp@example.org => foxcpp@maddy.invalid).
 
-*Syntax*: auth_normalize precis_email|precis|casefold|no ++
-*Default*: precis_email
+*Syntax*: auth_normalize _name_ ++
+*Default*: precis_casefold_email
 
-Normalization algorithm to apply to authentication usernames before mapping
+Normalization function to apply to authentication usernames before mapping
 them to mailboxes.
 
-Options are:
-
-- precis_email
-
-RFC 8265 "UsernameCaseMapped" profile + additional logic to normalize domain
-part of a full email (converted to U-labels, case-folded and NFC-normalized).
-
-- precis
-
-RFC 8265 "UsernameCaseMapped" profile applied to the whole string.
-
-- casefold
-
-Username is just converted to lower case.
-
-- no
-
-No normalization.
+Available options:
+- precis_casefold_email   PRECIS UsernameCaseMapped profile + U-labels form for domain
+- precis_casefold         PRECIS UsernameCaseMapped profile for the entire string
+- precis_email            PRECIS UsernameCasePreserved profile + U-labels form for domain
+- precis                  PRECIS UsernameCasePreserved profile for the entire string
+- casefold                Convert to lower case
+- noop                    Nothing
 
 Note: On message delivery, recipient address is unconditionally normalized
-using precis_email algorithm.
+using precis_casefold_email function.

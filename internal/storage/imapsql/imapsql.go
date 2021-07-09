@@ -45,6 +45,7 @@ import (
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -141,8 +142,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Custom("auth_map", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, modconfig.TableDirective, &store.authMap)
-	cfg.Enum("auth_normalize", false, false,
-		[]string{"precis_email", "precis", "casefold", "no"}, "precis_email", &authNormalize)
+	cfg.String("auth_normalize", false, false, "precis_casefold_email", &authNormalize)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -155,8 +155,11 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return errors.New("imapsql: driver is required")
 	}
 
-	store.deliveryNormalize = normalizeFuncs["precis_email"]
-	authNormFunc := normalizeFuncs[authNormalize]
+	store.deliveryNormalize = authz.NormalizeFuncs["precis_casefold_email"]
+	authNormFunc, ok := authz.NormalizeFuncs[authNormalize]
+	if !ok {
+		return errors.New("imapsql: unknown normalization function: " + authNormalize)
+	}
 	store.authNormalize = authNormFunc
 	if store.authMap != nil {
 		store.authNormalize = func(username string) (string, error) {
