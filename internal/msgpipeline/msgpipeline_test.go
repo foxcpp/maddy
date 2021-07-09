@@ -594,7 +594,7 @@ func TestMsgPipeline_UnicodeNFC_Rcpt(t *testing.T) {
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})
 	if len(target.Messages) != 2 {
-		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 3, len(target.Messages))
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 2, len(target.Messages))
 	}
 	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
 	testutils.CheckTestMessage(t, &target, 1, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})
