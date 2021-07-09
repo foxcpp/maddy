@@ -19,43 +19,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package imapsql
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/address"
-	"github.com/foxcpp/maddy/framework/dns"
 	"golang.org/x/text/secure/precis"
 )
 
 var normalizeFuncs = map[string]func(string) (string, error){
-	"precis_email": func(s string) (string, error) {
-		mbox, domain, err := address.Split(s)
-		if err != nil {
-			return "", fmt.Errorf("imapsql: username prepare: %w", err)
-		}
-
-		// PRECIS is not included in the regular address.ForLookup since it reduces
-		// the range of valid addresses to a subset of actually valid values.
-		// PRECIS is a matter of our own local policy, not a general rule for all
-		// email addresses.
-
-		// Side note: For used profiles, there is no practical difference between
-		// CompareKey and String.
-		mbox, err = precis.UsernameCaseMapped.CompareKey(mbox)
-		if err != nil {
-			return "", fmt.Errorf("imapsql: username prepare: %w", err)
-		}
-
-		domain, err = dns.ForLookup(domain)
-		if err != nil {
-			return "", fmt.Errorf("imapsql: username prepare: %w", err)
-		}
-
-		return mbox + "@" + domain, nil
-	},
-	"precis": func(s string) (string, error) {
-		return precis.UsernameCaseMapped.CompareKey(s)
-	},
+	"precis_email": address.PRECISFold,
+	"precis":       precis.UsernameCaseMapped.CompareKey,
 	"casefold": func(s string) (string, error) {
 		return strings.ToLower(s), nil
 	},

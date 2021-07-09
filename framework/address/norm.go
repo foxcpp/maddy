@@ -19,11 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package address
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/foxcpp/maddy/framework/dns"
 	"golang.org/x/net/idna"
+	"golang.org/x/text/secure/precis"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -111,4 +113,42 @@ func IsASCII(s string) bool {
 		}
 	}
 	return true
+}
+
+// PRECISFold applies UsernameCaseMapped to the local part and dns.ForLookup
+// to domain part of the address.
+func PRECISFold(addr string) (string, error) {
+	return precisEmail(addr, precis.UsernameCaseMapped)
+}
+
+// PRECIS applies UsernameCasePreserved to the local part and dns.ForLookup
+// to domain part of the address.
+func PRECIS(addr string) (string, error) {
+	return precisEmail(addr, precis.UsernameCasePreserved)
+}
+
+func precisEmail(addr string, profile *precis.Profile) (string, error) {
+	mbox, domain, err := Split(addr)
+	if err != nil {
+		return "", fmt.Errorf("address: precis: %w", err)
+	}
+
+	// PRECISFold is not included in the regular address.ForLookup since it reduces
+	// the range of valid addresses to a subset of actually valid values.
+	// PRECISFold is a matter of our own local policy, not a general rule for all
+	// email addresses.
+
+	// Side note: For used profiles, there is no practical difference between
+	// CompareKey and String.
+	mbox, err = profile.CompareKey(mbox)
+	if err != nil {
+		return "", fmt.Errorf("address: precis: %w", err)
+	}
+
+	domain, err = dns.ForLookup(domain)
+	if err != nil {
+		return "", fmt.Errorf("address: precis: %w", err)
+	}
+
+	return mbox + "@" + domain, nil
 }

@@ -44,6 +44,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/auth/pass_table"
 	_ "github.com/foxcpp/maddy/internal/auth/plain_separate"
 	_ "github.com/foxcpp/maddy/internal/auth/shadow"
+	_ "github.com/foxcpp/maddy/internal/check/authorize_sender"
 	_ "github.com/foxcpp/maddy/internal/check/command"
 	_ "github.com/foxcpp/maddy/internal/check/dkim"
 	_ "github.com/foxcpp/maddy/internal/check/dns"

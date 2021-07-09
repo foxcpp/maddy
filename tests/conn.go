@@ -21,6 +21,7 @@ package tests
 import (
 	"bufio"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -199,6 +200,20 @@ func (c *Conn) TLS() {
 
 	c.Conn = tlsC
 	c.Scanner = bufio.NewScanner(c.Conn)
+}
+
+func (c *Conn) SMTPPlainAuth(username, password string, expectOk bool) {
+	c.T.Helper()
+
+	resp := append([]byte{0x00}, username...)
+	resp = append(resp, 0x00)
+	resp = append(resp, password...)
+	c.Writeln("AUTH PLAIN " + base64.StdEncoding.EncodeToString(resp))
+	if expectOk {
+		c.ExpectPattern("235 *")
+	} else {
+		c.ExpectPattern("*")
+	}
 }
 
 func (c *Conn) SMTPNegotation(ourName string, requireExts, blacklistExts []string) {

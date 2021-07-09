@@ -343,6 +343,77 @@ func TestDNSBLConfig2(tt *testing.T) {
 	conn.ExpectPattern("221 *")
 }
 
+func TestCheckAuthorizeSender(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(nil)
+	t.Port("smtp")
+	t.Config(`
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname mx.maddy.test
+			tls off
+
+			auth dummy
+			defer_sender_reject off
+
+			source example1.org {
+				check {
+					authorize_sender {
+						auth_normalize precis_casefold
+						user_to_email static {
+							entry "test-user1" "test@example1.org"
+							entry "test-user2" "é@example1.org" 
+						}
+					}
+				}
+				deliver_to dummy
+			}
+			source example2.org {
+				check {
+					authorize_sender {
+						auth_normalize precis_casefold
+						prepare_email static {
+							entry "alias-to-test@example2.org" "test@example2.org"
+						}
+						user_to_email static {
+							entry "test-user1" "test@example2.org"
+							entry "test-user2" "test2@example2.org"
+						}
+					}
+				}
+				deliver_to dummy
+			}
+
+			default_source {
+				reject
+			}
+		}`)
+	t.Run(1)
+	defer t.Close()
+
+	c := t.Conn("smtp")
+	c.SMTPNegotation("client.maddy.test", nil, nil)
+	c.SMTPPlainAuth("test-user2", "1", true)
+	c.Writeln("MAIL FROM:<test@example1.org>")
+	c.ExpectPattern("5*") // rejected - user is not test-user1
+	c.Writeln("MAIL FROM:<test3@example1.org>")
+	c.ExpectPattern("5*") // rejected - unknown email
+	c.Writeln("MAIL FROM:<E\u0301@EXAMPLE1.org> SMTPUTF8")
+	c.ExpectPattern("2*") // OK - é@example1.org belongs to test-user2
+	c.Close()
+
+	c = t.Conn("smtp")
+	c.SMTPNegotation("client.maddy.test", nil, nil)
+	c.SMTPPlainAuth("test-user1", "1", true)
+	c.Writeln("MAIL FROM:<test2@example2.org>")
+	c.ExpectPattern("5*") // rejected - user is not test-user2
+	c.Writeln("MAIL FROM:<test@example2.org>")
+	c.ExpectPattern("2*") // OK - test@example2.org belongs to test-user
+	c.Writeln("MAIL FROM:<alias-to-test@example2.org>")
+	c.ExpectPattern("2*") // OK - test@example2.org belongs to test-user
+	c.Close()
+}
+
 func TestCheckCommand(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)

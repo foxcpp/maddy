@@ -872,3 +872,91 @@ X-Spam-Flag and X-Spam-Score are added to the header irregardless of value.
 
 Flags to pass to the rspamd server.
 See https://rspamd.com/doc/architecture/protocol.html for details.
+
+## MAIL FROM and From authorization (check.authorize_sender)
+
+This check verifies that envelope and header sender addresses belong
+to the authenticated user. Address ownership is established via table
+that maps each user account to a email address it is allowed to use.
+There are some special cases, see user_to_email description below.
+
+```
+check.authorize_sender {
+    prepare_email identity
+    user_to_email identity
+    check_header yes
+
+    unauth_action reject
+    no_match_action reject
+    malformed_action reject
+    err_action reject
+
+    auth_normalize precis_casefold_email
+    from_normalize precis_casefold_email
+}
+```
+```
+check {
+    authorize_sender { ... }
+}
+```
+
+## Configuration directives
+
+*Syntax:* user_to_email _table_ ++
+*Default:* identity
+
+Table to use for lookups. Result of the lookup should contain either the
+domain name, the full email address or "*" string. If it is just domain - user
+will be allowed to use any mailbox within a domain as a sender address.
+If result contains "*" - user will be allowed to use any address.
+
+*Syntax:* check_header _boolean_ ++
+*Default:* yes
+
+Whether to verify header sender in addition to envelope.
+
+Either Sender or From field value should match the
+authorization identity.
+
+*Syntax:* unauth_action _action_ ++
+*Default:* reject
+
+What to do if the user is not authenticated at all.
+
+*Syntax:* no_match_action _action_ ++
+*Default:* reject
+
+What to do if user is not allowed to use the sender address specified.
+
+*Syntax:* malformed_action _action_ ++
+*Default:* reject
+
+What to do if From or Sender header fields contain malformed values.
+
+*Syntax:* err_action _action_ ++
+*Default:* reject
+
+What to do if error happens during prepare_email or user_to_email lookup.
+
+*Syntax:* auth_normalize _action_ ++
+*Default:* precis_casefold_email
+
+Normalization function to apply to authorization username before
+further processing.
+
+Available options:
+- precis_casefold_email   PRECIS UsernameCaseMapped profile + U-labels form for domain
+- precis_casefold         PRECIS UsernameCaseMapped profile for the entire string
+- precis_email            PRECIS UsernameCasePreserved profile + U-labels form for domain
+- precis                  PRECIS UsernameCasePreserved profile for the entire string
+- casefold                Convert to lower case
+- noop                    Nothing
+
+*Syntax:* from_normalize _action_ ++
+*Default:* precis_casefold_email
+
+Normalization function to apply to email addresses before
+further processing.
+
+Available options are same as for auth_normalize.
