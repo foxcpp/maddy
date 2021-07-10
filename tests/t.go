@@ -88,6 +88,13 @@ func (t *T) Config(cfg string) {
 func (t *T) DNS(zones map[string]mockdns.Zone) {
 	t.Helper()
 
+	if zones == nil {
+		zones = map[string]mockdns.Zone{}
+	}
+	if _, ok := zones["1.0.0.127.in-addr.arpa."]; !ok {
+		zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{PTR: []string{"localhost"}}
+	}
+
 	if t.dnsServ != nil {
 		t.Log("NOTE: Multiple DNS calls, replacing the server instance...")
 		t.dnsServ.Close()
