@@ -2,6 +2,10 @@
 
 set -e
 
+if [ -z "$GO" ]; then
+	export GO=go
+fi
+
 ./build_cover.sh
 
 clean() {
@@ -9,5 +13,5 @@ clean() {
 }
 trap clean EXIT
 
-go test -tags integration -integration.executable ./maddy.cover -integration.coverprofile /tmp/maddy-coverage-report "$@"
-go run gocovcat.go /tmp/maddy-coverage-report* > coverage.out
+$GO test -tags integration -integration.executable ./maddy.cover -integration.coverprofile /tmp/maddy-coverage-report "$@"
+$GO run gocovcat.go /tmp/maddy-coverage-report* > coverage.out
