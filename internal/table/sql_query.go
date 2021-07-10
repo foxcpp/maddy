@@ -32,6 +32,8 @@ type SQL struct {
 	modName  string
 	instName string
 
+	namedArgs bool
+
 	db     *sql.DB
 	lookup *sql.Stmt
 	add    *sql.Stmt
@@ -70,6 +72,7 @@ func (s *SQL) Init(cfg *config.Map) error {
 	cfg.StringList("init", false, false, nil, &initQueries)
 	cfg.String("driver", false, true, "", &driver)
 	cfg.StringList("dsn", false, true, nil, &dsnParts)
+	cfg.Bool("named_args", false, false, &s.namedArgs)
 
 	cfg.String("lookup", false, true, "", &lookupQuery)
 
@@ -79,6 +82,10 @@ func (s *SQL) Init(cfg *config.Map) error {
 	cfg.String("set", false, false, "", &setQuery)
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if driver == "postgres" && s.namedArgs {
+		return config.NodeErr(cfg.Block, "PostgreSQL driver does not support named_args")
 	}
 
 	db, err := sql.Open(driver, strings.Join(dsnParts, " "))
@@ -131,8 +138,15 @@ func (s *SQL) Close() error {
 }
 
 func (s *SQL) Lookup(val string) (string, bool, error) {
-	var repl string
-	row := s.lookup.QueryRow(val)
+	var (
+		repl string
+		row  *sql.Row
+	)
+	if s.namedArgs {
+		row = s.lookup.QueryRow(sql.Named("key", val))
+	} else {
+		row = s.lookup.QueryRow(val)
+	}
 	if err := row.Scan(&repl); err != nil {
 		if err == sql.ErrNoRows {
 			return "", false, nil
@@ -168,7 +182,12 @@ func (s *SQL) RemoveKey(k string) error {
 		return fmt.Errorf("%s: table is not mutable (no 'del' query)", s.modName)
 	}
 
-	_, err := s.del.Exec(sql.Named("key", k))
+	var err error
+	if s.namedArgs {
+		_, err = s.del.Exec(sql.Named("key", k))
+	} else {
+		_, err = s.del.Exec(k)
+	}
 	if err != nil {
 		return fmt.Errorf("%s: del %s: %w", s.modName, k, err)
 	}
@@ -183,8 +202,15 @@ func (s *SQL) SetKey(k, v string) error {
 		return fmt.Errorf("%s: table is not mutable (no 'add' query)", s.modName)
 	}
 
-	if _, err := s.add.Exec(sql.Named("key", k), sql.Named("value", v)); err != nil {
-		if _, err := s.set.Exec(sql.Named("key", k), sql.Named("value", v)); err != nil {
+	var args []interface{}
+	if s.namedArgs {
+		args = []interface{}{sql.Named("key", k), sql.Named("value", v)}
+	} else {
+		args = []interface{}{k, v}
+	}
+
+	if _, err := s.add.Exec(args...); err != nil {
+		if _, err := s.set.Exec(args...); err != nil {
 			return fmt.Errorf("%s: add %s: %w", s.modName, k, err)
 		}
 		return nil
