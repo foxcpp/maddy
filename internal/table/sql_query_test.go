@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -66,7 +67,7 @@ func TestSQL(t *testing.T) {
 	check := func(key, res string, ok, fail bool) {
 		t.Helper()
 
-		actualRes, actualOk, err := tbl.Lookup(key)
+		actualRes, actualOk, err := tbl.Lookup(context.Background(), key)
 		if actualRes != res {
 			t.Errorf("Result mismatch: want %s, got %s", res, actualRes)
 		}

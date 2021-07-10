@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
+
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
 )
@@ -58,7 +60,7 @@ func (s *Static) InstanceName() string {
 	return s.modName
 }
 
-func (s *Static) Lookup(key string) (string, bool, error) {
+func (s *Static) Lookup(ctx context.Context, key string) (string, bool, error) {
 	val, ok := s.m[key]
 	return val, ok, nil
 }

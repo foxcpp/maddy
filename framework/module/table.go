@@ -26,7 +26,7 @@ import "context"
 // Modules implementing this interface should be registered with prefix
 // "table." in name.
 type Table interface {
-	Lookup(s string) (string, bool, error)
+	Lookup(ctx context.Context, s string) (string, bool, error)
 }
 
 // MultiTable is the interface that module can implement in addition to Table

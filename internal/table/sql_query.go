@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -130,9 +131,9 @@ func (s *SQL) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQL) Lookup(val string) (string, bool, error) {
+func (s *SQL) Lookup(ctx context.Context, val string) (string, bool, error) {
 	var repl string
-	row := s.lookup.QueryRow(val)
+	row := s.lookup.QueryRowContext(ctx, val)
 	if err := row.Scan(&repl); err != nil {
 		if err == sql.ErrNoRows {
 			return "", false, nil

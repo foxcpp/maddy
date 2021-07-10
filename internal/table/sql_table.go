@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
@@ -118,8 +119,8 @@ func (s *SQLTable) Close() error {
 	return s.wrapped.Close()
 }
 
-func (s *SQLTable) Lookup(val string) (string, bool, error) {
-	return s.wrapped.Lookup(val)
+func (s *SQLTable) Lookup(ctx context.Context, val string) (string, bool, error) {
+	return s.wrapped.Lookup(ctx, val)
 }
 
 func (s *SQLTable) Keys() ([]string, error) {

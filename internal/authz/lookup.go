@@ -21,7 +21,7 @@ func AuthorizeEmailUse(ctx context.Context, username, addr string, mapping modul
 			return false, fmt.Errorf("authz: %w", err)
 		}
 	} else {
-		validEmail, ok, err := mapping.Lookup(username)
+		validEmail, ok, err := mapping.Lookup(ctx, username)
 		if err != nil {
 			return false, fmt.Errorf("authz: %w", err)
 		}

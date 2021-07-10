@@ -20,6 +20,7 @@ package table
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -213,7 +214,7 @@ func readFile(path string, out map[string]string) error {
 	return nil
 }
 
-func (f *File) Lookup(val string) (string, bool, error) {
+func (f *File) Lookup(_ context.Context, val string) (string, bool, error) {
 	// The existing map is never modified, instead it is replaced with a new
 	// one if reload is performed.
 	f.mLck.RLock()

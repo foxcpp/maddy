@@ -164,7 +164,7 @@ func (s *state) authzSender(ctx context.Context, authName, email string) module.
 
 	s.log.DebugMsg("normalized names", "from", fromEmailNorm, "auth", authNameNorm)
 
-	preparedEmail, ok, err := s.c.emailPrepare.Lookup(fromEmailNorm)
+	preparedEmail, ok, err := s.c.emailPrepare.Lookup(ctx, fromEmailNorm)
 	if err != nil {
 		return s.c.errAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{

@@ -37,7 +37,7 @@ func (d *Dummy) AuthPlain(username, _ string) error {
 	return nil
 }
 
-func (d *Dummy) Lookup(_ string) (string, bool, error) {
+func (d *Dummy) Lookup(_ context.Context, _ string) (string, bool, error) {
 	return "", false, nil
 }
 

@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package plain_separate
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -93,10 +94,10 @@ func (a *Auth) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) Lookup(username string) (string, bool, error) {
+func (a *Auth) Lookup(ctx context.Context, username string) (string, bool, error) {
 	ok := len(a.userTbls) == 0
 	for _, tbl := range a.userTbls {
-		_, tblOk, err := tbl.Lookup(username)
+		_, tblOk, err := tbl.Lookup(ctx, username)
 		if err != nil {
 			return "", false, fmt.Errorf("plain_separate: underlying table error: %w", err)
 		}
@@ -114,7 +115,7 @@ func (a *Auth) Lookup(username string) (string, bool, error) {
 func (a *Auth) AuthPlain(username, password string) error {
 	ok := len(a.userTbls) == 0
 	for _, tbl := range a.userTbls {
-		_, tblOk, err := tbl.Lookup(username)
+		_, tblOk, err := tbl.Lookup(context.TODO(), username)
 		if err != nil {
 			return err
 		}

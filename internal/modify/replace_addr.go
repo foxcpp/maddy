@@ -76,14 +76,14 @@ func (r replaceAddr) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMeta
 
 func (r replaceAddr) RewriteSender(ctx context.Context, mailFrom string) (string, error) {
 	if r.replaceSender {
-		return r.rewrite(mailFrom)
+		return r.rewrite(ctx, mailFrom)
 	}
 	return mailFrom, nil
 }
 
 func (r replaceAddr) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
 	if r.replaceRcpt {
-		return r.rewrite(rcptTo)
+		return r.rewrite(ctx, rcptTo)
 	}
 	return rcptTo, nil
 }
@@ -96,13 +96,13 @@ func (r replaceAddr) Close() error {
 	return nil
 }
 
-func (r replaceAddr) rewrite(val string) (string, error) {
+func (r replaceAddr) rewrite(ctx context.Context, val string) (string, error) {
 	normAddr, err := address.ForLookup(val)
 	if err != nil {
 		return val, fmt.Errorf("malformed address: %v", err)
 	}
 
-	replacement, ok, err := r.table.Lookup(normAddr)
+	replacement, ok, err := r.table.Lookup(ctx, normAddr)
 	if err != nil {
 		return val, err
 	}
@@ -122,7 +122,7 @@ func (r replaceAddr) rewrite(val string) (string, error) {
 
 	// mbox is already normalized, since it is a part of address.ForLookup
 	// result.
-	replacement, ok, err = r.table.Lookup(mbox)
+	replacement, ok, err = r.table.Lookup(ctx, mbox)
 	if err != nil {
 		return val, err
 	}

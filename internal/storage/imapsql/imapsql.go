@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package imapsql
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -72,7 +73,7 @@ type Storage struct {
 
 	deliveryNormalize func(string) (string, error)
 	authMap           module.Table
-	authNormalize     func(string) (string, error)
+	authNormalize     func(context.Context, string) (string, error)
 }
 
 func (store *Storage) Name() string {
@@ -160,14 +161,16 @@ func (store *Storage) Init(cfg *config.Map) error {
 	if !ok {
 		return errors.New("imapsql: unknown normalization function: " + authNormalize)
 	}
-	store.authNormalize = authNormFunc
+	store.authNormalize = func(ctx context.Context, s string) (string, error) {
+		return authNormFunc(s)
+	}
 	if store.authMap != nil {
-		store.authNormalize = func(username string) (string, error) {
+		store.authNormalize = func(ctx context.Context, username string) (string, error) {
 			username, err := authNormFunc(username)
 			if err != nil {
 				return "", err
 			}
-			mapped, ok, err := store.authMap.Lookup(username)
+			mapped, ok, err := store.authMap.Lookup(ctx, username)
 			if err != nil || !ok {
 				return "", userDoesNotExist(err)
 			}
@@ -336,7 +339,7 @@ func (store *Storage) EnableChildrenExt() bool {
 }
 
 func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error) {
-	accountName, err := store.authNormalize(username)
+	accountName, err := store.authNormalize(context.TODO(), username)
 	if err != nil {
 		return nil, backend.ErrInvalidCredentials
 	}
@@ -344,8 +347,8 @@ func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error)
 	return store.Back.GetOrCreateUser(accountName)
 }
 
-func (store *Storage) Lookup(key string) (string, bool, error) {
-	accountName, err := store.authNormalize(key)
+func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, error) {
+	accountName, err := store.authNormalize(ctx, key)
 	if err != nil {
 		return "", false, nil
 	}

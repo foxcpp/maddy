@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
+
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/module"
@@ -75,9 +77,9 @@ func (s *Chain) InstanceName() string {
 	return s.instName
 }
 
-func (s *Chain) Lookup(key string) (string, bool, error) {
+func (s *Chain) Lookup(ctx context.Context, key string) (string, bool, error) {
 	for i, step := range s.chain {
-		val, ok, err := step.Lookup(key)
+		val, ok, err := step.Lookup(ctx, key)
 		if err != nil {
 			return "", false, err
 		}
