@@ -56,6 +56,13 @@ aaa: bbb
 # That is, the following line is equivalent to
 #	aaa:
 aaa
+
+# If the same key is used multiple times - table.file will return
+# multiple values when queries. Note that this is not used by
+# most modules. E.g. replace_rcpt does not (intentionally) support
+# 1-to-N alias expansion.
+ddd: firstvalue
+ddd: secondvalue
 ```
 
 # SQL query mapping (table.sql_query)

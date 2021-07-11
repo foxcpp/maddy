@@ -123,6 +123,10 @@ func (s *SQLTable) Lookup(ctx context.Context, val string) (string, bool, error)
 	return s.wrapped.Lookup(ctx, val)
 }
 
+func (s *SQLTable) LookupMulti(ctx context.Context, val string) ([]string, error) {
+	return s.wrapped.LookupMulti(ctx, val)
+}
+
 func (s *SQLTable) Keys() ([]string, error) {
 	return s.wrapped.Keys()
 }

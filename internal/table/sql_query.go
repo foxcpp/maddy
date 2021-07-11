@@ -143,6 +143,25 @@ func (s *SQL) Lookup(ctx context.Context, val string) (string, bool, error) {
 	return repl, true, nil
 }
 
+func (s *SQL) LookupMulti(ctx context.Context, val string) ([]string, error) {
+	var repl []string
+	rows, err := s.lookup.QueryContext(ctx, val)
+	if err != nil {
+		return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+	}
+	for rows.Next() {
+		var res string
+		if err := rows.Scan(&res); err != nil {
+			return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+		}
+		repl = append(repl, res)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+	}
+	return repl, nil
+}
+
 func (s *SQL) Keys() ([]string, error) {
 	if s.list == nil {
 		return nil, fmt.Errorf("%s: table is not mutable (no 'list' query)", s.modName)

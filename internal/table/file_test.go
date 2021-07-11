@@ -30,7 +30,7 @@ import (
 )
 
 func TestReadFile(t *testing.T) {
-	test := func(file string, expected map[string]string) {
+	test := func(file string, expected map[string][]string) {
 		t.Helper()
 
 		f, err := ioutil.TempFile("", "maddy-tests-")
@@ -43,7 +43,7 @@ func TestReadFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		actual := map[string]string{}
+		actual := map[string][]string{}
 		err = readFile(f.Name(), actual)
 		if expected == nil {
 			if err == nil {
@@ -61,24 +61,25 @@ func TestReadFile(t *testing.T) {
 		}
 	}
 
-	test("a: b", map[string]string{"a": "b"})
-	test("a@example.org: b@example.com", map[string]string{"a@example.org": "b@example.com"})
-	test(`"a @ a"@example.org: b@example.com`, map[string]string{`"a @ a"@example.org`: "b@example.com"})
-	test(`a@example.org: "b @ b"@example.com`, map[string]string{`a@example.org`: `"b @ b"@example.com`})
-	test(`"a @ a": "b @ b"`, map[string]string{`"a @ a"`: `"b @ b"`})
-	test("a: b, c", map[string]string{"a": "b, c"})
+	test("a: b", map[string][]string{"a": {"b"}})
+	test("a@example.org: b@example.com", map[string][]string{"a@example.org": {"b@example.com"}})
+	test(`"a @ a"@example.org: b@example.com`, map[string][]string{`"a @ a"@example.org`: {"b@example.com"}})
+	test(`a@example.org: "b @ b"@example.com`, map[string][]string{`a@example.org`: {`"b @ b"@example.com`}})
+	test(`"a @ a": "b @ b"`, map[string][]string{`"a @ a"`: {`"b @ b"`}})
+	test("a: b, c", map[string][]string{"a": {"b, c"}})
 	test(": b", nil)
 	test(":", nil)
-	test("aaa", map[string]string{"aaa": ""})
+	test("aaa", map[string][]string{"aaa": {""}})
 	test(": b", nil)
 	test("     testing@example.com   :  arbitrary-whitespace@example.org   ",
-		map[string]string{"testing@example.com": "arbitrary-whitespace@example.org"})
+		map[string][]string{"testing@example.com": {"arbitrary-whitespace@example.org"}})
 	test(`# skip comments
-a: b`, map[string]string{"a": "b"})
+a: b`, map[string][]string{"a": {"b"}})
 	test(`# and empty lines
 
-a: b`, map[string]string{"a": "b"})
-	test("# with whitespace too\n    \na: b", map[string]string{"a": "b"})
+a: b`, map[string][]string{"a": {"b"}})
+	test("# with whitespace too\n    \na: b", map[string][]string{"a": {"b"}})
+	test("a: b\na: c", map[string][]string{"a": {"b", "c"}})
 }
 
 func TestFileReload(t *testing.T) {
@@ -119,7 +120,7 @@ func TestFileReload(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		time.Sleep(reloadInterval + 50*time.Millisecond)
 		m.mLck.RLock()
-		if m.m["dog"] != "" {
+		if m.m["dog"] != nil {
 			m.mLck.RUnlock()
 			break
 		}
@@ -128,7 +129,7 @@ func TestFileReload(t *testing.T) {
 
 	m.mLck.RLock()
 	defer m.mLck.RUnlock()
-	if m.m["dog"] == "" {
+	if m.m["dog"] == nil {
 		t.Fatal("New m were not loaded")
 	}
 }
@@ -174,7 +175,7 @@ func TestFileReload_Broken(t *testing.T) {
 
 	m.mLck.RLock()
 	defer m.mLck.RUnlock()
-	if m.m["cat"] == "" {
+	if m.m["cat"] == nil {
 		t.Fatal("New m were loaded or map changed", m.m)
 	}
 }
@@ -215,7 +216,7 @@ func TestFileReload_Removed(t *testing.T) {
 
 	m.mLck.RLock()
 	defer m.mLck.RUnlock()
-	if m.m["cat"] != "" {
+	if m.m["cat"] != nil {
 		t.Fatal("Old m are still loaded")
 	}
 }
