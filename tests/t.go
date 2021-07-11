@@ -92,7 +92,7 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 		zones = map[string]mockdns.Zone{}
 	}
 	if _, ok := zones["1.0.0.127.in-addr.arpa."]; !ok {
-		zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{PTR: []string{"localhost"}}
+		zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{PTR: []string{"localhost."}}
 	}
 
 	if t.dnsServ != nil {
