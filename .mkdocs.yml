@@ -29,6 +29,7 @@ nav:
     - man/_generated_maddy.1.md
     - man/_generated_maddy.5.md
     - man/_generated_maddy-auth.5.md
+    - man/_generated_maddy-blob.5.md
     - man/_generated_maddy-config.5.md
     - man/_generated_maddy-filters.5.md
     - man/_generated_maddy-imap.5.md

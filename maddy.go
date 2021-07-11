@@ -61,6 +61,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/imap_filter/command"
 	_ "github.com/foxcpp/maddy/internal/modify"
 	_ "github.com/foxcpp/maddy/internal/modify/dkim"
+	_ "github.com/foxcpp/maddy/internal/storage/blob/fs"
 	_ "github.com/foxcpp/maddy/internal/storage/imapsql"
 	_ "github.com/foxcpp/maddy/internal/table"
 	_ "github.com/foxcpp/maddy/internal/target/queue"
@@ -344,6 +345,8 @@ func RegisterModules(globals map[string]interface{}, nodes []config.Node) (endpo
 			}
 			module.RegisterAlias(alias, instName)
 		}
+
+		log.Debugf("%v:%v: register config block %v %v", block.File, block.Line, instName, modAliases)
 		mods = append(mods, ModInfo{Instance: inst, Cfg: block})
 	}
 

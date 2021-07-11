@@ -21,12 +21,11 @@ created.
 
 # SQL-based database module (storage.imapsql)
 
-The imapsql module implements unified database for IMAP index and message
+The imapsql module implements database for IMAP index and message
 metadata using SQL-based relational database.
 
-Message contents are stored in an "external store", currently the only
-supported "external store" is a filesystem directory, used by default.
-By default, all messages are stored in StateDirectory/messages under random IDs.
+Message contents are stored in an "external store" defined by msg_store
+directive. By default this is a file system directory under /var/lib/maddy.
 
 Supported RDBMS:
 - SQLite 3.25.0
@@ -40,6 +39,7 @@ PRECIS UsernameCaseMapped profile.
 storage.imapsql {
 	driver sqlite3
 	dsn imapsql.db
+	msg_store fs messages/
 }
 ```
 
@@ -88,10 +88,12 @@ For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parame
 
 Should be specified either via an argument or via this directive.
 
-*Syntax*: fsstore _directory_ ++
-*Default*: messages/
+*Syntax*: msg_store _store_ ++
+*Default*: fs messages/
 
-Directory to store message contents in.
+Module to use for message bodies storage.
+
+See *maddy-blob*(5) for details.
 
 *Syntax*: ++
     compression off ++

@@ -31,7 +31,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strconv"
@@ -103,12 +102,13 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 
 func (store *Storage) Init(cfg *config.Map) error {
 	var (
-		driver          string
-		dsn             []string
-		fsstoreLocation string
-		appendlimitVal  = -1
-		compression     []string
-		authNormalize   string
+		driver         string
+		dsn            []string
+		appendlimitVal = -1
+		compression    []string
+		authNormalize  string
+
+		blobStore module.BlobStore
 	)
 
 	opts := imapsql.Opts{
@@ -118,14 +118,22 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	cfg.String("driver", false, false, store.driver, &driver)
 	cfg.StringList("dsn", false, false, store.dsn, &dsn)
-	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
-		return "messages", nil
+	cfg.Callback("fsstore", func(m *config.Map, node config.Node) error {
+		store.Log.Msg("'fsstore' directive is deprecated, use 'msg_store fs' instead")
+		return modconfig.ModuleFromNode("storage.blob", append([]string{"fs"}, node.Args...),
+			node, m.Globals, &blobStore)
+	})
+	cfg.Custom("msg_store", false, false, func() (interface{}, error) {
+		var store module.BlobStore
+		err := modconfig.ModuleFromNode("storage.blob", []string{"fs", "messages"},
+			config.Node{}, nil, &store)
+		return store, err
 	}, func(m *config.Map, node config.Node) (interface{}, error) {
-		if len(node.Args) != 1 {
-			return nil, config.NodeErr(node, "expected 0 or 1 arguments")
-		}
-		return node.Args[0], nil
-	}, &fsstoreLocation)
+		var store module.BlobStore
+		err := modconfig.ModuleFromNode("storage.blob", node.Args,
+			node, m.Globals, &store)
+		return store, err
+	}, &blobStore)
 	cfg.StringList("compression", false, false, []string{"off"}, &compression)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
@@ -195,11 +203,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 
 	dsnStr := strings.Join(dsn, " ")
 
-	if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
-		return err
-	}
-	extStore := &imapsql.FSStore{Root: fsstoreLocation}
-
 	if len(compression) != 0 {
 		switch compression[0] {
 		case "zstd", "lz4":
@@ -222,7 +225,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
-	store.Back, err = imapsql.New(driver, dsnStr, extStore, opts)
+	store.Back, err = imapsql.New(driver, dsnStr, ExtBlobStore{base: blobStore}, opts)
 	if err != nil {
 		return fmt.Errorf("imapsql: %s", err)
 	}
