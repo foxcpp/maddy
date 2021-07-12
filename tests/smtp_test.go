@@ -250,7 +250,7 @@ func TestDNSBLConfig(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
@@ -299,7 +299,7 @@ func TestDNSBLConfig2(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl2.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl2.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
