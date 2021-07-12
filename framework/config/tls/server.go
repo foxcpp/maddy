@@ -38,11 +38,10 @@ func (cfg *TLSConfig) Get() (*tls.Config, error) {
 	}
 	tlsCfg := cfg.baseCfg.Clone()
 
-	certs, err := cfg.loader.LoadCerts()
+	err := cfg.loader.ConfigureTLS(tlsCfg)
 	if err != nil {
 		return nil, err
 	}
-	tlsCfg.Certificates = certs
 
 	return tlsCfg, nil
 }
@@ -50,7 +49,7 @@ func (cfg *TLSConfig) Get() (*tls.Config, error) {
 // TLSDirective reads the TLS configuration and adds the reload handler to
 // reread certificates on SIGUSR2.
 //
-// The returned value is *tls.TLSConfig with GetConfigForClient set.
+// The returned value is *tls.Config with GetConfigForClient set.
 // If the 'tls off' is used, returned value is nil.
 func TLSDirective(m *config.Map, node config.Node) (interface{}, error) {
 	cfg, err := readTLSBlock(m.Globals, node)
