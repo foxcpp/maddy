@@ -5,6 +5,7 @@ go 1.14
 require (
 	blitiri.com.ar/go/spf v1.2.0
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
+	github.com/caddyserver/certmagic v0.14.1
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/emersion/go-imap v1.0.6
 	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
@@ -30,9 +31,21 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/lib/pq v1.10.0
+	github.com/libdns/alidns v1.0.2
+	github.com/libdns/cloudflare v0.1.0
+	github.com/libdns/digitalocean v0.0.0-20210310230526-186c4ebd2215
+	github.com/libdns/gandi v1.0.2
+	github.com/libdns/googleclouddns v1.0.1
+	github.com/libdns/hetzner v0.0.1
+	github.com/libdns/leaseweb v0.2.1
+	github.com/libdns/libdns v0.2.1
+	github.com/libdns/metaname v0.3.0
+	github.com/libdns/namedotcom v0.3.3
+	github.com/libdns/route53 v1.1.1
+	github.com/libdns/vultr v0.0.0-20201128180404-1d5ee21ea62f
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/miekg/dns v1.1.41
+	github.com/miekg/dns v1.1.42
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/common v0.20.0 // indirect
@@ -42,6 +55,5 @@ require (
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57 // indirect
 	golang.org/x/text v0.3.6
 )

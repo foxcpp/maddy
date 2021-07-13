@@ -30,6 +30,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/caddyserver/certmagic"
 	parser "github.com/foxcpp/maddy/framework/cfgparser"
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/config/tls"
@@ -59,6 +60,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/endpoint/smtp"
 	_ "github.com/foxcpp/maddy/internal/imap_filter"
 	_ "github.com/foxcpp/maddy/internal/imap_filter/command"
+	_ "github.com/foxcpp/maddy/internal/libdns"
 	_ "github.com/foxcpp/maddy/internal/modify"
 	_ "github.com/foxcpp/maddy/internal/modify/dkim"
 	_ "github.com/foxcpp/maddy/internal/storage/blob/fs"
@@ -68,6 +70,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/target/remote"
 	_ "github.com/foxcpp/maddy/internal/target/smtp"
 	_ "github.com/foxcpp/maddy/internal/tls"
+	_ "github.com/foxcpp/maddy/internal/tls/acme"
 )
 
 var (
@@ -100,6 +103,8 @@ default runtime_dir: %s`,
 // logging initialization, directives setup, configuration reading. After all that, it
 // calls moduleMain to initialize and run modules.
 func Run() int {
+	certmagic.UserAgent = "maddy/" + Version
+
 	flag.StringVar(&config.LibexecDirectory, "libexec", DefaultLibexecDirectory, "path to the libexec directory")
 	flag.BoolVar(&log.DefaultLogger.Debug, "debug", false, "enable debug logging early")
 
