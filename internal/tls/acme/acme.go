@@ -55,7 +55,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 	cfg.String("store_path", false, false,
 		filepath.Join(config.StateDirectory, "acme"), &storePath)
 	cfg.String("ca", false, false,
-		certmagic.LetsEncryptStagingCA, &caPath)
+		certmagic.LetsEncryptProductionCA, &caPath)
 	cfg.String("test_ca", false, false,
 		certmagic.LetsEncryptStagingCA, &testCAPath)
 	cfg.String("email", false, false,
