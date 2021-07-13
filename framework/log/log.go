@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"go.uber.org/zap"
 )
 
 // Logger is the structure that writes formatted output to the underlying
@@ -49,6 +50,11 @@ type Logger struct {
 	// Additional fields that will be added
 	// to the Msg output.
 	Fields map[string]interface{}
+}
+
+func (l Logger) Zap() *zap.Logger {
+	// TODO: Migrate to using zap natively.
+	return zap.New(zapLogger{L: l})
 }
 
 func (l Logger) Debugf(format string, val ...interface{}) {
