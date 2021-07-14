@@ -145,9 +145,13 @@ func (a *Auth) newConn() (*ldap.Conn, error) {
 
 		conn, err = ldap.DialURL(u, ldap.DialWithDialer(a.dialer), ldap.DialWithTLSConfig(tlsCfg))
 		if err != nil {
-			return nil, fmt.Errorf("auth.ldap: %w", err)
+			a.log.Msg("cannot contact directory server", err, "url", u)
+			continue
 		}
 		break
+	}
+	if conn == nil {
+		return nil, fmt.Errorf("auth.ldap: all directory servers are unreachable")
 	}
 
 	if a.requestTimeout != 0 {
