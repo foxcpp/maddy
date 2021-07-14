@@ -141,6 +141,5 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("plain_separate", "auth.plain_separate", NewAuth)
 	module.Register("auth.plain_separate", NewAuth)
 }

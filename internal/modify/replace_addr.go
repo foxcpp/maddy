@@ -141,7 +141,5 @@ func (r replaceAddr) rewrite(ctx context.Context, val string) (string, error) {
 
 func init() {
 	module.Register("modify.replace_sender", NewReplaceAddr)
-	module.RegisterDeprecated("replace_sender", "modify.replace_sender", NewReplaceAddr)
 	module.Register("modify.replace_rcpt", NewReplaceAddr)
-	module.RegisterDeprecated("replace_rcpt", "modify.replace_rcpt", NewReplaceAddr)
 }

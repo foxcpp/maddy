@@ -239,6 +239,5 @@ func (f *File) LookupMulti(_ context.Context, val string) ([]string, error) {
 }
 
 func init() {
-	module.RegisterDeprecated("file", "table.file", NewFile)
 	module.Register(FileModName, NewFile)
 }

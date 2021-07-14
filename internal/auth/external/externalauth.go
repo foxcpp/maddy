@@ -99,6 +99,5 @@ func (ea *ExternalAuth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("extauth", "auth.command", NewExternalAuth)
 	module.Register("auth.external", NewExternalAuth)
 }

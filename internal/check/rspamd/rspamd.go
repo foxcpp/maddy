@@ -363,6 +363,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.RegisterDeprecated("rspamd", modName, New)
 	module.Register(modName, New)
 }

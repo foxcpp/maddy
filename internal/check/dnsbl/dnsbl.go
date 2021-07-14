@@ -441,6 +441,5 @@ func (*state) Close() error {
 }
 
 func init() {
-	module.RegisterDeprecated("dnsbl", "check.dnsbl", NewDNSBL)
 	module.Register("check.dnsbl", NewDNSBL)
 }

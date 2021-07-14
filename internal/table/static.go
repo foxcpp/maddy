@@ -69,6 +69,5 @@ func (s *Static) Lookup(ctx context.Context, key string) (string, bool, error) {
 }
 
 func init() {
-	module.RegisterDeprecated("static", "table.static", NewStatic)
 	module.Register("table.static", NewStatic)
 }

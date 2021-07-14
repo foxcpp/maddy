@@ -54,6 +54,5 @@ func (s *Identity) Lookup(_ context.Context, key string) (string, bool, error) {
 }
 
 func init() {
-	module.RegisterDeprecated("identity", "table.identity", NewIdentity)
 	module.Register("table.identity", NewIdentity)
 }

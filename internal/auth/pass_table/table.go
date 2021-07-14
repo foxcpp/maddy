@@ -187,6 +187,5 @@ func (a *Auth) DeleteUser(username string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("pass_table", "auth.pass_table", New)
 	module.Register("auth.pass_table", New)
 }

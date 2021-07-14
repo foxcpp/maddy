@@ -110,6 +110,5 @@ func (r *Regexp) Lookup(_ context.Context, key string) (string, bool, error) {
 }
 
 func init() {
-	module.RegisterDeprecated("regexp", "table.regexp", NewRegexp)
 	module.Register("table.regexp", NewRegexp)
 }

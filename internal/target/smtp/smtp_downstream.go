@@ -316,7 +316,5 @@ func (d *delivery) Commit(ctx context.Context) error {
 
 func init() {
 	module.Register("target.smtp", NewDownstream)
-	module.RegisterDeprecated("smtp_downstream", "target.smtp", NewDownstream)
 	module.Register("target.lmtp", NewDownstream)
-	module.RegisterDeprecated("lmtp_downstream", "target.lmtp", NewDownstream)
 }

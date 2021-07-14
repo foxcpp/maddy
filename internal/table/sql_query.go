@@ -213,6 +213,5 @@ func (s *SQL) SetKey(k, v string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("sql_query", "table.sql_query", NewSQL)
 	module.Register("table.sql_query", NewSQL)
 }
