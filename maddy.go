@@ -41,6 +41,7 @@ import (
 	// Import packages for side-effect of module registration.
 	_ "github.com/foxcpp/maddy/internal/auth/dovecot_sasl"
 	_ "github.com/foxcpp/maddy/internal/auth/external"
+	_ "github.com/foxcpp/maddy/internal/auth/ldap"
 	_ "github.com/foxcpp/maddy/internal/auth/pam"
 	_ "github.com/foxcpp/maddy/internal/auth/pass_table"
 	_ "github.com/foxcpp/maddy/internal/auth/plain_separate"

@@ -26,8 +26,8 @@ require (
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200823124337-2f57903a7ed0
 	github.com/foxcpp/go-mockdns v0.0.0-20201212160233-ede2f9158d15
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
+	github.com/go-ldap/ldap/v3 v3.3.0
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/lib/pq v1.10.0
