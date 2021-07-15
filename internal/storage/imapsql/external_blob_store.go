@@ -19,6 +19,14 @@ func (e ExtBlob) Write(p []byte) (n int, err error) {
 	panic("not implemented")
 }
 
+type WriteExtBlob struct {
+	module.Blob
+}
+
+func (w WriteExtBlob) Read(p []byte) (n int, err error) {
+	panic("not implemented")
+}
+
 type ExtBlobStore struct {
 	Base module.BlobStore
 }
@@ -32,7 +40,7 @@ func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
 			Err:         err,
 		}
 	}
-	return blob, nil
+	return WriteExtBlob{Blob: blob}, nil
 }
 
 func (e ExtBlobStore) Open(key string) (imapsql.ExtStoreObj, error) {

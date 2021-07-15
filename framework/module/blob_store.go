@@ -7,7 +7,6 @@ import (
 
 type Blob interface {
 	Sync() error
-	io.Reader
 	io.Writer
 	io.Closer
 }

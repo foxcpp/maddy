@@ -30,6 +30,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.3.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/uuid v1.2.0
+	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/lib/pq v1.10.0
 	github.com/libdns/alidns v1.0.2
@@ -47,6 +48,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/miekg/dns v1.1.42
+	github.com/minio/minio-go/v7 v7.0.12
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/common v0.20.0 // indirect
