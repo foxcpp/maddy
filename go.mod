@@ -21,6 +21,7 @@ require (
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/emersion/go-smtp v0.15.1-0.20210705155248-26eb4814e227
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
+	github.com/foxcpp/go-imap-backend-tests v0.0.0-20200617132817-958ea5829771
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200722130255-93092adf35f1
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20200823124337-2f57903a7ed0

@@ -225,7 +225,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
-	store.Back, err = imapsql.New(driver, dsnStr, ExtBlobStore{base: blobStore}, opts)
+	store.Back, err = imapsql.New(driver, dsnStr, ExtBlobStore{Base: blobStore}, opts)
 	if err != nil {
 		return fmt.Errorf("imapsql: %s", err)
 	}

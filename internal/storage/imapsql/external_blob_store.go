@@ -20,11 +20,11 @@ func (e ExtBlob) Write(p []byte) (n int, err error) {
 }
 
 type ExtBlobStore struct {
-	base module.BlobStore
+	Base module.BlobStore
 }
 
 func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
-	blob, err := e.base.Create(key)
+	blob, err := e.Base.Create(key)
 	if err != nil {
 		return nil, imapsql.ExternalError{
 			NonExistent: err == module.ErrNoSuchBlob,
@@ -36,7 +36,7 @@ func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
 }
 
 func (e ExtBlobStore) Open(key string) (imapsql.ExtStoreObj, error) {
-	blob, err := e.base.Open(key)
+	blob, err := e.Base.Open(key)
 	if err != nil {
 		return nil, imapsql.ExternalError{
 			NonExistent: err == module.ErrNoSuchBlob,
@@ -48,7 +48,7 @@ func (e ExtBlobStore) Open(key string) (imapsql.ExtStoreObj, error) {
 }
 
 func (e ExtBlobStore) Delete(keys []string) error {
-	err := e.base.Delete(keys)
+	err := e.Base.Delete(keys)
 	if err != nil {
 		return imapsql.ExternalError{
 			Key: "",
