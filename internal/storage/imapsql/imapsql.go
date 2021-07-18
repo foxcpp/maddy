@@ -48,6 +48,7 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/updatepipe"
+	"github.com/foxcpp/maddy/internal/updatepipe/pubsub"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -252,8 +253,22 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 		store.Log.DebugMsg("using unix socket for external updates", "path", sockPath)
 		store.updPipe = &updatepipe.UnixSockPipe{
 			SockPath: sockPath,
-			Log: log.Logger{Name: "sql/updpipe", Debug: store.Log.Debug},
+			Log:      log.Logger{Name: "storage.imapsql/updpipe", Debug: store.Log.Debug},
 		}
+	case "postgres":
+		store.Log.DebugMsg("using PostgreSQL broker for external updates")
+		ps, err := pubsub.NewPQ(strings.Join(store.dsn, " "))
+		if err != nil {
+			return fmt.Errorf("enable_update_pipe: %w", err)
+		}
+		ps.Log = log.Logger{Name: "storage.imapsql/updpipe/pubsub", Debug: store.Log.Debug}
+		pipe := &updatepipe.PubSubPipe{
+			PubSub: ps,
+			Log:    log.Logger{Name: "storage.imapsql/updpipe", Debug: store.Log.Debug},
+		}
+		store.Back.UpdateManager().ExternalUnsubscribe = pipe.Unsubscribe
+		store.Back.UpdateManager().ExternalSubscribe = pipe.Subscribe
+		store.updPipe = pipe
 	default:
 		return errors.New("imapsql: driver does not have an update pipe implementation")
 	}

@@ -23,7 +23,7 @@ require (
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20200802090154-7e6248c85a0e
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
-	github.com/foxcpp/go-imap-mess v0.0.0-20210718073110-d5eb968a0995
+	github.com/foxcpp/go-imap-mess v0.0.0-20210718180745-f14f34d14a3b
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
 	github.com/foxcpp/go-imap-sql v0.4.1-0.20210718082546-d38d40f5442c
 	github.com/foxcpp/go-mockdns v0.0.0-20201212160233-ede2f9158d15

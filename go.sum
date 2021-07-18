@@ -164,12 +164,11 @@ github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtk
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=
 github.com/foxcpp/go-imap-idle v0.0.0-20200829140055-32dc40172769 h1:qMdULYMxKuAgboOllBNLmA7wQ4YEwnhvq8onksrMC3A=
 github.com/foxcpp/go-imap-idle v0.0.0-20200829140055-32dc40172769/go.mod h1:PLnHIusEiOdmy63Y7IL2RjShIk4cyFi3a8MTC/WcLkk=
-github.com/foxcpp/go-imap-mess v0.0.0-20210718073110-d5eb968a0995 h1:UXksj5CP+1Zg5GCD74JEijuQ2C22vXFgquhdG/YlXuI=
 github.com/foxcpp/go-imap-mess v0.0.0-20210718073110-d5eb968a0995/go.mod h1:cps13jIcqI/3FGVJQ8azz3apLjikGoKKcB6xb65VSag=
+github.com/foxcpp/go-imap-mess v0.0.0-20210718180745-f14f34d14a3b h1:O85JcWCduTZz5FkqCrQX79wc88lgSezbTqrWNgXyEow=
+github.com/foxcpp/go-imap-mess v0.0.0-20210718180745-f14f34d14a3b/go.mod h1:cps13jIcqI/3FGVJQ8azz3apLjikGoKKcB6xb65VSag=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed h1:1Jo7geyvunrPSjL6F6D9EcXoNApS5v3LQaro7aUNPnE=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed/go.mod h1:Shows1vmkBWO40ChOClaUe6DUnZrsP1UPAuoWzIUdgQ=
-github.com/foxcpp/go-imap-sql v0.4.1-0.20210718081250-7f103db60f22 h1:ZXgI+FkKj+iKSrI58CZEkbSSojV84jm4LjEwglyH4Ik=
-github.com/foxcpp/go-imap-sql v0.4.1-0.20210718081250-7f103db60f22/go.mod h1:kl+x+noffdBsp1pAR+PTHupLoxHnJZZw6BFcmmCZeUI=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20210718082546-d38d40f5442c h1:bNaw79UJEonuRo1box0wUGGBT2V/XGkhT2NakjZnRIs=
 github.com/foxcpp/go-imap-sql v0.4.1-0.20210718082546-d38d40f5442c/go.mod h1:kl+x+noffdBsp1pAR+PTHupLoxHnJZZw6BFcmmCZeUI=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
