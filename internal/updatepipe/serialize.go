@@ -22,10 +22,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
-	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/backend"
+	mess "github.com/foxcpp/go-imap-mess"
 )
 
 func unescapeName(s string) string {
@@ -36,95 +36,34 @@ func escapeName(s string) string {
 	return strings.ReplaceAll(s, ";", "\x10")
 }
 
-type message struct {
-	SeqNum uint32
-	Flags  []string
-}
-
-func parseUpdate(s string) (id string, upd backend.Update, err error) {
-	parts := strings.SplitN(s, ";", 5)
-	if len(parts) != 5 {
+func parseUpdate(s string) (id string, upd *mess.Update, err error) {
+	parts := strings.SplitN(s, ";", 2)
+	if len(parts) != 2 {
 		return "", nil, errors.New("updatepipe: mismatched parts count")
 	}
 
-	updBase := backend.NewUpdate(unescapeName(parts[2]), unescapeName(parts[3]))
-	switch parts[1] {
-	case "ExpungeUpdate":
-		exUpd := &backend.ExpungeUpdate{Update: updBase}
-		if err := json.Unmarshal([]byte(parts[4]), &exUpd.SeqNum); err != nil {
-			return "", nil, err
-		}
-		upd = exUpd
-	case "MailboxUpdate":
-		mboxUpd := &backend.MailboxUpdate{Update: updBase}
-		if err := json.Unmarshal([]byte(parts[4]), &mboxUpd.MailboxStatus); err != nil {
-			return "", nil, err
-		}
-		upd = mboxUpd
-	case "MessageUpdate":
-		// imap.Message is not JSON-serializable because it contains maps with
-		// complex keys.
-		// In practice, however, MessageUpdate is used only for FLAGS, so we
-		// serialize them only with a SeqNum.
+	upd = &mess.Update{}
+	dec := json.NewDecoder(strings.NewReader(unescapeName(parts[1])))
+	dec.UseNumber()
+	err = dec.Decode(upd)
+	if err != nil {
+		return "", nil, fmt.Errorf("parseUpdate: %w", err)
+	}
 
-		msg := message{}
-		if err := json.Unmarshal([]byte(parts[4]), &msg); err != nil {
-			return "", nil, err
-		}
-
-		msgUpd := &backend.MessageUpdate{
-			Update:  updBase,
-			Message: imap.NewMessage(msg.SeqNum, []imap.FetchItem{imap.FetchFlags}),
-		}
-		msgUpd.Message.Flags = msg.Flags
-		upd = msgUpd
+	if val, ok := upd.Key.(json.Number); ok {
+		upd.Key, _ = strconv.ParseUint(val.String(), 10, 64)
 	}
 
 	return parts[0], upd, nil
 }
 
-func formatUpdate(myID string, upd backend.Update) (string, error) {
-	var (
-		objType string
-		objStr  []byte
-		err     error
-	)
-	switch v := upd.(type) {
-	case *backend.ExpungeUpdate:
-		objType = "ExpungeUpdate"
-		objStr, err = json.Marshal(v.SeqNum)
-		if err != nil {
-			return "", err
-		}
-	case *backend.MessageUpdate:
-		// imap.Message is not JSON-serializable because it contains maps with
-		// complex keys.
-		// In practice, however, MessageUpdate is used only for FLAGS, so we
-		// serialize them only with a seqnum.
-
-		objType = "MessageUpdate"
-		objStr, err = json.Marshal(message{
-			SeqNum: v.Message.SeqNum,
-			Flags:  v.Message.Flags,
-		})
-		if err != nil {
-			return "", err
-		}
-	case *backend.MailboxUpdate:
-		objType = "MailboxUpdate"
-		objStr, err = json.Marshal(v.MailboxStatus)
-		if err != nil {
-			return "", err
-		}
-	default:
-		return "", fmt.Errorf("updatepipe: unknown update type: %T", upd)
+func formatUpdate(myID string, upd mess.Update) (string, error) {
+	updBlob, err := json.Marshal(upd)
+	if err != nil {
+		return "", fmt.Errorf("formatUpdate: %w", err)
 	}
-
 	return strings.Join([]string{
 		myID,
-		objType,
-		escapeName(upd.Username()),
-		escapeName(upd.Mailbox()),
-		string(objStr),
+		escapeName(string(updBlob)),
 	}, ";") + "\n", nil
 }

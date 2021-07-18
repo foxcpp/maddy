@@ -29,7 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package updatepipe
 
 import (
-	"github.com/emersion/go-imap/backend"
+	mess "github.com/foxcpp/go-imap-mess"
 )
 
 // The P interface represents the handle for a transport medium used for IMAP
@@ -43,7 +43,7 @@ type P interface {
 	//
 	// Updates sent using the same UpdatePipe object using Push are not
 	// duplicates to the channel passed to Listen.
-	Listen(upds chan<- backend.Update) error
+	Listen(upds chan<- mess.Update) error
 
 	// InitPush prepares the UpdatePipe to be used as updates source (Push
 	// method).
@@ -56,7 +56,7 @@ type P interface {
 	//
 	// The update will not be duplicated if the UpdatePipe is also listening
 	// for updates.
-	Push(upd backend.Update) error
+	Push(upd mess.Update) error
 
 	Close() error
 }

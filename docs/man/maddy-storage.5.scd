@@ -123,12 +123,13 @@ Enable verbose logging.
 The folder to put quarantined messages in. Thishis setting is not used if user
 does have a folder with "Junk" special-use attribute.
 
-*Syntax*: sqlite_exclusive_lock _boolean_ ++
-*Default*: no
+*Syntax*: disable_recent _boolean_ ++
+*Default: true
 
-SQLite-specific performance tuning option. Slightly decereases ovehead of
-DB locking at cost of making DB inaccessible for other processes (including
-maddyctl utility).
+Disable RFC 3501-conforming handling of \Recent flag.
+
+This significantly improves storage performance when SQLite3 or CockroackDB is
+used at the cost of confusing clients that use this flag.
 
 *Syntax*: sqlite_cache_size _integer_ ++
 *Default*: defined by SQLite
