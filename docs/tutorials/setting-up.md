@@ -177,7 +177,7 @@ _dmarc.example.org.   TXT    "v=DMARC1; p=quarantine; ruf=mailto:postmaster@exam
 
 ; Mark domain as MTA-STS compatible (see the next section)
 ; and request reports about failures to be sent to postmaster@example.org
-_mta-sts.example.org.   TXT    "v=STS1; id=1"
+_mta-sts.example.org.   TXT    "v=STSv1; id=1"
 _smtp._tls.example.org. TXT    "v=TLSRPTv1;rua=mailto:postmaster@example.org"
 ```
 
