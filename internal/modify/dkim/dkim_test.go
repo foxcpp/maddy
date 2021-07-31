@@ -174,6 +174,8 @@ func TestGenerateSignVerify(t *testing.T) {
 		defer os.RemoveAll(dir)
 
 		m := newTestModifier(t, dir, keyAlgo, domains)
+		m.bodyCanon = bodyCanon
+		m.headerCanon = headerCanon
 		if reload {
 			m = newTestModifier(t, dir, keyAlgo, domains)
 		}

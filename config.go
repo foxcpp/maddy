@@ -40,7 +40,7 @@ type logOut struct {
 	log.Output
 }
 
-func logOutput(m *config.Map, node config.Node) (interface{}, error) {
+func logOutput(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
