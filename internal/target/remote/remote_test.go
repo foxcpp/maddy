@@ -92,6 +92,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 
 	p.mtastsGet = mtastsGet
 	p.log = testutils.Logger(t, "remote/mtasts")
+	p.cache.Resolver = &mockdns.Resolver{Zones: zones}
 	p.StartUpdater()
 
 	return p

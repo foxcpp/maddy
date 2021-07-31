@@ -47,7 +47,7 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -92,7 +92,7 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -132,7 +132,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -174,7 +174,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -215,7 +215,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -268,7 +268,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -389,7 +389,7 @@ func TestRemoteDelivery_REQUIRETLS(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -430,7 +430,7 @@ func TestRemoteDelivery_REQUIRETLS_Fail(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -475,7 +475,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -517,7 +517,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoMXAuth(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -558,7 +558,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoTLS(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}
@@ -604,7 +604,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_TLSFail(t *testing.T) {
 		},
 	}
 
-	mtastsGet := func(ctx context.Context, domain string) (*mtasts.Policy, error) {
+	mtastsGet := func(_ context.Context, domain string) (*mtasts.Policy, error) {
 		if domain != "example.invalid" {
 			return nil, errors.New("Wrong domain in lookup")
 		}

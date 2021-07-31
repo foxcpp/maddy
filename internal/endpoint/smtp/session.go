@@ -364,7 +364,7 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Header, buffer.Buffer, error) {
+func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
 	limitr := limitReader(r, int64(s.endp.maxHeaderBytes), &exterrors.SMTPError{
 		Code:         552,
 		EnhancedCode: exterrors.EnhancedCode{5, 3, 4},
@@ -407,7 +407,7 @@ func (s *Session) Data(r io.Reader) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}
@@ -462,7 +462,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}
