@@ -80,7 +80,7 @@ func validateNodeName(s string) error {
 		return errors.New("directive name cannot start with a digit")
 	}
 
-	var allowedPunct = map[rune]bool{'.': true, '-': true, '_': true}
+	allowedPunct := map[rune]bool{'.': true, '-': true, '_': true}
 
 	for _, ch := range s {
 		if !unicode.IsLetter(ch) &&

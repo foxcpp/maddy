@@ -99,7 +99,7 @@ func TestReplaceAddr_Rcpt(tt *testing.T) {
 			}`)
 
 	// FIXME: Not implemented
-	//test("external", `
+	// test("external", `
 	//		hostname mx.maddy.test
 	//		tls off
 
@@ -212,7 +212,7 @@ func TestReplaceAddr_Sender(tt *testing.T) {
 				}
 			}`)
 	// FIXME: Not implemented
-	//test("external", `
+	// test("external", `
 	//		hostname mx.maddy.test
 	//		tls off
 

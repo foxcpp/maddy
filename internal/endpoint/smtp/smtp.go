@@ -190,7 +190,7 @@ func bufferModeDirective(_ *config.Map, node config.Node) (interface{}, error) {
 		return buffer.BufferInMemory, nil
 	case "fs":
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 		switch len(node.Args) {
@@ -206,7 +206,7 @@ func bufferModeDirective(_ *config.Map, node config.Node) (interface{}, error) {
 		}
 	case "auto":
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 
@@ -251,7 +251,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Int("max_received", false, false, 50, &endp.maxReceived)
 	cfg.Custom("buffer", false, false, func() (interface{}, error) {
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil

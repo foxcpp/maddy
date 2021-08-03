@@ -40,9 +40,7 @@ const (
 	SDStopping  = "STOPPING=1"
 )
 
-var (
-	ErrNoNotifySock = errors.New("no systemd socket")
-)
+var ErrNoNotifySock = errors.New("no systemd socket")
 
 func sdNotifySock() (*net.UnixConn, error) {
 	sockAddr := os.Getenv("NOTIFY_SOCKET")

@@ -40,9 +40,9 @@ import (
 )
 
 // createInlineModule is a helper function for config matchers that can create inline modules.
-func createInlineModule(preferredNamespace string, modName string, args []string) (module.Module, error) {
+func createInlineModule(preferredNamespace, modName string, args []string) (module.Module, error) {
 	var newMod module.FuncNewModule
-	var originalModName = modName
+	originalModName := modName
 
 	// First try to extend the name with preferred namespace unless the name
 	// already contains it.

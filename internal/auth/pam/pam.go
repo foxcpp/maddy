@@ -28,6 +28,7 @@ package pam
 #include "pam.h"
 */
 import "C"
+
 import (
 	"errors"
 	"fmt"

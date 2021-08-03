@@ -24,9 +24,7 @@ import (
 	"time"
 )
 
-var (
-	ErrClosed = errors.New("limiters: Rate bucket is closed")
-)
+var ErrClosed = errors.New("limiters: Rate bucket is closed")
 
 // Rate structure implements a basic rate-limiter for requests using the token
 // bucket approach.

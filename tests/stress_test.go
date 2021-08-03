@@ -28,7 +28,7 @@ import (
 	"github.com/foxcpp/maddy/tests"
 )
 
-func floodSmtp(c *tests.Conn, commands []string, expectedPatterns []string, iterations int) {
+func floodSmtp(c *tests.Conn, commands, expectedPatterns []string, iterations int) {
 	for i := 0; i < iterations; i++ {
 		for i, cmd := range commands {
 			c.Writeln(cmd)
