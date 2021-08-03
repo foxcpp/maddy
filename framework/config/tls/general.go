@@ -70,7 +70,7 @@ var strCurvesMap = map[string]tls.CurveID{
 // minimum and maximum supported TLS versions.
 //
 // It returns [2]uint16 value for use in corresponding fields from tls.Config.
-func TLSVersionsDirective(m *config.Map, node config.Node) (interface{}, error) {
+func TLSVersionsDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	switch len(node.Args) {
 	case 1:
 		value, ok := strVersionsMap[node.Args[0]]
@@ -97,7 +97,7 @@ func TLSVersionsDirective(m *config.Map, node config.Node) (interface{}, error) 
 // list of ciphers to offer to clients (or to use for outgoing connections).
 //
 // It returns list of []uint16 with corresponding cipher IDs.
-func TLSCiphersDirective(m *config.Map, node config.Node) (interface{}, error) {
+func TLSCiphersDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, config.NodeErr(node, "expected at least 1 argument, got 0")
 	}
@@ -118,7 +118,7 @@ func TLSCiphersDirective(m *config.Map, node config.Node) (interface{}, error) {
 // elliptic curves to use during TLS key exchange.
 //
 // It returns []tls.CurveID.
-func TLSCurvesDirective(m *config.Map, node config.Node) (interface{}, error) {
+func TLSCurvesDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, config.NodeErr(node, "expected at least 1 argument, got 0")
 	}

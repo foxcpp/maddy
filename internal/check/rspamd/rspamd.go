@@ -61,7 +61,7 @@ type Check struct {
 	client *http.Client
 }
 
-func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
 		client:   http.DefaultClient,

@@ -34,7 +34,7 @@ var overrideServ string
 // will be available both using TCP and UDP on the same port.
 func override(server string) {
 	net.DefaultResolver.PreferGo = true
-	net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
+	net.DefaultResolver.Dial = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		dialer := net.Dialer{
 			// This is localhost, it is either running or not. Fail quickly if
 			// we can't connect.
