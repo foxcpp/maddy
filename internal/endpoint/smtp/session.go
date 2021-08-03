@@ -236,7 +236,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 		// Will initialize s.msgCtx.
 		msgID, err := s.startDelivery(s.sessionCtx, from, opts)
 		if err != nil {
-			if err != context.DeadlineExceeded {
+			if !errors.Is(err, context.DeadlineExceeded) {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
 			}
 			return s.endp.wrapErr(msgID, !opts.UTF8, "MAIL", err)
@@ -300,7 +300,7 @@ func (s *Session) Rcpt(to string) error {
 		// It will initialize s.msgCtx.
 		msgID, err := s.startDelivery(s.sessionCtx, s.mailFrom, s.opts)
 		if err != nil {
-			if err != context.DeadlineExceeded {
+			if !errors.Is(err, context.DeadlineExceeded) {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
 			}
 			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, "RCPT", err)

@@ -67,7 +67,7 @@ func (e *Entry) VerifyPassword(pass string) (err error) {
 	}()
 
 	if err := crypt.NewFromHash(e.Pass).Verify(e.Pass, []byte(pass)); err != nil {
-		if err == crypt.ErrKeyMismatch {
+		if errors.Is(err, crypt.ErrKeyMismatch) {
 			return ErrWrongPassword
 		}
 		return err

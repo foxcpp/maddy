@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package openmetrics
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -76,7 +77,7 @@ func (e *Endpoint) Init(cfg *config.Map) error {
 		go func() {
 			e.logger.Println("listening on", endp.String())
 			err := e.serv.Serve(l)
-			if err != nil && err != http.ErrServerClosed {
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				e.logger.Error("serve failed", err, "endpoint", a)
 			}
 		}()

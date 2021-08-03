@@ -20,6 +20,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 
@@ -43,7 +44,7 @@ func main() {
 
 	ent, err := shadow.Lookup(username)
 	if err != nil {
-		if err == shadow.ErrNoSuchUser {
+		if errors.Is(err, shadow.ErrNoSuchUser) {
 			os.Exit(1)
 		}
 		fmt.Fprintln(os.Stderr, err)
@@ -61,7 +62,7 @@ func main() {
 	}
 
 	if err := ent.VerifyPassword(password); err != nil {
-		if err == shadow.ErrWrongPassword {
+		if errors.Is(err, shadow.ErrWrongPassword) {
 			os.Exit(1)
 		}
 		fmt.Fprintln(os.Stderr, err)

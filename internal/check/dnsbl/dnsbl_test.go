@@ -20,8 +20,8 @@ package dnsbl
 
 import (
 	"context"
+	"errors"
 	"net"
-	"reflect"
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
@@ -35,7 +35,7 @@ func TestCheckList(t *testing.T) {
 			log:      testutils.Logger(t, "dnsbl"),
 		}
 		err := mod.checkList(context.Background(), cfg, ip, ehlo, mailFrom)
-		if !reflect.DeepEqual(err, expectedErr) {
+		if !errors.Is(err, expectedErr) {
 			t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
 		}
 	}
