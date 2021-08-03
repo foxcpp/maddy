@@ -135,11 +135,8 @@ func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, o
 	if _, err := data.Write([]byte(msg)); err != nil {
 		return err
 	}
-	if err := data.Close(); err != nil {
-		return err
-	}
 
-	return nil
+	return data.Close()
 }
 
 func TestSMTPDelivery(t *testing.T) {

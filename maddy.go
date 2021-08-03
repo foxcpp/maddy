@@ -241,10 +241,7 @@ func ensureDirectoryWritable(path string) error {
 		return err
 	}
 	testFile.Close()
-	if err := os.Remove(testFile.Name()); err != nil {
-		return err
-	}
-	return nil
+	return os.Remove(testFile.Name())
 }
 
 func ReadGlobals(cfg []config.Node) (map[string]interface{}, []config.Node, error) {

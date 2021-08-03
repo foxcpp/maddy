@@ -151,11 +151,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		})
 	}
 
-	if err := endp.setupListeners(addresses); err != nil {
-		return err
-	}
-
-	return nil
+	return endp.setupListeners(addresses)
 }
 
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {

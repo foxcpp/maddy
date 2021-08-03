@@ -45,11 +45,7 @@ func doTestDelivery(t *testing.T, conn *C, from string, to []string, opts smtp.M
 	hdr := textproto.Header{}
 	hdr.Add("B", "2")
 	hdr.Add("A", "1")
-	if err := conn.Data(context.Background(), hdr, strings.NewReader("foobar\n")); err != nil {
-		return err
-	}
-
-	return nil
+	return conn.Data(context.Background(), hdr, strings.NewReader("foobar\n"))
 }
 
 func TestSMTPUTF8(t *testing.T) {
