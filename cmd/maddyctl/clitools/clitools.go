@@ -109,11 +109,10 @@ func ReadPassword(prompt string) (string, error) {
 		fmt.Println()
 
 		return string(buf), nil
-	} else {
-		if !stdinScanner.Scan() {
-			return "", stdinScanner.Err()
-		}
-
-		return stdinScanner.Text(), nil
 	}
+	if !stdinScanner.Scan() {
+		return "", stdinScanner.Err()
+	}
+
+	return stdinScanner.Text(), nil
 }
