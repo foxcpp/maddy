@@ -69,9 +69,9 @@ type Endpoint struct {
 func New(modName string, addrs []string) (module.Module, error) {
 	endp := &Endpoint{
 		addrs: addrs,
-		Log:   log.Logger{Name: "imap"},
+		Log:   log.Logger{Name: modName},
 		saslAuth: auth.SASLAuth{
-			Log: log.Logger{Name: "imap/sasl"},
+			Log: log.Logger{Name: modName + "/sasl"},
 		},
 	}
 
