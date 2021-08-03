@@ -50,19 +50,19 @@ func TestParse(t *testing.T) {
 	}
 
 	test("2006-01-02T15:04:05.000Z module: hello\t", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Module:  "module",
 		Message: "hello",
 		Context: map[string]interface{}{},
 	}, "")
 	test("2006-01-02T15:04:05.000Z module: hello: whatever\t", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Module:  "module",
 		Message: "hello: whatever",
 		Context: map[string]interface{}{},
 	}, "")
 	test("2006-01-02T15:04:05.000Z module: hello: whatever\t{\"a\":1}", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Module:  "module",
 		Message: "hello: whatever",
 		Context: map[string]interface{}{
@@ -70,7 +70,7 @@ func TestParse(t *testing.T) {
 		},
 	}, "")
 	test("2006-01-02T15:04:05.000Z module: hello: whatever\t{\"a\":1,\"b\":\"bbb\"}", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Module:  "module",
 		Message: "hello: whatever",
 		Context: map[string]interface{}{
@@ -79,7 +79,7 @@ func TestParse(t *testing.T) {
 		},
 	}, "")
 	test("2006-01-02T15:04:05.000Z [debug] module: hello: whatever\t{\"a\":1,\"b\":\"bbb\"}", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Debug:   true,
 		Module:  "module",
 		Message: "hello: whatever",
@@ -89,7 +89,7 @@ func TestParse(t *testing.T) {
 		},
 	}, "")
 	test("2006-01-02T15:04:05.000Z [debug] oink oink: hello: whatever\t{\"a\":1,\"b\":\"bbb\"}", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Debug:   true,
 		Message: "oink oink: hello: whatever",
 		Context: map[string]interface{}{
@@ -98,7 +98,7 @@ func TestParse(t *testing.T) {
 		},
 	}, "")
 	test("2006-01-02T15:04:05.000Z [debug] whatever\t{\"a\":1,\"b\":\"bbb\"}", Msg{
-		Stamp:   time.Date(2006, time.January, 02, 15, 04, 05, 0, time.UTC),
+		Stamp:   time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC),
 		Debug:   true,
 		Message: "whatever",
 		Context: map[string]interface{}{

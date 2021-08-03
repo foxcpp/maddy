@@ -253,7 +253,6 @@ func (d *delivery) connect(ctx context.Context) error {
 
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	err := d.conn.Rcpt(ctx, rcptTo)
-
 	if err != nil {
 		return d.u.moduleError(err)
 	}

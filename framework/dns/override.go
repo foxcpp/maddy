@@ -24,9 +24,7 @@ import (
 	"time"
 )
 
-var (
-	overrideServ string
-)
+var overrideServ string
 
 // override globally overrides the used DNS server address with one provided.
 // This function is meant only for testing. It should be called before any modules are

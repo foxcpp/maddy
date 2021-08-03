@@ -91,7 +91,7 @@ func TestKeyLoad_existing_pkcs8(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "testkey.key"), []byte(pkeyEd25519), 0600); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(dir, "testkey.key"), []byte(pkeyEd25519), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +147,7 @@ func TestKeyLoad_existing_pkcs1(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "testkey.key"), []byte(pkeyRSA), 0600); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(dir, "testkey.key"), []byte(pkeyRSA), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

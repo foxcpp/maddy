@@ -103,5 +103,4 @@ func TestPerIPConcurrency(tt *testing.T) {
 	c1.Writeln("MAIL FROM:<testing@maddy.test")
 	// Temporary error due to lock timeout.
 	c1.ExpectPattern("451 *")
-
 }

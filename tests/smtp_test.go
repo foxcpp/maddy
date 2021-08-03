@@ -213,7 +213,7 @@ func TestSPF_DMARCDefer(tt *testing.T) {
 	defer conn.Close()
 	conn.SMTPNegotation("localhost", nil, nil)
 
-	msg := func(fromEnv, fromHdr string, bodyRespPattern string) {
+	msg := func(fromEnv, fromHdr, bodyRespPattern string) {
 		tt.Helper()
 
 		conn.Writeln("MAIL FROM:<" + fromEnv + ">")

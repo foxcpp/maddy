@@ -194,7 +194,7 @@ func (dd *msgpipelineDelivery) initRunGlobalModifiers(ctx context.Context, msgMe
 }
 
 func (dd *msgpipelineDelivery) srcBlockForAddr(ctx context.Context, mailFrom string) (sourceBlock, error) {
-	var cleanFrom = mailFrom
+	cleanFrom := mailFrom
 	if mailFrom != "" {
 		var err error
 		cleanFrom, err = address.ForLookup(mailFrom)

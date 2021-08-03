@@ -82,7 +82,7 @@ func LogOutputOption(args []string) (log.Output, error) {
 			// keep the absolute path for reinitialization.
 			args[i] = absPath
 
-			w, err := os.OpenFile(absPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+			w, err := os.OpenFile(absPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}
