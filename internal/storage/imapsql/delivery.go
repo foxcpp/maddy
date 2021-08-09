@@ -58,7 +58,7 @@ func userDoesNotExist(actual error) error {
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
 
-	accountName, err := d.store.deliveryNormalize(rcptTo)
+	accountName, err := d.store.deliveryNormalize(ctx, rcptTo)
 	if err != nil {
 		return userDoesNotExist(err)
 	}

@@ -157,21 +157,31 @@ imap_filters {
 }
 ```
 
+*Syntax:* delivery_map *table* ++
+*Default:* identity
+
+Use specified table module (*maddy-tables*(5)) to map recipient
+addresses from incoming messages to mailbox names.
+
+Normalization algorithm specified in delivery_normalize is appied before
+delivery_map.
+
+*Syntax:* delivery_normalize _name_ ++
+*Default:* precis_casefold_email
+
+Normalization function to apply to email addresses before mapping them
+to mailboxes.
+
+See auth_normalize.
+
 *Syntax*: auth_map *table* ++
-*Default*: not set
+*Default*: identity
 
 Use specified table module (*maddy-tables*(5)) to map authentication
 usernames to mailbox names.
 
 Normalization algorithm specified in auth_normalize is applied before
 auth_map.
-
-imapsql unconditionally requires a full email as an account name as they are
-used to determine the right mailboxes for inbound messages. If you do not
-want domain-specific accounts then you can use a dummy domain like
-foxcpp@maddy.invalid. But you will need to ensure that on delivery recipient
-addresses are rewritten appropriately (e.g.
-foxcpp@example.org => foxcpp@maddy.invalid).
 
 *Syntax*: auth_normalize _name_ ++
 *Default*: precis_casefold_email

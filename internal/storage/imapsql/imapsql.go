@@ -70,7 +70,8 @@ type Storage struct {
 
 	filters module.IMAPFilter
 
-	deliveryNormalize func(string) (string, error)
+	deliveryMap       module.Table
+	deliveryNormalize func(context.Context, string) (string, error)
 	authMap           module.Table
 	authNormalize     func(context.Context, string) (string, error)
 }
@@ -102,11 +103,12 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 
 func (store *Storage) Init(cfg *config.Map) error {
 	var (
-		driver         string
-		dsn            []string
-		appendlimitVal = -1
-		compression    []string
-		authNormalize  string
+		driver            string
+		dsn               []string
+		appendlimitVal    = -1
+		compression       []string
+		authNormalize     string
+		deliveryNormalize string
 
 		blobStore module.BlobStore
 	)
@@ -152,6 +154,10 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return nil, nil
 	}, modconfig.TableDirective, &store.authMap)
 	cfg.String("auth_normalize", false, false, "precis_casefold_email", &authNormalize)
+	cfg.Custom("delivery_map", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, modconfig.TableDirective, &store.deliveryMap)
+	cfg.String("delivery_normalize", false, false, "precis_casefold_email", &deliveryNormalize)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -164,7 +170,27 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return errors.New("imapsql: driver is required")
 	}
 
-	store.deliveryNormalize = authz.NormalizeFuncs["precis_casefold_email"]
+	deliveryNormFunc, ok := authz.NormalizeFuncs[deliveryNormalize]
+	if !ok {
+		return errors.New("imapsql: unknown normalization function: " + deliveryNormalize)
+	}
+	store.deliveryNormalize = func(ctx context.Context, s string) (string, error) {
+		return deliveryNormFunc(s)
+	}
+	if store.deliveryMap != nil {
+		store.deliveryNormalize = func(ctx context.Context, email string) (string, error) {
+			email, err := deliveryNormFunc(email)
+			if err != nil {
+				return "", err
+			}
+			mapped, ok, err := store.deliveryMap.Lookup(ctx, email)
+			if err != nil || !ok {
+				return "", userDoesNotExist(err)
+			}
+			return mapped, nil
+		}
+	}
+
 	authNormFunc, ok := authz.NormalizeFuncs[authNormalize]
 	if !ok {
 		return errors.New("imapsql: unknown normalization function: " + authNormalize)
