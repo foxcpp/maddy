@@ -17,9 +17,14 @@ can handle message delivery business.
 
 [![builds.sr.ht status](https://builds.sr.ht/~emersion/maddy.svg)](https://builds.sr.ht/~emersion/maddy?)
 [![Issues tracker](https://img.shields.io/github/issues/foxcpp/maddy)](https://github.com/foxcpp/maddy)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffoxcpp%2Fmaddy.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffoxcpp%2Fmaddy?ref=badge_shield)
 
 * [Setup tutorial](https://maddy.email/tutorials/setting-up/)
 * [Documentation](https://maddy.email/)
 
 * [IRC channel](https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffoxcpp%2Fmaddy.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffoxcpp%2Fmaddy?ref=badge_large)
