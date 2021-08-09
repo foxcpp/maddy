@@ -89,10 +89,14 @@ type s3blob struct {
 func (b *s3blob) Sync() error {
 	// We do this in Sync instead of Close because
 	// backend may not actually check the error of Close.
-
 	// The problematic restriction is that Sync can now be called
 	// only once.
+	if b.didSync {
+		panic("storage.blob.s3: Sync called twice for a blob object")
+	}
+
 	b.pw.Close()
+	b.didSync = true
 	return <-b.errCh
 }
 
