@@ -121,7 +121,7 @@ func TestImapsqlDeliveryMap(tt *testing.T) {
 	t.Port("smtp")
 	t.Config(`
 		storage.imapsql test_store {
-			delivery_map regexp "(.*)@(.*)" "$1"
+			delivery_map email_localpart
 			auth_normalize precis
 
 			driver sqlite3

@@ -249,6 +249,19 @@ The module 'dummy' represents an empty table.
 dummy { }
 ```
 
+# Email local part (table.email_localpart)
+
+The module 'email_localpart' extracts and unescaped local ("username") part
+of the email address.
+
+E.g.
+test@example.org => test
+"test @ a"@example.org => test @ a
+
+```
+table.email_localpart { }
+```
+
 # Table chaining module (table.chain)
 
 The table.chain module allows chaining together multiple table modules
