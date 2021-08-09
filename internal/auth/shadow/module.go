@@ -94,6 +94,7 @@ func (a *Auth) Lookup(username string) (string, bool, error) {
 		if errors.Is(err, ErrNoSuchUser) {
 			return "", false, nil
 		}
+		return "", false, err
 	}
 
 	if !ent.IsAccountValid() {

@@ -67,7 +67,7 @@ func (a *Auth) InstanceName() string {
 func (a *Auth) Lookup(ctx context.Context, username string) (string, bool, error) {
 	key, err := precis.UsernameCaseMapped.CompareKey(username)
 	if err != nil {
-		return "", false, nil
+		return "", false, err
 	}
 
 	return a.table.Lookup(ctx, key)

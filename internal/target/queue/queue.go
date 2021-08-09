@@ -854,7 +854,7 @@ func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, buffer
 		if os.IsNotExist(err) {
 			q.tryRemoveDanglingFile(id + ".meta")
 		}
-		return nil, textproto.Header{}, nil, nil
+		return nil, textproto.Header{}, nil, err
 	}
 	body := buffer.FileBuffer{Path: bodyPath}
 
@@ -865,13 +865,13 @@ func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, buffer
 			q.tryRemoveDanglingFile(id + ".meta")
 			q.tryRemoveDanglingFile(id + ".body")
 		}
-		return nil, textproto.Header{}, nil, nil
+		return nil, textproto.Header{}, nil, err
 	}
 
 	bufferedHeader := bufio.NewReader(headerFile)
 	header, err := textproto.ReadHeader(bufferedHeader)
 	if err != nil {
-		return nil, textproto.Header{}, nil, nil
+		return nil, textproto.Header{}, nil, err
 	}
 
 	return meta, header, body, nil
