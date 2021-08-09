@@ -56,6 +56,13 @@ aaa: bbb
 # That is, the following line is equivalent to
 #	aaa:
 aaa
+
+# If the same key is used multiple times - table.file will return
+# multiple values when queries. Note that this is not used by
+# most modules. E.g. replace_rcpt does not (intentionally) support
+# 1-to-N alias expansion.
+ddd: firstvalue
+ddd: secondvalue
 ```
 
 # SQL query mapping (table.sql_query)
@@ -253,4 +260,55 @@ The module 'dummy' represents an empty table.
 
 ```
 dummy { }
+```
+
+# Email local part (table.email_localpart)
+
+The module 'email_localpart' extracts and unescaped local ("username") part
+of the email address.
+
+E.g.
+test@example.org => test
+"test @ a"@example.org => test @ a
+
+```
+table.email_localpart { }
+```
+
+# Table chaining module (table.chain)
+
+The table.chain module allows chaining together multiple table modules
+by using value returned by a previous table as an input for the second
+table.
+
+Example:
+```
+table.chain {
+	step regexp "(.+)(\\+[^+"@]+)?@example.org" "$1@example.org"
+	step file /etc/maddy/emails
+}
+```
+This will strip +prefix from mailbox before looking it up
+in /etc/maddy/emails list.
+
+## Configuration directives
+
+*Syntax*: step _table_
+
+Adds a table module to the chain. If input value is not in the table
+(e.g. file) - return "not exists" error.
+
+*Syntax*: optional_step _table_
+
+Same as step but if input value is not in the table - it is passed to the
+next step without changes.
+
+Example:
+Something like this can be used to map emails to usernames
+after translating them via aliases map:
+```
+table.chain {
+    optional_step file /etc/maddy/aliases
+    step regexp "(.+)@(.+)" "$1"
+}
 ```

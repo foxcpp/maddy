@@ -20,8 +20,6 @@ package tls
 
 import (
 	"crypto/tls"
-	"os"
-	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
@@ -40,11 +38,10 @@ func (cfg *TLSConfig) Get() (*tls.Config, error) {
 	}
 	tlsCfg := cfg.baseCfg.Clone()
 
-	certs, err := cfg.loader.LoadCerts()
+	err := cfg.loader.ConfigureTLS(tlsCfg)
 	if err != nil {
 		return nil, err
 	}
-	tlsCfg.Certificates = certs
 
 	return tlsCfg, nil
 }
@@ -52,7 +49,7 @@ func (cfg *TLSConfig) Get() (*tls.Config, error) {
 // TLSDirective reads the TLS configuration and adds the reload handler to
 // reread certificates on SIGUSR2.
 //
-// The returned value is *tls.TLSConfig with GetConfigForClient set.
+// The returned value is *tls.Config with GetConfigForClient set.
 // If the 'tls off' is used, returned value is nil.
 func TLSDirective(m *config.Map, node config.Node) (interface{}, error) {
 	cfg, err := readTLSBlock(m.Globals, node)
@@ -80,11 +77,6 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 			return nil, nil
 		}
 
-		if _, err := os.Stat(blockNode.Args[0]); err == nil || strings.Contains(blockNode.Args[0], "/") {
-			log.Println("'tls cert_path key_path' syntax is deprecated, use 'tls file cert_path key_path'")
-			blockNode.Args = append([]string{"file"}, blockNode.Args...)
-		}
-
 		err := modconfig.ModuleFromNode("tls.loader", blockNode.Args, config.Node{}, globals, &loader)
 		if err != nil {
 			return nil, err
@@ -98,7 +90,7 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 		return loader, nil
 	}, func(m *config.Map, node config.Node) (interface{}, error) {
 		var l module.TLSLoader
-		err := modconfig.ModuleFromNode("tls.loader", blockNode.Args, config.Node{}, globals, &l)
+		err := modconfig.ModuleFromNode("tls.loader", node.Args, node, globals, &l)
 		return l, err
 	}, &loader)
 

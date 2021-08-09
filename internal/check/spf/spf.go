@@ -406,6 +406,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.RegisterDeprecated("apply_spf", "check.spf", New)
 	module.Register(modName, New)
 }

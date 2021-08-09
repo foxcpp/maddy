@@ -21,7 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/config"
@@ -48,8 +50,9 @@ func TestSQL(t *testing.T) {
 			{
 				Name: "init",
 				Args: []string{
-					"CREATE TABLE testTbl (key TEXT PRIMARY KEY , value TEXT)",
+					"CREATE TABLE testTbl (key TEXT, value TEXT)",
 					"INSERT INTO testTbl VALUES ('user1', 'user1a')",
+					"INSERT INTO testTbl VALUES ('user1', 'user1b')",
 					"INSERT INTO testTbl VALUES ('user3', NULL)",
 				},
 			},
@@ -66,7 +69,7 @@ func TestSQL(t *testing.T) {
 	check := func(key, res string, ok, fail bool) {
 		t.Helper()
 
-		actualRes, actualOk, err := tbl.Lookup(key)
+		actualRes, actualOk, err := tbl.Lookup(context.Background(), key)
 		if actualRes != res {
 			t.Errorf("Result mismatch: want %s, got %s", res, actualRes)
 		}
@@ -81,4 +84,12 @@ func TestSQL(t *testing.T) {
 	check("user1", "user1a", true, false)
 	check("user2", "", false, false)
 	check("user3", "", false, true)
+
+	vals, err := tbl.LookupMulti(context.Background(), "user1")
+	if err != nil {
+		t.Error("Unexpected error:", err)
+	}
+	if !reflect.DeepEqual(vals, []string{"user1a", "user1b"}) {
+		t.Error("Wrong result of LookupMulti:", vals)
+	}
 }

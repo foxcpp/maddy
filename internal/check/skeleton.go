@@ -67,7 +67,7 @@ type state struct {
 	log     log.Logger
 }
 
-func (c *Check) CheckStateForMsg(msgMeta *module.MsgMetadata) (module.CheckState, error) {
+func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	return &state{
 		c:       c,
 		msgMeta: msgMeta,

@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package module
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+)
 
 // TLSLoader interface is module interface that can be used to supply TLS
 // certificates to TLS-enabled endpoints.
@@ -35,5 +37,5 @@ import "crypto/tls"
 // Modules implementing this interface should be registered with prefix
 // "tls.loader." in name.
 type TLSLoader interface {
-	LoadCerts() ([]tls.Certificate, error)
+	ConfigureTLS(c *tls.Config) error
 }

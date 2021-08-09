@@ -445,6 +445,5 @@ var (
 )
 
 func init() {
-	module.RegisterDeprecated("milter", "check.milter", New)
 	module.Register(modName, New)
 }

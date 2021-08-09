@@ -151,7 +151,7 @@ func (dd *msgpipelineDelivery) start(ctx context.Context, msgMeta *module.MsgMet
 		return err
 	}
 
-	sourceBlock, err := dd.srcBlockForAddr(mailFrom)
+	sourceBlock, err := dd.srcBlockForAddr(ctx, mailFrom)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (dd *msgpipelineDelivery) initRunGlobalModifiers(ctx context.Context, msgMe
 	return mailFrom, nil
 }
 
-func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, error) {
+func (dd *msgpipelineDelivery) srcBlockForAddr(ctx context.Context, mailFrom string) (sourceBlock, error) {
 	var cleanFrom = mailFrom
 	if mailFrom != "" {
 		var err error
@@ -209,7 +209,7 @@ func (dd *msgpipelineDelivery) srcBlockForAddr(mailFrom string) (sourceBlock, er
 	}
 
 	for _, srcIn := range dd.d.sourceIn {
-		_, ok, err := srcIn.t.Lookup(cleanFrom)
+		_, ok, err := srcIn.t.Lookup(ctx, cleanFrom)
 		if err != nil {
 			dd.log.Error("source_in lookup failed", err, "key", cleanFrom)
 			continue
@@ -306,7 +306,7 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 		})
 	}
 
-	rcptBlock, err := dd.rcptBlockForAddr(to)
+	rcptBlock, err := dd.rcptBlockForAddr(ctx, to)
 	if err != nil {
 		return wrapErr(err)
 	}
@@ -532,7 +532,7 @@ func (dd msgpipelineDelivery) Abort(ctx context.Context) error {
 	return lastErr
 }
 
-func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, error) {
+func (dd *msgpipelineDelivery) rcptBlockForAddr(ctx context.Context, rcptTo string) (*rcptBlock, error) {
 	cleanRcpt, err := address.ForLookup(rcptTo)
 	if err != nil {
 		return nil, &exterrors.SMTPError{
@@ -544,7 +544,7 @@ func (dd *msgpipelineDelivery) rcptBlockForAddr(rcptTo string) (*rcptBlock, erro
 	}
 
 	for _, rcptIn := range dd.sourceBlock.rcptIn {
-		_, ok, err := rcptIn.t.Lookup(cleanRcpt)
+		_, ok, err := rcptIn.t.Lookup(ctx, cleanRcpt)
 		if err != nil {
 			dd.log.Error("destination_in lookup failed", err, "key", cleanRcpt)
 			continue

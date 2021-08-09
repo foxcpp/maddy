@@ -153,13 +153,16 @@ func (f *FileLoader) loadCerts() error {
 	return nil
 }
 
-func (f *FileLoader) LoadCerts() ([]tls.Certificate, error) {
+func (f *FileLoader) ConfigureTLS(c *tls.Config) error {
 	// Loader function replaces only the whole slice.
 	f.certsLock.RLock()
 	defer f.certsLock.RUnlock()
-	return f.certs, nil
+
+	c.Certificates = f.certs
+	return nil
 }
 
 func init() {
+	var _ module.TLSLoader = &FileLoader{}
 	module.Register("tls.loader.file", NewFileLoader)
 }

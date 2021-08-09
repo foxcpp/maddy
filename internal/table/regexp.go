@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -95,7 +96,7 @@ func (r *Regexp) InstanceName() string {
 	return r.modName
 }
 
-func (r *Regexp) Lookup(key string) (string, bool, error) {
+func (r *Regexp) Lookup(_ context.Context, key string) (string, bool, error) {
 	matches := r.re.FindStringSubmatchIndex(key)
 	if matches == nil {
 		return "", false, nil
@@ -109,6 +110,5 @@ func (r *Regexp) Lookup(key string) (string, bool, error) {
 }
 
 func init() {
-	module.RegisterDeprecated("regexp", "table.regexp", NewRegexp)
 	module.Register("table.regexp", NewRegexp)
 }

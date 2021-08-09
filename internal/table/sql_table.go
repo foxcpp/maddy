@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
@@ -147,8 +148,12 @@ func (s *SQLTable) Close() error {
 	return s.wrapped.Close()
 }
 
-func (s *SQLTable) Lookup(val string) (string, bool, error) {
-	return s.wrapped.Lookup(val)
+func (s *SQLTable) Lookup(ctx context.Context, val string) (string, bool, error) {
+	return s.wrapped.Lookup(ctx, val)
+}
+
+func (s *SQLTable) LookupMulti(ctx context.Context, val string) ([]string, error) {
+	return s.wrapped.LookupMulti(ctx, val)
 }
 
 func (s *SQLTable) Keys() ([]string, error) {
@@ -164,6 +169,5 @@ func (s *SQLTable) SetKey(k, v string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("sql_table", "table.sql_table", NewSQLTable)
 	module.Register("table.sql_table", NewSQLTable)
 }

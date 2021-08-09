@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -137,15 +138,15 @@ func (s *SQL) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQL) Lookup(val string) (string, bool, error) {
+func (s *SQL) Lookup(ctx context.Context, val string) (string, bool, error) {
 	var (
 		repl string
 		row  *sql.Row
 	)
 	if s.namedArgs {
-		row = s.lookup.QueryRow(sql.Named("key", val))
+		row = s.lookup.QueryRowContext(ctx, sql.Named("key", val))
 	} else {
-		row = s.lookup.QueryRow(val)
+		row = s.lookup.QueryRowContext(ctx, val)
 	}
 	if err := row.Scan(&repl); err != nil {
 		if err == sql.ErrNoRows {
@@ -154,6 +155,33 @@ func (s *SQL) Lookup(val string) (string, bool, error) {
 		return "", false, fmt.Errorf("%s: lookup %s: %w", s.modName, val, err)
 	}
 	return repl, true, nil
+}
+
+func (s *SQL) LookupMulti(ctx context.Context, val string) ([]string, error) {
+	var (
+		repl []string
+		rows *sql.Rows
+		err  error
+	)
+	if s.namedArgs {
+		rows, err = s.lookup.QueryContext(ctx, sql.Named("key", val))
+	} else {
+		rows, err = s.lookup.QueryContext(ctx, val)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+	}
+	for rows.Next() {
+		var res string
+		if err := rows.Scan(&res); err != nil {
+			return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+		}
+		repl = append(repl, res)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s; lookup %s: %w", s.modName, val, err)
+	}
+	return repl, nil
 }
 
 func (s *SQL) Keys() ([]string, error) {
@@ -219,6 +247,5 @@ func (s *SQL) SetKey(k, v string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("sql_query", "table.sql_query", NewSQL)
 	module.Register("table.sql_query", NewSQL)
 }

@@ -995,6 +995,5 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 }
 
 func init() {
-	module.RegisterDeprecated("queue", "target.queue", NewQueue)
 	module.Register("target.queue", NewQueue)
 }

@@ -70,10 +70,10 @@ func New(modName, instName string, aliases, inlineArgs []string) (module.Module,
 	c := &Check{
 		instName: instName,
 		actions: map[int]modconfig.FailAction{
-			1: modconfig.FailAction{
+			1: {
 				Reject: true,
 			},
-			2: modconfig.FailAction{
+			2: {
 				Quarantine: true,
 			},
 		},
@@ -397,6 +397,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.RegisterDeprecated("command", "check.command", New)
 	module.Register(modName, New)
 }

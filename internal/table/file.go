@@ -20,6 +20,7 @@ package table
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -39,7 +40,7 @@ type File struct {
 	instName string
 	file     string
 
-	m      map[string]string
+	m      map[string][]string
 	mLck   sync.RWMutex
 	mStamp time.Time
 
@@ -52,7 +53,7 @@ type File struct {
 func NewFile(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	m := &File{
 		instName:     instName,
-		m:            make(map[string]string),
+		m:            make(map[string][]string),
 		stopReloader: make(chan struct{}),
 		forceReload:  make(chan struct{}),
 		log:          log.Logger{Name: FileModName},
@@ -61,6 +62,7 @@ func NewFile(_, instName string, _, inlineArgs []string) (module.Module, error) 
 	switch len(inlineArgs) {
 	case 1:
 		m.file = inlineArgs[0]
+	case 0:
 	default:
 		return nil, fmt.Errorf("%s: cannot use multiple files with single %s, use %s multiple times to do so", FileModName, FileModName, FileModName)
 	}
@@ -126,7 +128,7 @@ func (f *File) reloader() {
 			if err != nil {
 				if os.IsNotExist(err) {
 					f.mLck.Lock()
-					f.m = map[string]string{}
+					f.m = map[string][]string{}
 					f.mStamp = time.Now()
 					f.mLck.Unlock()
 					continue
@@ -144,7 +146,7 @@ func (f *File) reloader() {
 
 		f.log.Debugf("reloading")
 
-		newm := make(map[string]string, len(f.m)+5)
+		newm := make(map[string][]string, len(f.m)+5)
 		if err := readFile(f.file, newm); err != nil {
 			if os.IsNotExist(err) {
 				f.log.Printf("ignoring non-existent file: %s", f.file)
@@ -168,7 +170,7 @@ func (f *File) Close() error {
 	return nil
 }
 
-func readFile(path string, out map[string]string) error {
+func readFile(path string, out map[string][]string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -203,7 +205,7 @@ func readFile(path string, out map[string]string) error {
 		}
 		to := strings.TrimSpace(parts[1])
 
-		out[from] = to
+		out[from] = append(out[from], to)
 	}
 	if err := scnr.Err(); err != nil {
 		return err
@@ -212,7 +214,7 @@ func readFile(path string, out map[string]string) error {
 	return nil
 }
 
-func (f *File) Lookup(val string) (string, bool, error) {
+func (f *File) Lookup(_ context.Context, val string) (string, bool, error) {
 	// The existing map is never modified, instead it is replaced with a new
 	// one if reload is performed.
 	f.mLck.RLock()
@@ -220,10 +222,22 @@ func (f *File) Lookup(val string) (string, bool, error) {
 	f.mLck.RUnlock()
 
 	newVal, ok := usedFile[val]
-	return newVal, ok, nil
+
+	if len(newVal) == 0 {
+		return "", false, nil
+	}
+
+	return newVal[0], ok, nil
+}
+
+func (f *File) LookupMulti(_ context.Context, val string) ([]string, error) {
+	f.mLck.RLock()
+	usedFile := f.m
+	f.mLck.RUnlock()
+
+	return usedFile[val], nil
 }
 
 func init() {
-	module.RegisterDeprecated("file", "table.file", NewFile)
 	module.Register(FileModName, NewFile)
 }

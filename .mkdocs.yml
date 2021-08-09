@@ -13,7 +13,7 @@ nav:
     - tutorials/setting-up.md
     - tutorials/building-from-source.md
     - tutorials/alias-to-remote.md
-    - tutorials/multiple-domains.md
+    - tutorials/pam.md
   - Integration with software:
     - third-party/dovecot.md
     - third-party/smtp-servers.md
@@ -21,6 +21,7 @@ nav:
     - third-party/mailman3.md
   - seclevels.md
   - faq.md
+  - multiple-domains.md
   - unicode.md
   - upgrading.md
   - specifications.md
@@ -29,6 +30,7 @@ nav:
     - man/_generated_maddy.1.md
     - man/_generated_maddy.5.md
     - man/_generated_maddy-auth.5.md
+    - man/_generated_maddy-blob.5.md
     - man/_generated_maddy-config.5.md
     - man/_generated_maddy-filters.5.md
     - man/_generated_maddy-imap.5.md

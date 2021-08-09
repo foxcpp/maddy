@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package plain_separate
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -46,7 +47,7 @@ type mockTable struct {
 	db map[string]string
 }
 
-func (m mockTable) Lookup(a string) (string, bool, error) {
+func (m mockTable) Lookup(_ context.Context, a string) (string, bool, error) {
 	b, ok := m.db[a]
 	return b, ok, nil
 }

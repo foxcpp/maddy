@@ -25,6 +25,13 @@ import (
 )
 
 var (
+	// NoRun makes sure modules do not start any bacground tests.
+	//
+	// If it set - modules should not perform any actual work and should stop
+	// once the configuration is read and verified to be correct.
+	// TODO: Replace it with separation of Init and Run at interface level.
+	NoRun = false
+
 	modules     = make(map[string]FuncNewModule)
 	endpoints   = make(map[string]FuncNewEndpoint)
 	modulesLock sync.RWMutex
