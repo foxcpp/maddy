@@ -379,7 +379,7 @@ func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error)
 func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, error) {
 	accountName, err := store.authNormalize(ctx, key)
 	if err != nil {
-		return "", false, err
+		return "", false, nil
 	}
 
 	usr, err := store.Back.GetUser(accountName)
