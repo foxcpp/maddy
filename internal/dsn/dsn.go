@@ -204,7 +204,7 @@ func GenerateDSN(utf8 bool, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsIn
 
 	defer partWriter.Close()
 
-	if err := writeHumanReadablePart(partWriter, envelope, mtaInfo, rcptsInfo); err != nil {
+	if err := writeHumanReadablePart(partWriter, mtaInfo, rcptsInfo); err != nil {
 		return textproto.Header{}, err
 	}
 	if err := writeMachineReadablePart(utf8, partWriter, mtaInfo, rcptsInfo); err != nil {
@@ -271,7 +271,7 @@ Last delivery attempt: {{.LastAttemptDate}}
 
 `))
 
-func writeHumanReadablePart(w *textproto.MultipartWriter, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo) error {
+func writeHumanReadablePart(w *textproto.MultipartWriter, mtaInfo ReportingMTAInfo, rcptsInfo []RecipientInfo) error {
 	humanHeader := textproto.Header{}
 	humanHeader.Add("Content-Transfer-Encoding", "8bit")
 	humanHeader.Add("Content-Type", `text/plain; charset="utf-8"`)

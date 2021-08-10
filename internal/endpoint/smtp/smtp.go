@@ -67,6 +67,7 @@ type Endpoint struct {
 	deferServerReject   bool
 	maxLoggedRcptErrors int
 	maxReceived         int
+	maxHeaderBytes      int
 
 	listenersWg sync.WaitGroup
 
@@ -177,7 +178,7 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 	}
 }
 
-func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
+func bufferModeDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) < 1 {
 		return nil, config.NodeErr(node, "at least one argument required")
 	}
@@ -245,6 +246,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
+	cfg.DataSize("max_header_size", false, false, 1*1024*1024, &endp.maxHeaderBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
 	cfg.Int("max_received", false, false, 50, &endp.maxReceived)
 	cfg.Custom("buffer", false, false, func() (interface{}, error) {
@@ -314,7 +316,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 			}
 
 			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
-				c.SetSession(endp.newSession(false, id, "", &state))
+				c.SetSession(endp.newSession(id, "", &state))
 				return nil
 			})
 		})
@@ -391,7 +393,7 @@ func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password stri
 		}
 	}
 
-	return endp.newSession(false, username, password, state), nil
+	return endp.newSession(username, password, state), nil
 }
 
 func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
@@ -404,10 +406,10 @@ func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session,
 		return nil, endp.wrapErr("", true, "MAIL", err)
 	}
 
-	return endp.newSession(true, "", "", state), nil
+	return endp.newSession("", "", state), nil
 }
 
-func (endp *Endpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
+func (endp *Endpoint) newSession(username, password string, state *smtp.ConnectionState) smtp.Session {
 	s := &Session{
 		endp: endp,
 		log:  endp.Log,

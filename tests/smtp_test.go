@@ -24,6 +24,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
@@ -249,7 +250,7 @@ func TestDNSBLConfig(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
@@ -298,7 +299,7 @@ func TestDNSBLConfig2(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl2.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl2.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
@@ -341,6 +342,77 @@ func TestDNSBLConfig2(tt *testing.T) {
 
 	conn.Writeln("QUIT")
 	conn.ExpectPattern("221 *")
+}
+
+func TestCheckAuthorizeSender(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(nil)
+	t.Port("smtp")
+	t.Config(`
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname mx.maddy.test
+			tls off
+
+			auth dummy
+			defer_sender_reject off
+
+			source example1.org {
+				check {
+					authorize_sender {
+						auth_normalize precis_casefold
+						user_to_email static {
+							entry "test-user1" "test@example1.org"
+							entry "test-user2" "é@example1.org" 
+						}
+					}
+				}
+				deliver_to dummy
+			}
+			source example2.org {
+				check {
+					authorize_sender {
+						auth_normalize precis_casefold
+						prepare_email static {
+							entry "alias-to-test@example2.org" "test@example2.org"
+						}
+						user_to_email static {
+							entry "test-user1" "test@example2.org"
+							entry "test-user2" "test2@example2.org"
+						}
+					}
+				}
+				deliver_to dummy
+			}
+
+			default_source {
+				reject
+			}
+		}`)
+	t.Run(1)
+	defer t.Close()
+
+	c := t.Conn("smtp")
+	c.SMTPNegotation("client.maddy.test", nil, nil)
+	c.SMTPPlainAuth("test-user2", "1", true)
+	c.Writeln("MAIL FROM:<test@example1.org>")
+	c.ExpectPattern("5*") // rejected - user is not test-user1
+	c.Writeln("MAIL FROM:<test3@example1.org>")
+	c.ExpectPattern("5*") // rejected - unknown email
+	c.Writeln("MAIL FROM:<E\u0301@EXAMPLE1.org> SMTPUTF8")
+	c.ExpectPattern("2*") // OK - é@example1.org belongs to test-user2
+	c.Close()
+
+	c = t.Conn("smtp")
+	c.SMTPNegotation("client.maddy.test", nil, nil)
+	c.SMTPPlainAuth("test-user1", "1", true)
+	c.Writeln("MAIL FROM:<test2@example2.org>")
+	c.ExpectPattern("5*") // rejected - user is not test-user2
+	c.Writeln("MAIL FROM:<test@example2.org>")
+	c.ExpectPattern("2*") // OK - test@example2.org belongs to test-user
+	c.Writeln("MAIL FROM:<alias-to-test@example2.org>")
+	c.ExpectPattern("2*") // OK - test@example2.org belongs to test-user
+	c.Close()
 }
 
 func TestCheckCommand(tt *testing.T) {
@@ -452,6 +524,44 @@ func TestCheckCommand(tt *testing.T) {
 			t.Log([]byte(expectedMsg))
 		}
 	})
+
+	conn.Writeln("QUIT")
+	conn.ExpectPattern("221 *")
+}
+
+func TestHeaderSizeConstraint(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(nil)
+	t.Port("smtp")
+	t.Config(`
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname mx.maddy.test
+			tls off
+			deliver_to dummy
+			max_header_size 1K
+		}
+	`)
+	t.Run(1)
+	defer t.Close()
+
+	conn := t.Conn("smtp")
+	defer conn.Close()
+	conn.SMTPNegotation("localhost", nil, nil)
+	conn.Writeln("MAIL FROM:<testsender@maddy.test>")
+	conn.ExpectPattern("250 *")
+	conn.Writeln("RCPT TO:<testing@maddy.test>")
+	conn.ExpectPattern("250 *")
+	conn.Writeln("DATA")
+	conn.ExpectPattern("354 *")
+	conn.Writeln("From: <testing@sender.test>")
+	conn.Writeln("To: <testing@maddy.test>")
+	conn.Writeln("Subject: " + strings.Repeat("A", 2*1024))
+	conn.Writeln("")
+	conn.Writeln("Hi")
+	conn.Writeln(".")
+
+	conn.ExpectPattern("552 5.3.4 Message header size exceeds limit *")
 
 	conn.Writeln("QUIT")
 	conn.ExpectPattern("221 *")

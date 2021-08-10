@@ -88,6 +88,13 @@ func (t *T) Config(cfg string) {
 func (t *T) DNS(zones map[string]mockdns.Zone) {
 	t.Helper()
 
+	if zones == nil {
+		zones = map[string]mockdns.Zone{}
+	}
+	if _, ok := zones["100.97.109.127.in-addr.arpa."]; !ok {
+		zones["100.97.109.127.in-addr.arpa."] = mockdns.Zone{PTR: []string{"client.maddy.test."}}
+	}
+
 	if t.dnsServ != nil {
 		t.Log("NOTE: Multiple DNS calls, replacing the server instance...")
 		t.dnsServ.Close()
@@ -364,8 +371,19 @@ func (t *T) Conn4(sourceIP, portName string) Conn {
 	}
 }
 
+var (
+	DefaultSourceIP    = net.IPv4(127, 109, 97, 100)
+	DefaultSourceIPRev = "100.97.109.127"
+)
+
 func (t *T) ConnUnnamed(port uint16) Conn {
-	conn, err := net.Dial("tcp4", "127.0.0.1:"+strconv.Itoa(int(port)))
+	conn, err := net.DialTCP("tcp4", &net.TCPAddr{
+		IP:   DefaultSourceIP,
+		Port: 0,
+	}, &net.TCPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: int(port),
+	})
 	if err != nil {
 		t.Fatal("Could not connect, is server listening?", err)
 	}

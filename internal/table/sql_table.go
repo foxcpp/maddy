@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
@@ -73,6 +74,31 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 	// sql_table module literally wraps the sql_query module by generating a
 	// configuration block for it.
 
+	var (
+		useNamedArgs string
+
+		lookupQuery string
+		addQuery    string
+		listQuery   string
+		setQuery    string
+		delQuery    string
+	)
+	if driver == "sqlite3" {
+		useNamedArgs = "yes"
+		lookupQuery = fmt.Sprintf("SELECT %s FROM %s WHERE %s = :key", valueColumn, tableName, keyColumn)
+		addQuery = fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES(:key, :value)", tableName, keyColumn, valueColumn)
+		listQuery = fmt.Sprintf("SELECT %s from %s", keyColumn, tableName)
+		setQuery = fmt.Sprintf("UPDATE %s SET %s = :value WHERE %s = :key", tableName, valueColumn, keyColumn)
+		delQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = :key", tableName, keyColumn)
+	} else {
+		useNamedArgs = "no"
+		lookupQuery = fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1", valueColumn, tableName, keyColumn)
+		addQuery = fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES($1, $2)", tableName, keyColumn, valueColumn)
+		listQuery = fmt.Sprintf("SELECT %s from %s", keyColumn, tableName)
+		setQuery = fmt.Sprintf("UPDATE %s SET %s = $2 WHERE %s = $1", tableName, valueColumn, keyColumn)
+		delQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tableName, keyColumn)
+	}
+
 	return s.wrapped.Init(config.NewMap(cfg.Globals, config.Node{
 		Children: []config.Node{
 			{
@@ -84,24 +110,28 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 				Args: dsnParts,
 			},
 			{
+				Name: "named_args",
+				Args: []string{useNamedArgs},
+			},
+			{
 				Name: "lookup",
-				Args: []string{fmt.Sprintf("SELECT %s FROM %s WHERE %s = :key", valueColumn, tableName, keyColumn)},
+				Args: []string{lookupQuery},
 			},
 			{
 				Name: "add",
-				Args: []string{fmt.Sprintf("INSERT INTO %s(%s, %s) VALUES(:key, :value)", tableName, keyColumn, valueColumn)},
+				Args: []string{addQuery},
 			},
 			{
 				Name: "list",
-				Args: []string{fmt.Sprintf("SELECT %s from %s", keyColumn, tableName)},
+				Args: []string{listQuery},
 			},
 			{
 				Name: "set",
-				Args: []string{fmt.Sprintf("UPDATE %s SET %s = :value WHERE %s = :key", tableName, valueColumn, keyColumn)},
+				Args: []string{setQuery},
 			},
 			{
 				Name: "del",
-				Args: []string{fmt.Sprintf("DELETE FROM %s WHERE %s = :key", tableName, keyColumn)},
+				Args: []string{delQuery},
 			},
 			{
 				Name: "init",
@@ -118,8 +148,12 @@ func (s *SQLTable) Close() error {
 	return s.wrapped.Close()
 }
 
-func (s *SQLTable) Lookup(val string) (string, bool, error) {
-	return s.wrapped.Lookup(val)
+func (s *SQLTable) Lookup(ctx context.Context, val string) (string, bool, error) {
+	return s.wrapped.Lookup(ctx, val)
+}
+
+func (s *SQLTable) LookupMulti(ctx context.Context, val string) ([]string, error) {
+	return s.wrapped.LookupMulti(ctx, val)
 }
 
 func (s *SQLTable) Keys() ([]string, error) {
@@ -135,6 +169,5 @@ func (s *SQLTable) SetKey(k, v string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("sql_table", "table.sql_table", NewSQLTable)
 	module.Register("table.sql_table", NewSQLTable)
 }

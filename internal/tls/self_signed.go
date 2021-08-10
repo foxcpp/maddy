@@ -101,10 +101,12 @@ func (f *SelfSignedLoader) InstanceName() string {
 	return f.instName
 }
 
-func (f *SelfSignedLoader) LoadCerts() ([]tls.Certificate, error) {
-	return []tls.Certificate{f.cert}, nil
+func (f *SelfSignedLoader) ConfigureTLS(c *tls.Config) error {
+	c.Certificates = []tls.Certificate{f.cert}
+	return nil
 }
 
 func init() {
+	var _ module.TLSLoader = &SelfSignedLoader{}
 	module.Register("tls.loader.self_signed", NewSelfSignedLoader)
 }

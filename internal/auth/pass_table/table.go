@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package pass_table
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -63,13 +64,13 @@ func (a *Auth) InstanceName() string {
 	return a.instName
 }
 
-func (a *Auth) Lookup(username string) (string, bool, error) {
+func (a *Auth) Lookup(ctx context.Context, username string) (string, bool, error) {
 	key, err := precis.UsernameCaseMapped.CompareKey(username)
 	if err != nil {
 		return "", false, nil
 	}
 
-	return a.table.Lookup(key)
+	return a.table.Lookup(ctx, key)
 }
 
 func (a *Auth) AuthPlain(username, password string) error {
@@ -78,7 +79,7 @@ func (a *Auth) AuthPlain(username, password string) error {
 		return err
 	}
 
-	hash, ok, err := a.table.Lookup(key)
+	hash, ok, err := a.table.Lookup(context.TODO(), key)
 	if !ok {
 		return module.ErrUnknownCredentials
 	}
@@ -121,7 +122,7 @@ func (a *Auth) CreateUser(username, password string) error {
 		return fmt.Errorf("%s: create user %s (raw): %w", a.modName, username, err)
 	}
 
-	_, ok, err = tbl.Lookup(key)
+	_, ok, err = tbl.Lookup(context.TODO(), key)
 	if err != nil {
 		return fmt.Errorf("%s: create user %s: %w", a.modName, key, err)
 	}
@@ -186,6 +187,5 @@ func (a *Auth) DeleteUser(username string) error {
 }
 
 func init() {
-	module.RegisterDeprecated("pass_table", "auth.pass_table", New)
 	module.Register("auth.pass_table", New)
 }

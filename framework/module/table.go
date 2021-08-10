@@ -18,13 +18,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package module
 
-// Tabele is the interface implemented by module that implementation string-to-string
+import "context"
+
+// Table is the interface implemented by module that implementation string-to-string
 // translation.
 //
 // Modules implementing this interface should be registered with prefix
 // "table." in name.
 type Table interface {
-	Lookup(s string) (string, bool, error)
+	Lookup(ctx context.Context, s string) (string, bool, error)
+}
+
+// MultiTable is the interface that module can implement in addition to Table
+// if it can provide multiple values as a lookup result.
+type MultiTable interface {
+	LookupMulti(ctx context.Context, s string) ([]string, error)
 }
 
 type MutableTable interface {

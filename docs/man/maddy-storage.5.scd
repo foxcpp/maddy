@@ -21,12 +21,11 @@ created.
 
 # SQL-based database module (storage.imapsql)
 
-The imapsql module implements unified database for IMAP index and message
+The imapsql module implements database for IMAP index and message
 metadata using SQL-based relational database.
 
-Message contents are stored in an "external store", currently the only
-supported "external store" is a filesystem directory, used by default.
-By default, all messages are stored in StateDirectory/messages under random IDs.
+Message contents are stored in an "external store" defined by msg_store
+directive. By default this is a file system directory under /var/lib/maddy.
 
 Supported RDBMS:
 - SQLite 3.25.0
@@ -40,6 +39,7 @@ PRECIS UsernameCaseMapped profile.
 storage.imapsql {
 	driver sqlite3
 	dsn imapsql.db
+	msg_store fs messages/
 }
 ```
 
@@ -88,10 +88,12 @@ For PostgreSQL: https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parame
 
 Should be specified either via an argument or via this directive.
 
-*Syntax*: fsstore _directory_ ++
-*Default*: messages/
+*Syntax*: msg_store _store_ ++
+*Default*: fs messages/
 
-Directory to store message contents in.
+Module to use for message bodies storage.
+
+See *maddy-blob*(5) for details.
 
 *Syntax*: ++
     compression off ++
@@ -141,7 +143,7 @@ of cache size in KiB.
 SQLite-specific performance tuning option. Amount of milliseconds to wait
 before giving up on DB lock.
 
-*Syntax*: imap_filters { ... } ++
+*Syntax*: imap_filter { ... } ++
 *Default*: not set
 
 Specifies IMAP filters to apply for messages delivered from SMTP pipeline.
@@ -150,8 +152,50 @@ See *maddy-imap*(5) for filter modules usable here.
 
 Ex.
 ```
-imap_filters {
+imap_filter {
 	command /etc/maddy/sieve.sh {account_name}
 }
-}
 ```
+
+*Syntax:* delivery_map *table* ++
+*Default:* identity
+
+Use specified table module (*maddy-tables*(5)) to map recipient
+addresses from incoming messages to mailbox names.
+
+Normalization algorithm specified in delivery_normalize is appied before
+delivery_map.
+
+*Syntax:* delivery_normalize _name_ ++
+*Default:* precis_casefold_email
+
+Normalization function to apply to email addresses before mapping them
+to mailboxes.
+
+See auth_normalize.
+
+*Syntax*: auth_map *table* ++
+*Default*: identity
+
+Use specified table module (*maddy-tables*(5)) to map authentication
+usernames to mailbox names.
+
+Normalization algorithm specified in auth_normalize is applied before
+auth_map.
+
+*Syntax*: auth_normalize _name_ ++
+*Default*: precis_casefold_email
+
+Normalization function to apply to authentication usernames before mapping
+them to mailboxes.
+
+Available options:
+- precis_casefold_email   PRECIS UsernameCaseMapped profile + U-labels form for domain
+- precis_casefold         PRECIS UsernameCaseMapped profile for the entire string
+- precis_email            PRECIS UsernameCasePreserved profile + U-labels form for domain
+- precis                  PRECIS UsernameCasePreserved profile for the entire string
+- casefold                Convert to lower case
+- noop                    Nothing
+
+Note: On message delivery, recipient address is unconditionally normalized
+using precis_casefold_email function.

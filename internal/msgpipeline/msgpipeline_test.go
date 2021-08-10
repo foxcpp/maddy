@@ -95,15 +95,15 @@ func TestMsgPipeline_SourceIn(t *testing.T) {
 	d := MsgPipeline{
 		msgpipelineCfg: msgpipelineCfg{
 			sourceIn: []sourceIn{
-				sourceIn{
+				{
 					t:     testutils.Table{},
 					block: sourceBlock{rejectErr: errors.New("non-matching block was used")},
 				},
-				sourceIn{
+				{
 					t:     testutils.Table{Err: errors.New("this one will fail")},
 					block: sourceBlock{rejectErr: errors.New("failing block was used")},
 				},
-				sourceIn{
+				{
 					t: testutils.Table{
 						M: map[string]string{
 							"specific@example.com": "",
@@ -594,7 +594,7 @@ func TestMsgPipeline_UnicodeNFC_Rcpt(t *testing.T) {
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})
 	if len(target.Messages) != 2 {
-		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 3, len(target.Messages))
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 2, len(target.Messages))
 	}
 	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"rcpt@E\u0301.EXAMPLE.com"})
 	testutils.CheckTestMessage(t, &target, 1, "sender@example.com", []string{"f@E\u0301.exAMPle.com"})

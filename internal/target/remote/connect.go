@@ -285,6 +285,15 @@ func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, 
 	conn.Log = rd.Log
 	conn.Hostname = rd.rt.hostname
 	conn.AddrInSMTPMsg = true
+	if rd.rt.connectTimeout != 0 {
+		conn.ConnectTimeout = rd.rt.connectTimeout
+	}
+	if rd.rt.commandTimeout != 0 {
+		conn.CommandTimeout = rd.rt.commandTimeout
+	}
+	if rd.rt.submissionTimeout != 0 {
+		conn.SubmissionTimeout = rd.rt.submissionTimeout
+	}
 
 	for _, p := range rd.policies {
 		p.PrepareDomain(ctx, domain)

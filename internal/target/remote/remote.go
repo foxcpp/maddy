@@ -32,6 +32,7 @@ import (
 	"runtime/trace"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/address"
@@ -76,6 +77,10 @@ type Target struct {
 	connReuseLimit int
 
 	Log log.Logger
+
+	connectTimeout    time.Duration
+	commandTimeout    time.Duration
+	submissionTimeout time.Duration
 }
 
 var _ module.DeliveryTarget = &Target{}
@@ -130,6 +135,9 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Bool("requiretls_override", false, true, &rt.allowSecOverride)
 	cfg.Bool("relaxed_requiretls", false, true, &rt.relaxedREQUIRETLS)
 	cfg.Int("conn_reuse_limit", false, false, 10, &rt.connReuseLimit)
+	cfg.Duration("connect_timeout", false, false, 5*time.Minute, &rt.connectTimeout)
+	cfg.Duration("command_timeout", false, false, 5*time.Minute, &rt.commandTimeout)
+	cfg.Duration("submission_timeout", false, false, 5*time.Minute, &rt.submissionTimeout)
 
 	poolCfg := pool.Config{
 		MaxKeys:             20000,
@@ -460,6 +468,5 @@ func (rd *remoteDelivery) Close() error {
 }
 
 func init() {
-	module.RegisterDeprecated("remote", "target.remote", New)
 	module.Register("target.remote", New)
 }

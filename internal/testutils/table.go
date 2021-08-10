@@ -18,12 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package testutils
 
+import "context"
+
 type Table struct {
 	M   map[string]string
 	Err error
 }
 
-func (m Table) Lookup(a string) (string, bool, error) {
+func (m Table) Lookup(_ context.Context, a string) (string, bool, error) {
 	b, ok := m.M[a]
 	return b, ok, m.Err
 }

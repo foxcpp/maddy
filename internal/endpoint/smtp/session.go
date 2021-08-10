@@ -40,6 +40,31 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 )
 
+func limitReader(r io.Reader, n int64, err error) *limitedReader {
+	return &limitedReader{R: r, N: n, E: err, Enabled: true}
+}
+
+type limitedReader struct {
+	R       io.Reader
+	N       int64
+	E       error
+	Enabled bool
+}
+
+// same as io.LimitedReader.Read except returning the custom error and the option
+// to be disabled
+func (l *limitedReader) Read(p []byte) (n int, err error) {
+	if l.Enabled && l.N <= 0 {
+		return 0, l.E
+	}
+	if int64(len(p)) > l.N {
+		p = p[0:l.N]
+	}
+	n, err = l.R.Read(p)
+	l.N -= int64(n)
+	return
+}
+
 type Session struct {
 	endp *Endpoint
 
@@ -339,8 +364,14 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Header, buffer.Buffer, error) {
-	bufr := bufio.NewReader(r)
+func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
+	limitr := limitReader(r, int64(s.endp.maxHeaderBytes), &exterrors.SMTPError{
+		Code:         552,
+		EnhancedCode: exterrors.EnhancedCode{5, 3, 4},
+		Message:      "Message header size exceeds limit",
+	})
+
+	bufr := bufio.NewReader(limitr)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		return textproto.Header{}, nil, fmt.Errorf("I/O error while parsing header: %w", err)
@@ -352,6 +383,9 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 			return textproto.Header{}, nil, err
 		}
 	}
+
+	// the header size check is done. The message size will be checked by go-smtp
+	limitr.Enabled = false
 
 	buf, err := s.endp.buffer(bufr)
 	if err != nil {
@@ -373,7 +407,7 @@ func (s *Session) Data(r io.Reader) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}
@@ -428,7 +462,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}

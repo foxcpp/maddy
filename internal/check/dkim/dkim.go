@@ -268,6 +268,5 @@ func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadat
 }
 
 func init() {
-	module.RegisterDeprecated("verify_dkim", "check.dkim", New)
 	module.Register("check.dkim", New)
 }

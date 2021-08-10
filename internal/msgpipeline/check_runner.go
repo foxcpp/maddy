@@ -20,6 +20,7 @@ package msgpipeline
 
 import (
 	"context"
+	"runtime/debug"
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
@@ -178,6 +179,14 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 		state := state
 		data.wg.Add(1)
 		go func() {
+			defer func() {
+				data.wg.Done()
+				if err := recover(); err != nil {
+					stack := debug.Stack()
+					log.Printf("panic during check execution: %v\n%s", err, stack)
+				}
+			}()
+
 			subCheckRes := runner(state)
 
 			// We check the length because we don't want to take locks
@@ -213,8 +222,6 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 				// purposes of deployment testing.
 				cr.log.Error("no check action", subCheckRes.Reason)
 			}
-
-			data.wg.Done()
 		}()
 	}
 

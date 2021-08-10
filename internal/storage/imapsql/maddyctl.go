@@ -29,29 +29,14 @@ func (store *Storage) ListIMAPAccts() ([]string, error) {
 	return store.Back.ListUsers()
 }
 
-func (store *Storage) CreateIMAPAcct(username string) error {
-	accountName, err := prepareUsername(username)
-	if err != nil {
-		return err
-	}
-
+func (store *Storage) CreateIMAPAcct(accountName string) error {
 	return store.Back.CreateUser(accountName)
 }
 
-func (store *Storage) DeleteIMAPAcct(username string) error {
-	accountName, err := prepareUsername(username)
-	if err != nil {
-		return err
-	}
-
+func (store *Storage) DeleteIMAPAcct(accountName string) error {
 	return store.Back.DeleteUser(accountName)
 }
 
-func (store *Storage) GetIMAPAcct(username string) (backend.User, error) {
-	accountName, err := prepareUsername(username)
-	if err != nil {
-		return nil, err
-	}
-
+func (store *Storage) GetIMAPAcct(accountName string) (backend.User, error) {
 	return store.Back.GetUser(accountName)
 }

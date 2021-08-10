@@ -31,29 +31,22 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
-	"runtime/trace"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/emersion/go-imap"
 	sortthread "github.com/emersion/go-imap-sortthread"
-	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/emersion/go-imap/backend"
-	"github.com/emersion/go-message/textproto"
 	imapsql "github.com/foxcpp/go-imap-sql"
-	"github.com/foxcpp/maddy/framework/address"
-	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/dns"
-	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/foxcpp/maddy/internal/target"
+	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/updatepipe"
-	"golang.org/x/text/secure/precis"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -76,142 +69,15 @@ type Storage struct {
 	updPushStop chan struct{}
 
 	filters module.IMAPFilter
-}
 
-type delivery struct {
-	store    *Storage
-	msgMeta  *module.MsgMetadata
-	d        imapsql.Delivery
-	mailFrom string
-
-	addedRcpts map[string]struct{}
-}
-
-func (d *delivery) String() string {
-	return d.store.Name() + ":" + d.store.InstanceName()
-}
-
-func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
-	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
-
-	accountName, err := prepareUsername(rcptTo)
-	if err != nil {
-		return &exterrors.SMTPError{
-			Code:         501,
-			EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-			Message:      "User does not exist",
-			TargetName:   "imapsql",
-			Err:          err,
-		}
-	}
-
-	accountName = strings.ToLower(accountName)
-	if _, ok := d.addedRcpts[accountName]; ok {
-		return nil
-	}
-
-	// This header is added to the message only for that recipient.
-	// go-imap-sql does certain optimizations to store the message
-	// with small amount of per-recipient data in a efficient way.
-	userHeader := textproto.Header{}
-	userHeader.Add("Delivered-To", accountName)
-
-	if err := d.d.AddRcpt(accountName, userHeader); err != nil {
-		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
-			return &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 1, 1},
-				Message:      "User does not exist",
-				TargetName:   "imapsql",
-				Err:          err,
-			}
-		}
-		if _, ok := err.(imapsql.SerializationError); ok {
-			return &exterrors.SMTPError{
-				Code:         453,
-				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-				Message:      "Storage access serialiation problem, try again later",
-				TargetName:   "imapsql",
-				Err:          err,
-			}
-		}
-		return err
-	}
-
-	d.addedRcpts[accountName] = struct{}{}
-	return nil
-}
-
-func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
-	defer trace.StartRegion(ctx, "sql/Body").End()
-
-	if !d.msgMeta.Quarantine && d.store.filters != nil {
-		for rcpt := range d.addedRcpts {
-			folder, flags, err := d.store.filters.IMAPFilter(rcpt, d.msgMeta, header, body)
-			if err != nil {
-				d.store.Log.Error("IMAPFilter failed", err, "rcpt", rcpt)
-				continue
-			}
-			d.d.UserMailbox(rcpt, folder, flags)
-		}
-	}
-
-	if d.msgMeta.Quarantine {
-		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
-			if _, ok := err.(imapsql.SerializationError); ok {
-				return &exterrors.SMTPError{
-					Code:         453,
-					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-					Message:      "Storage access serialiation problem, try again later",
-					TargetName:   "imapsql",
-					Err:          err,
-				}
-			}
-			return err
-		}
-	}
-
-	header = header.Copy()
-	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
-	err := d.d.BodyParsed(header, body.Len(), body)
-	if _, ok := err.(imapsql.SerializationError); ok {
-		return &exterrors.SMTPError{
-			Code:         453,
-			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-			Message:      "Storage access serialiation problem, try again later",
-			TargetName:   "imapsql",
-			Err:          err,
-		}
-	}
-	return err
-}
-
-func (d *delivery) Abort(ctx context.Context) error {
-	defer trace.StartRegion(ctx, "sql/Abort").End()
-
-	return d.d.Abort()
-}
-
-func (d *delivery) Commit(ctx context.Context) error {
-	defer trace.StartRegion(ctx, "sql/Commit").End()
-
-	return d.d.Commit()
-}
-
-func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	defer trace.StartRegion(ctx, "sql/Start").End()
-
-	return &delivery{
-		store:      store,
-		msgMeta:    msgMeta,
-		mailFrom:   mailFrom,
-		d:          store.Back.NewDelivery(),
-		addedRcpts: map[string]struct{}{},
-	}, nil
+	deliveryMap       module.Table
+	deliveryNormalize func(context.Context, string) (string, error)
+	authMap           module.Table
+	authNormalize     func(context.Context, string) (string, error)
 }
 
 func (store *Storage) Name() string {
-	return "sql"
+	return "imapsql"
 }
 
 func (store *Storage) InstanceName() string {
@@ -237,11 +103,14 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 
 func (store *Storage) Init(cfg *config.Map) error {
 	var (
-		driver          string
-		dsn             []string
-		fsstoreLocation string
-		appendlimitVal  = -1
-		compression     []string
+		driver            string
+		dsn               []string
+		appendlimitVal    = -1
+		compression       []string
+		authNormalize     string
+		deliveryNormalize string
+
+		blobStore module.BlobStore
 	)
 
 	opts := imapsql.Opts{
@@ -251,14 +120,22 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	cfg.String("driver", false, false, store.driver, &driver)
 	cfg.StringList("dsn", false, false, store.dsn, &dsn)
-	cfg.Custom("fsstore", false, false, func() (interface{}, error) {
-		return "messages", nil
+	cfg.Callback("fsstore", func(m *config.Map, node config.Node) error {
+		store.Log.Msg("'fsstore' directive is deprecated, use 'msg_store fs' instead")
+		return modconfig.ModuleFromNode("storage.blob", append([]string{"fs"}, node.Args...),
+			node, m.Globals, &blobStore)
+	})
+	cfg.Custom("msg_store", false, false, func() (interface{}, error) {
+		var store module.BlobStore
+		err := modconfig.ModuleFromNode("storage.blob", []string{"fs", "messages"},
+			config.Node{}, nil, &store)
+		return store, err
 	}, func(m *config.Map, node config.Node) (interface{}, error) {
-		if len(node.Args) != 1 {
-			return nil, config.NodeErr(node, "expected 0 or 1 arguments")
-		}
-		return node.Args[0], nil
-	}, &fsstoreLocation)
+		var store module.BlobStore
+		err := modconfig.ModuleFromNode("storage.blob", node.Args,
+			node, m.Globals, &store)
+		return store, err
+	}, &blobStore)
 	cfg.StringList("compression", false, false, []string{"off"}, &compression)
 	cfg.DataSize("appendlimit", false, false, 32*1024*1024, &appendlimitVal)
 	cfg.Bool("debug", true, false, &store.Log.Debug)
@@ -273,6 +150,14 @@ func (store *Storage) Init(cfg *config.Map) error {
 		err := modconfig.GroupFromNode("imap_filters", node.Args, node, m.Globals, &filter)
 		return filter, err
 	}, &store.filters)
+	cfg.Custom("auth_map", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, modconfig.TableDirective, &store.authMap)
+	cfg.String("auth_normalize", false, false, "precis_casefold_email", &authNormalize)
+	cfg.Custom("delivery_map", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, modconfig.TableDirective, &store.deliveryMap)
+	cfg.String("delivery_normalize", false, false, "precis_casefold_email", &deliveryNormalize)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -283,6 +168,48 @@ func (store *Storage) Init(cfg *config.Map) error {
 	}
 	if driver == "" {
 		return errors.New("imapsql: driver is required")
+	}
+
+	deliveryNormFunc, ok := authz.NormalizeFuncs[deliveryNormalize]
+	if !ok {
+		return errors.New("imapsql: unknown normalization function: " + deliveryNormalize)
+	}
+	store.deliveryNormalize = func(ctx context.Context, s string) (string, error) {
+		return deliveryNormFunc(s)
+	}
+	if store.deliveryMap != nil {
+		store.deliveryNormalize = func(ctx context.Context, email string) (string, error) {
+			email, err := deliveryNormFunc(email)
+			if err != nil {
+				return "", err
+			}
+			mapped, ok, err := store.deliveryMap.Lookup(ctx, email)
+			if err != nil || !ok {
+				return "", userDoesNotExist(err)
+			}
+			return mapped, nil
+		}
+	}
+
+	authNormFunc, ok := authz.NormalizeFuncs[authNormalize]
+	if !ok {
+		return errors.New("imapsql: unknown normalization function: " + authNormalize)
+	}
+	store.authNormalize = func(ctx context.Context, s string) (string, error) {
+		return authNormFunc(s)
+	}
+	if store.authMap != nil {
+		store.authNormalize = func(ctx context.Context, username string) (string, error) {
+			username, err := authNormFunc(username)
+			if err != nil {
+				return "", err
+			}
+			mapped, ok, err := store.authMap.Lookup(ctx, username)
+			if err != nil || !ok {
+				return "", userDoesNotExist(err)
+			}
+			return mapped, nil
+		}
 	}
 
 	opts.Log = &store.Log
@@ -301,11 +228,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 	var err error
 
 	dsnStr := strings.Join(dsn, " ")
-
-	if err := os.MkdirAll(fsstoreLocation, os.ModeDir|os.ModePerm); err != nil {
-		return err
-	}
-	extStore := &imapsql.FSStore{Root: fsstoreLocation}
 
 	if len(compression) != 0 {
 		switch compression[0] {
@@ -329,7 +251,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
-	store.Back, err = imapsql.New(driver, dsnStr, extStore, opts)
+	store.Back, err = imapsql.New(driver, dsnStr, ExtBlobStore{Base: blobStore}, opts)
 	if err != nil {
 		return fmt.Errorf("imapsql: %s", err)
 	}
@@ -387,6 +309,11 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 		defer func() {
 			store.updPushStop <- struct{}{}
 			close(wrapped)
+
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				log.Printf("panic during imapsql update push: %v\n%s", err, stack)
+			}
 		}()
 
 		for {
@@ -440,34 +367,8 @@ func (store *Storage) EnableChildrenExt() bool {
 	return store.Back.EnableChildrenExt()
 }
 
-func prepareUsername(username string) (string, error) {
-	mbox, domain, err := address.Split(username)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	// PRECIS is not included in the regular address.ForLookup since it reduces
-	// the range of valid addresses to a subset of actually valid values.
-	// PRECIS is a matter of our own local policy, not a general rule for all
-	// email addresses.
-
-	// Side note: For used profiles, there is no practical difference between
-	// CompareKey and String.
-	mbox, err = precis.UsernameCaseMapped.CompareKey(mbox)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	domain, err = dns.ForLookup(domain)
-	if err != nil {
-		return "", fmt.Errorf("imapsql: username prepare: %w", err)
-	}
-
-	return mbox + "@" + domain, nil
-}
-
 func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error) {
-	accountName, err := prepareUsername(username)
+	accountName, err := store.authNormalize(context.TODO(), username)
 	if err != nil {
 		return nil, backend.ErrInvalidCredentials
 	}
@@ -475,8 +376,8 @@ func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error)
 	return store.Back.GetOrCreateUser(accountName)
 }
 
-func (store *Storage) Lookup(key string) (string, bool, error) {
-	accountName, err := prepareUsername(key)
+func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, error) {
+	accountName, err := store.authNormalize(ctx, key)
 	if err != nil {
 		return "", false, nil
 	}
@@ -521,7 +422,6 @@ func (store *Storage) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
 }
 
 func init() {
-	module.RegisterDeprecated("imapsql", "storage.imapsql", New)
 	module.Register("storage.imapsql", New)
 	module.Register("target.imapsql", New)
 }

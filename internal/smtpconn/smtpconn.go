@@ -34,6 +34,7 @@ import (
 	"io"
 	"net"
 	"runtime/trace"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -51,6 +52,17 @@ type C struct {
 	// Dialer to use to estabilish new network connections. Set to net.Dialer
 	// DialContext by New.
 	Dialer func(ctx context.Context, network, addr string) (net.Conn, error)
+
+	// Timeout for most session commands (EHLO, MAIL, RCPT, DATA, STARTTLS).
+	// Set to 5 mins by New.
+	CommandTimeout time.Duration
+
+	// Timeout for the initial TCP connection establishment.
+	ConnectTimeout time.Duration
+
+	// Timeout for the final dot. Set to 12 mins by New.
+	// (see go-smtp source for explanation of used defaults).
+	SubmissionTimeout time.Duration
 
 	// Hostname to sent in the EHLO/HELO command. Set to
 	// 'localhost.localdomain' by New. Expected to be encoded in ACE form.
@@ -75,9 +87,12 @@ type C struct {
 // with resonable default values.
 func New() *C {
 	return &C{
-		Dialer:    (&net.Dialer{}).DialContext,
-		TLSConfig: &tls.Config{},
-		Hostname:  "localhost.localdomain",
+		Dialer:            (&net.Dialer{}).DialContext,
+		ConnectTimeout:    5 * time.Minute,
+		CommandTimeout:    5 * time.Minute,
+		SubmissionTimeout: 12 * time.Minute,
+		TLSConfig:         &tls.Config{},
+		Hostname:          "localhost.localdomain",
 	}
 }
 
@@ -188,7 +203,10 @@ func (err TLSError) Unwrap() error {
 
 func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, cl *smtp.Client, err error) {
 	var conn net.Conn
-	conn, err = c.Dialer(ctx, endp.Network(), endp.Address())
+
+	dialCtx, cancel := context.WithTimeout(ctx, c.ConnectTimeout)
+	conn, err = c.Dialer(dialCtx, endp.Network(), endp.Address())
+	cancel()
 	if err != nil {
 		return false, nil, err
 	}
@@ -199,6 +217,7 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 		conn = tls.Client(conn, cfg)
 	}
 
+	// This uses initial greeting timeout of 5 minutes (hardcoded).
 	if lmtp {
 		cl, err = smtp.NewClientLMTP(conn, endp.Host)
 	} else {
@@ -208,6 +227,9 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 		conn.Close()
 		return false, nil, err
 	}
+
+	cl.CommandTimeout = c.CommandTimeout
+	cl.SubmissionTimeout = c.SubmissionTimeout
 
 	// i18n: hostname is already expected to be in A-labels form.
 	if err := cl.Hello(c.Hostname); err != nil {

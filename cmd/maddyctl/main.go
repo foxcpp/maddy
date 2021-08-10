@@ -722,6 +722,7 @@ func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo
 		return nil, nil, err
 	}
 
+	module.NoRun = true
 	_, mods, err := maddy.RegisterModules(globals, cfgNodes)
 	if err != nil {
 		return nil, nil, err
