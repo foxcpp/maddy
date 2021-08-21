@@ -114,6 +114,9 @@ func (s *Store) Create(key string) (module.Blob, error) {
 
 	go func() {
 		_, err := s.cl.PutObject(context.TODO(), s.bucketName, s.objectPrefix+key, pr, -1, minio.PutObjectOptions{})
+		if err != nil {
+			pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err))
+		}
 		errCh <- err
 	}()
 
