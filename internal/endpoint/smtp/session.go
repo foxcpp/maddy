@@ -54,7 +54,10 @@ type limitedReader struct {
 // same as io.LimitedReader.Read except returning the custom error and the option
 // to be disabled
 func (l *limitedReader) Read(p []byte) (n int, err error) {
-	if l.Enabled && l.N <= 0 {
+	if !l.Enabled {
+		return l.R.Read(p)
+	}
+	if l.N <= 0 {
 		return 0, l.E
 	}
 	if int64(len(p)) > l.N {
