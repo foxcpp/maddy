@@ -309,6 +309,21 @@ dns hetzner {
 }
 ```
 
+- namecheap
+
+```
+dns namecheap {
+    api_key "..."
+    api_username "..."
+
+    # optional: API endpoint, production one is used if not set.
+    endpoint "https://api.namecheap.com/xml.response"
+
+    # optional: your public IP, discovered using icanhazip.com if not set
+    client_ip 1.2.3.4
+}
+```
+
 - googleclouddns (non-default)
 
 ```

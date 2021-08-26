@@ -42,6 +42,7 @@ require (
 	github.com/libdns/leaseweb v0.2.1
 	github.com/libdns/libdns v0.2.1
 	github.com/libdns/metaname v0.3.0
+	github.com/libdns/namecheap v0.0.0-20210820020909-5f694e73b00f
 	github.com/libdns/namedotcom v0.3.3
 	github.com/libdns/route53 v1.1.1
 	github.com/libdns/vultr v0.0.0-20201128180404-1d5ee21ea62f
