@@ -105,6 +105,9 @@ func (b *s3blob) Write(p []byte) (n int, err error) {
 }
 
 func (b *s3blob) Close() error {
+	if !b.didSync {
+		b.pw.CloseWithError(fmt.Errorf("storage.blob.s3: blob closed without Sync"))
+	}
 	return nil
 }
 
@@ -120,7 +123,10 @@ func (s *Store) Create(key string) (module.Blob, error) {
 		errCh <- err
 	}()
 
-	return &s3blob{pw: pw, errCh: errCh}, nil
+	return &s3blob{
+		pw:    pw,
+		errCh: errCh,
+	}, nil
 }
 
 func (s *Store) Open(key string) (io.ReadCloser, error) {
