@@ -116,7 +116,16 @@ func (s *Store) Create(ctx context.Context, key string, blobSize int64) (module.
 	errCh := make(chan error, 1)
 
 	go func() {
-		_, err := s.cl.PutObject(ctx, s.bucketName, s.objectPrefix+key, pr, blobSize, minio.PutObjectOptions{})
+		partSize := uint64(0)
+		if blobSize == module.UnknownBlobSize {
+			// Without this, minio-go will allocate 500 MiB buffer which
+			// is a little too much.
+			// https://github.com/minio/minio-go/issues/1478
+			partSize = 1 * 1024 * 1024 /* 1 MiB */
+		}
+		_, err := s.cl.PutObject(ctx, s.bucketName, s.objectPrefix+key, pr, blobSize, minio.PutObjectOptions{
+			PartSize: partSize,
+		})
 		if err != nil {
 			pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err))
 		}
