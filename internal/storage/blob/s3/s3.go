@@ -111,12 +111,12 @@ func (b *s3blob) Close() error {
 	return nil
 }
 
-func (s *Store) Create(key string) (module.Blob, error) {
+func (s *Store) Create(ctx context.Context, key string, blobSize int64) (module.Blob, error) {
 	pr, pw := io.Pipe()
 	errCh := make(chan error, 1)
 
 	go func() {
-		_, err := s.cl.PutObject(context.TODO(), s.bucketName, s.objectPrefix+key, pr, -1, minio.PutObjectOptions{})
+		_, err := s.cl.PutObject(ctx, s.bucketName, s.objectPrefix+key, pr, blobSize, minio.PutObjectOptions{})
 		if err != nil {
 			pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err))
 		}
@@ -129,8 +129,8 @@ func (s *Store) Create(key string) (module.Blob, error) {
 	}, nil
 }
 
-func (s *Store) Open(key string) (io.ReadCloser, error) {
-	obj, err := s.cl.GetObject(context.TODO(), s.bucketName, s.objectPrefix+key, minio.GetObjectOptions{})
+func (s *Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	obj, err := s.cl.GetObject(ctx, s.bucketName, s.objectPrefix+key, minio.GetObjectOptions{})
 	if err != nil {
 		resp := minio.ToErrorResponse(err)
 		if resp.StatusCode == http.StatusNotFound {
@@ -141,10 +141,10 @@ func (s *Store) Open(key string) (io.ReadCloser, error) {
 	return obj, nil
 }
 
-func (s *Store) Delete(keys []string) error {
+func (s *Store) Delete(ctx context.Context, keys []string) error {
 	var lastErr error
 	for _, k := range keys {
-		lastErr = s.cl.RemoveObject(context.TODO(), s.bucketName, s.objectPrefix+k, minio.RemoveObjectOptions{})
+		lastErr = s.cl.RemoveObject(ctx, s.bucketName, s.objectPrefix+k, minio.RemoveObjectOptions{})
 		if lastErr != nil {
 			s.log.Error("failed to delete object", lastErr, s.objectPrefix+k)
 		}
@@ -153,5 +153,6 @@ func (s *Store) Delete(keys []string) error {
 }
 
 func init() {
+	var _ module.BlobStore = &Store{}
 	module.Register(modName, New)
 }

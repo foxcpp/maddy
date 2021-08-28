@@ -1,6 +1,7 @@
 package imapsql
 
 import (
+	"context"
 	"io"
 
 	imapsql "github.com/foxcpp/go-imap-sql"
@@ -32,7 +33,7 @@ type ExtBlobStore struct {
 }
 
 func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
-	blob, err := e.Base.Create(key)
+	blob, err := e.Base.Create(context.TODO(), key, -1)
 	if err != nil {
 		return nil, imapsql.ExternalError{
 			NonExistent: err == module.ErrNoSuchBlob,
@@ -44,7 +45,7 @@ func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
 }
 
 func (e ExtBlobStore) Open(key string) (imapsql.ExtStoreObj, error) {
-	blob, err := e.Base.Open(key)
+	blob, err := e.Base.Open(context.TODO(), key)
 	if err != nil {
 		return nil, imapsql.ExternalError{
 			NonExistent: err == module.ErrNoSuchBlob,
@@ -56,7 +57,7 @@ func (e ExtBlobStore) Open(key string) (imapsql.ExtStoreObj, error) {
 }
 
 func (e ExtBlobStore) Delete(keys []string) error {
-	err := e.Base.Delete(keys)
+	err := e.Base.Delete(context.TODO(), keys)
 	if err != nil {
 		return imapsql.ExternalError{
 			Key: "",
