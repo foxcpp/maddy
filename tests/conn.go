@@ -111,18 +111,17 @@ func (c *Conn) Readln() (string, error) {
 	return c.Scanner.Text(), nil
 }
 
-func (c *Conn) Expect(line string) error {
+func (c *Conn) Expect(line string) {
 	c.T.Helper()
 
 	actual, err := c.Readln()
 	if err != nil {
-		return err
+		c.T.Fatal("Unexpected I/O error:", err)
 	}
 
 	if line != actual {
 		c.T.Fatalf("Response line not matching the expected one, want %q", line)
 	}
-	return nil
 }
 
 // ExpectPattern reads a line from the connection socket and checks whether is
