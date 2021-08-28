@@ -14,6 +14,8 @@ type Blob interface {
 
 var ErrNoSuchBlob = errors.New("blob_store: no such object")
 
+const UnknownBlobSize int64 = -1
+
 // BlobStore is the interface used by modules providing large binary object
 // storage.
 type BlobStore interface {

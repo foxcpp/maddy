@@ -32,8 +32,8 @@ type ExtBlobStore struct {
 	Base module.BlobStore
 }
 
-func (e ExtBlobStore) Create(key string) (imapsql.ExtStoreObj, error) {
-	blob, err := e.Base.Create(context.TODO(), key, -1)
+func (e ExtBlobStore) Create(key string, objSize int64) (imapsql.ExtStoreObj, error) {
+	blob, err := e.Base.Create(context.TODO(), key, objSize)
 	if err != nil {
 		return nil, imapsql.ExternalError{
 			NonExistent: err == module.ErrNoSuchBlob,
