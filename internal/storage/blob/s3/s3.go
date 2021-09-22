@@ -106,7 +106,9 @@ func (b *s3blob) Write(p []byte) (n int, err error) {
 
 func (b *s3blob) Close() error {
 	if !b.didSync {
-		b.pw.CloseWithError(fmt.Errorf("storage.blob.s3: blob closed without Sync"))
+		if err := b.pw.CloseWithError(fmt.Errorf("storage.blob.s3: blob closed without Sync")); err != nil {
+			panic(err)
+		}
 	}
 	return nil
 }
@@ -127,7 +129,9 @@ func (s *Store) Create(ctx context.Context, key string, blobSize int64) (module.
 			PartSize: partSize,
 		})
 		if err != nil {
-			pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err))
+			if err := pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err)); err != nil {
+				panic(err)
+			}
 		}
 		errCh <- err
 	}()

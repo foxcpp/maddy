@@ -17,4 +17,4 @@ linters:
   - whitespace
   - nakedret
   - dogsled
-  - scopelint
+  - exportloopref

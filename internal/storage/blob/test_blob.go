@@ -52,7 +52,9 @@ func TestStore(t *testing.T, newStore func() module.BlobStore, cleanStore func(m
 	}
 	cleanBackend := func(bi backendtests.Backend) {
 		b := bi.(testBack)
-		b.Backend.(*imapsql.Backend).Close()
+		if err := b.Backend.(*imapsql.Backend).Close(); err != nil {
+			panic(err)
+		}
 		cleanStore(b.ExtStore)
 	}
 

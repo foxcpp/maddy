@@ -79,7 +79,6 @@ func (e Endpoint) Address() string {
 		return e.Path
 	}
 	return net.JoinHostPort(e.Host, e.Port)
-
 }
 
 func (e Endpoint) IsTLS() bool {
