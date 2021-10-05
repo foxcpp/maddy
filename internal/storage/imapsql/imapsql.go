@@ -384,7 +384,7 @@ func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, err
 
 	usr, err := store.Back.GetUser(accountName)
 	if err != nil {
-		if err == imapsql.ErrUserDoesntExists {
+		if errors.Is(err, imapsql.ErrUserDoesntExists) {
 			return "", false, nil
 		}
 		return "", false, err

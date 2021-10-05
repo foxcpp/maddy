@@ -41,7 +41,7 @@ func NewStatic(modName, instName string, _, _ []string) (module.Module, error) {
 }
 
 func (s *Static) Init(cfg *config.Map) error {
-	cfg.Callback("entry", func(m *config.Map, node config.Node) error {
+	cfg.Callback("entry", func(_ *config.Map, node config.Node) error {
 		if len(node.Args) < 2 {
 			return config.NodeErr(node, "expected at least one value")
 		}

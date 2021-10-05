@@ -24,9 +24,7 @@ import (
 	"time"
 )
 
-var (
-	overrideServ string
-)
+var overrideServ string
 
 // override globally overrides the used DNS server address with one provided.
 // This function is meant only for testing. It should be called before any modules are
@@ -36,7 +34,7 @@ var (
 // will be available both using TCP and UDP on the same port.
 func override(server string) {
 	net.DefaultResolver.PreferGo = true
-	net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
+	net.DefaultResolver.Dial = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		dialer := net.Dialer{
 			// This is localhost, it is either running or not. Fail quickly if
 			// we can't connect.

@@ -105,23 +105,45 @@ func (b *s3blob) Write(p []byte) (n int, err error) {
 }
 
 func (b *s3blob) Close() error {
+	if !b.didSync {
+		if err := b.pw.CloseWithError(fmt.Errorf("storage.blob.s3: blob closed without Sync")); err != nil {
+			panic(err)
+		}
+	}
 	return nil
 }
 
-func (s *Store) Create(key string) (module.Blob, error) {
+func (s *Store) Create(ctx context.Context, key string, blobSize int64) (module.Blob, error) {
 	pr, pw := io.Pipe()
 	errCh := make(chan error, 1)
 
 	go func() {
-		_, err := s.cl.PutObject(context.TODO(), s.bucketName, s.objectPrefix+key, pr, -1, minio.PutObjectOptions{})
+		partSize := uint64(0)
+		if blobSize == module.UnknownBlobSize {
+			// Without this, minio-go will allocate 500 MiB buffer which
+			// is a little too much.
+			// https://github.com/minio/minio-go/issues/1478
+			partSize = 1 * 1024 * 1024 /* 1 MiB */
+		}
+		_, err := s.cl.PutObject(ctx, s.bucketName, s.objectPrefix+key, pr, blobSize, minio.PutObjectOptions{
+			PartSize: partSize,
+		})
+		if err != nil {
+			if err := pr.CloseWithError(fmt.Errorf("s3 PutObject: %w", err)); err != nil {
+				panic(err)
+			}
+		}
 		errCh <- err
 	}()
 
-	return &s3blob{pw: pw, errCh: errCh}, nil
+	return &s3blob{
+		pw:    pw,
+		errCh: errCh,
+	}, nil
 }
 
-func (s *Store) Open(key string) (io.ReadCloser, error) {
-	obj, err := s.cl.GetObject(context.TODO(), s.bucketName, s.objectPrefix+key, minio.GetObjectOptions{})
+func (s *Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	obj, err := s.cl.GetObject(ctx, s.bucketName, s.objectPrefix+key, minio.GetObjectOptions{})
 	if err != nil {
 		resp := minio.ToErrorResponse(err)
 		if resp.StatusCode == http.StatusNotFound {
@@ -132,10 +154,10 @@ func (s *Store) Open(key string) (io.ReadCloser, error) {
 	return obj, nil
 }
 
-func (s *Store) Delete(keys []string) error {
+func (s *Store) Delete(ctx context.Context, keys []string) error {
 	var lastErr error
 	for _, k := range keys {
-		lastErr = s.cl.RemoveObject(context.TODO(), s.bucketName, s.objectPrefix+k, minio.RemoveObjectOptions{})
+		lastErr = s.cl.RemoveObject(ctx, s.bucketName, s.objectPrefix+k, minio.RemoveObjectOptions{})
 		if lastErr != nil {
 			s.log.Error("failed to delete object", lastErr, s.objectPrefix+k)
 		}
@@ -144,5 +166,6 @@ func (s *Store) Delete(keys []string) error {
 }
 
 func init() {
+	var _ module.BlobStore = &Store{}
 	module.Register(modName, New)
 }

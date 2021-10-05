@@ -70,17 +70,15 @@ func (e Endpoint) String() string {
 func (e Endpoint) Network() string {
 	if e.Scheme == "unix" {
 		return "unix"
-	} else {
-		return "tcp"
 	}
+	return "tcp"
 }
 
 func (e Endpoint) Address() string {
 	if e.Scheme == "unix" {
 		return e.Path
-	} else {
-		return net.JoinHostPort(e.Host, e.Port)
 	}
+	return net.JoinHostPort(e.Host, e.Port)
 }
 
 func (e Endpoint) IsTLS() bool {

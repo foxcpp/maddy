@@ -127,7 +127,7 @@ func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, 
 
 	// 0777 because we have public keys in here too and they don't
 	// need protection. Individual private key files have 0600 perms.
-	if err := os.MkdirAll(filepath.Dir(keyPath), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Dir(keyPath), 0o777); err != nil {
 		return nil, wrapErr(err)
 	}
 
@@ -136,7 +136,7 @@ func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, 
 		return nil, wrapErr(err)
 	}
 
-	f, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return nil, wrapErr(err)
 	}

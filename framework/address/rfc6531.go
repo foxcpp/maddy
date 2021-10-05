@@ -25,9 +25,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var (
-	ErrUnicodeMailbox = errors.New("address: cannot convert the Unicode local-part to the ACE form")
-)
+var ErrUnicodeMailbox = errors.New("address: cannot convert the Unicode local-part to the ACE form")
 
 // ToASCII converts the domain part of the email address to the A-label form and
 // fails with ErrUnicodeMailbox if the local-part contains non-ASCII characters.

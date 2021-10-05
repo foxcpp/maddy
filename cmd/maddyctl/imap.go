@@ -146,11 +146,7 @@ func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 		}
 	}
 
-	if err := u.DeleteMailbox(name); err != nil {
-		return err
-	}
-
-	return nil
+	return u.DeleteMailbox(name)
 }
 
 func mboxesRename(be module.Storage, ctx *cli.Context) error {
@@ -264,11 +260,7 @@ func msgsRemove(be module.Storage, ctx *cli.Context) error {
 	}
 
 	mboxB := mbox.(*imapsql.Mailbox)
-	if err := mboxB.DelMessages(ctx.Bool("uid"), seq); err != nil {
-		return err
-	}
-
-	return nil
+	return mboxB.DelMessages(ctx.Bool("uid"), seq)
 }
 
 func msgsCopy(be module.Storage, ctx *cli.Context) error {

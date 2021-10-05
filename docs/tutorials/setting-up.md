@@ -33,7 +33,7 @@ Your options are:
 * Pre-built tarball (Linux, amd64)
 
     Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
-    [maddy.email](https://maddy.email/).
+    [maddy.email/builds](https://maddy.email/builds/).
 
 	The tarball includes maddy and maddyctl executables you can
 	copy into /usr/local/bin as well as systemd unit file you can
@@ -184,9 +184,9 @@ _smtp._tls.example.org. TXT    "v=TLSRPTv1;rua=mailto:postmaster@example.org"
 And the last one, DKIM key, is a bit tricky. maddy generated a key for you on
 the first start-up. You can find it in
 /var/lib/maddy/dkim_keys/example.org_default.dns. You need to put it in a TXT
-record for `default._domainkey.example.org` domain, like that:
+record for `default._domainkey.example.org.` domain, like that:
 ```
-default._domainkey.example.org    TXT   "v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg="
+default._domainkey.example.org.    TXT   "v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg="
 ```
 
 ## MTA-STS and DANE

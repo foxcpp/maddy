@@ -91,7 +91,10 @@ func (a *Auth) Lookup(username string) (string, bool, error) {
 
 	ent, err := Lookup(username)
 	if err != nil {
-		return "", false, nil
+		if errors.Is(err, ErrNoSuchUser) {
+			return "", false, nil
+		}
+		return "", false, err
 	}
 
 	if !ent.IsAccountValid() {
@@ -120,7 +123,7 @@ func (a *Auth) AuthPlain(username, password string) error {
 	}
 
 	if err := ent.VerifyPassword(password); err != nil {
-		if err == ErrWrongPassword {
+		if errors.Is(err, ErrWrongPassword) {
 			return module.ErrUnknownCredentials
 		}
 		return err

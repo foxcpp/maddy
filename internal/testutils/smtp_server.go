@@ -185,11 +185,9 @@ func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
 
 type SMTPServerConfigureFunc func(*smtp.Server)
 
-var (
-	AuthDisabled = func(s *smtp.Server) {
-		s.AuthDisabled = true
-	}
-)
+var AuthDisabled = func(s *smtp.Server) {
+	s.AuthDisabled = true
+}
 
 func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTPBackend, *smtp.Server) {
 	t.Helper()
@@ -383,7 +381,7 @@ func CheckSMTPConnLeak(t *testing.T, srv *smtp.Server) {
 	// wait a bit for handleQuit in go-smtp to do its work.
 	for i := 0; i < 10; i++ {
 		found := false
-		srv.ForEachConn(func(c *smtp.Conn) {
+		srv.ForEachConn(func(_ *smtp.Conn) {
 			found = true
 		})
 		if !found {

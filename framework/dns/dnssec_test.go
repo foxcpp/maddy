@@ -130,7 +130,7 @@ func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
 	// Silence log messages about disregarded I/O errors.
 	log.DefaultLogger.Out = nil
 
-	test := func(aAct, aaaaAct TestSrvAction, aAD, aaaaAD bool, ad bool, addrs []net.IP, err bool) {
+	test := func(aAct, aaaaAct TestSrvAction, aAD, aaaaAD, ad bool, addrs []net.IP, err bool) {
 		t.Helper()
 		t.Run(fmt.Sprintln(aAct, aaaaAct, aAD, aaaaAD), func(t *testing.T) {
 			t.Helper()

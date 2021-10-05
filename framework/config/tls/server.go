@@ -88,7 +88,7 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 
 	childM.Custom("loader", false, false, func() (interface{}, error) {
 		return loader, nil
-	}, func(m *config.Map, node config.Node) (interface{}, error) {
+	}, func(_ *config.Map, node config.Node) (interface{}, error) {
 		var l module.TLSLoader
 		err := modconfig.ModuleFromNode("tls.loader", node.Args, node, globals, &l)
 		return l, err

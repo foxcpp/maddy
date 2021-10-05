@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func addrFuncTest(t *testing.T, f func(string) (string, error)) func(in string, wantOut string, fail bool) {
+func addrFuncTest(t *testing.T, f func(string) (string, error)) func(in, wantOut string, fail bool) {
 	return func(in, wantOut string, fail bool) {
 		t.Helper()
 

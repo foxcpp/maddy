@@ -80,7 +80,7 @@ func (m *Map) AllowUnknown() {
 // slice. At least one argument should be present.
 //
 // See Map.Custom for description of inheritGlobal and required.
-func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []string, defaultVal []string, store *[]string) {
+func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed, defaultVal []string, store *[]string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
 	}, func(_ *Map, node Node) (interface{}, error) {

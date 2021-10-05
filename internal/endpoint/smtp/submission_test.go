@@ -39,7 +39,7 @@ func init() {
 }
 
 func TestSubmissionPrepare(t *testing.T) {
-	test := func(hdrMap map[string][]string, expectedMap map[string][]string) {
+	test := func(hdrMap, expectedMap map[string][]string) {
 		t.Helper()
 
 		hdr := textproto.Header{}

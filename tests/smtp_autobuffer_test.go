@@ -21,11 +21,102 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package tests_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/foxcpp/maddy/tests"
 )
+
+func TestSMTPEndpoint_LargeMessage(tt *testing.T) {
+	// Send 1.44 MiB message to verify it being handled correctly
+	// everywhere.
+	// (Issue 389)
+
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(nil)
+	t.Port("imap")
+	t.Port("smtp")
+	t.Config(`
+		storage.imapsql test_store {
+			driver sqlite3
+			dsn imapsql.db
+		}
+
+		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+			tls off
+
+			auth dummy
+			storage &test_store
+		}
+
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname maddy.test
+			tls off
+
+			deliver_to &test_store
+		}
+	`)
+	t.Run(2)
+	defer t.Close()
+
+	imapConn := t.Conn("imap")
+	defer imapConn.Close()
+	imapConn.ExpectPattern(`\* OK *`)
+	imapConn.Writeln(". LOGIN testusr@maddy.test 1234")
+	imapConn.ExpectPattern(". OK *")
+	imapConn.Writeln(". SELECT INBOX")
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`\* *`)
+	imapConn.ExpectPattern(`. OK *`)
+
+	smtpConn := t.Conn("smtp")
+	defer smtpConn.Close()
+	smtpConn.SMTPNegotation("localhost", nil, nil)
+	smtpConn.Writeln("MAIL FROM:<sender@maddy.test>")
+	smtpConn.ExpectPattern("2*")
+	smtpConn.Writeln("RCPT TO:<testusr@maddy.test>")
+	smtpConn.ExpectPattern("2*")
+	smtpConn.Writeln("DATA")
+	smtpConn.ExpectPattern("354 *")
+	smtpConn.Writeln("From: <sender@maddy.test>")
+	smtpConn.Writeln("To: <testusr@maddy.test>")
+	smtpConn.Writeln("Subject: Hi!")
+	smtpConn.Writeln("")
+	for i := 0; i < 3000; i++ {
+		smtpConn.Writeln(strings.Repeat("A", 500))
+	}
+	// 3000*502 ~ 1.44 MiB not including header side
+	smtpConn.Writeln(".")
+
+	time.Sleep(500 * time.Millisecond)
+
+	imapConn.Writeln(". NOOP")
+	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(". OK *")
+
+	imapConn.Writeln(". FETCH 1 (BODY.PEEK[])")
+	imapConn.ExpectPattern(`\* 1 FETCH (BODY\[\] {1506312}*`)
+	imapConn.Expect(`Delivered-To: testusr@maddy.test`)
+	imapConn.Expect(`Return-Path: <sender@maddy.test>`)
+	imapConn.ExpectPattern(`Received: from localhost (client.maddy.test \[` + tests.DefaultSourceIP.String() + `\]) by maddy.test`)
+	imapConn.ExpectPattern(` (envelope-sender <sender@maddy.test>) with ESMTP id *; *`)
+	imapConn.ExpectPattern(` *`)
+	imapConn.Expect("From: <sender@maddy.test>")
+	imapConn.Expect("To: <testusr@maddy.test>")
+	imapConn.Expect("Subject: Hi!")
+	imapConn.Expect("")
+	for i := 0; i < 3000; i++ {
+		imapConn.Expect(strings.Repeat("A", 500))
+	}
+	imapConn.Expect(")")
+	imapConn.ExpectPattern(`. OK *`)
+}
 
 func TestSMTPEndpoint_FileBuffer(tt *testing.T) {
 	run := func(tt *testing.T, bufferOpt string) {

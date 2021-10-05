@@ -69,9 +69,9 @@ type Endpoint struct {
 func New(modName string, addrs []string) (module.Module, error) {
 	endp := &Endpoint{
 		addrs: addrs,
-		Log:   log.Logger{Name: "imap"},
+		Log:   log.Logger{Name: modName},
 		saslAuth: auth.SASLAuth{
-			Log: log.Logger{Name: "imap/sasl"},
+			Log: log.Logger{Name: modName + "/sasl"},
 		},
 	}
 
@@ -151,11 +151,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		})
 	}
 
-	if err := endp.setupListeners(addresses); err != nil {
-		return err
-	}
-
-	return nil
+	return endp.setupListeners(addresses)
 }
 
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {

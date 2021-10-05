@@ -28,7 +28,7 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 )
 
-func TLSClientBlock(m *config.Map, node config.Node) (interface{}, error) {
+func TLSClientBlock(_ *config.Map, node config.Node) (interface{}, error) {
 	cfg := tls.Config{}
 
 	childM := config.NewMap(nil, node)

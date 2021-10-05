@@ -32,6 +32,19 @@ storage.imapsql local_mailboxes {
 }
 ```
 
+You also need to make `authorize_sender` check (used in `submission` endpoint)
+accept non-email usernames:
+```
+authorize_sender {
+  ...
+  auth_normalize precis_casefold
+  user_to_email regexp "(.*)" "$1@$(primary_domain)"
+}
+```
+Note that is would work only if clients use only one domain as sender (`$(primary_domain)`).
+If you want to allow sending from all domains, you need to remove `authorize_sender` check
+altogether since it is not currently supported.
+
 After that you can create accounts without specifying the domain part:
 ``` 
 maddyctl imap-acct create foxcpp

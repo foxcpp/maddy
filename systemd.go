@@ -40,9 +40,7 @@ const (
 	SDStopping  = "STOPPING=1"
 )
 
-var (
-	ErrNoNotifySock = errors.New("no systemd socket")
-)
+var ErrNoNotifySock = errors.New("no systemd socket")
 
 func sdNotifySock() (*net.UnixConn, error) {
 	sockAddr := os.Getenv("NOTIFY_SOCKET")
@@ -80,7 +78,7 @@ func setScmPassCred(sock *net.UnixConn) error {
 func systemdStatus(status SDStatus, desc string) {
 	sock, err := sdNotifySock()
 	if err != nil {
-		if err != ErrNoNotifySock {
+		if !errors.Is(err, ErrNoNotifySock) {
 			log.Println("systemd: failed to acquire notify socket:", err)
 		}
 		return
@@ -107,7 +105,7 @@ func systemdStatus(status SDStatus, desc string) {
 func systemdStatusErr(reportedErr error) {
 	sock, err := sdNotifySock()
 	if err != nil {
-		if err != ErrNoNotifySock {
+		if !errors.Is(err, ErrNoNotifySock) {
 			log.Println("systemd: failed to acquire notify socket:", err)
 		}
 		return

@@ -136,8 +136,8 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 			{
 				Name: "init",
 				Args: []string{fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-					%s LONGTEXT PRIMARY KEY NOT NULL,
-					%s LONGTEXT NOT NULL
+					%s TEXT PRIMARY KEY NOT NULL,
+					%s TEXT NOT NULL
 				)`, tableName, keyColumn, valueColumn)},
 			},
 		},
