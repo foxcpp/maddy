@@ -33,7 +33,7 @@ Your options are:
 * Pre-built tarball (Linux, amd64)
 
     Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
-    [maddy.email](https://maddy.email/).
+    [maddy.email/builds](https://maddy.email/builds/).
 
 	The tarball includes maddy and maddyctl executables you can
 	copy into /usr/local/bin as well as systemd unit file you can

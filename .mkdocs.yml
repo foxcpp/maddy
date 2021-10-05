@@ -14,6 +14,7 @@ nav:
     - tutorials/building-from-source.md
     - tutorials/alias-to-remote.md
     - tutorials/pam.md
+  - Release builds: 'https://maddy.email/builds/'
   - Integration with software:
     - third-party/dovecot.md
     - third-party/smtp-servers.md
