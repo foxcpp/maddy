@@ -386,10 +386,10 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 		}
 	}
 	if s.relyOnDMARC(ctx, header) {
-		if res.res != spf.Pass || res.err != nil {
-			s.log.Printf("deferring action due to a DMARC policy")
+		if res.res != spf.Pass {
+			s.log.Msg("deferring action due to a DMARC policy", "result", res.res, "err", res.err)
 		} else {
-			s.log.Debugf("deferring action due to a DMARC policy")
+			s.log.DebugMsg("deferring action due to a DMARC policy", "result", res.res, "err", res.err)
 		}
 
 		checkRes := s.spfResult(res.res, res.err)
