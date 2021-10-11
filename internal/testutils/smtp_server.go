@@ -56,10 +56,7 @@ type SMTPBackend struct {
 	LMTPDataErr []error
 }
 
-func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	if be.AuthErr != nil {
-		return nil, be.AuthErr
-	}
+func (be *SMTPBackend) NewSession(state smtp.ConnectionState, _ string) (smtp.Session, error) {
 	be.SessionCounter++
 	if be.SourceEndpoints == nil {
 		be.SourceEndpoints = make(map[string]struct{})
@@ -67,19 +64,8 @@ func (be *SMTPBackend) Login(state *smtp.ConnectionState, username, password str
 	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{
 		backend:  be,
-		user:     username,
-		password: password,
-		state:    state,
+		state:    &state,
 	}, nil
-}
-
-func (be *SMTPBackend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	be.SessionCounter++
-	if be.SourceEndpoints == nil {
-		be.SourceEndpoints = make(map[string]struct{})
-	}
-	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
-	return &session{backend: be, state: state}, nil
 }
 
 func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) {
@@ -122,7 +108,16 @@ func (s *session) Logout() error {
 	return nil
 }
 
-func (s *session) Mail(from string, opts smtp.MailOptions) error {
+func (s *session) AuthPlain(username, password string) error {
+	if s.backend.AuthErr != nil {
+		return s.backend.AuthErr
+	}
+	s.user = username
+	s.password = password
+	return nil
+}
+
+func (s *session) Mail(from string, opts *smtp.MailOptions) error {
 	s.backend.MailFromCounter++
 
 	if s.backend.MailErr != nil {
@@ -131,7 +126,7 @@ func (s *session) Mail(from string, opts smtp.MailOptions) error {
 
 	s.Reset()
 	s.msg.From = from
-	s.msg.Opts = opts
+	s.msg.Opts = *opts
 	return nil
 }
 

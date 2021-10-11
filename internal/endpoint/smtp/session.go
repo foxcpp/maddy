@@ -139,6 +139,43 @@ func (s *Session) cleanSession() {
 	s.msgTask.End()
 }
 
+func (s *Session) AuthPlain(username, password string) error {
+	if s.endp.serv.AuthDisabled {
+		return smtp.ErrAuthUnsupported
+	}
+
+	// Executed before authentication and session initialization.
+	if err := s.endp.pipeline.RunEarlyChecks(context.TODO(), &s.connState.ConnectionState); err != nil {
+		return s.endp.wrapErr("", true, "AUTH", err)
+	}
+
+	err := s.endp.saslAuth.AuthPlain(username, password)
+	if err != nil {
+		s.endp.Log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)
+
+		failedLogins.WithLabelValues(s.endp.name).Inc()
+
+		if exterrors.IsTemporary(err) {
+			return &smtp.SMTPError{
+				Code:         454,
+				EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+				Message:      "Temporary authentication failure",
+			}
+		}
+
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Invalid credentials",
+		}
+	}
+
+	s.connState.AuthUser = username
+	s.connState.AuthPassword = password
+
+	return nil
+}
+
 func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.MailOptions) (string, error) {
 	var err error
 	msgMeta := &module.MsgMetadata{
@@ -231,13 +268,17 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	return msgMeta.ID, nil
 }
 
-func (s *Session) Mail(from string, opts smtp.MailOptions) error {
+func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
+	if s.endp.authAlwaysRequired && s.connState.AuthUser == "" {
+		return smtp.ErrAuthRequired
+	}
+
 	s.msgLock.Lock()
 	defer s.msgLock.Unlock()
 
 	if !s.endp.deferServerReject {
 		// Will initialize s.msgCtx.
-		msgID, err := s.startDelivery(s.sessionCtx, from, opts)
+		msgID, err := s.startDelivery(s.sessionCtx, from, *opts)
 		if err != nil {
 			if !errors.Is(err, context.DeadlineExceeded) {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
@@ -248,7 +289,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 
 	// Keep the MAIL FROM argument for deferred startDelivery.
 	s.mailFrom = from
-	s.opts = opts
+	s.opts = *opts
 
 	return nil
 }
