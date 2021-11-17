@@ -193,7 +193,7 @@ func EvaluateAlignment(fromDomain string, record *Record, results []authres.Resu
 	}
 
 	res.Authres.From = fromDomain
-	if dkimAligned || spfAligned {
+	if dkimAligned && spfAligned {
 		res.Authres.Value = authres.ResultPass
 	} else {
 		res.Authres.Value = authres.ResultFail
