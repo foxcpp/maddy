@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"github.com/GehirnInc/crypt"
-	_ "github.com/GehirnInc/crypt/apr1_crypt"
-	_ "github.com/GehirnInc/crypt/md5_crypt"
 	_ "github.com/GehirnInc/crypt/sha256_crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 )
