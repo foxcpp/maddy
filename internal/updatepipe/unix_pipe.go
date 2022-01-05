@@ -25,7 +25,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/emersion/go-imap/backend"
+	mess "github.com/foxcpp/go-imap-mess"
 	"github.com/foxcpp/maddy/framework/log"
 )
 
@@ -34,11 +34,9 @@ import (
 // Listen goroutine can be running.
 //
 // The socket is stream-oriented and consists of the following messages:
-//		OBJ_ID;TYPE_NAME;USER;MAILBOX;JSON_SERIALIZED_INTERNAL_OBJECT\n
+//		SENDER_ID;JSON_SERIALIZED_INTERNAL_OBJECT\n
 //
-// Where TYPE_NAME is one of the folow: ExpungeUpdate, MailboxUpdate,
-// MessageUpdate.
-// And OBJ_ID is Process ID and UnixSockPipe address concated as a string.
+// And SENDER_ID is Process ID and UnixSockPipe address concated as a string.
 // It is used to deduplicate updates sent to Push and recevied via Listen.
 //
 // The SockPath field specifies the socket path to use. The actual socket
@@ -57,7 +55,7 @@ func (usp *UnixSockPipe) myID() string {
 	return fmt.Sprintf("%d-%p", os.Getpid(), usp)
 }
 
-func (usp *UnixSockPipe) readUpdates(conn net.Conn, updCh chan<- backend.Update) {
+func (usp *UnixSockPipe) readUpdates(conn net.Conn, updCh chan<- mess.Update) {
 	scnr := bufio.NewScanner(conn)
 	for scnr.Scan() {
 		id, upd, err := parseUpdate(scnr.Text())
@@ -70,17 +68,11 @@ func (usp *UnixSockPipe) readUpdates(conn net.Conn, updCh chan<- backend.Update)
 			continue
 		}
 
-		updCh <- upd
+		updCh <- *upd
 	}
 }
 
-func (usp *UnixSockPipe) Wrap(upd <-chan backend.Update) chan backend.Update {
-	ourUpds := make(chan backend.Update, cap(upd))
-
-	return ourUpds
-}
-
-func (usp *UnixSockPipe) Listen(upd chan<- backend.Update) error {
+func (usp *UnixSockPipe) Listen(upd chan<- mess.Update) error {
 	l, err := net.Listen("unix", usp.SockPath)
 	if err != nil {
 		return err
@@ -108,7 +100,7 @@ func (usp *UnixSockPipe) InitPush() error {
 	return nil
 }
 
-func (usp *UnixSockPipe) Push(upd backend.Update) error {
+func (usp *UnixSockPipe) Push(upd mess.Update) error {
 	if usp.sender == nil {
 		if err := usp.InitPush(); err != nil {
 			return err

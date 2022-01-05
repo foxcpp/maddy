@@ -27,13 +27,8 @@ import (
 	"sync"
 
 	"github.com/emersion/go-imap"
-	appendlimit "github.com/emersion/go-imap-appendlimit"
 	compress "github.com/emersion/go-imap-compress"
-	idle "github.com/emersion/go-imap-idle"
-	move "github.com/emersion/go-imap-move"
 	sortthread "github.com/emersion/go-imap-sortthread"
-	specialuse "github.com/emersion/go-imap-specialuse"
-	unselect "github.com/emersion/go-imap-unselect"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/go-message"
@@ -57,7 +52,6 @@ type Endpoint struct {
 	listeners []net.Listener
 	Store     module.Storage
 
-	updater     imapbackend.BackendUpdater
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
 
@@ -98,22 +92,10 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	var ok bool
-	endp.updater, ok = endp.Store.(imapbackend.BackendUpdater)
-	if !ok {
-		return fmt.Errorf("imap: storage module %T does not implement imapbackend.BackendUpdater", endp.Store)
-	}
-
 	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
 		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
 			endp.Log.Error("failed to initialize updates pipe", err)
 		}
-	}
-
-	// Call Updates once at start, some storage backends initialize update
-	// channel lazily and may not generate updates at all unless it is called.
-	if endp.updater.Updates() == nil {
-		return fmt.Errorf("imap: failed to init backend: nil update channel")
 	}
 
 	addresses := make([]config.Endpoint, 0, len(endp.addrs))
@@ -198,10 +180,6 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	return nil
 }
 
-func (endp *Endpoint) Updates() <-chan imapbackend.Update {
-	return endp.updater.Updates()
-}
-
 func (endp *Endpoint) Name() string {
 	return "imap"
 }
@@ -258,14 +236,6 @@ func (endp *Endpoint) enableExtensions() error {
 	exts := endp.Store.IMAPExtensions()
 	for _, ext := range exts {
 		switch ext {
-		case "APPENDLIMIT":
-			endp.serv.Enable(appendlimit.NewExtension())
-		case "CHILDREN":
-			endp.serv.Enable(children.NewExtension())
-		case "MOVE":
-			endp.serv.Enable(move.NewExtension())
-		case "SPECIAL-USE":
-			endp.serv.Enable(specialuse.NewExtension())
 		case "I18NLEVEL=1", "I18NLEVEL=2":
 			endp.serv.Enable(i18nlevel.NewExtension())
 		case "SORT":
@@ -277,8 +247,6 @@ func (endp *Endpoint) enableExtensions() error {
 	}
 
 	endp.serv.Enable(compress.NewExtension())
-	endp.serv.Enable(unselect.NewExtension())
-	endp.serv.Enable(idle.NewExtension())
 	endp.serv.Enable(namespace.NewExtension())
 
 	return nil
