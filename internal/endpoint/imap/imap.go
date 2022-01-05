@@ -27,13 +27,8 @@ import (
 	"sync"
 
 	"github.com/emersion/go-imap"
-	appendlimit "github.com/emersion/go-imap-appendlimit"
 	compress "github.com/emersion/go-imap-compress"
-	idle "github.com/emersion/go-imap-idle"
-	move "github.com/emersion/go-imap-move"
 	sortthread "github.com/emersion/go-imap-sortthread"
-	specialuse "github.com/emersion/go-imap-specialuse"
-	unselect "github.com/emersion/go-imap-unselect"
 	imapbackend "github.com/emersion/go-imap/backend"
 	imapserver "github.com/emersion/go-imap/server"
 	"github.com/emersion/go-message"
@@ -241,14 +236,6 @@ func (endp *Endpoint) enableExtensions() error {
 	exts := endp.Store.IMAPExtensions()
 	for _, ext := range exts {
 		switch ext {
-		case "APPENDLIMIT":
-			endp.serv.Enable(appendlimit.NewExtension())
-		case "CHILDREN":
-			endp.serv.Enable(children.NewExtension())
-		case "MOVE":
-			endp.serv.Enable(move.NewExtension())
-		case "SPECIAL-USE":
-			endp.serv.Enable(specialuse.NewExtension())
 		case "I18NLEVEL=1", "I18NLEVEL=2":
 			endp.serv.Enable(i18nlevel.NewExtension())
 		case "SORT":
@@ -260,8 +247,6 @@ func (endp *Endpoint) enableExtensions() error {
 	}
 
 	endp.serv.Enable(compress.NewExtension())
-	endp.serv.Enable(unselect.NewExtension())
-	endp.serv.Enable(idle.NewExtension())
 	endp.serv.Enable(namespace.NewExtension())
 
 	return nil

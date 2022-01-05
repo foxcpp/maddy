@@ -22,7 +22,7 @@ import (
 	"context"
 	"runtime/trace"
 
-	specialuse "github.com/emersion/go-imap-specialuse"
+	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
 	imapsql "github.com/foxcpp/go-imap-sql"
@@ -108,7 +108,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 	}
 
 	if d.msgMeta.Quarantine {
-		if err := d.d.SpecialMailbox(specialuse.Junk, d.store.junkMbox); err != nil {
+		if err := d.d.SpecialMailbox(imap.JunkAttr, d.store.junkMbox); err != nil {
 			if _, ok := err.(imapsql.SerializationError); ok {
 				return &exterrors.SMTPError{
 					Code:         453,

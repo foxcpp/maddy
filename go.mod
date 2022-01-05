@@ -8,24 +8,20 @@ require (
 	github.com/caddyserver/certmagic v0.14.1
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/emersion/go-imap v1.0.6
-	github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
-	github.com/emersion/go-imap-idle v0.0.0-20201224103203-6f42b9020098
-	github.com/emersion/go-imap-move v0.0.0-20190710073258-6e5a51a5b342
 	github.com/emersion/go-imap-sortthread v1.2.0
-	github.com/emersion/go-imap-specialuse v0.0.0-20201101201809-1ab93d3d150e
-	github.com/emersion/go-imap-unselect v0.0.0-20171113212723-b985794e5f26
-	github.com/emersion/go-message v0.14.1
+	github.com/emersion/go-imap-specialuse v0.0.0-20161227184202-ba031ced6a62 // indirect
+	github.com/emersion/go-message v0.15.0
 	github.com/emersion/go-milter v0.3.2
 	github.com/emersion/go-msgauth v0.6.5
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/emersion/go-smtp v0.15.1-0.20210705155248-26eb4814e227
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
-	github.com/foxcpp/go-imap-backend-tests v0.0.0-20200802090154-7e6248c85a0e
+	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
-	github.com/foxcpp/go-imap-mess v0.0.0-20210718180745-f14f34d14a3b
+	github.com/foxcpp/go-imap-mess v0.0.0-20220105225909-b3469f4a4315
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
-	github.com/foxcpp/go-imap-sql v0.4.1-0.20210718082546-d38d40f5442c
+	github.com/foxcpp/go-imap-sql v0.5.1-0.20220105233636-946daf36ce81
 	github.com/foxcpp/go-mockdns v0.0.0-20201212160233-ede2f9158d15
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-ldap/ldap/v3 v3.3.0
@@ -59,9 +55,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/text v0.3.6
+	golang.org/x/text v0.3.7
 )
 
-replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20201001193006-5a1d05e53e2c
-
-replace github.com/emersion/go-imap-idle => github.com/foxcpp/go-imap-idle v0.0.0-20200829140055-32dc40172769
+replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220105164802-1e767d4cfd62
