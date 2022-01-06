@@ -162,6 +162,7 @@ github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220105164802-1e767d4cfd62/go.mod h1:
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200617132817-958ea5829771/go.mod h1:yUISYv/uXLQ6tQZcds/p/hdcZ5JzrEUifyED2VffWpc=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200802090154-7e6248c85a0e h1:wUYcbeGDlKqaa02jHuFMBVVfw51v7KaizLRT+i8wftc=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20200802090154-7e6248c85a0e/go.mod h1:dWepYGUClcebWyUy7yl8wm2ioE6NC4m82Xy/hDAng1c=
+github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16 h1:qheFPDpteiUy7Ym18R68OYenpk85UyKYGkhYTmddSBg=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16/go.mod h1:OPP1AgKxMPo3aHX5pcEZLQhhh5sllFcB8aUN9f6a6X8=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=

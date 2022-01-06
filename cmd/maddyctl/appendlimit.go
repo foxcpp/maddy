@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	appendlimit "github.com/emersion/go-imap-appendlimit"
+	imapbackend "github.com/emersion/go-imap/backend"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/urfave/cli"
 )
@@ -32,7 +32,7 @@ import (
 // AppendLimitUser is extension for backend.User interface which allows to
 // set append limit value for testing and administration purposes.
 type AppendLimitUser interface {
-	appendlimit.User
+	imapbackend.AppendLimitUser
 
 	// SetMessageLimit sets new value for limit.
 	// nil pointer means no limit.

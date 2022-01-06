@@ -36,7 +36,6 @@ import (
 	"github.com/emersion/go-sasl"
 	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
 	namespace "github.com/foxcpp/go-imap-namespace"
-	"github.com/foxcpp/go-imap-sql/children"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
@@ -218,10 +217,6 @@ func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) 
 	}
 
 	return endp.Store.GetOrCreateIMAPAcct(username)
-}
-
-func (endp *Endpoint) EnableChildrenExt() bool {
-	return endp.Store.(children.Backend).EnableChildrenExt()
 }
 
 func (endp *Endpoint) I18NLevel() int {

@@ -259,9 +259,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 	store.driver = driver
 	store.dsn = dsn
 
-	store.Back.EnableChildrenExt()
-	store.Back.EnableSpecialUseExt()
-
 	return nil
 }
 
@@ -364,10 +361,6 @@ func (store *Storage) IMAPExtensions() []string {
 
 func (store *Storage) CreateMessageLimit() *uint32 {
 	return store.Back.CreateMessageLimit()
-}
-
-func (store *Storage) EnableChildrenExt() bool {
-	return store.Back.EnableChildrenExt()
 }
 
 func (store *Storage) GetOrCreateIMAPAcct(username string) (backend.User, error) {
