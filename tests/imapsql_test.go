@@ -94,6 +94,7 @@ func TestImapsqlDelivery(tt *testing.T) {
 
 	imapConn.Writeln(". NOOP")
 	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(`\* 1 RECENT`)
 	imapConn.ExpectPattern(". OK *")
 
 	imapConn.Writeln(". FETCH 1 (BODY.PEEK[])")
@@ -180,6 +181,7 @@ func TestImapsqlDeliveryMap(tt *testing.T) {
 
 	imapConn.Writeln(". NOOP")
 	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(`\* 1 RECENT`)
 	imapConn.ExpectPattern(". OK *")
 }
 
@@ -251,5 +253,6 @@ func TestImapsqlAuthMap(tt *testing.T) {
 
 	imapConn.Writeln(". NOOP")
 	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(`\* 1 RECENT`)
 	imapConn.ExpectPattern(". OK *")
 }
