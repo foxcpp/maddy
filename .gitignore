@@ -24,8 +24,8 @@ _testmain.go
 cmd/maddy/maddy
 cmd/maddyctl/maddyctl
 cmd/maddy-*-helper/maddy-*-helper
-maddy
-maddyctl
+/maddy
+/maddyctl
 
 # Man pages
 docs/man/*.1
