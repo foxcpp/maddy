@@ -19,14 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/internal/auth/pass_table"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,7 +42,7 @@ func hashCommand(ctx *cli.Context) error {
 			funcs = append(funcs, k)
 		}
 
-		return fmt.Errorf("Error: Unknown hash function, available: %s", strings.Join(funcs, ", "))
+		return cli.Exit(fmt.Sprintf("Error: Unknown hash function, available: %s", strings.Join(funcs, ", ")), 2)
 	}
 
 	opts := pass_table.HashOpts{
@@ -54,10 +53,10 @@ func hashCommand(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("bcrypt-cost") {
 		if ctx.Int("bcrypt-cost") > bcrypt.MaxCost {
-			return errors.New("Error: too big bcrypt cost")
+			return cli.Exit("Error: too big bcrypt cost", 2)
 		}
 		if ctx.Int("bcrypt-cost") < bcrypt.MinCost {
-			return errors.New("Error: too small bcrypt cost")
+			return cli.Exit("Error: too small bcrypt cost", 2)
 		}
 		opts.BcryptCost = ctx.Int("bcrypt-cost")
 	}
@@ -83,7 +82,10 @@ func hashCommand(ctx *cli.Context) error {
 	}
 
 	if pass == "" {
-		fmt.Fprintln(os.Stderr, "WARNING: This is the hash of empty string")
+		fmt.Fprintln(os.Stderr, "WARNING: This is the hash of an empty string")
+	}
+	if strings.TrimSpace(pass) != pass {
+		fmt.Fprintln(os.Stderr, "WARNING: There is leading/trailing whitespace in the string")
 	}
 
 	hash, err := hashCompute(opts, pass)

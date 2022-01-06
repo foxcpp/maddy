@@ -62,6 +62,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/xid v1.3.0 // indirect
 	github.com/urfave/cli v1.22.5
+	github.com/urfave/cli/v2 v2.3.0
 	github.com/vultr/govultr/v2 v2.9.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect

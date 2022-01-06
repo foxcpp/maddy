@@ -31,7 +31,7 @@ import (
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func FormatAddress(addr *imap.Address) string {
@@ -49,7 +49,7 @@ func FormatAddressList(addrs []*imap.Address) string {
 func mboxesList(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -62,7 +62,7 @@ func mboxesList(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	if len(mboxes) == 0 && !ctx.GlobalBool("quiet") {
+	if len(mboxes) == 0 && !ctx.Bool("quiet") {
 		fmt.Fprintln(os.Stderr, "No mailboxes.")
 	}
 
@@ -80,11 +80,11 @@ func mboxesList(be module.Storage, ctx *cli.Context) error {
 func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	name := ctx.Args().Get(1)
 	if name == "" {
-		return errors.New("Error: NAME is required")
+		return cli.Exit("Error: NAME is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -97,7 +97,7 @@ func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 
 		suu, ok := u.(SpecialUseUser)
 		if !ok {
-			return errors.New("Error: storage backend does not support SPECIAL-USE IMAP extension")
+			return cli.Exit("Error: storage backend does not support SPECIAL-USE IMAP extension", 2)
 		}
 
 		return suu.CreateMailboxSpecial(name, attr)
@@ -109,11 +109,11 @@ func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	name := ctx.Args().Get(1)
 	if name == "" {
-		return errors.New("Error: NAME is required")
+		return cli.Exit("Error: NAME is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -121,7 +121,7 @@ func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	if !ctx.Bool("yes,y") {
+	if !ctx.Bool("yes") {
 		status, err := u.Status(name, []imap.StatusItem{imap.StatusMessages})
 		if err != nil {
 			return err
@@ -142,15 +142,15 @@ func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 func mboxesRename(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	oldName := ctx.Args().Get(1)
 	if oldName == "" {
-		return errors.New("Error: OLDNAME is required")
+		return cli.Exit("Error: OLDNAME is required", 2)
 	}
 	newName := ctx.Args().Get(2)
 	if newName == "" {
-		return errors.New("Error: NEWNAME is required")
+		return cli.Exit("Error: NEWNAME is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -164,11 +164,11 @@ func mboxesRename(be module.Storage, ctx *cli.Context) error {
 func msgsAdd(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	name := ctx.Args().Get(1)
 	if name == "" {
-		return errors.New("Error: MAILBOX is required")
+		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -192,7 +192,7 @@ func msgsAdd(be module.Storage, ctx *cli.Context) error {
 	}
 
 	if buf.Len() == 0 {
-		return errors.New("Error: Empty message, refusing to continue")
+		return cli.Exit("Error: Empty message, refusing to continue", 2)
 	}
 
 	status, err := u.Status(name, []imap.StatusItem{imap.StatusUidNext})
@@ -213,15 +213,15 @@ func msgsAdd(be module.Storage, ctx *cli.Context) error {
 func msgsRemove(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	name := ctx.Args().Get(1)
 	if name == "" {
-		return errors.New("Error: MAILBOX is required")
+		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
-		return errors.New("Error: SEQSET is required")
+		return cli.Exit("Error: SEQSET is required", 2)
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
@@ -252,19 +252,19 @@ func msgsRemove(be module.Storage, ctx *cli.Context) error {
 func msgsCopy(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	srcName := ctx.Args().Get(1)
 	if srcName == "" {
-		return errors.New("Error: SRCMAILBOX is required")
+		return cli.Exit("Error: SRCMAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
-		return errors.New("Error: SEQSET is required")
+		return cli.Exit("Error: SEQSET is required", 2)
 	}
 	tgtName := ctx.Args().Get(3)
 	if tgtName == "" {
-		return errors.New("Error: TGTMAILBOX is required")
+		return cli.Exit("Error: TGTMAILBOX is required", 2)
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
@@ -286,25 +286,25 @@ func msgsCopy(be module.Storage, ctx *cli.Context) error {
 }
 
 func msgsMove(be module.Storage, ctx *cli.Context) error {
-	if ctx.Bool("y,yes") || !clitools.Confirmation("Currently, it is unsafe to remove messages from mailboxes used by connected clients, continue?", false) {
-		return errors.New("Cancelled")
+	if ctx.Bool("yes") || !clitools.Confirmation("Currently, it is unsafe to remove messages from mailboxes used by connected clients, continue?", false) {
+		return cli.Exit("Cancelled", 2)
 	}
 
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	srcName := ctx.Args().Get(1)
 	if srcName == "" {
-		return errors.New("Error: SRCMAILBOX is required")
+		return cli.Exit("Error: SRCMAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
-		return errors.New("Error: SEQSET is required")
+		return cli.Exit("Error: SEQSET is required", 2)
 	}
 	tgtName := ctx.Args().Get(3)
 	if tgtName == "" {
-		return errors.New("Error: TGTMAILBOX is required")
+		return cli.Exit("Error: TGTMAILBOX is required", 2)
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
@@ -330,11 +330,11 @@ func msgsMove(be module.Storage, ctx *cli.Context) error {
 func msgsList(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	mboxName := ctx.Args().Get(1)
 	if mboxName == "" {
-		return errors.New("Error: MAILBOX is required")
+		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
@@ -406,11 +406,11 @@ func msgsList(be module.Storage, ctx *cli.Context) error {
 func msgsDump(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	mboxName := ctx.Args().Get(1)
 	if mboxName == "" {
-		return errors.New("Error: MAILBOX is required")
+		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
 	if seqset == "" {
@@ -450,15 +450,15 @@ func msgsDump(be module.Storage, ctx *cli.Context) error {
 func msgsFlags(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 	name := ctx.Args().Get(1)
 	if name == "" {
-		return errors.New("Error: MAILBOX is required")
+		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqStr := ctx.Args().Get(2)
 	if seqStr == "" {
-		return errors.New("Error: SEQ is required")
+		return cli.Exit("Error: SEQ is required", 2)
 	}
 
 	seq, err := imap.ParseSeqSet(seqStr)
@@ -476,9 +476,9 @@ func msgsFlags(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	flags := ctx.Args()[3:]
+	flags := ctx.Args().Slice()[3:]
 	if len(flags) == 0 {
-		return errors.New("Error: at least once FLAG is required")
+		return cli.Exit("Error: at least once FLAG is required", 2)
 	}
 
 	var op imap.FlagsOp

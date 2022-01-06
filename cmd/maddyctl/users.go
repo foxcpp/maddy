@@ -25,7 +25,7 @@ import (
 
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func usersList(be module.PlainUserDB, ctx *cli.Context) error {
@@ -34,7 +34,7 @@ func usersList(be module.PlainUserDB, ctx *cli.Context) error {
 		return err
 	}
 
-	if len(list) == 0 && !ctx.GlobalBool("quiet") {
+	if len(list) == 0 && !ctx.Bool("quiet") {
 		fmt.Fprintln(os.Stderr, "No users.")
 	}
 
@@ -47,7 +47,7 @@ func usersList(be module.PlainUserDB, ctx *cli.Context) error {
 func usersCreate(be module.PlainUserDB, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 
 	var pass string

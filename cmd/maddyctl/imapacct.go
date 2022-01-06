@@ -23,9 +23,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/emersion/go-imap"
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 type SpecialUseUser interface {
@@ -35,7 +36,7 @@ type SpecialUseUser interface {
 func imapAcctList(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return errors.New("Error: storage backend does not support accounts management using maddyctl")
+		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
 	}
 
 	list, err := mbe.ListIMAPAccts()
@@ -43,7 +44,7 @@ func imapAcctList(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	if len(list) == 0 && !ctx.GlobalBool("quiet") {
+	if len(list) == 0 && !ctx.Bool("quiet") {
 		fmt.Fprintln(os.Stderr, "No users.")
 	}
 
@@ -56,12 +57,12 @@ func imapAcctList(be module.Storage, ctx *cli.Context) error {
 func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return errors.New("Error: storage backend does not support accounts management using maddyctl")
+		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
 	}
 
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 
 	if err := mbe.CreateIMAPAcct(username); err != nil {
@@ -117,12 +118,12 @@ func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 func imapAcctRemove(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return errors.New("Error: storage backend does not support accounts management using maddyctl")
+		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
 	}
 
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 
 	if !ctx.Bool("yes") {

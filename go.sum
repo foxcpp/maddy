@@ -106,8 +106,6 @@ github.com/emersion/go-imap-move v0.0.0-20180601155324-5eb20cb834bf/go.mod h1:Qu
 github.com/emersion/go-imap-sortthread v1.1.1-0.20200727121200-18e5fb409fed/go.mod h1:opHOzblOHZKQM1JEy+GPk1217giNLa7kleyWTN06qnc=
 github.com/emersion/go-imap-sortthread v1.2.0 h1:EMVEJXPWAhXMWECjR82Rn/tza6MddcvTwGAdTu1vJKU=
 github.com/emersion/go-imap-sortthread v1.2.0/go.mod h1:UhenCBupR+vSYRnqJkpjSq84INUCsyAK1MLpogv14pE=
-github.com/emersion/go-imap-specialuse v0.0.0-20201101201809-1ab93d3d150e h1:AwVkRMFFUMNu+tx0jchwyoXhS2VClQSzTtByVuzxbsE=
-github.com/emersion/go-imap-specialuse v0.0.0-20201101201809-1ab93d3d150e/go.mod h1:/nybxhI8kXom8Tw6BrHMl42usALvka6meORflnnYwe4=
 github.com/emersion/go-message v0.11.2/go.mod h1:C4jnca5HOTo4bGN9YdqNQM9sITuT3Y0K6bSUw9RklvY=
 github.com/emersion/go-message v0.14.1/go.mod h1:N1JWdZQ2WRUalmdHAX308CWBq747VJ8oUorFI3VCBwU=
 github.com/emersion/go-message v0.15.0 h1:urgKGqt2JAc9NFJcgncQcohHdiYb803YTH9OQwHBHIY=
@@ -448,6 +446,8 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.22.5 h1:lNq9sAHXK2qfdI8W+GRItjCEkI+2oR4d+MEHy1CKXoU=
 github.com/urfave/cli v1.22.5/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
+github.com/urfave/cli/v2 v2.3.0 h1:qph92Y649prgesehzOrQjdWyxFOp/QVM+6imKHad91M=
+github.com/urfave/cli/v2 v2.3.0/go.mod h1:LJmUH05zAU44vOAcrfzZQKsZbVcdbOG8rtL3/XcUArI=
 github.com/vultr/govultr/v2 v2.0.0/go.mod h1:2PsEeg+gs3p/Fo5Pw8F9mv+DUBEOlrNZ8GmCTGmhOhs=
 github.com/vultr/govultr/v2 v2.9.0 h1:n0a0fGOiHAE07twu1VR3jWTDFDE0+DJ/cIqZqX9IlNw=
 github.com/vultr/govultr/v2 v2.9.0/go.mod h1:JjUljQdSZx+MELCAJvZ/JH32bJotmflnsyS0NOjb8Jg=

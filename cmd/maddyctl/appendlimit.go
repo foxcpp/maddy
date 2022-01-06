@@ -19,12 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package main
 
 import (
-	"errors"
 	"fmt"
 
 	imapbackend "github.com/emersion/go-imap/backend"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 // Copied from go-imap-backend-tests.
@@ -42,7 +41,7 @@ type AppendLimitUser interface {
 func imapAcctAppendlimit(be module.Storage, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return cli.Exit("Error: USERNAME is required", 2)
 	}
 
 	u, err := be.GetIMAPAcct(username)
@@ -51,7 +50,7 @@ func imapAcctAppendlimit(be module.Storage, ctx *cli.Context) error {
 	}
 	userAL, ok := u.(AppendLimitUser)
 	if !ok {
-		return errors.New("Error: module.Storage does not support per-user append limit")
+		return cli.Exit("Error: module.Storage does not support per-user append limit", 2)
 	}
 
 	if ctx.IsSet("value") {

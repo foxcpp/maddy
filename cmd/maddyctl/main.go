@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/foxcpp/maddy"
 	parser "github.com/foxcpp/maddy/framework/cfgparser"
@@ -31,7 +32,7 @@ import (
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,29 +47,35 @@ func main() {
 	app.Name = "maddyctl"
 	app.Usage = "maddy mail server administration utility"
 	app.Version = maddy.BuildInfo()
-
+	app.ExitErrHandler = func(c *cli.Context, err error) {
+		cli.HandleExitCoder(err)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			cli.OsExiter(1)
+		}
+	}
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
+		&cli.PathFlag{
 			Name:   "config",
 			Usage:  "Configuration file to use",
-			EnvVar: "MADDY_CONFIG",
+			EnvVars: []string{"MADDY_CONFIG"},
 			Value:  filepath.Join(maddy.ConfigDirectory, "maddy.conf"),
 		},
 	}
 
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		{
 			Name:  "creds",
 			Usage: "Local credentials management",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:  "list",
 					Usage: "List created credentials",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_authdb",
 						},
 					},
@@ -87,26 +94,28 @@ func main() {
 					Description: "Reads password from stdin",
 					ArgsUsage:   "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_authdb",
 						},
-						cli.StringFlag{
-							Name:  "password,p",
+						&cli.StringFlag{
+							Name:  "password",
+							Aliases: []string{"p"},
 							Usage: "Use `PASSWORD instead of reading password from stdin.\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
 						},
-						cli.BoolFlag{
-							Name:  "null,n",
+						&cli.BoolFlag{
+							Name:  "null",
+							Aliases: []string{"n"},
 							Usage: "Create account with null password",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "hash",
 							Usage: "Use specified hash algorithm. Valid values: sha3-512, bcrypt",
 							Value: "bcrypt",
 						},
-						cli.IntFlag{
+						&cli.IntFlag{
 							Name:  "bcrypt-cost",
 							Usage: "Specify bcrypt cost value",
 							Value: bcrypt.DefaultCost,
@@ -126,14 +135,15 @@ func main() {
 					Usage:     "Delete user account",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_authdb",
 						},
-						cli.BoolFlag{
-							Name:  "yes,y",
+						&cli.BoolFlag{
+							Name:  "yes",
+							Aliases: []string{"y"},
 							Usage: "Don't ask for confirmation",
 						},
 					},
@@ -152,14 +162,15 @@ func main() {
 					Description: "Reads password from stdin",
 					ArgsUsage:   "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_authdb",
 						},
-						cli.StringFlag{
-							Name:  "password,p",
+						&cli.StringFlag{
+							Name:  "password",
+							Aliases: []string{"p"},
 							Usage: "Use `PASSWORD` instead of reading password from stdin.\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
 						},
 					},
@@ -177,15 +188,15 @@ func main() {
 		{
 			Name:  "imap-acct",
 			Usage: "IMAP storage accounts management",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:  "list",
 					Usage: "List storage accounts",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
 					},
@@ -203,33 +214,33 @@ func main() {
 					Usage:     "Create IMAP storage account",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "sent-name",
 							Usage: "Name of special mailbox for sent messages, use empty string to not create any",
 							Value: "Sent",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "trash-name",
 							Usage: "Name of special mailbox for trash, use empty string to not create any",
 							Value: "Trash",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "junk-name",
 							Usage: "Name of special mailbox for 'junk' (spam), use empty string to not create any",
 							Value: "Junk",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "drafts-name",
 							Usage: "Name of special mailbox for drafts, use empty string to not create any",
 							Value: "Drafts",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "archive-name",
 							Usage: "Name of special mailbox for archive, use empty string to not create any",
 							Value: "Archive",
@@ -249,14 +260,15 @@ func main() {
 					Usage:     "Delete IMAP storage account",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "yes,y",
+						&cli.BoolFlag{
+							Name:  "yes",
+							Aliases: []string{"y"},
 							Usage: "Don't ask for confirmation",
 						},
 					},
@@ -274,14 +286,15 @@ func main() {
 					Usage:     "Query or set accounts's APPENDLIMIT value",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.IntFlag{
-							Name:  "value,v",
+						&cli.IntFlag{
+							Name:  "value",
+							Aliases: []string{"v"},
 							Usage: "Set APPENDLIMIT to specified value (in bytes)",
 						},
 					},
@@ -299,20 +312,21 @@ func main() {
 		{
 			Name:  "imap-mboxes",
 			Usage: "IMAP mailboxes (folders) management",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:      "list",
 					Usage:     "Show mailboxes of user",
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "subscribed,s",
+						&cli.BoolFlag{
+							Name:  "subscribed",
+							Aliases: []string{"s"},
 							Usage: "List only subscribed mailboxes",
 						},
 					},
@@ -330,13 +344,13 @@ func main() {
 					Usage:     "Create mailbox",
 					ArgsUsage: "USERNAME NAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:  "special",
 							Usage: "Set SPECIAL-USE attribute on mailbox; valid values: archive, drafts, junk, sent, trash",
 						},
@@ -356,14 +370,15 @@ func main() {
 					Description: "WARNING: All contents of mailbox will be irrecoverably lost.",
 					ArgsUsage:   "USERNAME MAILBOX",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "yes,y",
+						&cli.BoolFlag{
+							Name:  "yes",
+							Aliases: []string{"y"},
 							Usage: "Don't ask for confirmation",
 						},
 					},
@@ -382,10 +397,10 @@ func main() {
 					Description: "Rename may cause unexpected failures on client-side so be careful.",
 					ArgsUsage:   "USERNAME OLDNAME NEWNAME",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
 					},
@@ -403,26 +418,29 @@ func main() {
 		{
 			Name:  "imap-msgs",
 			Usage: "IMAP messages management",
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:        "add",
 					Usage:       "Add message to mailbox",
 					ArgsUsage:   "USERNAME MAILBOX",
 					Description: "Reads message body (with headers) from stdin. Prints UID of created message on success.",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.StringSliceFlag{
-							Name:  "flag,f",
+						&cli.StringSliceFlag{
+							Name:  "flag",
+							Aliases: []string{"f"},
 							Usage: "Add flag to message. Can be specified multiple times",
 						},
-						cli.Int64Flag{
-							Name:  "date,d",
-							Usage: "Set internal date value to specified UNIX timestamp",
+						&cli.TimestampFlag{
+							Layout: time.RFC3339,
+							Name:  "date",
+							Aliases: []string{"d"},
+							Usage: "Set internal date value to specified one in ISO 8601 format (2006-01-02T15:04:05Z07:00)",
 						},
 					},
 					Action: func(ctx *cli.Context) error {
@@ -440,14 +458,15 @@ func main() {
 					ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
 					Description: "Add flags to all messages matched by SEQ.",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
 					},
@@ -466,14 +485,15 @@ func main() {
 					ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
 					Description: "Remove flags from all messages matched by SEQ.",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
 					},
@@ -492,14 +512,15 @@ func main() {
 					ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
 					Description: "Set flags on all messages matched by SEQ.",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
 					},
@@ -517,18 +538,20 @@ func main() {
 					Usage:     "Remove messages from mailbox",
 					ArgsUsage: "USERNAME MAILBOX SEQSET",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:  "uid,u",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
-						cli.BoolFlag{
-							Name:  "yes,y",
+						&cli.BoolFlag{
+							Name:  "yes",
+							Aliases: []string{"y"},
 							Usage: "Don't ask for confirmation",
 						},
 					},
@@ -547,14 +570,15 @@ func main() {
 					Description: "Note: You can't copy between mailboxes of different users. APPENDLIMIT of target mailbox is not enforced.",
 					ArgsUsage:   "USERNAME SRCMAILBOX SEQSET TGTMAILBOX",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
 					},
@@ -573,18 +597,20 @@ func main() {
 					Description: "Note: You can't move between mailboxes of different users. APPENDLIMIT of target mailbox is not enforced.",
 					ArgsUsage:   "USERNAME SRCMAILBOX SEQSET TGTMAILBOX",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
-						cli.BoolFlag{
-							Name:  "yes,y",
+						&cli.BoolFlag{
+							Name:  "yes",
+							Aliases: []string{"y"},
 							Usage: "Don't ask for confirmation",
 						},
 					},
@@ -603,18 +629,20 @@ func main() {
 					Description: "If SEQSET is specified - only show messages that match it.",
 					ArgsUsage:   "USERNAME MAILBOX [SEQSET]",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQSET instead of sequence numbers",
 						},
-						cli.BoolFlag{
+						&cli.BoolFlag{
 							Name:  "full,f",
+							Aliases: []string{"f"},
 							Usage: "Show entire envelope and all server meta-data",
 						},
 					},
@@ -633,14 +661,15 @@ func main() {
 					Description: "If passed SEQ matches multiple messages - they will be joined.",
 					ArgsUsage:   "USERNAME MAILBOX SEQ",
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						&cli.StringFlag{
 							Name:   "cfg-block",
 							Usage:  "Module configuration block to use",
-							EnvVar: "MADDY_CFGBLOCK",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:  "local_mailboxes",
 						},
-						cli.BoolFlag{
-							Name:  "uid,u",
+						&cli.BoolFlag{
+							Name:  "uid",
+							Aliases: []string{"u"},
 							Usage: "Use UIDs for SEQ instead of sequence numbers",
 						},
 					},
@@ -660,31 +689,32 @@ func main() {
 			Usage:  "Generate password hashes for use with pass_table",
 			Action: hashCommand,
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "password,p",
+				&cli.StringFlag{
+					Name:  "password",
+					Aliases: []string{"p"},
 					Usage: "Use `PASSWORD instead of reading password from stdin\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "hash",
 					Usage: "Use specified hash algorithm",
 					Value: "bcrypt",
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "bcrypt-cost",
 					Usage: "Specify bcrypt cost value",
 					Value: bcrypt.DefaultCost,
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "argon2-time",
 					Usage: "Time factor for Argon2id",
 					Value: 3,
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "argon2-memory",
 					Usage: "Memory in KiB to use for Argon2id",
 					Value: 1024,
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "argon2-threads",
 					Usage: "Threads to use for Argon2id",
 					Value: 1,
@@ -699,18 +729,18 @@ func main() {
 }
 
 func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo, error) {
-	cfgPath := ctx.GlobalString("config")
+	cfgPath := ctx.String("config")
 	if cfgPath == "" {
-		return nil, nil, errors.New("Error: config is required")
+		return nil, nil, cli.Exit("Error: config is required", 2)
 	}
 	cfgFile, err := os.Open(cfgPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error: failed to open config: %w", err)
+		return nil, nil, cli.Exit(fmt.Sprintf("Error: failed to open config: %v", err), 2)
 	}
 	defer cfgFile.Close()
 	cfgNodes, err := parser.Read(cfgFile, cfgFile.Name())
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error: failed to parse config: %w", err)
+		return nil, nil, cli.Exit(fmt.Sprintf("Error: failed to parse config: %v", err), 2)
 	}
 
 	globals, cfgNodes, err := maddy.ReadGlobals(cfgNodes)
@@ -731,7 +761,7 @@ func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo
 
 	cfgBlock := ctx.String("cfg-block")
 	if cfgBlock == "" {
-		return nil, nil, errors.New("Error: cfg-block is required")
+		return nil, nil, cli.Exit("Error: cfg-block is required", 2)
 	}
 	var mod maddy.ModInfo
 	for _, m := range mods {
@@ -741,7 +771,7 @@ func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo
 		}
 	}
 	if mod.Instance == nil {
-		return nil, nil, fmt.Errorf("Error: unknown configuration block: %s", cfgBlock)
+		return nil, nil, cli.Exit(fmt.Sprintf("Error: unknown configuration block: %s", cfgBlock), 2)
 	}
 
 	return globals, &mod, nil
@@ -755,7 +785,7 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 
 	storage, ok := mod.Instance.(module.Storage)
 	if !ok {
-		return nil, fmt.Errorf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block"))
+		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block")), 2)
 	}
 
 	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
@@ -781,7 +811,7 @@ func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
 
 	userDB, ok := mod.Instance.(module.PlainUserDB)
 	if !ok {
-		return nil, fmt.Errorf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block"))
+		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block")), 2)
 	}
 
 	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
