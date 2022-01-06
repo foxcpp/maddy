@@ -39,7 +39,6 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/dns"
-	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
@@ -67,6 +66,7 @@ type Endpoint struct {
 	deferServerReject   bool
 	maxLoggedRcptErrors int
 	maxReceived         int
+	maxHeaderBytes      int
 
 	listenersWg sync.WaitGroup
 
@@ -177,7 +177,7 @@ func autoBufferMode(maxSize int, dir string) func(io.Reader) (buffer.Buffer, err
 	}
 }
 
-func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
+func bufferModeDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) < 1 {
 		return nil, config.NodeErr(node, "at least one argument required")
 	}
@@ -189,7 +189,7 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 		return buffer.BufferInMemory, nil
 	case "fs":
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 		switch len(node.Args) {
@@ -205,7 +205,7 @@ func bufferModeDirective(m *config.Map, node config.Node) (interface{}, error) {
 		}
 	case "auto":
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 
@@ -245,11 +245,12 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
+	cfg.DataSize("max_header_size", false, false, 1*1024*1024, &endp.maxHeaderBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
 	cfg.Int("max_received", false, false, 50, &endp.maxReceived)
 	cfg.Custom("buffer", false, false, func() (interface{}, error) {
 		path := filepath.Join(config.StateDirectory, "buffer")
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, err
 		}
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
@@ -314,7 +315,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 			}
 
 			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
-				c.SetSession(endp.newSession(false, id, "", &state))
+				c.Session().(*Session).connState.AuthUser = id
 				return nil
 			})
 		})
@@ -360,61 +361,21 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	return nil
 }
 
-func (endp *Endpoint) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	if endp.serv.AuthDisabled {
-		return nil, smtp.ErrAuthUnsupported
-	}
-
+func (endp *Endpoint) NewSession(state smtp.ConnectionState, _ string) (smtp.Session, error) {
 	// Executed before authentication and session initialization.
-	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, "AUTH", err)
+	if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {
+		return nil, endp.wrapErr("", true, "EHLO", err)
 	}
 
-	err := endp.saslAuth.AuthPlain(username, password)
-	if err != nil {
-		endp.Log.Error("authentication failed", err, "username", username, "src_ip", state.RemoteAddr)
-
-		failedLogins.WithLabelValues(endp.name).Inc()
-
-		if exterrors.IsTemporary(err) {
-			return nil, &smtp.SMTPError{
-				Code:         454,
-				EnhancedCode: smtp.EnhancedCode{4, 7, 0},
-				Message:      "Temporary authentication failure",
-			}
-		}
-
-		return nil, &smtp.SMTPError{
-			Code:         535,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
-			Message:      "Invalid credentials",
-		}
-	}
-
-	return endp.newSession(false, username, password, state), nil
+	return endp.newSession(&state), nil
 }
 
-func (endp *Endpoint) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	if endp.authAlwaysRequired {
-		return nil, smtp.ErrAuthRequired
-	}
-
-	// Executed before authentication and session initialization.
-	if err := endp.pipeline.RunEarlyChecks(context.TODO(), state); err != nil {
-		return nil, endp.wrapErr("", true, "MAIL", err)
-	}
-
-	return endp.newSession(true, "", "", state), nil
-}
-
-func (endp *Endpoint) newSession(anonymous bool, username, password string, state *smtp.ConnectionState) smtp.Session {
+func (endp *Endpoint) newSession(state *smtp.ConnectionState) smtp.Session {
 	s := &Session{
 		endp: endp,
 		log:  endp.Log,
 		connState: module.ConnState{
 			ConnectionState: *state,
-			AuthUser:        username,
-			AuthPassword:    password,
 		},
 		sessionCtx: context.Background(),
 	}

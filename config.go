@@ -40,7 +40,7 @@ type logOut struct {
 	log.Output
 }
 
-func logOutput(m *config.Map, node config.Node) (interface{}, error) {
+func logOutput(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(node.Args) == 0 {
 		return nil, config.NodeErr(node, "expected at least 1 argument")
 	}
@@ -82,7 +82,7 @@ func LogOutputOption(args []string) (log.Output, error) {
 			// keep the absolute path for reinitialization.
 			args[i] = absPath
 
-			w, err := os.OpenFile(absPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+			w, err := os.OpenFile(absPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create log file: %v", err)
 			}

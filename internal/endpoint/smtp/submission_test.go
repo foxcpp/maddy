@@ -39,7 +39,7 @@ func init() {
 }
 
 func TestSubmissionPrepare(t *testing.T) {
-	test := func(hdrMap map[string][]string, expectedMap map[string][]string) {
+	test := func(hdrMap, expectedMap map[string][]string) {
 		t.Helper()
 
 		hdr := textproto.Header{}
@@ -59,7 +59,7 @@ func TestSubmissionPrepare(t *testing.T) {
 			endp.Close()
 		}()
 
-		session, err := endp.Login(&smtp.ConnectionState{}, "u", "p")
+		session, err := endp.NewSession(smtp.ConnectionState{}, "")
 		if err != nil {
 			t.Fatal(err)
 		}

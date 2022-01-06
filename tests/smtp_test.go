@@ -24,6 +24,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
@@ -212,7 +213,7 @@ func TestSPF_DMARCDefer(tt *testing.T) {
 	defer conn.Close()
 	conn.SMTPNegotation("localhost", nil, nil)
 
-	msg := func(fromEnv, fromHdr string, bodyRespPattern string) {
+	msg := func(fromEnv, fromHdr, bodyRespPattern string) {
 		tt.Helper()
 
 		conn.Writeln("MAIL FROM:<" + fromEnv + ">")
@@ -249,7 +250,7 @@ func TestDNSBLConfig(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
@@ -298,7 +299,7 @@ func TestDNSBLConfig2(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
-		"1.0.0.127.dnsbl2.test.": {
+		tests.DefaultSourceIPRev + ".dnsbl2.test.": {
 			A: []string{"127.0.0.127"},
 		},
 		"sender.test.dnsbl.test.": {
@@ -523,6 +524,44 @@ func TestCheckCommand(tt *testing.T) {
 			t.Log([]byte(expectedMsg))
 		}
 	})
+
+	conn.Writeln("QUIT")
+	conn.ExpectPattern("221 *")
+}
+
+func TestHeaderSizeConstraint(tt *testing.T) {
+	tt.Parallel()
+	t := tests.NewT(tt)
+	t.DNS(nil)
+	t.Port("smtp")
+	t.Config(`
+		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			hostname mx.maddy.test
+			tls off
+			deliver_to dummy
+			max_header_size 1K
+		}
+	`)
+	t.Run(1)
+	defer t.Close()
+
+	conn := t.Conn("smtp")
+	defer conn.Close()
+	conn.SMTPNegotation("localhost", nil, nil)
+	conn.Writeln("MAIL FROM:<testsender@maddy.test>")
+	conn.ExpectPattern("250 *")
+	conn.Writeln("RCPT TO:<testing@maddy.test>")
+	conn.ExpectPattern("250 *")
+	conn.Writeln("DATA")
+	conn.ExpectPattern("354 *")
+	conn.Writeln("From: <testing@sender.test>")
+	conn.Writeln("To: <testing@maddy.test>")
+	conn.Writeln("Subject: " + strings.Repeat("A", 2*1024))
+	conn.Writeln("")
+	conn.Writeln("Hi")
+	conn.Writeln(".")
+
+	conn.ExpectPattern("552 5.3.4 Message header size exceeds limit *")
 
 	conn.Writeln("QUIT")
 	conn.ExpectPattern("221 *")

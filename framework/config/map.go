@@ -80,10 +80,10 @@ func (m *Map) AllowUnknown() {
 // slice. At least one argument should be present.
 //
 // See Map.Custom for description of inheritGlobal and required.
-func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []string, defaultVal []string, store *[]string) {
+func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed, defaultVal []string, store *[]string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, NodeErr(node, "can't declare a block here")
 		}
@@ -116,7 +116,7 @@ func (m *Map) EnumList(name string, inheritGlobal, required bool, allowed []stri
 func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, defaultVal string, store *string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, NodeErr(node, "can't declare a block here")
 		}
@@ -148,7 +148,7 @@ func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, 
 func (m *Map) Duration(name string, inheritGlobal, required bool, defaultVal time.Duration, store *time.Duration) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, NodeErr(node, "can't declare block here")
 		}
@@ -234,7 +234,7 @@ func ParseDataSize(s string) (int, error) {
 func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int, store *int) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, NodeErr(node, "can't declare block here")
 		}
@@ -262,7 +262,7 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 	m.Custom(name, inheritGlobal, false, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Children) != 0 {
 			return nil, NodeErr(node, "can't declare block here")
 		}
@@ -295,7 +295,7 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal []string, store *[]string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) == 0 {
 			return nil, NodeErr(node, "expected at least one argument")
 		}
@@ -317,7 +317,7 @@ func (m *Map) StringList(name string, inheritGlobal, required bool, defaultVal [
 func (m *Map) String(name string, inheritGlobal, required bool, defaultVal string, store *string) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -339,7 +339,7 @@ func (m *Map) String(name string, inheritGlobal, required bool, defaultVal strin
 func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, store *int) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -365,7 +365,7 @@ func (m *Map) Int(name string, inheritGlobal, required bool, defaultVal int, sto
 func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, store *uint) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -391,7 +391,7 @@ func (m *Map) UInt(name string, inheritGlobal, required bool, defaultVal uint, s
 func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32, store *int32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -417,7 +417,7 @@ func (m *Map) Int32(name string, inheritGlobal, required bool, defaultVal int32,
 func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint32, store *uint32) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -443,7 +443,7 @@ func (m *Map) UInt32(name string, inheritGlobal, required bool, defaultVal uint3
 func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64, store *int64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -469,7 +469,7 @@ func (m *Map) Int64(name string, inheritGlobal, required bool, defaultVal int64,
 func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint64, store *uint64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}
@@ -495,7 +495,7 @@ func (m *Map) UInt64(name string, inheritGlobal, required bool, defaultVal uint6
 func (m *Map) Float(name string, inheritGlobal, required bool, defaultVal float64, store *float64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
-	}, func(m *Map, node Node) (interface{}, error) {
+	}, func(_ *Map, node Node) (interface{}, error) {
 		if len(node.Args) != 1 {
 			return nil, NodeErr(node, "expected 1 argument")
 		}

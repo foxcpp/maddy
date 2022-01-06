@@ -20,8 +20,8 @@ available in some distributions (*cough* Debian *cough*).
 
 It should not be hard to grab a recent built toolchain from golang.org:
 ```
-wget "https://dl.google.com/go/go1.14.6.linux-amd64.tar.gz"
-tar xf "go1.14.6.linux-amd64.tar.gz"
+wget "https://dl.google.com/go/go1.15.6.linux-amd64.tar.gz"
+tar xf "go1.15.6.linux-amd64.tar.gz"
 export GOROOT="$PWD/go"
 export PATH="$PWD/go/bin:$PATH"
 ```

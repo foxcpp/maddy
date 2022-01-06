@@ -27,8 +27,10 @@ import (
 	"strings"
 )
 
-var ErrNoSuchUser = errors.New("shadow: user entry is not present in database")
-var ErrWrongPassword = errors.New("shadow: wrong password")
+var (
+	ErrNoSuchUser    = errors.New("shadow: user entry is not present in database")
+	ErrWrongPassword = errors.New("shadow: wrong password")
+)
 
 // Read reads system shadow passwords database and returns all entires in it.
 func Read() ([]Entry, error) {

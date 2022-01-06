@@ -48,9 +48,8 @@ func AuthUsingHelper(binaryPath, accountName, password string) error {
 				return fmt.Errorf("helperauth: %w: %v", err, string(exitErr.Stderr))
 			}
 			return module.ErrUnknownCredentials
-		} else {
-			return fmt.Errorf("helperauth: process wait: %w", err)
 		}
+		return fmt.Errorf("helperauth: process wait: %w", err)
 	}
 	return nil
 }

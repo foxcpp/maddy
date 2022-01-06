@@ -329,7 +329,8 @@ func TestMsgPipeline_PerSourceAddrAndDomainSplit(t *testing.T) {
 						targets: []module.DeliveryTarget{&target1},
 					},
 				},
-				"example.com": {perRcpt: map[string]*rcptBlock{},
+				"example.com": {
+					perRcpt: map[string]*rcptBlock{},
 					defaultRcpt: &rcptBlock{
 						targets: []module.DeliveryTarget{&target2},
 					},
@@ -365,7 +366,8 @@ func TestMsgPipeline_PerSourceReject(t *testing.T) {
 						targets: []module.DeliveryTarget{&target},
 					},
 				},
-				"example.com": {perRcpt: map[string]*rcptBlock{},
+				"example.com": {
+					perRcpt:   map[string]*rcptBlock{},
 					rejectErr: errors.New("go away"),
 				},
 			},

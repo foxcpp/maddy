@@ -69,7 +69,7 @@ func TestFuture_WaitCtx(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	_, err := f.GetContext(ctx)
-	if err != context.DeadlineExceeded {
+	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("context is not cancelled")
 	}
 }

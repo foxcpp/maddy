@@ -141,6 +141,16 @@ table.sql_query {
 }
 ```
 
+*Syntax:* named_args _boolean_ ++
+*Default:* yes
+
+Whether to use named parameters binding when executing SQL queries
+or not.
+
+Note that maddy's PostgreSQL driver does not support named parameters and
+SQLite3 driver has issues handling numbered parameters:
+https://github.com/mattn/go-sqlite3/issues/472
+
 **Syntax:** add _query_ ++
 **Syntax:** list _query_ ++
 **Syntax:** set _query_ ++
@@ -161,6 +171,9 @@ the store.
 entry in the database.
 
 'del' query gets :key argument - key and should remove it from the database.
+
+If named_args is set to "no" - key is passed as the first numbered parameter
+($1), value is passed as the second numbered parameter ($2).
 
 # Static table (table.static)
 

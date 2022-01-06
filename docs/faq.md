@@ -73,7 +73,7 @@ Submission).
 
 No, at least currently.
 
-I suggest you to check out https://git.sr.ht/~emersion/alps if you
+I suggest you to check out [alps](https://git.sr.ht/~migadu/alps) if you
 are fine with alpha-quality but extremely easy to deploy webmail.
 
 ## Is there a content filter (spam filter)?

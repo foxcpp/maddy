@@ -184,7 +184,7 @@ func readFile(path string, out map[string][]string) error {
 	}
 
 	for scnr.Scan() {
-		lineCounter += 1
+		lineCounter++
 		if strings.HasPrefix(scnr.Text(), "#") {
 			continue
 		}
@@ -207,11 +207,7 @@ func readFile(path string, out map[string][]string) error {
 
 		out[from] = append(out[from], to)
 	}
-	if err := scnr.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return scnr.Err()
 }
 
 func (f *File) Lookup(_ context.Context, val string) (string, bool, error) {

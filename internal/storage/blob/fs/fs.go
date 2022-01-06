@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -52,7 +53,7 @@ func (s *FSStore) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (s *FSStore) Open(key string) (io.ReadCloser, error) {
+func (s *FSStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
 	f, err := os.Open(filepath.Join(s.root, key))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -63,15 +64,20 @@ func (s *FSStore) Open(key string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-func (s *FSStore) Create(key string) (module.Blob, error) {
+func (s *FSStore) Create(_ context.Context, key string, blobSize int64) (module.Blob, error) {
 	f, err := os.Create(filepath.Join(s.root, key))
 	if err != nil {
 		return nil, err
 	}
+	if blobSize >= 0 {
+		if err := f.Truncate(blobSize); err != nil {
+			return nil, err
+		}
+	}
 	return f, nil
 }
 
-func (s *FSStore) Delete(keys []string) error {
+func (s *FSStore) Delete(_ context.Context, keys []string) error {
 	for _, key := range keys {
 		if err := os.Remove(filepath.Join(s.root, key)); err != nil {
 			if os.IsNotExist(err) {

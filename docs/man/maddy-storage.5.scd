@@ -144,7 +144,7 @@ of cache size in KiB.
 SQLite-specific performance tuning option. Amount of milliseconds to wait
 before giving up on DB lock.
 
-*Syntax*: imap_filters { ... } ++
+*Syntax*: imap_filter { ... } ++
 *Default*: not set
 
 Specifies IMAP filters to apply for messages delivered from SMTP pipeline.
@@ -153,7 +153,7 @@ See *maddy-imap*(5) for filter modules usable here.
 
 Ex.
 ```
-imap_filters {
+imap_filter {
 	command /etc/maddy/sieve.sh {account_name}
 }
 ```

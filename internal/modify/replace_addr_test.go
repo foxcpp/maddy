@@ -26,7 +26,7 @@ import (
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
-func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, context.Context, string) (string, error)) {
+func testReplaceAddr(t *testing.T, modName string) {
 	test := func(addr, expected string, aliases map[string]string) {
 		t.Helper()
 
@@ -95,9 +95,9 @@ func testReplaceAddr(t *testing.T, modName string, rewriter func(*replaceAddr, c
 }
 
 func TestReplaceAddr_RewriteSender(t *testing.T) {
-	testReplaceAddr(t, "modify.replace_sender", (*replaceAddr).RewriteSender)
+	testReplaceAddr(t, "modify.replace_sender")
 }
 
 func TestReplaceAddr_RewriteRcpt(t *testing.T) {
-	testReplaceAddr(t, "modify.replace_rcpt", (*replaceAddr).RewriteRcpt)
+	testReplaceAddr(t, "modify.replace_rcpt")
 }

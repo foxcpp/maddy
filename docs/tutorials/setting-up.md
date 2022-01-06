@@ -33,7 +33,7 @@ Your options are:
 * Pre-built tarball (Linux, amd64)
 
     Available on [GitHub](https://github.com/foxcpp/maddy/releases) or
-    [maddy.email](https://maddy.email/).
+    [maddy.email/builds](https://maddy.email/builds/).
 
 	The tarball includes maddy and maddyctl executables you can
 	copy into /usr/local/bin as well as systemd unit file you can
@@ -161,27 +161,35 @@ example.org.   AAAA  2001:beef::1
 
 ; It says that "server mx1.example.org is handling messages for example.org".
 example.org.   MX    10 mx1.example.org.
-; Of course, mx1 should have an entry as well:
+; Of course, mx1 should have A/AAAA entry as well:
 mx1.example.org.   A     10.2.3.4
+mx1.example.org.   AAAA  2001:beef::1
 
 ; Use SPF to say that the servers in "MX" above are allowed to send email
 ; for this domain, and nobody else.
-example.org.   TXT   "v=spf1 mx -all"
+example.org.     TXT   "v=spf1 mx ~all"
+; It is recommended to server SPF record for both domain and MX hostname
+mx1.example.org. TXT   "v=spf1 mx ~all"
 
 ; Opt-in into DMARC with permissive policy and request reports about broken
 ; messages.
-_dmarc.example.org.   TXT    "v=DMARC1; p=none; ruf=postmaster@example.org"
+_dmarc.example.org.   TXT    "v=DMARC1; p=quarantine; ruf=mailto:postmaster@example.org"
+
+; Mark domain as MTA-STS compatible (see the next section)
+; and request reports about failures to be sent to postmaster@example.org
+_mta-sts.example.org.   TXT    "v=STSv1; id=1"
+_smtp._tls.example.org. TXT    "v=TLSRPTv1;rua=mailto:postmaster@example.org"
 ```
 
 And the last one, DKIM key, is a bit tricky. maddy generated a key for you on
 the first start-up. You can find it in
 /var/lib/maddy/dkim_keys/example.org_default.dns. You need to put it in a TXT
-record for `default._domainkey.example.org` domain, like that:
+record for `default._domainkey.example.org.` domain, like that:
 ```
-default._domainkey.example.org    TXT   "v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg="
+default._domainkey.example.org.    TXT   "v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg="
 ```
 
-## MTA-STS
+## MTA-STS and DANE
 
 By default SMTP is not protected against active attacks. MTA-STS policy tells
 compatible senders to always use properly authenticated TLS when talking to
@@ -191,6 +199,7 @@ MitM attacks on port 25.
 Basically, you to create a file with following contents and make it available
 at https://mta-sts.example.org/.well-known/mta-sts.txt:
 ```
+version: STSv1
 mode: enforce
 max_age: 604800
 mx: mx1.example.org
@@ -204,6 +213,14 @@ per line, like that:
 ```
 mx: mx1.example.org
 mx: mx2.example.org
+```
+
+It is also recommended to set a TLSA (DANE) record.
+Use https://www.huque.com/bin/gen_tlsa to generate one. 
+Set port to 25, Transport Protocol to "tcp" and Domain Name to **the MX hostname**.
+Example of a valid record:
+```
+_25._tcp.mx1.example.org. TLSA 3 1 1 7f59d873a70e224b184c95a4eb54caa9621e47d48b4a25d312d83d96e3498238
 ```
 
 ## User accounts and maddyctl

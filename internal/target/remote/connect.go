@@ -88,7 +88,7 @@ func isVerifyError(err error) bool {
 // Return values:
 // - tlsLevel    TLS security level that was estabilished.
 // - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
-func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr error, err error) {
+func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr, err error) {
 	tlsLevel = module.TLSAuthenticated
 	if rd.rt.tlsConfig != nil {
 		tlsCfg = rd.rt.tlsConfig.Clone()

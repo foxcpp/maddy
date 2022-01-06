@@ -31,7 +31,7 @@ import (
 )
 
 func TestRequireMatchingRDNS(t *testing.T) {
-	test := func(rdns string, srcHost string, fail bool) {
+	test := func(rdns, srcHost string, fail bool) {
 		rdnsFut := future.New()
 		var ptr []string
 		if rdns != "" {

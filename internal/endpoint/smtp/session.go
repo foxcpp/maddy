@@ -40,6 +40,34 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 )
 
+func limitReader(r io.Reader, n int64, err error) *limitedReader {
+	return &limitedReader{R: r, N: n, E: err, Enabled: true}
+}
+
+type limitedReader struct {
+	R       io.Reader
+	N       int64
+	E       error
+	Enabled bool
+}
+
+// same as io.LimitedReader.Read except returning the custom error and the option
+// to be disabled
+func (l *limitedReader) Read(p []byte) (n int, err error) {
+	if !l.Enabled {
+		return l.R.Read(p)
+	}
+	if l.N <= 0 {
+		return 0, l.E
+	}
+	if int64(len(p)) > l.N {
+		p = p[0:l.N]
+	}
+	n, err = l.R.Read(p)
+	l.N -= int64(n)
+	return
+}
+
 type Session struct {
 	endp *Endpoint
 
@@ -109,6 +137,43 @@ func (s *Session) cleanSession() {
 	s.deliveryErr = nil
 	s.msgCtx = nil
 	s.msgTask.End()
+}
+
+func (s *Session) AuthPlain(username, password string) error {
+	if s.endp.serv.AuthDisabled {
+		return smtp.ErrAuthUnsupported
+	}
+
+	// Executed before authentication and session initialization.
+	if err := s.endp.pipeline.RunEarlyChecks(context.TODO(), &s.connState.ConnectionState); err != nil {
+		return s.endp.wrapErr("", true, "AUTH", err)
+	}
+
+	err := s.endp.saslAuth.AuthPlain(username, password)
+	if err != nil {
+		s.endp.Log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)
+
+		failedLogins.WithLabelValues(s.endp.name).Inc()
+
+		if exterrors.IsTemporary(err) {
+			return &smtp.SMTPError{
+				Code:         454,
+				EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+				Message:      "Temporary authentication failure",
+			}
+		}
+
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Invalid credentials",
+		}
+	}
+
+	s.connState.AuthUser = username
+	s.connState.AuthPassword = password
+
+	return nil
 }
 
 func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.MailOptions) (string, error) {
@@ -203,15 +268,19 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	return msgMeta.ID, nil
 }
 
-func (s *Session) Mail(from string, opts smtp.MailOptions) error {
+func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
+	if s.endp.authAlwaysRequired && s.connState.AuthUser == "" {
+		return smtp.ErrAuthRequired
+	}
+
 	s.msgLock.Lock()
 	defer s.msgLock.Unlock()
 
 	if !s.endp.deferServerReject {
 		// Will initialize s.msgCtx.
-		msgID, err := s.startDelivery(s.sessionCtx, from, opts)
+		msgID, err := s.startDelivery(s.sessionCtx, from, *opts)
 		if err != nil {
-			if err != context.DeadlineExceeded {
+			if !errors.Is(err, context.DeadlineExceeded) {
 				s.log.Error("MAIL FROM error", err, "msg_id", msgID)
 			}
 			return s.endp.wrapErr(msgID, !opts.UTF8, "MAIL", err)
@@ -220,7 +289,7 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) error {
 
 	// Keep the MAIL FROM argument for deferred startDelivery.
 	s.mailFrom = from
-	s.opts = opts
+	s.opts = *opts
 
 	return nil
 }
@@ -275,7 +344,7 @@ func (s *Session) Rcpt(to string) error {
 		// It will initialize s.msgCtx.
 		msgID, err := s.startDelivery(s.sessionCtx, s.mailFrom, s.opts)
 		if err != nil {
-			if err != context.DeadlineExceeded {
+			if !errors.Is(err, context.DeadlineExceeded) {
 				s.log.Error("MAIL FROM error (deferred)", err, "rcpt", to, "msg_id", msgID)
 			}
 			s.deliveryErr = s.endp.wrapErr(msgID, !s.opts.UTF8, "RCPT", err)
@@ -339,8 +408,14 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Header, buffer.Buffer, error) {
-	bufr := bufio.NewReader(r)
+func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
+	limitr := limitReader(r, int64(s.endp.maxHeaderBytes), &exterrors.SMTPError{
+		Code:         552,
+		EnhancedCode: exterrors.EnhancedCode{5, 3, 4},
+		Message:      "Message header size exceeds limit",
+	})
+
+	bufr := bufio.NewReader(limitr)
 	header, err := textproto.ReadHeader(bufr)
 	if err != nil {
 		return textproto.Header{}, nil, fmt.Errorf("I/O error while parsing header: %w", err)
@@ -352,6 +427,9 @@ func (s *Session) prepareBody(ctx context.Context, r io.Reader) (textproto.Heade
 			return textproto.Header{}, nil, err
 		}
 	}
+
+	// the header size check is done. The message size will be checked by go-smtp
+	limitr.Enabled = false
 
 	buf, err := s.endp.buffer(bufr)
 	if err != nil {
@@ -373,7 +451,7 @@ func (s *Session) Data(r io.Reader) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}
@@ -428,7 +506,7 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(bodyCtx, r)
+	header, buf, err := s.prepareBody(r)
 	if err != nil {
 		return wrapErr(err)
 	}
