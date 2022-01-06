@@ -1,6 +1,7 @@
-maddy-config(5) "maddy mail server" "maddy reference documentation"
+# Configuration files syntax
 
-; TITLE Configuration files syntax
+**Note:** This file is a technical document describing how
+maddy parses configuration files.
 
 Configuration consists of newline-delimited "directives". Each directive can
 have zero or more arguments.
@@ -185,7 +186,7 @@ Also note that the following is not valid, unlike Duration values syntax:
 
 Maddy configuration uses URL-like syntax to specify network addresses.
 
-- unix://file_path
+- unix://file\_path
   Unix domain socket. Relative paths are relative to runtime directory
   (/run/maddy).
 
@@ -201,4 +202,5 @@ No-op module. It doesn't need to be configured explicitly and can be referenced
 using "dummy" name. It can act as a delivery target or auth.
 provider. In the latter case, it will accept any credentials, allowing any
 client to authenticate using any username and password (use with care!).
+
 

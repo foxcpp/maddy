@@ -2,44 +2,80 @@ site_name: maddy
 
 repo_url: https://github.com/foxcpp/maddy
 
-theme: readthedocs
+theme: alb
 
 markdown_extensions:
   - codehilite:
       guess_lang: false
 
 nav:
+  - faq.md
   - Tutorials:
     - tutorials/setting-up.md
     - tutorials/building-from-source.md
     - tutorials/alias-to-remote.md
     - tutorials/pam.md
   - Release builds: 'https://maddy.email/builds/'
-  - Integration with software:
-    - third-party/dovecot.md
-    - third-party/smtp-servers.md
-    - third-party/rspamd.md
-    - third-party/mailman3.md
-  - seclevels.md
-  - faq.md
   - multiple-domains.md
-  - unicode.md
   - upgrading.md
-  - specifications.md
-  - openmetrics.md
-  - Manual pages:
-    - man/_generated_maddy.1.md
-    - man/_generated_maddy.5.md
-    - man/_generated_maddy-auth.5.md
-    - man/_generated_maddy-blob.5.md
-    - man/_generated_maddy-config.5.md
-    - man/_generated_maddy-filters.5.md
-    - man/_generated_maddy-imap.5.md
-    - man/_generated_maddy-smtp.5.md
-    - man/_generated_maddy-storage.5.md
-    - man/_generated_maddy-targets.5.md
-    - man/_generated_maddy-tables.5.md
-    - man/_generated_maddy-tls.5.md
+  - seclevels.md
+  - Reference manual:
+      - reference/modules.md
+      - reference/global-config.md
+      - reference/tls.md
+      - reference/tls-acme.md
+      - Endpoints configuration:
+          - reference/endpoints/imap.md
+          - reference/endpoints/smtp.md
+          - reference/endpoints/openmetrics.md
+      - IMAP storage:
+          - reference/storage/imap-filters.md
+          - reference/storage/imapsql.md
+          - Blob storage:
+            - reference/blob/fs.md
+            - reference/blob/s3.md
+      - reference/smtp-pipeline.md
+      - SMTP targets:
+          - reference/targets/queue.md
+          - reference/targets/remote.md
+          - reference/targets/smtp.md
+      - SMTP checks:
+          - reference/checks/actions.md
+          - reference/checks/dkim.md
+          - reference/checks/spf.md
+          - reference/checks/milter.md
+          - reference/checks/rspamd.md
+          - reference/checks/dnsbl.md
+          - reference/checks/command.md
+          - reference/checks/authorize_sender.md
+          - reference/checks/misc.md
+      - SMTP modifiers:
+          - reference/modifiers/dkim.md
+          - reference/modifiers/envelope.md
+      - Lookup tables (string translation):
+          - reference/table/static.md
+          - reference/table/regexp.md
+          - reference/table/file.md
+          - reference/table/sql_query.md
+          - reference/table/chain.md
+          - reference/table/email_localpart.md
+          - reference/table/auth.md
+      - Authentication providers:
+          - reference/auth/pass_table.md
+          - reference/auth/pam.md
+          - reference/auth/shadow.md
+          - reference/auth/external.md
+          - reference/auth/ldap.md
+          - reference/auth/dovecot_sasl.md
+          - reference/auth/plain_separate.md
+      - reference/config-syntax.md
+  - Integration with software:
+      - third-party/dovecot.md
+      - third-party/smtp-servers.md
+      - third-party/rspamd.md
+      - third-party/mailman3.md
   - Internals:
+    - internals/specifications.md
+    - internals/unicode.md
     - internals/quirks.md
     - internals/sqlite.md
