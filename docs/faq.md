@@ -1,16 +1,42 @@
 # Frequently Asked Questions
 
-## Why?
+## I configured maddy as recommended and gmail still puts my messages in spam
 
-For fun. Turned out to be a rather convenient approach to
-self-hosted email.
+Unfortunately, GMail policies are opaque so we cannot tell why this happens.
 
-## Is it caddy for email?
+Verify that you have a rDNS record set for the IP used
+by sender server. Also some IPs may just happen to 
+have bad reputation - check it with various DNSBLs. In this
+case you do not have much of a choice but to replace it.
 
-No. It was intended to be one but developers quickly acknowledged
-the fact email cannot be easily abstracted behind some magic.
+Additionally, you may try marking multiple messages sent from
+your domain as "not spam" in GMail UI.
 
-## How it compares to MailCow or Mail-In-The-Box?
+## Message sending fails with `dial tcp X.X.X.X:25: connect: connection timed out` in log
+
+Your provider is blocking outbound SMTP traffic on port 25.
+
+You either have to ask them to unblock it or forward
+all outbound messages via a "smart-host".
+
+## What is resource usage of maddy?
+
+For a small personal server, you do not need much more than a 
+single 1 GiB of RAM and disk space.
+
+## How to setup a catchall address?
+
+https://github.com/foxcpp/maddy/issues/243#issuecomment-655694512
+
+## maddyctl prints a "permission denied" error
+
+Run maddyctl under the same user as maddy itself.
+E.g.
+``` 
+sudo -u maddy maddyctl creds ...
+```
+
+## How maddy compares to MailCow or Mail-In-The-Box?
 
 MailCow and MIAB are bundles of well-known email-related software configured to
 work together. maddy is a single piece of software implementing subset of what
@@ -62,13 +88,6 @@ ZoneMTA has a number of features that may make it easier to integrate
 with HTTP-based services. maddy speaks standard email protocols (SMTP,
 Submission).
 
-## What is the scope of project?
-
-1. Implement a usable SMTP + Submission server that can both accept
-  and send email as secure as possible with todays state of
-  relevant protocols.
-2. Implement a meaningful subset of IMAP for access to local storage.
-
 ## Is there a webmail?
 
 No, at least currently.
@@ -98,37 +117,3 @@ of bugs in one component.
 Besides, you are not required to use a single process, it is easy to launch
 maddy with a non-default configuration path and connect multiple instances
 together using off-the-shelf protocols.
-
-## Can I do X with maddy?
-
-Ask on #maddy.
-
-maddy is less feature-packed than other SMTP/IMAP server
-implementations but it is not completely useless for anything other than
-its default configuration.
-
-## Can you implement X?
-
-"Umbrella" projects like maddy are susceptible to scope
-creep unless maintainers apply a lot of skepticism to proposed
-features.
-
-If X is essential for providing email security or extends the space of useful
-configurations significantly and does not require major design changes -
-we can talk, go to #maddy. Otherwise the likely answer is no.
-
-## Are you breaking things between releases?
-
-maddy releases follow Semantic Versioning 2.0.0 specification.
-It is expected that 0.X releases may not be compatible with each
-other. I attempt to minimize such breakage unless there is a significant
-benefit.
-
-## 1.0 when?
-
-When no more backward-incompatible changes will be needed. maddy releases follow
-Semantic Versioning 2.0.0 specification.
-
-## maddy is bad name, it is almost impossible to Google!
-
-Call it Maddy Mail Server.
