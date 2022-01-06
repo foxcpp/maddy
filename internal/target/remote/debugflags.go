@@ -20,8 +20,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package remote
 
-import "flag"
+import (
+	maddycli "github.com/foxcpp/maddy/internal/cli"
+	"github.com/urfave/cli/v2"
+)
 
 func init() {
-	flag.StringVar(&smtpPort, "debug.smtpport", "25", "SMTP port to use for connections in tests")
+	maddycli.AddGlobalFlag(&cli.StringFlag{
+		Name:        "debug.smtpport",
+		Usage:       "SMTP port to use for connections in tests",
+		Destination: &smtpPort,
+	})
 }

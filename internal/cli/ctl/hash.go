@@ -16,18 +16,60 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package main
+package ctl
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/internal/auth/pass_table"
+	maddycli "github.com/foxcpp/maddy/internal/cli"
+	clitools2 "github.com/foxcpp/maddy/internal/cli/clitools"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func init() {
+	maddycli.AddSubcommand(
+		&cli.Command{
+			Name:   "hash",
+			Usage:  "Generate password hashes for use with pass_table",
+			Action: hashCommand,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "password",
+					Aliases: []string{"p"},
+					Usage:   "Use `PASSWORD instead of reading password from stdin\n\t\tWARNING: Provided only for debugging convenience. Don't leave your passwords in shell history!",
+				},
+				&cli.StringFlag{
+					Name:  "hash",
+					Usage: "Use specified hash algorithm",
+					Value: "bcrypt",
+				},
+				&cli.IntFlag{
+					Name:  "bcrypt-cost",
+					Usage: "Specify bcrypt cost value",
+					Value: bcrypt.DefaultCost,
+				},
+				&cli.IntFlag{
+					Name:  "argon2-time",
+					Usage: "Time factor for Argon2id",
+					Value: 3,
+				},
+				&cli.IntFlag{
+					Name:  "argon2-memory",
+					Usage: "Memory in KiB to use for Argon2id",
+					Value: 1024,
+				},
+				&cli.IntFlag{
+					Name:  "argon2-threads",
+					Usage: "Threads to use for Argon2id",
+					Value: 1,
+				},
+			},
+		})
+}
 
 func hashCommand(ctx *cli.Context) error {
 	hashFunc := ctx.String("hash")
@@ -75,7 +117,7 @@ func hashCommand(ctx *cli.Context) error {
 		pass = ctx.String("password")
 	} else {
 		var err error
-		pass, err = clitools.ReadPassword("Password")
+		pass, err = clitools2.ReadPassword("Password")
 		if err != nil {
 			return err
 		}

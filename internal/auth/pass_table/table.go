@@ -112,9 +112,19 @@ func (a *Auth) ListUsers() ([]string, error) {
 }
 
 func (a *Auth) CreateUser(username, password string) error {
+	return a.CreateUserHash(username, password, HashBcrypt, HashOpts{
+		BcryptCost: bcrypt.DefaultCost,
+	})
+}
+
+func (a *Auth) CreateUserHash(username, password string, hashAlgo string, opts HashOpts) error {
 	tbl, ok := a.table.(module.MutableTable)
 	if !ok {
 		return fmt.Errorf("%s: table is not mutable, no management functionality available", a.modName)
+	}
+
+	if _, ok := HashCompute[hashAlgo]; !ok {
+		return fmt.Errorf("%s: unknown hash function: %v", a.modName, hashAlgo)
 	}
 
 	key, err := precis.UsernameCaseMapped.CompareKey(username)
@@ -130,15 +140,12 @@ func (a *Auth) CreateUser(username, password string) error {
 		return fmt.Errorf("%s: credentials for %s already exist", a.modName, key)
 	}
 
-	// TODO: Allow to customize hash function.
-	hash, err := HashCompute[HashBcrypt](HashOpts{
-		BcryptCost: bcrypt.DefaultCost,
-	}, password)
+	hash, err := HashCompute[hashAlgo](opts, password)
 	if err != nil {
 		return fmt.Errorf("%s: create user %s: hash generation: %w", a.modName, key, err)
 	}
 
-	if err := tbl.SetKey(key, "bcrypt:"+hash); err != nil {
+	if err := tbl.SetKey(key, hash+":"+hash); err != nil {
 		return fmt.Errorf("%s: create user %s: %w", a.modName, key, err)
 	}
 	return nil

@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package main
+package ctl
 
 import (
 	"bytes"
@@ -29,10 +29,385 @@ import (
 
 	"github.com/emersion/go-imap"
 	imapsql "github.com/foxcpp/go-imap-sql"
-	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/framework/module"
+	maddycli "github.com/foxcpp/maddy/internal/cli"
+	clitools2 "github.com/foxcpp/maddy/internal/cli/clitools"
 	"github.com/urfave/cli/v2"
 )
+
+func init() {
+	maddycli.AddSubcommand(
+		&cli.Command{
+			Name:  "imap-mboxes",
+			Usage: "IMAP mailboxes (folders) management",
+			Subcommands: []*cli.Command{
+				{
+					Name:      "list",
+					Usage:     "Show mailboxes of user",
+					ArgsUsage: "USERNAME",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "cfg-block",
+							Usage:   "Module configuration block to use",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
+							Value:   "local_mailboxes",
+						},
+						&cli.BoolFlag{
+							Name:    "subscribed",
+							Aliases: []string{"s"},
+							Usage:   "List only subscribed mailboxes",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return mboxesList(be, ctx)
+					},
+				},
+				{
+					Name:      "create",
+					Usage:     "Create mailbox",
+					ArgsUsage: "USERNAME NAME",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "cfg-block",
+							Usage:   "Module configuration block to use",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
+							Value:   "local_mailboxes",
+						},
+						&cli.StringFlag{
+							Name:  "special",
+							Usage: "Set SPECIAL-USE attribute on mailbox; valid values: archive, drafts, junk, sent, trash",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return mboxesCreate(be, ctx)
+					},
+				},
+				{
+					Name:        "remove",
+					Usage:       "Remove mailbox",
+					Description: "WARNING: All contents of mailbox will be irrecoverably lost.",
+					ArgsUsage:   "USERNAME MAILBOX",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "cfg-block",
+							Usage:   "Module configuration block to use",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
+							Value:   "local_mailboxes",
+						},
+						&cli.BoolFlag{
+							Name:    "yes",
+							Aliases: []string{"y"},
+							Usage:   "Don't ask for confirmation",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return mboxesRemove(be, ctx)
+					},
+				},
+				{
+					Name:        "rename",
+					Usage:       "Rename mailbox",
+					Description: "Rename may cause unexpected failures on client-side so be careful.",
+					ArgsUsage:   "USERNAME OLDNAME NEWNAME",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "cfg-block",
+							Usage:   "Module configuration block to use",
+							EnvVars: []string{"MADDY_CFGBLOCK"},
+							Value:   "local_mailboxes",
+						},
+					},
+					Action: func(ctx *cli.Context) error {
+						be, err := openStorage(ctx)
+						if err != nil {
+							return err
+						}
+						defer closeIfNeeded(be)
+						return mboxesRename(be, ctx)
+					},
+				},
+			},
+		})
+	maddycli.AddSubcommand(&cli.Command{
+		Name:  "imap-msgs",
+		Usage: "IMAP messages management",
+		Subcommands: []*cli.Command{
+			{
+				Name:        "add",
+				Usage:       "Add message to mailbox",
+				ArgsUsage:   "USERNAME MAILBOX",
+				Description: "Reads message body (with headers) from stdin. Prints UID of created message on success.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.StringSliceFlag{
+						Name:    "flag",
+						Aliases: []string{"f"},
+						Usage:   "Add flag to message. Can be specified multiple times",
+					},
+					&cli.TimestampFlag{
+						Layout:  time.RFC3339,
+						Name:    "date",
+						Aliases: []string{"d"},
+						Usage:   "Set internal date value to specified one in ISO 8601 format (2006-01-02T15:04:05Z07:00)",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsAdd(be, ctx)
+				},
+			},
+			{
+				Name:        "add-flags",
+				Usage:       "Add flags to messages",
+				ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
+				Description: "Add flags to all messages matched by SEQ.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsFlags(be, ctx)
+				},
+			},
+			{
+				Name:        "rem-flags",
+				Usage:       "Remove flags from messages",
+				ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
+				Description: "Remove flags from all messages matched by SEQ.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsFlags(be, ctx)
+				},
+			},
+			{
+				Name:        "set-flags",
+				Usage:       "Set flags on messages",
+				ArgsUsage:   "USERNAME MAILBOX SEQ FLAGS...",
+				Description: "Set flags on all messages matched by SEQ.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsFlags(be, ctx)
+				},
+			},
+			{
+				Name:      "remove",
+				Usage:     "Remove messages from mailbox",
+				ArgsUsage: "USERNAME MAILBOX SEQSET",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid,u",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+					&cli.BoolFlag{
+						Name:    "yes",
+						Aliases: []string{"y"},
+						Usage:   "Don't ask for confirmation",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsRemove(be, ctx)
+				},
+			},
+			{
+				Name:        "copy",
+				Usage:       "Copy messages between mailboxes",
+				Description: "Note: You can't copy between mailboxes of different users. APPENDLIMIT of target mailbox is not enforced.",
+				ArgsUsage:   "USERNAME SRCMAILBOX SEQSET TGTMAILBOX",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsCopy(be, ctx)
+				},
+			},
+			{
+				Name:        "move",
+				Usage:       "Move messages between mailboxes",
+				Description: "Note: You can't move between mailboxes of different users. APPENDLIMIT of target mailbox is not enforced.",
+				ArgsUsage:   "USERNAME SRCMAILBOX SEQSET TGTMAILBOX",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsMove(be, ctx)
+				},
+			},
+			{
+				Name:        "list",
+				Usage:       "List messages in mailbox",
+				Description: "If SEQSET is specified - only show messages that match it.",
+				ArgsUsage:   "USERNAME MAILBOX [SEQSET]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQSET instead of sequence numbers",
+					},
+					&cli.BoolFlag{
+						Name:    "full,f",
+						Aliases: []string{"f"},
+						Usage:   "Show entire envelope and all server meta-data",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsList(be, ctx)
+				},
+			},
+			{
+				Name:        "dump",
+				Usage:       "Dump message body",
+				Description: "If passed SEQ matches multiple messages - they will be joined.",
+				ArgsUsage:   "USERNAME MAILBOX SEQ",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "cfg-block",
+						Usage:   "Module configuration block to use",
+						EnvVars: []string{"MADDY_CFGBLOCK"},
+						Value:   "local_mailboxes",
+					},
+					&cli.BoolFlag{
+						Name:    "uid",
+						Aliases: []string{"u"},
+						Usage:   "Use UIDs for SEQ instead of sequence numbers",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					be, err := openStorage(ctx)
+					if err != nil {
+						return err
+					}
+					defer closeIfNeeded(be)
+					return msgsDump(be, ctx)
+				},
+			},
+		},
+	})
+}
 
 func FormatAddress(addr *imap.Address) string {
 	return fmt.Sprintf("%s <%s@%s>", addr.PersonalName, addr.MailboxName, addr.HostName)
@@ -131,7 +506,7 @@ func mboxesRemove(be module.Storage, ctx *cli.Context) error {
 			fmt.Fprintf(os.Stderr, "Mailbox %s contains %d messages.\n", name, status.Messages)
 		}
 
-		if !clitools.Confirmation("Are you sure you want to delete that mailbox?", false) {
+		if !clitools2.Confirmation("Are you sure you want to delete that mailbox?", false) {
 			return errors.New("Cancelled")
 		}
 	}
@@ -183,7 +558,7 @@ func msgsAdd(be module.Storage, ctx *cli.Context) error {
 
 	date := time.Now()
 	if ctx.IsSet("date") {
-		date = time.Unix(ctx.Int64("date"), 0)
+		date = *ctx.Timestamp("date")
 	}
 
 	buf := bytes.Buffer{}
@@ -240,7 +615,7 @@ func msgsRemove(be module.Storage, ctx *cli.Context) error {
 	}
 
 	if !ctx.Bool("yes") {
-		if !clitools.Confirmation("Are you sure you want to delete these messages?", false) {
+		if !clitools2.Confirmation("Are you sure you want to delete these messages?", false) {
 			return errors.New("Cancelled")
 		}
 	}
@@ -286,10 +661,6 @@ func msgsCopy(be module.Storage, ctx *cli.Context) error {
 }
 
 func msgsMove(be module.Storage, ctx *cli.Context) error {
-	if ctx.Bool("yes") || !clitools.Confirmation("Currently, it is unsafe to remove messages from mailboxes used by connected clients, continue?", false) {
-		return cli.Exit("Cancelled", 2)
-	}
-
 	username := ctx.Args().First()
 	if username == "" {
 		return cli.Exit("Error: USERNAME is required", 2)

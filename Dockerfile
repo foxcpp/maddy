@@ -25,4 +25,4 @@ COPY --from=build-env /pkg/usr/local/bin/maddyctl /bin/maddyctl
 
 EXPOSE 25 143 993 587 465
 VOLUME ["/data"]
-ENTRYPOINT ["/bin/maddy", "-config", "/data/maddy.conf"]
+ENTRYPOINT ["/bin/maddy", "-config", "/data/maddy.conf", "run"]

@@ -72,7 +72,7 @@ Restart=on-failure
 # ... Unless it is a configuration problem.
 RestartPreventExitStatus=2
 
-ExecStart=/usr/local/bin/maddy
+ExecStart=/usr/local/bin/maddy run
 
 ExecReload=/bin/kill -USR1 $MAINPID
 ExecReload=/bin/kill -USR2 $MAINPID
