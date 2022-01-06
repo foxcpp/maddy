@@ -70,8 +70,8 @@ require (
 	golang.org/x/net v0.0.0-20211011170408-caeb26a5c8c0
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/text v0.3.7
 	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac // indirect
+	golang.org/x/text v0.3.7
 	google.golang.org/api v0.58.0 // indirect
 	google.golang.org/genproto v0.0.0-20211011165927-a5fb3255271e // indirect
 	google.golang.org/grpc v1.41.0 // indirect

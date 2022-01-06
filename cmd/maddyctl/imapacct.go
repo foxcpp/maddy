@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"os"
 
-	specialuse "github.com/emersion/go-imap-specialuse"
 	"github.com/foxcpp/maddy/cmd/maddyctl/clitools"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/urfave/cli"
@@ -87,27 +86,27 @@ func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 	}
 
 	if name := ctx.String("sent-name"); name != "" {
-		if err := createMbox(name, specialuse.Sent); err != nil {
+		if err := createMbox(name, imap.SentAttr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create sent folder: %v", err)
 		}
 	}
 	if name := ctx.String("trash-name"); name != "" {
-		if err := createMbox(name, specialuse.Trash); err != nil {
+		if err := createMbox(name, imap.TrashAttr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create trash folder: %v", err)
 		}
 	}
 	if name := ctx.String("junk-name"); name != "" {
-		if err := createMbox(name, specialuse.Junk); err != nil {
+		if err := createMbox(name, imap.JunkAttr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create junk folder: %v", err)
 		}
 	}
 	if name := ctx.String("drafts-name"); name != "" {
-		if err := createMbox(name, specialuse.Drafts); err != nil {
+		if err := createMbox(name, imap.DraftsAttr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create drafts folder: %v", err)
 		}
 	}
 	if name := ctx.String("archive-name"); name != "" {
-		if err := createMbox(name, specialuse.Archive); err != nil {
+		if err := createMbox(name, imap.ArchiveAttr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create archive folder: %v", err)
 		}
 	}
