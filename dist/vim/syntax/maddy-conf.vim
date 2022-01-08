@@ -139,6 +139,7 @@ syn keyword maddyModDir
 	\ fail_open
 	\ file
 	\ flags
+	\ force_ipv4
 	\ fs_dir
 	\ fsstore
 	\ full_match
