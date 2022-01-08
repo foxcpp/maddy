@@ -128,6 +128,17 @@ per-source/per-destination are as observed when message exits the server.
 
 Choose the local IP to bind for outbound SMTP connections.
 
+*Syntax*: force_ipv4 _boolean_ ++
+*Default*: false
+
+Force resolving outbound SMTP domains to IPv4 addresses. Some server providers
+do not offer a way to properly set reverse PTR domains for IPv6 addresses; this
+option makes maddy only connect to IPv4 addresses so that its public IPv4 address
+is used to connect to that server, and thus reverse PTR checks are made against
+its IPv4 address.
+
+Warning: this may break sending outgoing mail to IPv6-only SMTP servers.
+
 *Syntax*: connect_timeout _duration_ ++
 *Default*: 5m
 
