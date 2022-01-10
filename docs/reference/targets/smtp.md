@@ -25,7 +25,7 @@ target.smtp {
         ...
     }
     attempt_starttls yes
-    require_yes no
+    require_tls no
     auth off
     targets tcp://127.0.0.1:2525
     connect_timeout 5m
