@@ -29,7 +29,6 @@ import (
 	"github.com/emersion/go-imap"
 	appendlimit "github.com/emersion/go-imap-appendlimit"
 	compress "github.com/emersion/go-imap-compress"
-	idle "github.com/emersion/go-imap-idle"
 	move "github.com/emersion/go-imap-move"
 	sortthread "github.com/emersion/go-imap-sortthread"
 	specialuse "github.com/emersion/go-imap-specialuse"
@@ -274,7 +273,6 @@ func (endp *Endpoint) enableExtensions() error {
 
 	endp.serv.Enable(compress.NewExtension())
 	endp.serv.Enable(unselect.NewExtension())
-	endp.serv.Enable(idle.NewExtension())
 	endp.serv.Enable(namespace.NewExtension())
 
 	return nil

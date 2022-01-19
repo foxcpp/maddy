@@ -11,7 +11,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/digitalocean/godo v1.69.1 // indirect
-	github.com/emersion/go-imap v1.2.0
+	github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7
 	github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
 	github.com/emersion/go-imap-idle v0.0.0-20210907174914-db2568431445
