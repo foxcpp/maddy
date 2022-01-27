@@ -292,75 +292,85 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 		return err
 	}
 	dd.log.Debugln("global rcpt modifiers:", to, "=>", newTo)
-	to = newTo
-	newTo, err = dd.sourceModifiersState.RewriteRcpt(ctx, to)
-	if err != nil {
-		return err
+	resultTo := newTo
+	newTo = []string{}
+
+	for _, to = range resultTo {
+		var tempTo []string
+		tempTo, err = dd.sourceModifiersState.RewriteRcpt(ctx, to)
+		if err != nil {
+			return err
+		}
+		newTo = append(newTo, tempTo...)	
 	}
 	dd.log.Debugln("per-source rcpt modifiers:", to, "=>", newTo)
-	to = newTo
+	resultTo = newTo
 
-	wrapErr := func(err error) error {
-		return exterrors.WithFields(err, map[string]interface{}{
-			"effective_rcpt": to,
-		})
-	}
-
-	rcptBlock, err := dd.rcptBlockForAddr(ctx, to)
-	if err != nil {
-		return wrapErr(err)
-	}
-
-	if rcptBlock.rejectErr != nil {
-		return wrapErr(rcptBlock.rejectErr)
-	}
-
-	if err := dd.checkRunner.checkRcpt(ctx, rcptBlock.checks, to); err != nil {
-		return wrapErr(err)
-	}
-
-	rcptModifiersState, err := dd.getRcptModifiers(ctx, rcptBlock, to)
-	if err != nil {
-		return wrapErr(err)
-	}
-
-	newTo, err = rcptModifiersState.RewriteRcpt(ctx, to)
-	if err != nil {
-		rcptModifiersState.Close()
-		return wrapErr(err)
-	}
-	dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
-	to = newTo
-
-	wrapErr = func(err error) error {
-		return exterrors.WithFields(err, map[string]interface{}{
-			"effective_rcpt": to,
-		})
-	}
-
-	if originalTo != to {
-		dd.msgMeta.OriginalRcpts[to] = originalTo
-	}
-
-	for _, tgt := range rcptBlock.targets {
-		// Do not wrap errors coming from nested pipeline target delivery since
-		// that pipeline itself will insert effective_rcpt field and could do
-		// its own rewriting - we do not want to hide it from the admin in
-		// error messages.
-		wrapErr := wrapErr
-		if _, ok := tgt.(*MsgPipeline); ok {
-			wrapErr = func(err error) error { return err }
+	for _, to = range resultTo {
+		wrapErr := func(err error) error {
+			return exterrors.WithFields(err, map[string]interface{}{
+				"effective_rcpt": to,
+			})
 		}
 
-		delivery, err := dd.getDelivery(ctx, tgt)
+		rcptBlock, err := dd.rcptBlockForAddr(ctx, to)
 		if err != nil {
 			return wrapErr(err)
 		}
 
-		if err := delivery.AddRcpt(ctx, to); err != nil {
+		if rcptBlock.rejectErr != nil {
+			return wrapErr(rcptBlock.rejectErr)
+		}
+
+		if err := dd.checkRunner.checkRcpt(ctx, rcptBlock.checks, to); err != nil {
 			return wrapErr(err)
 		}
-		delivery.recipients = append(delivery.recipients, originalTo)
+
+		rcptModifiersState, err := dd.getRcptModifiers(ctx, rcptBlock, to)
+		if err != nil {
+			return wrapErr(err)
+		}
+
+		newTo, err = rcptModifiersState.RewriteRcpt(ctx, to)
+		if err != nil {
+			rcptModifiersState.Close()
+			return wrapErr(err)
+		}
+		dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
+		
+		for _, to = range newTo {
+
+			wrapErr = func(err error) error {
+				return exterrors.WithFields(err, map[string]interface{}{
+					"effective_rcpt": to,
+				})
+			}
+
+			if originalTo != to {
+				dd.msgMeta.OriginalRcpts[to] = originalTo
+			}
+
+			for _, tgt := range rcptBlock.targets {
+				// Do not wrap errors coming from nested pipeline target delivery since
+				// that pipeline itself will insert effective_rcpt field and could do
+				// its own rewriting - we do not want to hide it from the admin in
+				// error messages.
+				wrapErr := wrapErr
+				if _, ok := tgt.(*MsgPipeline); ok {
+					wrapErr = func(err error) error { return err }
+				}
+
+				delivery, err := dd.getDelivery(ctx, tgt)
+				if err != nil {
+					return wrapErr(err)
+				}
+
+				if err := delivery.AddRcpt(ctx, to); err != nil {
+					return wrapErr(err)
+				}
+				delivery.recipients = append(delivery.recipients, originalTo)
+			}
+		}
 	}
 
 	return nil

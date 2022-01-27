@@ -91,15 +91,22 @@ func (gs groupState) RewriteSender(ctx context.Context, mailFrom string) (string
 	return mailFrom, nil
 }
 
-func (gs groupState) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
+func (gs groupState) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error) {
 	var err error
+	var result = []string{rcptTo}
 	for _, state := range gs.states {
-		rcptTo, err = state.RewriteRcpt(ctx, rcptTo)
-		if err != nil {
-			return "", err
+		var intermediate_result = []string{}
+		for _, part_result := range result {
+			var part_result_multi []string
+			part_result_multi, err = state.RewriteRcpt(ctx, part_result)
+			if err != nil {
+				return []string{""}, err
+			}
+			intermediate_result = append(intermediate_result, part_result_multi...)
 		}
+		result = intermediate_result
 	}
-	return rcptTo, nil
+	return result, nil
 }
 
 func (gs groupState) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
