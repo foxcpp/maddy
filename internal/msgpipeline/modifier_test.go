@@ -234,9 +234,9 @@ func TestMsgPipeline_RcptModifier(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1-alias@example.com",
-			"rcpt2@example.com": "rcpt2-alias@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1-alias@example.com"},
+			"rcpt2@example.com": []string{"rcpt2-alias@example.com"},
 		},
 	}
 	d := MsgPipeline{
@@ -272,9 +272,9 @@ func TestMsgPipeline_RcptModifier_OriginalRcpt(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1-alias@example.com",
-			"rcpt2@example.com": "rcpt2-alias@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1-alias@example.com"},
+			"rcpt2@example.com": []string{"rcpt2-alias@example.com"},
 		},
 	}
 	d := MsgPipeline{
@@ -318,15 +318,15 @@ func TestMsgPipeline_RcptModifier_OriginalRcpt_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1-alias@example.com",
-			"rcpt2@example.com": "rcpt2-alias@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1-alias@example.com"},
+			"rcpt2@example.com": []string{"rcpt2-alias@example.com"},
 		},
 	}, testutils.Modifier{
 		InstName: "second_modifier",
-		RcptTo: map[string]string{
-			"rcpt1-alias@example.com": "rcpt1-alias2@example.com",
-			"rcpt2@example.com":       "wtf@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1-alias@example.com": []string{"rcpt1-alias2@example.com"},
+			"rcpt2@example.com":       []string{"wtf@example.com"},
 		},
 	}
 	d := MsgPipeline{
@@ -373,15 +373,15 @@ func TestMsgPipeline_RcptModifier_Multiple(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1-alias@example.com",
-			"rcpt2@example.com": "rcpt2-alias@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1-alias@example.com"},
+			"rcpt2@example.com": []string{"rcpt2-alias@example.com"},
 		},
 	}, testutils.Modifier{
 		InstName: "second_modifier",
-		RcptTo: map[string]string{
-			"rcpt1-alias@example.com": "rcpt1-alias2@example.com",
-			"rcpt2@example.com":       "wtf@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1-alias@example.com": []string{"rcpt1-alias2@example.com"},
+			"rcpt2@example.com":       []string{"wtf@example.com"},
 		},
 	}
 	d := MsgPipeline{
@@ -417,15 +417,15 @@ func TestMsgPipeline_RcptModifier_PreDispatch(t *testing.T) {
 	target := testutils.Target{}
 	mod1, mod2 := testutils.Modifier{
 		InstName: "first_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1-alias@example.com",
-			"rcpt2@example.com": "rcpt2-alias@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1-alias@example.com"},
+			"rcpt2@example.com": []string{"rcpt2-alias@example.com"},
 		},
 	}, testutils.Modifier{
 		InstName: "second_modifier",
-		RcptTo: map[string]string{
-			"rcpt1-alias@example.com": "rcpt1-alias2@example.com",
-			"rcpt2@example.com":       "wtf@example.com",
+		RcptTo: map[string][]string{
+			"rcpt1-alias@example.com": []string{"rcpt1-alias2@example.com"},
+			"rcpt2@example.com":       []string{"wtf@example.com"},
 		},
 	}
 	d := MsgPipeline{
@@ -469,9 +469,9 @@ func TestMsgPipeline_RcptModifier_PostDispatch(t *testing.T) {
 	target := testutils.Target{}
 	mod := testutils.Modifier{
 		InstName: "test_modifier",
-		RcptTo: map[string]string{
-			"rcpt1@example.com": "rcpt1@example.org",
-			"rcpt2@example.com": "rcpt2@example.org",
+		RcptTo: map[string][]string{
+			"rcpt1@example.com": []string{"rcpt1@example.org"},
+			"rcpt2@example.com": []string{"rcpt2@example.org"},
 		},
 	}
 	d := MsgPipeline{

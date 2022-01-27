@@ -79,8 +79,8 @@ func TestMsgPipeline_BodyNonAtomic_ModifiedRcpt(t *testing.T) {
 				Modifiers: []module.Modifier{
 					testutils.Modifier{
 						InstName: "test_modifier",
-						RcptTo: map[string]string{
-							"tester@example.org": "tester-alias@example.org",
+						RcptTo: map[string][]string{
+							"tester@example.org": []string{"tester-alias@example.org"},
 						},
 					},
 				},

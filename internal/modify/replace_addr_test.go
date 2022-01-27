@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package modify
 
 import (
+	"reflect"
 	"context"
 	"testing"
 
@@ -27,7 +28,7 @@ import (
 )
 
 func testReplaceAddr(t *testing.T, modName string) {
-	test := func(addr, expected string, aliases map[string]string) {
+	test := func(addr string, expectedMulti []string, aliases map[string][]string) {
 		t.Helper()
 
 		mod, err := NewReplaceAddr(modName, "", nil, []string{"dummy"})
@@ -38,59 +39,61 @@ func testReplaceAddr(t *testing.T, modName string) {
 		if err := m.Init(config.NewMap(nil, config.Node{})); err != nil {
 			t.Fatal(err)
 		}
-		m.table = testutils.Table{M: aliases}
+		m.table = testutils.MultiTable{M: aliases}
 
-		var actual string
+		var actualMulti []string
 		if modName == "modify.replace_sender" {
+			var actual string
 			actual, err = m.RewriteSender(context.Background(), addr)
 			if err != nil {
 				t.Fatal(err)
 			}
+			actualMulti = []string{actual}
 		}
 		if modName == "modify.replace_rcpt" {
-			actual, err = m.RewriteRcpt(context.Background(), addr)
+			actualMulti, err = m.RewriteRcpt(context.Background(), addr)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		if actual != expected {
-			t.Errorf("want %s, got %s", expected, actual)
+		if ! reflect.DeepEqual(actualMulti,expectedMulti) {
+			t.Errorf("want %s, got %s", expectedMulti, actualMulti)
 		}
 	}
 
-	test("test@example.org", "test@example.org", nil)
-	test("postmaster", "postmaster", nil)
-	test("test@example.com", "test@example.org",
-		map[string]string{"test@example.com": "test@example.org"})
-	test(`"\"test @ test\""@example.com`, "test@example.org",
-		map[string]string{`"\"test @ test\""@example.com`: "test@example.org"})
-	test(`test@example.com`, `"\"test @ test\""@example.org`,
-		map[string]string{`test@example.com`: `"\"test @ test\""@example.org`})
-	test(`"\"test @ test\""@example.com`, `"\"b @ b\""@example.com`,
-		map[string]string{`"\"test @ test\""`: `"\"b @ b\""`})
-	test("TeSt@eXAMple.com", "test@example.org",
-		map[string]string{"test@example.com": "test@example.org"})
-	test("test@example.com", "test2@example.com",
-		map[string]string{"test": "test2"})
-	test("test@example.com", "test2@example.org",
-		map[string]string{"test": "test2@example.org"})
-	test("postmaster", "test2@example.org",
-		map[string]string{"postmaster": "test2@example.org"})
-	test("TeSt@examPLE.com", "test2@example.com",
-		map[string]string{"test": "test2"})
-	test("test@example.com", "test3@example.com",
-		map[string]string{
-			"test@example.com": "test3@example.com",
-			"test":             "test2",
+	test("test@example.org", []string{"test@example.org"}, nil)
+	test("postmaster", []string{"postmaster"}, nil)
+	test("test@example.com", []string{"test@example.org"},
+		map[string][]string{"test@example.com": []string{"test@example.org"}})
+	test(`"\"test @ test\""@example.com`, []string{"test@example.org"},
+		map[string][]string{`"\"test @ test\""@example.com`: []string{"test@example.org"}})
+	test(`test@example.com`, []string{`"\"test @ test\""@example.org`},
+		map[string][]string{`test@example.com`: []string{`"\"test @ test\""@example.org`}})
+	test(`"\"test @ test\""@example.com`, []string{`"\"b @ b\""@example.com`},
+		map[string][]string{`"\"test @ test\""`: []string{`"\"b @ b\""`}})
+	test("TeSt@eXAMple.com", []string{"test@example.org"},
+		map[string][]string{"test@example.com": []string{"test@example.org"}})
+	test("test@example.com", []string{"test2@example.com"},
+		map[string][]string{"test": []string{"test2"}})
+	test("test@example.com", []string{"test2@example.org"},
+		map[string][]string{"test": []string{"test2@example.org"}})
+	test("postmaster", []string{"test2@example.org"},
+		map[string][]string{"postmaster": []string{"test2@example.org"}})
+	test("TeSt@examPLE.com", []string{"test2@example.com"},
+		map[string][]string{"test": []string{"test2"}})
+	test("test@example.com", []string{"test3@example.com"},
+		map[string][]string{
+			"test@example.com": []string{"test3@example.com"},
+			"test":             []string{"test2"},
 		})
-	test("rcpt@E\u0301.example.com", "rcpt@foo.example.com",
-		map[string]string{
-			"rcpt@\u00E9.example.com": "rcpt@foo.example.com",
+	test("rcpt@E\u0301.example.com", []string{"rcpt@foo.example.com"},
+		map[string][]string{
+			"rcpt@\u00E9.example.com": []string{"rcpt@foo.example.com"},
 		})
-	test("E\u0301@foo.example.com", "rcpt@foo.example.com",
-		map[string]string{
-			"\u00E9@foo.example.com": "rcpt@foo.example.com",
+	test("E\u0301@foo.example.com", []string{"rcpt@foo.example.com"},
+		map[string][]string{
+			"\u00E9@foo.example.com": []string{"rcpt@foo.example.com"},
 		})
 }
 

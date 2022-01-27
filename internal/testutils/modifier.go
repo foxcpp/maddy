@@ -36,7 +36,7 @@ type Modifier struct {
 	BodyErr     error
 
 	MailFrom map[string]string
-	RcptTo   map[string]string
+	RcptTo   map[string][]string
 	AddHdr   textproto.Header
 
 	UnclosedStates int
@@ -82,20 +82,20 @@ func (ms modifierState) RewriteSender(ctx context.Context, mailFrom string) (str
 	return mailFrom, nil
 }
 
-func (ms modifierState) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
+func (ms modifierState) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error) {
 	if ms.m.RcptToErr != nil {
-		return "", ms.m.RcptToErr
+		return []string{""}, ms.m.RcptToErr
 	}
 
 	if ms.m.RcptTo == nil {
-		return rcptTo, nil
+		return []string{rcptTo}, nil
 	}
 
 	newRcptTo, ok := ms.m.RcptTo[rcptTo]
 	if ok {
 		return newRcptTo, nil
 	}
-	return rcptTo, nil
+	return []string{rcptTo}, nil
 }
 
 func (ms modifierState) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
