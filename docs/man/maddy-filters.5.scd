@@ -560,9 +560,8 @@ multiple times).
 # Envelope sender / recipient rewriting (modify.replace_sender, modify.replace_rcpt)
 
 'replace_sender' and 'replace_rcpt' modules replace SMTP envelope addresses
-based on the mapping defined by the table module (maddy-tables(5)). Currently,
-only 1:1 mappings are supported (that is, it is not possible to specify
-multiple replacements for a single address).
+based on the mapping defined by the table module (maddy-tables(5)). It is possible
+to specify 1:N mappings. This allows, for example, implementing mailing lists.
 
 The address is normalized before lookup (Punycode in domain-part is decoded,
 Unicode is normalized to NFC, the whole string is case-folded).
@@ -592,8 +591,10 @@ modify {
 	replace_rcpt file /etc/maddy/aliases
 	replace_rcpt static {
 		entry a@example.org b@example.org
+        entry c@example.org c1@example.org c2@example.org
 	}
 	replace_rcpt regexp "(.+)@example.net" "$1@example.org"
+    replace_rcpt regexp "(.+)@example.net" "$1@example.org" "$1@example.com"
 }
 ```
 
@@ -606,6 +607,13 @@ cat: dog
 # Replace cat@example.org with cat@example.com.
 # Takes priority over the previous line.
 cat@example.org: cat@example.com
+
+# Replace with multiple aliases
+cat: dog
+cat: mouse
+
+cat@example.org: cat@example.com
+cat@example.org: cat@example.net
 ```
 
 # System command filter (check.command)
