@@ -662,7 +662,8 @@ func TestMsgPipeline_TwoRcptToOneTarget(t *testing.T) {
 }
 
 func TestMsgPipeline_multi_alias(t *testing.T) {
-	target := testutils.Target{}
+	target_1 := testutils.Target{}
+	target_2 := testutils.Target{}
 	mod := testutils.Modifier{
 		RcptTo: map[string][]string {
 			"recipient@example.com": []string{
@@ -680,10 +681,10 @@ func TestMsgPipeline_multi_alias(t *testing.T) {
 				},
 				perRcpt: map[string]*rcptBlock{
 					"example.org": {
-						targets: []module.DeliveryTarget{&target},
+						targets: []module.DeliveryTarget{&target_1},
 					},
 					"example.net": {
-						targets: []module.DeliveryTarget{&target},
+						targets: []module.DeliveryTarget{&target_2},
 					},
 				},
 			},
@@ -693,8 +694,12 @@ func TestMsgPipeline_multi_alias(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"recipient@example.com"})
 
-	if len(target.Messages) != 1 {
-		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.Messages))
+	if len(target_1.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target_1.Messages))
 	}
-	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"recipient-1@example.org", "recipient-2@example.net"})
+	if len(target_2.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target_2.Messages))
+	}
+	testutils.CheckTestMessage(t, &target_1, 0, "sender@example.com", []string{"recipient-1@example.org"})
+	testutils.CheckTestMessage(t, &target_2, 0, "sender@example.com", []string{"recipient-2@example.net"})
 }
