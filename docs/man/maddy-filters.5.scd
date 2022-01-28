@@ -608,12 +608,16 @@ cat: dog
 # Takes priority over the previous line.
 cat@example.org: cat@example.com
 
-# Replace with multiple aliases
-cat: dog
-cat: mouse
+# Using aliases in multiple lines
+cat2: dog
+cat2: mouse
 
-cat@example.org: cat@example.com
-cat@example.org: cat@example.net
+cat2@example.org: cat@example.com
+cat2@example.org: cat@example.net
+
+# Comma-separated aliases in multiple lines
+cat3: dog , mouse
+cat3@example.org: cat@example.com , cat@example.net
 ```
 
 # System command filter (check.command)

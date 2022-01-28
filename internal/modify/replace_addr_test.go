@@ -95,6 +95,15 @@ func testReplaceAddr(t *testing.T, modName string) {
 		map[string][]string{
 			"\u00E9@foo.example.com": []string{"rcpt@foo.example.com"},
 		})
+	
+	if modName == "modify.replace_rcpt" {
+		//multiple aliases
+		test("test@example.com", []string{"test@example.org", "test@example.net"},
+			map[string][]string{"test@example.com": []string{"test@example.org", "test@example.net"}})
+			test("test@example.com", []string{"1@example.com", "2@example.com", "3@example.com"},
+				map[string][]string{"test@example.com": []string{"1@example.com", "2@example.com", "3@example.com"}})
+	}
+	
 }
 
 func TestReplaceAddr_RewriteSender(t *testing.T) {

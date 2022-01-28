@@ -27,6 +27,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/foxcpp/maddy/internal/modify"
 )
 
 func TestMsgPipeline_AllToTarget(t *testing.T) {
@@ -658,4 +659,42 @@ func TestMsgPipeline_TwoRcptToOneTarget(t *testing.T) {
 		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.Messages))
 	}
 	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"recipient@example.com", "recipient@example.org"})
+}
+
+func TestMsgPipeline_multi_alias(t *testing.T) {
+	target := testutils.Target{}
+	mod := testutils.Modifier{
+		RcptTo: map[string][]string {
+			"recipient@example.com": []string{
+				"recipient-1@example.org",
+				"recipient-2@example.net",
+			},
+		},
+	}
+	d := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{
+			perSource: map[string]sourceBlock{},
+			defaultSource: sourceBlock{	
+				modifiers: modify.Group {
+					Modifiers: []module.Modifier {mod},
+				},
+				perRcpt: map[string]*rcptBlock{
+					"example.org": {
+						targets: []module.DeliveryTarget{&target},
+					},
+					"example.net": {
+						targets: []module.DeliveryTarget{&target},
+					},
+				},
+			},
+		},
+		Log: testutils.Logger(t, "msgpipeline"),
+	}
+
+	testutils.DoTestDelivery(t, &d, "sender@example.com", []string{"recipient@example.com"})
+
+	if len(target.Messages) != 1 {
+		t.Fatalf("wrong amount of messages received for target, want %d, got %d", 1, len(target.Messages))
+	}
+	testutils.CheckTestMessage(t, &target, 0, "sender@example.com", []string{"recipient-1@example.org", "recipient-2@example.net"})
 }
