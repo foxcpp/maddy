@@ -33,8 +33,8 @@ type Regexp struct {
 	instName   string
 	inlineArgs []string
 
-	re          *regexp.Regexp
-	replacement string
+	re           *regexp.Regexp
+	replacements []string
 
 	expandPlaceholders bool
 }
@@ -59,12 +59,9 @@ func (r *Regexp) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if len(r.inlineArgs) > 2 {
-		return fmt.Errorf("%s: at most two arguments accepted", r.modName)
-	}
 	regex := r.inlineArgs[0]
-	if len(r.inlineArgs) == 2 {
-		r.replacement = r.inlineArgs[1]
+	if len(r.inlineArgs) > 1 {
+		r.replacements = r.inlineArgs[1:]
 	}
 
 	if fullMatch {
@@ -96,17 +93,33 @@ func (r *Regexp) InstanceName() string {
 	return r.modName
 }
 
-func (r *Regexp) Lookup(_ context.Context, key string) (string, bool, error) {
+func (r *Regexp) LookupMulti(_ context.Context, key string) ([]string, error) {
 	matches := r.re.FindStringSubmatchIndex(key)
 	if matches == nil {
+		return []string{}, nil
+	}
+
+	result := []string{}
+	for _,replacement := range r.replacements{
+		if !r.expandPlaceholders {
+			result = append(result, replacement)
+		} else {
+			result = append(result, string(r.re.ExpandString([]byte{}, replacement, key, matches)))
+		}
+	}
+	return result, nil
+}
+
+func (r *Regexp) Lookup(ctx context.Context, key string) (string, bool, error) {
+	newVal, err := r.LookupMulti(ctx, key)
+	if err != nil {
+		return "", false, err
+	}
+	if len(newVal) == 0 {
 		return "", false, nil
 	}
 
-	if !r.expandPlaceholders {
-		return r.replacement, true, nil
-	}
-
-	return string(r.re.ExpandString([]byte{}, r.replacement, key, matches)), true, nil
+	return newVal[0], true, nil
 }
 
 func init() {
