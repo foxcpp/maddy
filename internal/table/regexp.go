@@ -100,7 +100,7 @@ func (r *Regexp) LookupMulti(_ context.Context, key string) ([]string, error) {
 	}
 
 	result := []string{}
-	for _,replacement := range r.replacements{
+	for _, replacement := range r.replacements {
 		if !r.expandPlaceholders {
 			result = append(result, replacement)
 		} else {

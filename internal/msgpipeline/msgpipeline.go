@@ -301,7 +301,7 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 		if err != nil {
 			return err
 		}
-		newTo = append(newTo, tempTo...)	
+		newTo = append(newTo, tempTo...)
 	}
 	dd.log.Debugln("per-source rcpt modifiers:", to, "=>", newTo)
 	resultTo = newTo
@@ -337,7 +337,7 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 			return wrapErr(err)
 		}
 		dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
-		
+
 		for _, to = range newTo {
 
 			wrapErr = func(err error) error {

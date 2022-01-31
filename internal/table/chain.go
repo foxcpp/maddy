@@ -91,7 +91,7 @@ func (s *Chain) Lookup(ctx context.Context, key string) (string, bool, error) {
 
 func (s *Chain) LookupMulti(ctx context.Context, key string) ([]string, error) {
 	result := []string{key}
-	STEP:
+STEP:
 	for i, step := range s.chain {
 		new_result := []string{}
 		for _, key = range result {
@@ -105,7 +105,7 @@ func (s *Chain) LookupMulti(ctx context.Context, key string) ([]string, error) {
 				}
 				new_result = append(new_result, val...)
 			} else {
-				val, ok, err := step.Lookup(ctx, key)			
+				val, ok, err := step.Lookup(ctx, key)
 				if err != nil {
 					return []string{}, err
 				}

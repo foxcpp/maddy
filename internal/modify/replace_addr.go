@@ -80,7 +80,7 @@ func (r replaceAddr) RewriteSender(ctx context.Context, mailFrom string) (string
 		if err != nil {
 			return mailFrom, err
 		}
-		mailFrom = results [0]
+		mailFrom = results[0]
 	}
 	return mailFrom, nil
 }
