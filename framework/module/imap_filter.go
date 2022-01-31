@@ -39,5 +39,5 @@ type IMAPFilter interface {
 	//
 	// Errors returned by IMAPFilter will be just logged and will not cause delivery
 	// to fail.
-	IMAPFilter(accountName string, meta *MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error)
+	IMAPFilter(accountName string, rcptTo string, meta *MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error)
 }

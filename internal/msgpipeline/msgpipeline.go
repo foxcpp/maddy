@@ -338,9 +338,8 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 		})
 	}
 
-	if originalTo != to {
-		dd.msgMeta.OriginalRcpts[to] = originalTo
-	}
+	//Always setting so it can be retrieved by imap_filter
+	dd.msgMeta.OriginalRcpts[to] = originalTo
 
 	for _, tgt := range rcptBlock.targets {
 		// Do not wrap errors coming from nested pipeline target delivery since

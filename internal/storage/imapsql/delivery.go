@@ -32,13 +32,16 @@ import (
 	"github.com/foxcpp/maddy/internal/target"
 )
 
+type addecRcpt struct {
+	rcptTo string
+}
 type delivery struct {
 	store    *Storage
 	msgMeta  *module.MsgMetadata
 	d        imapsql.Delivery
 	mailFrom string
 
-	addedRcpts map[string]struct{}
+	addedRcpts map[string]addecRcpt
 }
 
 func (d *delivery) String() string {
@@ -89,7 +92,9 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 		return err
 	}
 
-	d.addedRcpts[accountName] = struct{}{}
+	d.addedRcpts[accountName] = addecRcpt{
+		rcptTo: rcptTo,
+	}
 	return nil
 }
 
@@ -97,8 +102,8 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 	defer trace.StartRegion(ctx, "sql/Body").End()
 
 	if !d.msgMeta.Quarantine && d.store.filters != nil {
-		for rcpt := range d.addedRcpts {
-			folder, flags, err := d.store.filters.IMAPFilter(rcpt, d.msgMeta, header, body)
+		for rcpt, rcptData := range d.addedRcpts {
+			folder, flags, err := d.store.filters.IMAPFilter(rcpt, rcptData.rcptTo, d.msgMeta, header, body)
 			if err != nil {
 				d.store.Log.Error("IMAPFilter failed", err, "rcpt", rcpt)
 				continue
@@ -157,6 +162,6 @@ func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, ma
 		msgMeta:    msgMeta,
 		mailFrom:   mailFrom,
 		d:          store.Back.NewDelivery(),
-		addedRcpts: map[string]struct{}{},
+		addedRcpts: map[string]addecRcpt{},
 	}, nil
 }

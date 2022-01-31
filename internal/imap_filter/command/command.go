@@ -49,8 +49,8 @@ type Check struct {
 	cmdArgs []string
 }
 
-func (c *Check) IMAPFilter(accountName string, msgMeta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
-	cmd, args := c.expandCommand(msgMeta, accountName)
+func (c *Check) IMAPFilter(accountName string, rcptTo string, msgMeta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
+	cmd, args := c.expandCommand(msgMeta, accountName, rcptTo)
 
 	var buf bytes.Buffer
 	_ = textproto.WriteHeader(&buf, hdr)
@@ -96,7 +96,7 @@ func (c *Check) Init(cfg *config.Map) error {
 	return err
 }
 
-func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string) (string, []string) {
+func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string, rcptTo string) (string, []string) {
 	expArgs := make([]string, len(c.cmdArgs))
 
 	for i, arg := range c.cmdArgs {
@@ -137,14 +137,16 @@ func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string) (
 				return msgMeta.ID
 			case "{sender}":
 				return msgMeta.OriginalFrom
-			case "{rcpts}":
+			case "{rcpt_to}":
+				return rcptTo
+			case "{original_rcpts}":
 				rcpts := []string{}
 				for _, value := range msgMeta.OriginalRcpts {
 					rcpts = append(rcpts, value)
 				}
 				return strings.Join(rcpts, "\n")
-			case "{address}":
-				return msgMeta.OriginalRcpts[accountName]
+			case "{original_rcpt_to}":
+				return msgMeta.OriginalRcpts[rcptTo]
 			case "{account_name}":
 				return accountName
 			}
