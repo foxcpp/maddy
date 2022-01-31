@@ -128,9 +128,9 @@ func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string) (
 				valI, err := msgMeta.Conn.RDNSName.Get()
 				if err != nil {
 					return ""
-				}x
+				}
 				if valI == nil {
-					return ""x
+					return ""
 				}
 				return valI.(string)
 			case "{msg_id}":
