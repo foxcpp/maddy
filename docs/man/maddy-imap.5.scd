@@ -96,8 +96,8 @@ command executable_name args... { }
 
 Same as check.command, following placeholders are supported for command
 arguments: {source_ip}, {source_host}, {source_rdns}, {msg_id}, {auth_user},
-{sender}. Note: placeholders in command name are not processed to avoid 
-possible command injection attacks.
+{sender}, {rcpts}, {address}. Note: placeholders in command name are not
+processed to avoid possible command injection attacks.
 
 Additionally, for imap.filter.command, {account_name} placeholder is replaced
 with effective IMAP account name.
