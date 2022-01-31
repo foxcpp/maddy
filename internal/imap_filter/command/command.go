@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
@@ -127,15 +128,23 @@ func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string) (
 				valI, err := msgMeta.Conn.RDNSName.Get()
 				if err != nil {
 					return ""
-				}
+				}x
 				if valI == nil {
-					return ""
+					return ""x
 				}
 				return valI.(string)
 			case "{msg_id}":
 				return msgMeta.ID
 			case "{sender}":
 				return msgMeta.OriginalFrom
+			case "{rcpts}":
+				rcpts := []string{}
+				for _, value := range msgMeta.OriginalRcpts {
+					rcpts = append(rcpts, value)
+				}
+				return strings.Join(rcpts, "\n")
+			case "{address}":
+				return msgMeta.OriginalRcpts[accountName]
 			case "{account_name}":
 				return accountName
 			}
