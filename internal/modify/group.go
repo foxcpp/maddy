@@ -95,16 +95,16 @@ func (gs groupState) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, 
 	var err error
 	var result = []string{rcptTo}
 	for _, state := range gs.states {
-		var intermediate_result = []string{}
+		var intermediateResult = []string{}
 		for _, part_result := range result {
 			var part_result_multi []string
 			part_result_multi, err = state.RewriteRcpt(ctx, part_result)
 			if err != nil {
 				return []string{""}, err
 			}
-			intermediate_result = append(intermediate_result, part_result_multi...)
+			intermediateResult = append(intermediateResult, part_result_multi...)
 		}
-		result = intermediate_result
+		result = intermediateResult
 	}
 	return result, nil
 }

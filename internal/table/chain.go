@@ -101,7 +101,10 @@ STEP:
 					return []string{}, err
 				}
 				if len(val) == 0 {
-					continue STEP
+					if s.optional[i] {
+						continue STEP
+					}
+					return []string{}, nil
 				}
 				new_result = append(new_result, val...)
 			} else {
