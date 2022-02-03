@@ -93,7 +93,7 @@ func (s *Chain) LookupMulti(ctx context.Context, key string) ([]string, error) {
 	result := []string{key}
 STEP:
 	for i, step := range s.chain {
-		new_result := []string{}
+		newResult := []string{}
 		for _, key = range result {
 			if step_multi, ok := step.(module.MultiTable); ok {
 				val, err := step_multi.LookupMulti(ctx, key)
@@ -106,7 +106,7 @@ STEP:
 					}
 					return []string{}, nil
 				}
-				new_result = append(new_result, val...)
+				newResult = append(newResult, val...)
 			} else {
 				val, ok, err := step.Lookup(ctx, key)
 				if err != nil {
@@ -118,10 +118,10 @@ STEP:
 					}
 					return []string{}, nil
 				}
-				new_result = append(new_result, val)
+				newResult = append(newResult, val)
 			}
 		}
-		result = new_result
+		result = newResult
 	}
 	return result, nil
 }

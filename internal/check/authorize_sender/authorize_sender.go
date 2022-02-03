@@ -165,8 +165,8 @@ func (s *state) authzSender(ctx context.Context, authName, email string) module.
 	var preparedEmail []string
 	var ok bool
 	s.log.DebugMsg("normalized names", "from", fromEmailNorm, "auth", authNameNorm)
-	if emailPrepare_multi, isMulti := s.c.emailPrepare.(module.MultiTable); isMulti {
-		preparedEmail, err = emailPrepare_multi.LookupMulti(ctx, fromEmailNorm)
+	if emailPrepareMulti, isMulti := s.c.emailPrepare.(module.MultiTable); isMulti {
+		preparedEmail, err = emailPrepareMulti.LookupMulti(ctx, fromEmailNorm)
 		ok = len(preparedEmail) > 0
 	} else {
 		var preparedEmail_single string
