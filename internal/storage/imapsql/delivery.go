@@ -32,7 +32,7 @@ import (
 	"github.com/foxcpp/maddy/internal/target"
 )
 
-type addecRcpt struct {
+type addedRcpt struct {
 	rcptTo string
 }
 type delivery struct {
@@ -41,7 +41,7 @@ type delivery struct {
 	d        imapsql.Delivery
 	mailFrom string
 
-	addedRcpts map[string]addecRcpt
+	addedRcpts map[string]addedRcpt
 }
 
 func (d *delivery) String() string {
@@ -92,7 +92,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
 		return err
 	}
 
-	d.addedRcpts[accountName] = addecRcpt{
+	d.addedRcpts[accountName] = addedRcpt{
 		rcptTo: rcptTo,
 	}
 	return nil
@@ -162,6 +162,6 @@ func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, ma
 		msgMeta:    msgMeta,
 		mailFrom:   mailFrom,
 		d:          store.Back.NewDelivery(),
-		addedRcpts: map[string]addecRcpt{},
+		addedRcpts: map[string]addedRcpt{},
 	}, nil
 }
