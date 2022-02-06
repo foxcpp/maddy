@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
@@ -139,14 +138,12 @@ func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string, r
 				return msgMeta.OriginalFrom
 			case "{rcpt_to}":
 				return rcptTo
-			case "{original_rcpts}":
-				rcpts := []string{}
-				for _, value := range msgMeta.OriginalRcpts {
-					rcpts = append(rcpts, value)
-				}
-				return strings.Join(rcpts, "\n")
 			case "{original_rcpt_to}":
-				return msgMeta.OriginalRcpts[rcptTo]
+				oldestOriginalRcpt := rcptTo
+				for originalRcpt, ok := rcptTo, true; ok; originalRcpt, ok = msgMeta.OriginalRcpts[originalRcpt] {
+					oldestOriginalRcpt = originalRcpt
+				}
+				return oldestOriginalRcpt
 			case "{account_name}":
 				return accountName
 			}
