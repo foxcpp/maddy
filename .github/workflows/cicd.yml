@@ -51,7 +51,7 @@ jobs:
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     container:
-      image: alpine/edge
+      image: "alpine:edge"
     steps:
       - uses: actions/checkout@v1 # v2 does not work with containers
       - name: "Install build dependencies"
@@ -90,7 +90,7 @@ jobs:
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v1
         with:
