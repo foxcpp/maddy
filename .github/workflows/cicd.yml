@@ -56,29 +56,33 @@ jobs:
       - uses: actions/checkout@v1 # v2 does not work with containers
       - name: "Install build dependencies"
         run: |
-          apk add --no-cache gcc go zstd
+          apk add --no-cache gcc go
       - name: "Create and package build tree"
         run: |
           ./build.sh --static build
           ./build.sh --destdir ~/package-output/ install
           mv ~/package-output/ ~/maddy-$(cat .version)-x86_64-linux-musl
-          tar c ~/maddy-$(cat .version)-x86_64-linux-musl | zstd > ~/maddy-$(cat .version)-x86_64-linux-musl.tar.zst
+          pushd ~
+          tar c ./maddy-$(cat .version)-x86_64-linux-musl | zstd > ~/maddy-x86_64-linux-musl.tar.zst
+          popd
       - name: "Save source tree"
         run: |
           rm -rf .git
           cp -r . ~/maddy-$(cat .version)-src
-          tar c ~/maddy-$(cat .version)-src | zstd > ~/maddy-$(cat .version)-src.tar.zst
+          pushd ~
+          tar c ./maddy-$(cat .version)-src | zstd > ~/maddy-src.tar.zst
+          popd
       - name: "Upload source tree"
         uses: actions/upload-artifact@v2
         with:
-          name: source
-          path: '~/maddy-*-src.tar.zst'
+          name: maddy-src.tar.zst
+          path: '~/maddy-src.tar.zst'
           if-no-files-found: error
       - name: "Upload binary tree"
         uses: actions/upload-artifact@v2
         with:
-          name: binary
-          path: '~/maddy-*-x86_64-linux-musl.tar.zst'
+          name: maddy-binary.tar.zst
+          path: '~/maddy-x86_64-linux-musl.tar.zst'
           if-no-files-found: error
   docker-builder:
     name: "Build Docker image"
@@ -94,6 +98,7 @@ jobs:
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v1
         with:
+          registry: "ghcr.io"
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: "Build and push"
@@ -103,7 +108,5 @@ jobs:
           push: true
           tags: |
             foxcpp/maddy:${{ github.ref_name }}
-            foxcpp/maddy:latest
             ghcr.io/foxcpp/maddy:${{ github.ref_name }}
-            ghcr.io/foxcpp/maddy:latest
 
