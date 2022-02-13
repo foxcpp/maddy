@@ -101,7 +101,7 @@ func (a *Auth) Init(cfg *config.Map) error {
 	if err != nil {
 		return fmt.Errorf("%s: invalid server endpoint: %v", modName, err)
 	}
-	if endp.Path == "" {
+	if endp.Path != "" {
 		return fmt.Errorf("%s: unexpected path in endpoint ", modName)
 	}
 
