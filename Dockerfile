@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine AS build-env
+FROM golang:1.17-alpine AS build-env
 
 RUN set -ex ;\
     apk upgrade --no-cache --available ;\
@@ -18,8 +18,9 @@ RUN sed -Ei 's!^tls .+!tls file /data/tls_cert.pem /data/tls_key.pem!' /pkg/data
 
 RUN ./build.sh --builddir /tmp --destdir /pkg/ --tags docker build install
 
-FROM alpine:3.13.4
+FROM alpine:3.15.0
 LABEL maintainer="fox.cpp@disroot.org"
+LABEL org.opencontainers.image.source=https://github.com/foxcpp/maddy
 
 RUN set -ex ;\
     apk upgrade --no-cache --available ;\
