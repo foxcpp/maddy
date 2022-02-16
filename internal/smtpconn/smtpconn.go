@@ -365,28 +365,41 @@ func (c *C) Rcpt(ctx context.Context, to string) error {
 	return nil
 }
 
-type lmtpError map[string]error
+type lmtpError map[string]*smtp.SMTPError
 
 func (l lmtpError) SetStatus(rcptTo string, err *smtp.SMTPError) {
 	l[rcptTo] = err
 }
 
-func (l lmtpError) Unwrap() error {
-	for _, err := range l {
-		if err != nil {
-			return err
+func (l lmtpError) singleError() *smtp.SMTPError {
+	nonNils := 0
+	for _, e := range l {
+		if e != nil {
+			nonNils++
+		}
+	}
+	if nonNils == 1 {
+		for _, err := range l {
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (l lmtpError) Error() string {
-	if len(l) == 1 {
-		for _, err := range l {
-			return err.Error()
-		}
+func (l lmtpError) Unwrap() error {
+	if err := l.singleError(); err != nil {
+		return err
 	}
-	return fmt.Sprintf("multiple errors reported by LMTP downstream: %v", map[string]error(l))
+	return nil
+}
+
+func (l lmtpError) Error() string {
+	if err := l.singleError(); err != nil {
+		return err.Error()
+	}
+	return fmt.Sprintf("multiple errors reported by LMTP downstream: %v", map[string]*smtp.SMTPError(l))
 }
 
 func (c *C) smtpToLMTPData(ctx context.Context, hdr textproto.Header, body io.Reader) error {
