@@ -115,6 +115,40 @@ func TestDownstreamDelivery_LMTP(t *testing.T) {
 	}
 }
 
+func TestDownstreamDelivery_LMTP_ErrorCoerce(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort, func(srv *smtp.Server) {
+		srv.LMTP = true
+	})
+	be.LMTPDataErr = []error{
+		nil,
+		&smtp.SMTPError{
+			Code:    501,
+			Message: "nop",
+		},
+	}
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		modName: "target.lmtp",
+		lmtp:    true,
+		log:     testutils.Logger(t, "lmtp_downstream"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt1@example.invalid", "rcpt2@example.invalid"})
+	if err == nil {
+		t.Error("expected failure")
+	}
+}
+
 type statusCollector map[string]error
 
 func (sc *statusCollector) SetStatus(rcptTo string, err error) {

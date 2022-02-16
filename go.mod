@@ -14,7 +14,6 @@ require (
 	github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7
 	github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
-	github.com/emersion/go-imap-idle v0.0.0-20210907174914-db2568431445
 	github.com/emersion/go-imap-move v0.0.0-20210907172020-fe4558f9c872
 	github.com/emersion/go-imap-sortthread v1.2.0
 	github.com/emersion/go-imap-specialuse v0.0.0-20201101201809-1ab93d3d150e

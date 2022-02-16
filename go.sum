@@ -104,9 +104,6 @@ github.com/emersion/go-imap v1.0.0/go.mod h1:MEiDDwwQFcZ+L45Pa68jNGv0qU9kbW+SJzw
 github.com/emersion/go-imap v1.0.3/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
 github.com/emersion/go-imap v1.0.4/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
 github.com/emersion/go-imap v1.0.5/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
-github.com/emersion/go-imap v1.0.6/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
-github.com/emersion/go-imap v1.2.0 h1:lyUQ3+EVM21/qbWE/4Ya5UG9r5+usDxlg4yfp3TgHFA=
-github.com/emersion/go-imap v1.2.0/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
 github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7 h1:2hV3AkHAODve7a+HTzLGZ0k1Rprh+9KbYWl+r06bdMA=
 github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
 github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a/go.mod h1:ikgISoP7pRAolqsVP64yMteJa2FIpS6ju88eBT6K1yQ=
@@ -114,8 +111,6 @@ github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4 h1:U6
 github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4/go.mod h1:ikgISoP7pRAolqsVP64yMteJa2FIpS6ju88eBT6K1yQ=
 github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9 h1:7dmV11mle4UAQ7lX+Hdzx6akKFg3hVm/UUmQ7t6VgTQ=
 github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9/go.mod h1:2Ro1PbmiqYiRe5Ct2sGR5hHaKSVHeRpVZwXx8vyYt98=
-github.com/emersion/go-imap-idle v0.0.0-20210907174914-db2568431445 h1:dAGbaaU4LLupO7dnYZaELOoI3RoVDNi5DCGejLe8a7c=
-github.com/emersion/go-imap-idle v0.0.0-20210907174914-db2568431445/go.mod h1:N/6S3dRTVt8xT867m+476C16+v/Fq4WZYvh2Chg0nmg=
 github.com/emersion/go-imap-move v0.0.0-20180601155324-5eb20cb834bf/go.mod h1:QuMaZcKFDVI0yCrnAbPLfbwllz1wtOrZH8/vZ5yzp4w=
 github.com/emersion/go-imap-move v0.0.0-20210907172020-fe4558f9c872 h1:HGBfonz0q/zq7y3ew+4oy4emHSvk6bkmV0mdDG3E77M=
 github.com/emersion/go-imap-move v0.0.0-20210907172020-fe4558f9c872/go.mod h1:QuMaZcKFDVI0yCrnAbPLfbwllz1wtOrZH8/vZ5yzp4w=
@@ -146,8 +141,6 @@ github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b/go.mod h1:G/dpzLu
 github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21/go.mod h1:iL2twTeMvZnrg54ZoPDNfJaJaqy0xIQFuBdrLsmspwQ=
 github.com/emersion/go-sasl v0.0.0-20211008083017-0b9dcfb154ac h1:tn/OQ2PmwQ0XFVgAHfjlLyqMewry25Rz7jWnVoh4Ggs=
 github.com/emersion/go-sasl v0.0.0-20211008083017-0b9dcfb154ac/go.mod h1:iL2twTeMvZnrg54ZoPDNfJaJaqy0xIQFuBdrLsmspwQ=
-github.com/emersion/go-smtp v0.15.1-0.20211006082444-62f6b38f85e4 h1:6unG0XYwWUlJjsbYDI06qcRH5Fe0o978bgL8zNydJ8k=
-github.com/emersion/go-smtp v0.15.1-0.20211006082444-62f6b38f85e4/go.mod h1:qm27SGYgoIPRot6ubfQ/GpiPy/g3PaZAVRxiO/sDUgQ=
 github.com/emersion/go-smtp v0.15.1-0.20220119142625-1c322d2783aa h1:PZiDDRpQS7p6nFZFt9Pbco8a5FYa5kMhu6V7fTsYE4k=
 github.com/emersion/go-smtp v0.15.1-0.20220119142625-1c322d2783aa/go.mod h1:qm27SGYgoIPRot6ubfQ/GpiPy/g3PaZAVRxiO/sDUgQ=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
