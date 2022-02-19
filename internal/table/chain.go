@@ -78,20 +78,52 @@ func (s *Chain) InstanceName() string {
 }
 
 func (s *Chain) Lookup(ctx context.Context, key string) (string, bool, error) {
-	for i, step := range s.chain {
-		val, ok, err := step.Lookup(ctx, key)
-		if err != nil {
-			return "", false, err
-		}
-		if !ok {
-			if s.optional[i] {
-				continue
-			}
-			return "", false, nil
-		}
-		key = val
+	newVal, err := s.LookupMulti(ctx, key)
+	if err != nil {
+		return "", false, err
 	}
-	return key, true, nil
+	if len(newVal) == 0 {
+		return "", false, nil
+	}
+
+	return newVal[0], true, nil
+}
+
+func (s *Chain) LookupMulti(ctx context.Context, key string) ([]string, error) {
+	result := []string{key}
+STEP:
+	for i, step := range s.chain {
+		newResult := []string{}
+		for _, key = range result {
+			if step_multi, ok := step.(module.MultiTable); ok {
+				val, err := step_multi.LookupMulti(ctx, key)
+				if err != nil {
+					return []string{}, err
+				}
+				if len(val) == 0 {
+					if s.optional[i] {
+						continue STEP
+					}
+					return []string{}, nil
+				}
+				newResult = append(newResult, val...)
+			} else {
+				val, ok, err := step.Lookup(ctx, key)
+				if err != nil {
+					return []string{}, err
+				}
+				if !ok {
+					if s.optional[i] {
+						continue STEP
+					}
+					return []string{}, nil
+				}
+				newResult = append(newResult, val)
+			}
+		}
+		result = newResult
+	}
+	return result, nil
 }
 
 func init() {

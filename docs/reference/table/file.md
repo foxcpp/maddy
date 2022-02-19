@@ -45,10 +45,14 @@ aaa: bbb
 aaa
 
 # If the same key is used multiple times - table.file will return
-# multiple values when queries. Note that this is not used by
-# most modules. E.g. replace_rcpt does not (intentionally) support
-# 1-to-N alias expansion.
+# multiple values when queries.
 ddd: firstvalue
 ddd: secondvalue
+
+# Alternatively, multiple values can be specified
+# using a comma. There is no support for escaping
+# so you would have to use a different format if you require
+# comma-separated values.
+ddd: firstvalue, secondvalue
 ```
 

@@ -63,12 +63,12 @@ type ModifierState interface {
 	RewriteSender(ctx context.Context, mailFrom string) (string, error)
 
 	// RewriteRcpt replaces RCPT TO value.
-	// If no changed are required, this method returns its argument, otherwise
-	// it returns a new value.
+	// If no changed are required, this method returns its argument as slice,
+	// otherwise it returns a slice with 1 or more new values.
 	//
 	// MsgPipeline will take of populating MsgMeta.OriginalRcpts. RewriteRcpt
 	// doesn't do it.
-	RewriteRcpt(ctx context.Context, rcptTo string) (string, error)
+	RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error)
 
 	// RewriteBody modifies passed Header argument and may optionally
 	// inspect the passed body buffer to make a decision on new header field values.

@@ -203,9 +203,11 @@ func readFile(path string, out map[string][]string) error {
 		if len(from) == 0 {
 			return parseErr("empty address before colon")
 		}
-		to := strings.TrimSpace(parts[1])
 
-		out[from] = append(out[from], to)
+		for _, to := range strings.Split(parts[1], ",") {
+			to := strings.TrimSpace(to)
+			out[from] = append(out[from], to)
+		}
 	}
 	return scnr.Err()
 }

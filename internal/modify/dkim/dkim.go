@@ -283,8 +283,8 @@ func (s *state) RewriteSender(ctx context.Context, mailFrom string) (string, err
 	return mailFrom, nil
 }
 
-func (s state) RewriteRcpt(ctx context.Context, rcptTo string) (string, error) {
-	return rcptTo, nil
+func (s state) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error) {
+	return []string{rcptTo}, nil
 }
 
 func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {

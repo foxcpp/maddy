@@ -162,9 +162,18 @@ func (s *state) authzSender(ctx context.Context, authName, email string) module.
 			}})
 	}
 
+	var preparedEmail []string
+	var ok bool
 	s.log.DebugMsg("normalized names", "from", fromEmailNorm, "auth", authNameNorm)
-
-	preparedEmail, ok, err := s.c.emailPrepare.Lookup(ctx, fromEmailNorm)
+	if emailPrepareMulti, isMulti := s.c.emailPrepare.(module.MultiTable); isMulti {
+		preparedEmail, err = emailPrepareMulti.LookupMulti(ctx, fromEmailNorm)
+		ok = len(preparedEmail) > 0
+	} else {
+		var preparedEmail_single string
+		preparedEmail_single, ok, err = s.c.emailPrepare.Lookup(ctx, fromEmailNorm)
+		preparedEmail = []string{preparedEmail_single}
+	}
+	s.log.DebugMsg("authorized emails", "preparedEmail", preparedEmail, "ok", ok)
 	if err != nil {
 		return s.c.errAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{
@@ -176,7 +185,7 @@ func (s *state) authzSender(ctx context.Context, authName, email string) module.
 			}})
 	}
 	if !ok {
-		preparedEmail = fromEmailNorm
+		preparedEmail = []string{fromEmailNorm}
 	}
 
 	ok, err = authz.AuthorizeEmailUse(ctx, authNameNorm, preparedEmail, s.c.userToEmail)
