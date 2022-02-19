@@ -18,7 +18,7 @@ require (
 	github.com/emersion/go-milter v0.3.2
 	github.com/emersion/go-msgauth v0.6.5
 	github.com/emersion/go-sasl v0.0.0-20211008083017-0b9dcfb154ac
-	github.com/emersion/go-smtp v0.15.1-0.20211006082444-62f6b38f85e4
+	github.com/emersion/go-smtp v0.15.1-0.20220119142625-1c322d2783aa
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005

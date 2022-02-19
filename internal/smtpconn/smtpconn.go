@@ -31,6 +31,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"runtime/trace"
@@ -81,6 +82,7 @@ type C struct {
 	serverName string
 	cl         *smtp.Client
 	rcpts      []string
+	lmtp       bool
 }
 
 // New creates the new instance of the C object, populating the required fields
@@ -217,6 +219,7 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 		conn = tls.Client(conn, cfg)
 	}
 
+	c.lmtp = lmtp
 	// This uses initial greeting timeout of 5 minutes (hardcoded).
 	if lmtp {
 		cl, err = smtp.NewClientLMTP(conn, endp.Host)
@@ -325,6 +328,10 @@ func (c *C) Client() *smtp.Client {
 	return c.cl
 }
 
+func (c *C) IsLMTP() bool {
+	return c.lmtp
+}
+
 // Rcpt sends the RCPT TO command to the remote server.
 //
 // If the address is non-ASCII and cannot be converted to ASCII and the remote
@@ -358,6 +365,60 @@ func (c *C) Rcpt(ctx context.Context, to string) error {
 	return nil
 }
 
+type lmtpError map[string]*smtp.SMTPError
+
+func (l lmtpError) SetStatus(rcptTo string, err *smtp.SMTPError) {
+	l[rcptTo] = err
+}
+
+func (l lmtpError) singleError() *smtp.SMTPError {
+	nonNils := 0
+	for _, e := range l {
+		if e != nil {
+			nonNils++
+		}
+	}
+	if nonNils == 1 {
+		for _, err := range l {
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (l lmtpError) Unwrap() error {
+	if err := l.singleError(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l lmtpError) Error() string {
+	if err := l.singleError(); err != nil {
+		return err.Error()
+	}
+	return fmt.Sprintf("multiple errors reported by LMTP downstream: %v", map[string]*smtp.SMTPError(l))
+}
+
+func (c *C) smtpToLMTPData(ctx context.Context, hdr textproto.Header, body io.Reader) error {
+	statusCb := lmtpError{}
+	if err := c.LMTPData(ctx, hdr, body, statusCb.SetStatus); err != nil {
+		return err
+	}
+	hasAnyFailures := false
+	for _, err := range statusCb {
+		if err != nil {
+			hasAnyFailures = true
+		}
+	}
+	if hasAnyFailures {
+		return statusCb
+	}
+	return nil
+}
+
 // Data sends the DATA command to the remote server and then sends the message header
 // and body.
 //
@@ -365,6 +426,10 @@ func (c *C) Rcpt(ctx context.Context, to string) error {
 // the middle of message data stream). It is not safe to continue using it.
 func (c *C) Data(ctx context.Context, hdr textproto.Header, body io.Reader) error {
 	defer trace.StartRegion(ctx, "smtpconn/DATA").End()
+
+	if c.IsLMTP() {
+		return c.smtpToLMTPData(ctx, hdr, body)
+	}
 
 	wc, err := c.cl.Data()
 	if err != nil {

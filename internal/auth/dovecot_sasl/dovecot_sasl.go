@@ -101,9 +101,6 @@ func (a *Auth) Init(cfg *config.Map) error {
 	if err != nil {
 		return fmt.Errorf("%s: invalid server endpoint: %v", modName, err)
 	}
-	if endp.Path == "" {
-		return fmt.Errorf("%s: unexpected path in endpoint ", modName)
-	}
 
 	// Dial once to check usability and also to get list of mechanisms.
 	conn, err := net.Dial(endp.Scheme, endp.Address())

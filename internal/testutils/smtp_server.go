@@ -63,8 +63,8 @@ func (be *SMTPBackend) NewSession(state smtp.ConnectionState, _ string) (smtp.Se
 	}
 	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
 	return &session{
-		backend:  be,
-		state:    &state,
+		backend: be,
+		state:   &state,
 	}, nil
 }
 

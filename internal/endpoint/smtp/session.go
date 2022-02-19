@@ -182,6 +182,10 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		Conn:     &s.connState,
 		SMTPOpts: opts,
 	}
+	msgMeta.ID, err = module.GenerateMsgID()
+	if err != nil {
+		return "", err
+	}
 
 	if s.connState.AuthUser != "" {
 		s.log.Msg("incoming message",
@@ -202,12 +206,14 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 
 	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
 	// used.
-	for _, ch := range from {
-		if ch > 128 && !opts.UTF8 {
-			return "", &exterrors.SMTPError{
-				Code:         550,
-				EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
-				Message:      "SMTPUTF8 is required for non-ASCII senders",
+	if !opts.UTF8 {
+		for _, ch := range from {
+			if ch > 128 {
+				return "", &exterrors.SMTPError{
+					Code:         550,
+					EnhancedCode: exterrors.EnhancedCode{5, 6, 7},
+					Message:      "SMTPUTF8 is required for non-ASCII senders",
+				}
 			}
 		}
 	}
@@ -225,10 +231,6 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		}
 	}
 
-	msgMeta.ID, err = module.GenerateMsgID()
-	if err != nil {
-		return "", err
-	}
 	msgMeta.OriginalFrom = from
 
 	domain := ""
