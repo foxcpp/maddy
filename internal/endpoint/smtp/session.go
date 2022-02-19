@@ -182,6 +182,10 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		Conn:     &s.connState,
 		SMTPOpts: opts,
 	}
+	msgMeta.ID, err = module.GenerateMsgID()
+	if err != nil {
+		return "", err
+	}
 
 	if s.connState.AuthUser != "" {
 		s.log.Msg("incoming message",
@@ -227,10 +231,6 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 		}
 	}
 
-	msgMeta.ID, err = module.GenerateMsgID()
-	if err != nil {
-		return "", err
-	}
 	msgMeta.OriginalFrom = from
 
 	domain := ""
