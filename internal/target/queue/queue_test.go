@@ -45,20 +45,13 @@ import (
 // See newTestQueueDir to create testing queue from an existing directory.
 // It is called responsibility to remove queue directory created by this function.
 func newTestQueue(t *testing.T, target module.DeliveryTarget) *Queue {
-	dir, err := ioutil.TempDir("", "maddy-tests-queue")
-	if err != nil {
-		t.Fatal("failed to create temporary directory for queue:", err)
-	}
-	return newTestQueueDir(t, target, dir)
+	return newTestQueueDir(t, target, t.TempDir())
 }
 
 func cleanQueue(t *testing.T, q *Queue) {
 	t.Log("--- queue.Close")
 	if err := q.Close(); err != nil {
 		t.Fatal("queue.Close:", err)
-	}
-	if err := os.RemoveAll(q.location); err != nil {
-		t.Fatal("os.RemoveAll", err)
 	}
 }
 
