@@ -2,7 +2,7 @@
 
 /*
 Maddy Mail Server - Composable all-in-one email server.
-Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+Copyright © 2019-2022 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -62,6 +62,19 @@ struct error_obj run_pam_auth(const char *username, char *password) {
             ret_val.status = 2;
         }
         ret_val.func_name = "pam_authenticate";
+        ret_val.error_msg = pam_strerror(local_auth, status);
+        return ret_val;
+    }
+
+    status = pam_acct_mgmt(local_auth, PAM_SILENT|PAM_DISALLOW_NULL_AUTHTOK);
+    if (status != PAM_SUCCESS) {
+        struct error_obj ret_val;
+        if (status == PAM_AUTH_ERR || status == PAM_USER_UNKNOWN || status == PAM_NEW_AUTHTOK_REQD) {
+            ret_val.status = 1;
+        } else {
+            ret_val.status = 2;
+        }
+        ret_val.func_name = "pam_acct_mgmt";
         ret_val.error_msg = pam_strerror(local_auth, status);
         return ret_val;
     }
