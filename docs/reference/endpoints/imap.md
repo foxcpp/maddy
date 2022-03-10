@@ -40,6 +40,25 @@ tls cert.crt key.key {
 
 See [TLS configuration / Server](/reference/tls/#server-side) for details.
 
+**Syntax**: proxy_protocol _trusted ips..._ { ... } <br>
+**Default**: not enabled
+
+Enable use of HAProxy PROXY protocol. Supports both v1 and v2 protocols.
+If a list of trusted IP addresses or subnets is provided, only connections
+from those will be trusted.
+
+TLS for the channel between the proxies and maddy can be configured
+using a 'tls' directive:
+```
+proxy_protocol {
+    trust 127.0.0.1 ::1 192.168.0.1/24
+    tls &proxy_tls
+}
+```
+Note that the top-level 'tls' directive is not inherited here. If you
+need TLS on top of the PROXY protocol, securing the protocol header,
+you must declare TLS explicitly.
+
 **Syntax**: io\_debug _boolean_ <br>
 **Default**: no
 
