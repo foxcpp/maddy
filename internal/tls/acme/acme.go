@@ -90,6 +90,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 	l.cfg = certmagic.New(l.cache, certmagic.Config{
 		Storage: l.store, // not sure if it is necessary to set these twice
 		Logger:  cmLog,
+		DefaultServerName: hostname,
 	})
 	mngr := certmagic.NewACMEManager(l.cfg, certmagic.ACMEManager{
 		Logger: cmLog,
