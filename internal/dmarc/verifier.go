@@ -161,7 +161,7 @@ func (v *Verifier) Apply(authRes []authres.Result) (EvalResult, Policy) {
 		return result, dmarc.PolicyNone
 	}
 
-	if data.record.Percent != nil && rand.Int31n(100) > int32(*data.record.Percent) {
+	if data.record.Percent != nil && rand.Int31n(100) < int32(*data.record.Percent) {
 		return result, dmarc.PolicyNone
 	}
 
