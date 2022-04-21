@@ -36,7 +36,7 @@ require (
 	github.com/johannesboyne/gofakes3 v0.0.0-20220413173033-532d036b4e0d
 	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.11 // indirect
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.5
 	github.com/libdns/alidns v1.0.2
 	github.com/libdns/cloudflare v0.1.0
 	github.com/libdns/digitalocean v0.0.0-20210310230526-186c4ebd2215
