@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
+    - name: Install libpam0g-dev
+      run: apt-get install -y libpam0g-dev
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
