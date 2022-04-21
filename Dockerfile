@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine AS build-env
+FROM golang:1.18-alpine AS build-env
 
 RUN set -ex ;\
     apk upgrade --no-cache --available ;\
