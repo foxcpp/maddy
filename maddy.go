@@ -161,6 +161,8 @@ func Run() int {
 		return 2
 	}
 
+	defer log.DefaultLogger.Out.Close()
+
 	if err := moduleMain(cfg); err != nil {
 		systemdStatusErr(err)
 		log.Println(err)
@@ -270,8 +272,6 @@ func moduleMain(cfg []config.Node) error {
 	if err := InitDirs(); err != nil {
 		return err
 	}
-
-	defer log.DefaultLogger.Out.Close()
 
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
 
