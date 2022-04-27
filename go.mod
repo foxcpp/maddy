@@ -8,7 +8,7 @@ require (
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/aws/aws-sdk-go v1.43.12 // indirect
-	github.com/caddyserver/certmagic v0.15.3
+	github.com/caddyserver/certmagic v0.16.1
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/digitalocean/godo v1.75.0 // indirect
 	github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7
