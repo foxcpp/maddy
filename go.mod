@@ -11,7 +11,7 @@ require (
 	github.com/caddyserver/certmagic v0.15.3
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/digitalocean/godo v1.75.0 // indirect
-	github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7
+	github.com/emersion/go-imap v1.2.1
 	github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
 	github.com/emersion/go-imap-move v0.0.0-20210907172020-fe4558f9c872
