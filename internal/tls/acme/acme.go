@@ -92,7 +92,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 		Logger:  cmLog,
 		DefaultServerName: hostname,
 	})
-	mngr := certmagic.NewACMEManager(l.cfg, certmagic.ACMEManager{
+	mngr := certmagic.NewACMEIssuer(l.cfg, certmagic.ACMEIssuer{
 		Logger: cmLog,
 		CA:     caPath,
 		Email:  email,
@@ -150,7 +150,8 @@ func (l *Loader) InstanceName() string {
 
 func init() {
 	hooks.AddHook(hooks.EventShutdown, func() {
-		certmagic.CleanUpOwnLocks(nil)
+		ctx := context.Background()
+		certmagic.CleanUpOwnLocks(ctx, nil)
 	})
 }
 
