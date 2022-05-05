@@ -115,6 +115,8 @@ github.com/emersion/go-imap v1.0.4/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO
 github.com/emersion/go-imap v1.0.5/go.mod h1:yKASt+C3ZiDAiCSssxg9caIckWF/JG7ZQTO7GAmvicU=
 github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7 h1:2hV3AkHAODve7a+HTzLGZ0k1Rprh+9KbYWl+r06bdMA=
 github.com/emersion/go-imap v1.2.1-0.20220119134953-dcd9ee65c8c7/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
+github.com/emersion/go-imap v1.2.1 h1:+s9ZjMEjOB8NzZMVTM3cCenz2JrQIGGo5j1df19WjTA=
+github.com/emersion/go-imap v1.2.1/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
 github.com/emersion/go-imap-appendlimit v0.0.0-20190308131241-25671c986a6a/go.mod h1:ikgISoP7pRAolqsVP64yMteJa2FIpS6ju88eBT6K1yQ=
 github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4 h1:U6LL6F1dYqXpVTwEbXhcfU8hgpNvmjB9xeOAiHN695o=
 github.com/emersion/go-imap-appendlimit v0.0.0-20210907172056-e3baed77bbe4/go.mod h1:ikgISoP7pRAolqsVP64yMteJa2FIpS6ju88eBT6K1yQ=
