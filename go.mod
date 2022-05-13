@@ -58,7 +58,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.26
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/client_golang v1.12.2
 	github.com/rs/xid v1.3.0 // indirect
 	github.com/urfave/cli v1.22.9
 	github.com/vultr/govultr/v2 v2.14.1 // indirect
