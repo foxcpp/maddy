@@ -364,6 +364,8 @@ github.com/libdns/cloudflare v0.1.0 h1:93WkJaGaiXCe353LHEP36kAWCUw0YjFqwhkBkU2/i
 github.com/libdns/cloudflare v0.1.0/go.mod h1:a44IP6J1YH6nvcNl1PverfJviADgXUnsozR3a7vBKN8=
 github.com/libdns/digitalocean v0.0.0-20210310230526-186c4ebd2215 h1:JYi/h0UEECrxY2JCi5FIfZEDFuUJvwihUWdm3bnDu2A=
 github.com/libdns/digitalocean v0.0.0-20210310230526-186c4ebd2215/go.mod h1:GEZlJR69sPAUWjb77eLyeDczZNL+ezbo5UGIY2/xZXA=
+github.com/libdns/digitalocean v0.0.0-20220518195853-a541bc8aa80f h1:Y0JkwI0Uip+Zrh71aHLmNz150cKnWuC+535v/zLS8zo=
+github.com/libdns/digitalocean v0.0.0-20220518195853-a541bc8aa80f/go.mod h1:B2TChhOTxvBflpRTHlguXWtwa1Ha5WI6JkB6aCViM+0=
 github.com/libdns/gandi v1.0.2 h1:1Ts8UpI1x5PVKpOjKC7Dn4+EObndz9gm6vdZnloHSKQ=
 github.com/libdns/gandi v1.0.2/go.mod h1:hxpbQKcQFgQrTS5lV4tAgn6QoL6HcCnoBJaW5nOW4Sk=
 github.com/libdns/googleclouddns v1.0.1 h1:g3BO+c4W4NYl8vkJk5sKLYwVTmOtGpnI2GryqSzJgkk=

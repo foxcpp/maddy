@@ -39,7 +39,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/libdns/alidns v1.0.2
 	github.com/libdns/cloudflare v0.1.0
-	github.com/libdns/digitalocean v0.0.0-20210310230526-186c4ebd2215
+	github.com/libdns/digitalocean v0.0.0-20220518195853-a541bc8aa80f
 	github.com/libdns/gandi v1.0.2
 	github.com/libdns/googleclouddns v1.0.1
 	github.com/libdns/hetzner v0.0.1
