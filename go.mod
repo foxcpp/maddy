@@ -33,7 +33,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/johannesboyne/gofakes3 v0.0.0-20220413173033-532d036b4e0d
+	github.com/johannesboyne/gofakes3 v0.0.0-20220517215058-83a58ec253b6
 	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.11 // indirect
 	github.com/lib/pq v1.10.6

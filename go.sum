@@ -317,6 +317,8 @@ github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c h1:lx/uPI+m
 github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c/go.mod h1:LIAXxPvcUXwOcTIj9LSNSUpE9/eMHalTWxsP/kmWxQI=
 github.com/johannesboyne/gofakes3 v0.0.0-20220413173033-532d036b4e0d h1:V1kCaMbgPBMy4ofn9wTvsAnILZdaiHHjRX4+cBlxC9k=
 github.com/johannesboyne/gofakes3 v0.0.0-20220413173033-532d036b4e0d/go.mod h1:LIAXxPvcUXwOcTIj9LSNSUpE9/eMHalTWxsP/kmWxQI=
+github.com/johannesboyne/gofakes3 v0.0.0-20220517215058-83a58ec253b6 h1:Twy/cqAmdLarn9QEiRvyX5eUyuKFxqMEiy5GQGIqwjo=
+github.com/johannesboyne/gofakes3 v0.0.0-20220517215058-83a58ec253b6/go.mod h1:LIAXxPvcUXwOcTIj9LSNSUpE9/eMHalTWxsP/kmWxQI=
 github.com/josharian/intern v1.0.0 h1:vlS4z54oSdjm0bgjRigI+G1HpF+tI+9rE5LLzOg8HmY=
 github.com/josharian/intern v1.0.0/go.mod h1:5DoeVV0s6jJacbCEi61lwdGj/aVlrQvzHFFd8Hwg//Y=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
