@@ -17,7 +17,7 @@ require (
 	github.com/emersion/go-imap-sortthread v1.2.0
 	github.com/emersion/go-imap-specialuse v0.0.0-20201101201809-1ab93d3d150e
 	github.com/emersion/go-imap-unselect v0.0.0-20210907172115-4c2c4843bf69
-	github.com/emersion/go-message v0.15.0
+	github.com/emersion/go-message v0.16.0
 	github.com/emersion/go-milter v0.3.3
 	github.com/emersion/go-msgauth v0.6.5
 	github.com/emersion/go-sasl v0.0.0-20211008083017-0b9dcfb154ac
