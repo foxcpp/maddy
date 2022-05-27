@@ -19,7 +19,7 @@ require (
 	github.com/emersion/go-imap-unselect v0.0.0-20210907172115-4c2c4843bf69
 	github.com/emersion/go-message v0.15.0
 	github.com/emersion/go-milter v0.3.3
-	github.com/emersion/go-msgauth v0.6.5
+	github.com/emersion/go-msgauth v0.6.6
 	github.com/emersion/go-sasl v0.0.0-20211008083017-0b9dcfb154ac
 	github.com/emersion/go-smtp v0.15.1-0.20220119142625-1c322d2783aa
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
