@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	blitiri.com.ar/go/spf v1.3.0
-	cloud.google.com/go/compute v1.5.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/aws/aws-sdk-go v1.43.12 // indirect
@@ -41,7 +40,7 @@ require (
 	github.com/libdns/cloudflare v0.1.0
 	github.com/libdns/digitalocean v0.0.0-20220518195853-a541bc8aa80f
 	github.com/libdns/gandi v1.0.2
-	github.com/libdns/googleclouddns v1.0.1
+	github.com/libdns/googleclouddns v1.0.2
 	github.com/libdns/hetzner v0.0.1
 	github.com/libdns/leaseweb v0.2.1
 	github.com/libdns/libdns v0.2.1
@@ -67,11 +66,8 @@ require (
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
-	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.9 // indirect
-	google.golang.org/genproto v0.0.0-20220304144024-325a89244dc8 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 )
