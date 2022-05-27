@@ -153,6 +153,8 @@ github.com/emersion/go-message v0.15.0 h1:urgKGqt2JAc9NFJcgncQcohHdiYb803YTH9OQw
 github.com/emersion/go-message v0.15.0/go.mod h1:wQUEfE+38+7EW8p8aZ96ptg6bAb1iwdgej19uXASlE4=
 github.com/emersion/go-milter v0.3.2 h1:j8hrLXf8PAHFhRHDdBoBKluQveMZYoaK7aRIqvaoRTA=
 github.com/emersion/go-milter v0.3.2/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
+github.com/emersion/go-milter v0.3.3 h1:DiP9Xmw2FqEuosNCd01XPDBb1K3OziNmt7BG2ddFlgs=
+github.com/emersion/go-milter v0.3.3/go.mod h1:ablHK0pbLB83kMFBznp/Rj8aV+Kc3jw8cxzzmCNLIOY=
 github.com/emersion/go-msgauth v0.6.5 h1:UaXBtrjYBM3SWw9BBODeSp0uYtScx3CuIF7/RQfkeWo=
 github.com/emersion/go-msgauth v0.6.5/go.mod h1:/jbQISFJgtT12T8akRs20l+wI4HcyN/kWy7VRdHEAmA=
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
