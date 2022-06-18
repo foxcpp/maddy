@@ -68,7 +68,7 @@ Restart=on-failure
 # ... Unless it is a configuration problem.
 RestartPreventExitStatus=2
 
-ExecStart=/usr/local/bin/maddy -config /etc/maddy/%i.conf
+ExecStart=/usr/local/bin/maddy --config /etc/maddy/%i.conf run
 
 ExecReload=/bin/kill -USR1 $MAINPID
 ExecReload=/bin/kill -USR2 $MAINPID

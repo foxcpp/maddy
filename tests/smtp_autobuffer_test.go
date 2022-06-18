@@ -98,6 +98,7 @@ func TestSMTPEndpoint_LargeMessage(tt *testing.T) {
 
 	imapConn.Writeln(". NOOP")
 	imapConn.ExpectPattern(`\* 1 EXISTS`)
+	imapConn.ExpectPattern(`\* 1 RECENT`)
 	imapConn.ExpectPattern(". OK *")
 
 	imapConn.Writeln(". FETCH 1 (BODY.PEEK[])")
@@ -185,6 +186,7 @@ func TestSMTPEndpoint_FileBuffer(tt *testing.T) {
 
 		imapConn.Writeln(". NOOP")
 		imapConn.ExpectPattern(`\* 1 EXISTS`)
+		imapConn.ExpectPattern(`\* 1 RECENT`)
 		imapConn.ExpectPattern(". OK *")
 
 		imapConn.Writeln(". FETCH 1 (BODY.PEEK[])")
@@ -300,9 +302,8 @@ func TestSMTPEndpoint_Autobuffer(tt *testing.T) {
 
 	imapConn.Writeln(". NOOP")
 	// This will break with go-imap v2 upgrade merging updates.
-	imapConn.ExpectPattern(`\* 1 EXISTS`)
-	imapConn.ExpectPattern(`\* 2 EXISTS`)
 	imapConn.ExpectPattern(`\* 3 EXISTS`)
+	imapConn.ExpectPattern(`\* 3 RECENT`)
 	imapConn.ExpectPattern(". OK *")
 
 	imapConn.Writeln(". FETCH 1:3 (BODY.PEEK[])")

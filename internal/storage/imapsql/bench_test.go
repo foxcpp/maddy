@@ -46,7 +46,6 @@ func createTestDB(tb testing.TB, compAlgo string) *Storage {
 	}
 
 	db, err := imapsql.New(testDB, testDSN, &imapsql.FSStore{Root: testFsstore}, imapsql.Opts{
-		LazyUpdatesInit: true,
 		CompressAlgo:    compAlgo,
 	})
 	if err != nil {

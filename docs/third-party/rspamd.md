@@ -36,7 +36,3 @@ Default mapping of rspamd action -> maddy action is as follows:
 - "soft reject" => Reject with temporary error
 - "reject" => Reject with permanent error
 - "greylist" => Ignored
-
-This and additional data to pass to rspamd (MTA name, settings ID, etc)
-can be configured as described in
-[**maddy-checks**(5)](/man/_generated_maddy-filters.5/#rspamd-check-checkrspamd).

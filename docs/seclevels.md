@@ -1,4 +1,4 @@
-# Security levels
+# Outbound delivery security
 
 maddy implements a number of schemes and protocols for discovery and
 enforcement of security features supported by the recipient MTA.
@@ -83,8 +83,7 @@ passive attacks.
 
 ## maddy security policies
 
-See [**maddy-targets(5)**](../man/\_generated\_maddy-targets.5) page for
-description of configuration options available for each policy mechanism
+See [Remote MX delivery](/reference/targets/remote/) for description of configuration options available for each policy mechanism
 supported by maddy.
 
 [RFC 8461 Section 10.2]: https://www.rfc-editor.org/rfc/rfc8461.html#section-10.2 (SMTP MTA Strict Transport Security - 10.2. Preventing Policy Discovery)

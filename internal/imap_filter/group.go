@@ -44,7 +44,7 @@ func NewGroup(_, instName string, _, _ []string) (module.Module, error) {
 	}, nil
 }
 
-func (g *Group) IMAPFilter(accountName string, meta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
+func (g *Group) IMAPFilter(accountName string, rcptTo string, meta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
 	if g == nil {
 		return "", nil, nil
 	}
@@ -53,7 +53,7 @@ func (g *Group) IMAPFilter(accountName string, meta *module.MsgMetadata, hdr tex
 		finalFlags  = make([]string, 0, len(g.Filters))
 	)
 	for _, f := range g.Filters {
-		folder, flags, err := f.IMAPFilter(accountName, meta, hdr, body)
+		folder, flags, err := f.IMAPFilter(accountName, rcptTo, meta, hdr, body)
 		if err != nil {
 			g.log.Error("IMAP filter failed", err)
 			continue

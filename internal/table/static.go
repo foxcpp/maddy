@@ -68,6 +68,10 @@ func (s *Static) Lookup(ctx context.Context, key string) (string, bool, error) {
 	return val[0], true, nil
 }
 
+func (s *Static) LookupMulti(ctx context.Context, key string) ([]string, error) {
+	return s.m[key], nil
+}
+
 func init() {
 	module.Register("table.static", NewStatic)
 }

@@ -123,15 +123,9 @@ build() {
 		go build -trimpath -buildmode pie -tags "$tags osusergo netgo static_build" \
 			-ldflags "-extldflags '-fno-PIC -static' -X \"github.com/foxcpp/maddy.Version=${version}\"" \
 			-o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
-		echo "-- Building management utility (maddyctl)..." >&2
-		go build -trimpath -buildmode pie -tags "$tags osusergo netgo static_build" \
-			-ldflags "-extldflags '-fno-PIC -static' -X \"github.com/foxcpp/maddy.Version=${version}\"" \
-			-o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	else
 		echo "-- Building main server executable..." >&2
 		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
-		echo "-- Building management utility (maddyctl)..." >&2
-		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddyctl" ${GOFLAGS} ./cmd/maddyctl
 	fi
 
 	build_man_pages
@@ -147,7 +141,8 @@ install() {
 	echo "-- Installing built files..." >&2
 
 	command install -m 0755 -d "${destdir}/${prefix}/bin/"
-	command install -m 0755 "${builddir}/maddy" "${builddir}/maddyctl" "${destdir}/${prefix}/bin/"
+	command install -m 0755 "${builddir}/maddy" "${destdir}/${prefix}/bin/"
+	command ln -s maddy "${destdir}/${prefix}/bin/maddyctl"
 	command install -m 0755 -d "${destdir}/etc/maddy/"
 	command install -m 0644 ./maddy.conf "${destdir}/etc/maddy/maddy.conf"
 

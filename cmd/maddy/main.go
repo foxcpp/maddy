@@ -19,11 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package main
 
 import (
-	"os"
-
-	"github.com/foxcpp/maddy"
+	_ "github.com/foxcpp/maddy"
+	"github.com/foxcpp/maddy/internal/cli"
+	_ "github.com/foxcpp/maddy/internal/cli/ctl"
 )
 
 func main() {
-	os.Exit(maddy.Run())
+	maddycli.Run()
 }

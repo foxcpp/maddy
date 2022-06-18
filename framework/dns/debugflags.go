@@ -21,9 +21,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dns
 
 import (
-	"flag"
+	maddycli "github.com/foxcpp/maddy/internal/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
-	flag.StringVar(&overrideServ, "debug.dnsoverride", "system-default", "replace the DNS resolver address")
+	maddycli.AddGlobalFlag(&cli.StringFlag{
+		Name:        "debug.dnsoverride",
+		Usage:       "replace the DNS resolver address",
+		Value:       "system-default",
+		Destination: &overrideServ,
+	})
 }

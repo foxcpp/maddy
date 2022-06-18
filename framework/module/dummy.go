@@ -41,6 +41,10 @@ func (d *Dummy) Lookup(_ context.Context, _ string) (string, bool, error) {
 	return "", false, nil
 }
 
+func (d *Dummy) LookupMulti(_ context.Context, _ string) ([]string, error) {
+	return []string{""}, nil
+}
+
 func (d *Dummy) Name() string {
 	return "dummy"
 }
