@@ -60,10 +60,6 @@ func newTestModifier(t *testing.T, dir, keyAlgo string, domains []string) *Modif
 				Args: []string{filepath.Join(dir, "{domain}.key")},
 			},
 			{
-				Name: "require_sender_match",
-				Args: []string{"off"},
-			},
-			{
 				Name: "newkey_algo",
 				Args: []string{keyAlgo},
 			},
