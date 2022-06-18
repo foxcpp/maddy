@@ -58,8 +58,8 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/prometheus/client_golang v1.12.1
 	github.com/rs/xid v1.3.0 // indirect
-	github.com/vultr/govultr/v2 v2.14.1 // indirect
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/vultr/govultr/v2 v2.14.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0

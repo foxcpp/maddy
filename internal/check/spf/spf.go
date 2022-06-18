@@ -97,11 +97,11 @@ func (c *Check) Init(cfg *config.Map) error {
 		}, modconfig.FailActionDirective, &c.softfailAction)
 	cfg.Custom("permerr_action", false, false,
 		func() (interface{}, error) {
-			return modconfig.FailAction{Reject: true}, nil
+			return modconfig.FailAction{}, nil
 		}, modconfig.FailActionDirective, &c.permerrAction)
 	cfg.Custom("temperr_action", false, false,
 		func() (interface{}, error) {
-			return modconfig.FailAction{Reject: true}, nil
+			return modconfig.FailAction{}, nil
 		}, modconfig.FailActionDirective, &c.temperrAction)
 	_, err := cfg.Process()
 	if err != nil {
