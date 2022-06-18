@@ -1,4 +1,5 @@
 ## Maddy Mail Server - default configuration file (2022-06-18)
+## This is the copy of maddy.conf with changes necessary to run it in Docker.
 # Suitable for small-scale deployments. Uses its own format for local users DB,
 # should be managed via maddyctl utility.
 #
@@ -8,11 +9,11 @@
 # ----------------------------------------------------------------------------
 # Base variables
 
-$(hostname) = example.org
-$(primary_domain) = example.org
+$(hostname) = {env:MADDY_HOSTNAME}
+$(primary_domain) = {env:MADDY_DOMAIN}
 $(local_domains) = $(primary_domain)
 
-tls file /etc/maddy/certs/$(hostname)/fullchain.pem /etc/maddy/certs/$(hostname)/privkey.pem
+tls file /data/tls/fullchain.pem /data/tls/privkey.pem
 
 # ----------------------------------------------------------------------------
 # Local storage & authentication

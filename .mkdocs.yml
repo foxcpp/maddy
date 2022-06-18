@@ -19,6 +19,7 @@ nav:
   - multiple-domains.md
   - upgrading.md
   - seclevels.md
+  - docker.md
   - Reference manual:
       - reference/modules.md
       - reference/global-config.md
