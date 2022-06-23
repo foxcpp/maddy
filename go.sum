@@ -164,6 +164,8 @@ github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed h1:1Jo7ge
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed/go.mod h1:Shows1vmkBWO40ChOClaUe6DUnZrsP1UPAuoWzIUdgQ=
 github.com/foxcpp/go-imap-sql v0.5.1-0.20220105233636-946daf36ce81 h1:hd79KlESgagszJqmV+dm36r5NR5NFYCMQ2dWi05gKKs=
 github.com/foxcpp/go-imap-sql v0.5.1-0.20220105233636-946daf36ce81/go.mod h1:tl6w1OlN7LLvJOoWTR7bNt0JQE+wPbYr8f3/nJSSlwU=
+github.com/foxcpp/go-imap-sql v0.5.1-0.20220623181604-c20be1a387b4 h1:UFnLWaLQ0bEziClwROuIYBQ+JHEn4jYxHX19rY0I6Pc=
+github.com/foxcpp/go-imap-sql v0.5.1-0.20220623181604-c20be1a387b4/go.mod h1:tl6w1OlN7LLvJOoWTR7bNt0JQE+wPbYr8f3/nJSSlwU=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v1.0.0 h1:7jBqxd3WDWwi/6WhDvacvH1XsN3rOLXyHM1uhvIx6FI=
 github.com/foxcpp/go-mockdns v1.0.0/go.mod h1:lgRN6+KxQBawyIghpnl5CezHFGS9VLzvtVlwxvzXTQ4=
