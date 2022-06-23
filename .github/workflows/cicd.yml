@@ -59,8 +59,7 @@ jobs:
           apk add --no-cache gcc go zstd
       - name: "Create and package build tree"
         run: |
-          ./build.sh --static build
-          ./build.sh --destdir ~/package-output/ install
+          ./build.sh --builddir ~/package-output/ --static build
           ver=$(cat .version)
           mv ~/package-output/ ~/maddy-$ver-x86_64-linux-musl
           cd ~
