@@ -62,16 +62,16 @@ jobs:
           ./build.sh --static build
           ./build.sh --destdir ~/package-output/ install
           mv ~/package-output/ ~/maddy-$(cat .version)-x86_64-linux-musl
-          pushd ~
+          cd ~
           tar c ./maddy-$(cat .version)-x86_64-linux-musl | zstd > ~/maddy-x86_64-linux-musl.tar.zst
-          popd
+          cd -
       - name: "Save source tree"
         run: |
           rm -rf .git
           cp -r . ~/maddy-$(cat .version)-src
-          pushd ~
+          cd ~
           tar c ./maddy-$(cat .version)-src | zstd > ~/maddy-src.tar.zst
-          popd
+          cd -
       - name: "Upload source tree"
         uses: actions/upload-artifact@v2
         with:
