@@ -152,8 +152,8 @@ github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1/go.
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf h1:rmBPY5fryjp9zLQYsUmQqqgsYq7qeVfrjtr96Tf9vD8=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
-github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220105164802-1e767d4cfd62 h1:fkQX2NRzBgtR2PC60IXzrhcxr3Gti8zIY9HNhJ43/7w=
-github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220105164802-1e767d4cfd62/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
+github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887 h1:qUoaaHyrRpQw85ru6VQcC6JowdhrWl7lSbI1zRX1FTM=
+github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16 h1:qheFPDpteiUy7Ym18R68OYenpk85UyKYGkhYTmddSBg=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16/go.mod h1:OPP1AgKxMPo3aHX5pcEZLQhhh5sllFcB8aUN9f6a6X8=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=
@@ -162,8 +162,6 @@ github.com/foxcpp/go-imap-mess v0.0.0-20220105225909-b3469f4a4315 h1:3MxfvA+zWxl
 github.com/foxcpp/go-imap-mess v0.0.0-20220105225909-b3469f4a4315/go.mod h1:S/ELw0SONJ3ffk0ie7TYD6OxoIiyeMI22Fr3kwKUG8s=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed h1:1Jo7geyvunrPSjL6F6D9EcXoNApS5v3LQaro7aUNPnE=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed/go.mod h1:Shows1vmkBWO40ChOClaUe6DUnZrsP1UPAuoWzIUdgQ=
-github.com/foxcpp/go-imap-sql v0.5.1-0.20220105233636-946daf36ce81 h1:hd79KlESgagszJqmV+dm36r5NR5NFYCMQ2dWi05gKKs=
-github.com/foxcpp/go-imap-sql v0.5.1-0.20220105233636-946daf36ce81/go.mod h1:tl6w1OlN7LLvJOoWTR7bNt0JQE+wPbYr8f3/nJSSlwU=
 github.com/foxcpp/go-imap-sql v0.5.1-0.20220623181604-c20be1a387b4 h1:UFnLWaLQ0bEziClwROuIYBQ+JHEn4jYxHX19rY0I6Pc=
 github.com/foxcpp/go-imap-sql v0.5.1-0.20220623181604-c20be1a387b4/go.mod h1:tl6w1OlN7LLvJOoWTR7bNt0JQE+wPbYr8f3/nJSSlwU=
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
