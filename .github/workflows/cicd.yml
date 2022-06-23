@@ -56,21 +56,23 @@ jobs:
       - uses: actions/checkout@v1 # v2 does not work with containers
       - name: "Install build dependencies"
         run: |
-          apk add --no-cache gcc go
+          apk add --no-cache gcc go zstd
       - name: "Create and package build tree"
         run: |
           ./build.sh --static build
           ./build.sh --destdir ~/package-output/ install
-          mv ~/package-output/ ~/maddy-$(cat .version)-x86_64-linux-musl
+          ver=$(cat .version)
+          mv ~/package-output/ ~/maddy-$ver-x86_64-linux-musl
           cd ~
-          tar c ./maddy-$(cat .version)-x86_64-linux-musl | zstd > ~/maddy-x86_64-linux-musl.tar.zst
+          tar c ./maddy-$ver-x86_64-linux-musl | zstd > ~/maddy-x86_64-linux-musl.tar.zst
           cd -
       - name: "Save source tree"
         run: |
           rm -rf .git
-          cp -r . ~/maddy-$(cat .version)-src
+          ver=$(cat .version)
+          cp -r . ~/maddy-$ver-src
           cd ~
-          tar c ./maddy-$(cat .version)-src | zstd > ~/maddy-src.tar.zst
+          tar c ./maddy-$ver-src | zstd > ~/maddy-src.tar.zst
           cd -
       - name: "Upload source tree"
         uses: actions/upload-artifact@v2
