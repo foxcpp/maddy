@@ -468,7 +468,8 @@ func mboxesCreate(be module.Storage, ctx *cli.Context) error {
 	}
 
 	if ctx.IsSet("special") {
-		attr := "\\" + strings.Title(ctx.String("special"))
+		attr := "\\" + strings.Title(ctx.String("special")) //nolint:staticcheck
+		// (nolint) strings.Title is perfectly fine there since special mailbox tags will never use Unicode.
 
 		suu, ok := u.(SpecialUseUser)
 		if !ok {

@@ -1,4 +1,5 @@
-//+build !cgo no_sqlite3
+//go:build !cgo || no_sqlite3
+// +build !cgo no_sqlite3
 
 package blob
 

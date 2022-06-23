@@ -1,5 +1,6 @@
-//+build integration
-//+build darwin dragonfly freebsd linux netbsd openbsd solaris
+//go:build integration && (darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris)
+// +build integration
+// +build darwin dragonfly freebsd linux netbsd openbsd solaris
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

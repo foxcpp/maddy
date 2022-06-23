@@ -1,4 +1,5 @@
-//+build linux
+//go:build linux
+// +build linux
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

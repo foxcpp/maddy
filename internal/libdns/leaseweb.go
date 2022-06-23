@@ -1,4 +1,5 @@
-//+build libdns_leaseweb libdns_all
+//go:build libdns_leaseweb || libdns_all
+// +build libdns_leaseweb libdns_all
 
 package libdns
 

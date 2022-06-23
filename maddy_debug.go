@@ -1,4 +1,5 @@
-//+build debugflags
+//go:build debugflags
+// +build debugflags
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

@@ -339,7 +339,6 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 		dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
 
 		for _, to = range newTo {
-
 			wrapErr = func(err error) error {
 				return exterrors.WithFields(err, map[string]interface{}{
 					"effective_rcpt": to,

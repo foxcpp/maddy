@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

@@ -1,4 +1,5 @@
-//+build libdns_hetzner !libdns_separate
+//go:build libdns_hetzner || !libdns_separate
+// +build libdns_hetzner !libdns_separate
 
 package libdns
 

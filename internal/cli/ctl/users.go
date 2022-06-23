@@ -199,8 +199,8 @@ func usersCreate(be module.PlainUserDB, ctx *cli.Context) error {
 		}
 	}
 
-	if be, ok := be.(*pass_table.Auth); ok {
-		return be.CreateUserHash(username, pass, ctx.String("hash"), pass_table.HashOpts{
+	if beHash, ok := be.(*pass_table.Auth); ok {
+		return beHash.CreateUserHash(username, pass, ctx.String("hash"), pass_table.HashOpts{
 			BcryptCost: ctx.Int("bcrypt-cost"),
 		})
 	} else if ctx.IsSet("hash") || ctx.IsSet("bcrypt-cost") {

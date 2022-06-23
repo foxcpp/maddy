@@ -2,6 +2,7 @@
 //
 // From: https://git.lukeshu.com/go/cmd/gocovcat/
 //
+//go:build ignore
 // +build ignore
 
 // Copyright 2017 Luke Shumaker <lukeshu@parabola.nu>

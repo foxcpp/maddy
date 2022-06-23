@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

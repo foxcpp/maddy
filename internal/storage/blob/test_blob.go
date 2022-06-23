@@ -1,4 +1,5 @@
-//+build cgo,!no_sqlite3
+//go:build cgo && !no_sqlite3
+// +build cgo,!no_sqlite3
 
 package blob
 
@@ -40,8 +41,8 @@ func TestStore(t *testing.T, newStore func() module.BlobStore, cleanStore func(m
 
 		b, err := imapsql.New("sqlite3", ":memory:",
 			imapsql2.ExtBlobStore{Base: store}, imapsql.Opts{
-				PRNG:            prng,
-				Log:             testutils.Logger(t, "imapsql"),
+				PRNG: prng,
+				Log:  testutils.Logger(t, "imapsql"),
 			},
 		)
 		if err != nil {

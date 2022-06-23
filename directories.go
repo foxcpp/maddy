@@ -1,4 +1,5 @@
-//+build !docker
+//go:build !docker
+// +build !docker
 
 package maddy
 

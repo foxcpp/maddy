@@ -20,7 +20,7 @@ package main
 
 import (
 	_ "github.com/foxcpp/maddy"
-	"github.com/foxcpp/maddy/internal/cli"
+	maddycli "github.com/foxcpp/maddy/internal/cli"
 	_ "github.com/foxcpp/maddy/internal/cli/ctl"
 )
 

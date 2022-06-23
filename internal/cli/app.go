@@ -95,11 +95,15 @@ func Run() {
 	// Actual entry point is registered in maddy.go.
 
 	// Print help when called via maddyctl executable. To be removed
-	// once backward compatbility hack for 'maddy run' is removed too.
+	// once backward compatibility hack for 'maddy run' is removed too.
 	if strings.Contains(os.Args[0], "maddyctl") && len(os.Args) == 1 {
-		app.Run([]string{os.Args[0], "help"})
+		if err := app.Run([]string{os.Args[0], "help"}); err != nil {
+			log.DefaultLogger.Error("app.Run failed", err)
+		}
 		return
 	}
 
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.DefaultLogger.Error("app.Run failed", err)
+	}
 }

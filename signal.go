@@ -1,4 +1,5 @@
-//+build darwin dragonfly freebsd linux netbsd openbsd solaris
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
+// +build darwin dragonfly freebsd linux netbsd openbsd solaris
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

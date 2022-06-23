@@ -119,4 +119,3 @@ func TestRequireMXRecord(t *testing.T) {
 	test("", "", nil, false) // Permit <> for bounces.
 	test("foo@example.org", "example.org", []net.MX{{Host: "."}}, true)
 }
-

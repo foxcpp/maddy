@@ -1,4 +1,5 @@
-//+build libdns_metaname libdns_all
+//go:build libdns_metaname || libdns_all
+// +build libdns_metaname libdns_all
 
 package libdns
 
