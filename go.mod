@@ -3,7 +3,7 @@ module github.com/foxcpp/maddy
 go 1.15
 
 require (
-	blitiri.com.ar/go/spf v1.3.0
+	blitiri.com.ar/go/spf v1.4.0
 	cloud.google.com/go/compute v1.5.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962

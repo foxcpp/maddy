@@ -1,5 +1,7 @@
 blitiri.com.ar/go/spf v1.3.0 h1:KCBeatOXlg1OsRHHWMSPs0KAe0dfXuoQ1xGASgwd0Hs=
 blitiri.com.ar/go/spf v1.3.0/go.mod h1:/wDIKCvGkTlOLcCjV9yvSZcRy5cM15fpUpAhff8Zjbk=
+blitiri.com.ar/go/spf v1.4.0 h1:nRqoBRSJ0Y6y90QKF13xbi3gOV5DtzlYFM5l3iEWNMU=
+blitiri.com.ar/go/spf v1.4.0/go.mod h1:/wDIKCvGkTlOLcCjV9yvSZcRy5cM15fpUpAhff8Zjbk=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
