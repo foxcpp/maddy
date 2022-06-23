@@ -40,7 +40,7 @@ in command name are not processed to avoid possible command injection attacks.
 Additionally, for imap.filter.command, {account\_name} placeholder is replaced
 with effective IMAP account name, {rcpt_to}, {original_rcpt_to} provide
 access to the SMTP envelope recipient (before and after any rewrites),
-{subject} is replaced with the 
+{subject} is replaced with the Subject header, if it is present.
 
 Note that if you use provided systemd units on Linux, maddy executable is
 sandboxed - all commands will be executed with heavily restricted filesystem
