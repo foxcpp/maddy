@@ -112,6 +112,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: "Generate container metadata"
         uses: docker/metadata-action@v4
+        id: meta
         with:
           images: |
             foxcpp/maddy
