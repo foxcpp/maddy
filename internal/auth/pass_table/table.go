@@ -145,7 +145,7 @@ func (a *Auth) CreateUserHash(username, password string, hashAlgo string, opts H
 		return fmt.Errorf("%s: create user %s: hash generation: %w", a.modName, key, err)
 	}
 
-	if err := tbl.SetKey(key, hash+":"+hash); err != nil {
+	if err := tbl.SetKey(key, hashAlgo+":"+hash); err != nil {
 		return fmt.Errorf("%s: create user %s: %w", a.modName, key, err)
 	}
 	return nil
