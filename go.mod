@@ -17,9 +17,9 @@ require (
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
-	github.com/foxcpp/go-imap-mess v0.0.0-20220105225909-b3469f4a4315
+	github.com/foxcpp/go-imap-mess v0.0.0-20220625121252-2006ec40a870
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
-	github.com/foxcpp/go-imap-sql v0.5.1-0.20220623181604-c20be1a387b4
+	github.com/foxcpp/go-imap-sql v0.5.1-0.20220625121648-6e3bebef681a
 	github.com/foxcpp/go-mockdns v1.0.0
 	github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8
 	github.com/go-ldap/ldap/v3 v3.4.3
@@ -54,7 +54,6 @@ require (
 
 require (
 	cloud.google.com/go/compute v1.7.0 // indirect
-	// Do not upgrade go-ntlmssp - newer version are incompatible with go-ldap.
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/aws/aws-sdk-go v1.44.40 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -114,3 +113,7 @@ require (
 )
 
 replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887
+
+replace github.com/foxcpp/go-imap-sql => ../go-imap-sql
+
+replace github.com/foxcpp/go-imap-mess => ../go-imap-mess
