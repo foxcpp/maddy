@@ -600,6 +600,10 @@ func msgsRemove(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: SEQSET is required", 2)
 	}
 
+	if !ctx.Bool("uid") {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
+	}
+
 	seq, err := imap.ParseSeqSet(seqset)
 	if err != nil {
 		return err
@@ -643,6 +647,10 @@ func msgsCopy(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: TGTMAILBOX is required", 2)
 	}
 
+	if !ctx.Bool("uid") {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
+	}
+
 	seq, err := imap.ParseSeqSet(seqset)
 	if err != nil {
 		return err
@@ -679,6 +687,10 @@ func msgsMove(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: TGTMAILBOX is required", 2)
 	}
 
+	if !ctx.Bool("uid") {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
+	}
+
 	seq, err := imap.ParseSeqSet(seqset)
 	if err != nil {
 		return err
@@ -709,8 +721,12 @@ func msgsList(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
+	uid := ctx.Bool("uid")
 	if seqset == "" {
 		seqset = "1:*"
+		uid = true
+	} else if !uid {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
@@ -730,7 +746,7 @@ func msgsList(be module.Storage, ctx *cli.Context) error {
 
 	ch := make(chan *imap.Message, 10)
 	go func() {
-		err = mbox.ListMessages(ctx.Bool("uid"), seq, []imap.FetchItem{imap.FetchEnvelope, imap.FetchInternalDate, imap.FetchRFC822Size, imap.FetchFlags, imap.FetchUid}, ch)
+		err = mbox.ListMessages(uid, seq, []imap.FetchItem{imap.FetchEnvelope, imap.FetchInternalDate, imap.FetchRFC822Size, imap.FetchFlags, imap.FetchUid}, ch)
 	}()
 
 	for msg := range ch {
@@ -785,8 +801,12 @@ func msgsDump(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: MAILBOX is required", 2)
 	}
 	seqset := ctx.Args().Get(2)
+	uid := ctx.Bool("uid")
 	if seqset == "" {
-		seqset = "*"
+		seqset = "1:*"
+		uid = true
+	} else if !uid {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
 	}
 
 	seq, err := imap.ParseSeqSet(seqset)
@@ -806,7 +826,7 @@ func msgsDump(be module.Storage, ctx *cli.Context) error {
 
 	ch := make(chan *imap.Message, 10)
 	go func() {
-		err = mbox.ListMessages(ctx.Bool("uid"), seq, []imap.FetchItem{imap.FetchRFC822}, ch)
+		err = mbox.ListMessages(uid, seq, []imap.FetchItem{imap.FetchRFC822}, ch)
 	}()
 
 	for msg := range ch {
@@ -833,6 +853,10 @@ func msgsFlags(be module.Storage, ctx *cli.Context) error {
 		return cli.Exit("Error: SEQ is required", 2)
 	}
 
+	if !ctx.Bool("uid") {
+		fmt.Fprintln(os.Stderr, "WARNING: --uid=true will be the default in 0.7")
+	}
+
 	seq, err := imap.ParseSeqSet(seqStr)
 	if err != nil {
 		return err
@@ -843,7 +867,7 @@ func msgsFlags(be module.Storage, ctx *cli.Context) error {
 		return err
 	}
 
-	_, mbox, err := u.GetMailbox(name, true, nil)
+	_, mbox, err := u.GetMailbox(name, false, nil)
 	if err != nil {
 		return err
 	}
@@ -865,5 +889,5 @@ func msgsFlags(be module.Storage, ctx *cli.Context) error {
 		panic("unknown command: " + ctx.Command.Name)
 	}
 
-	return mbox.UpdateMessagesFlags(ctx.IsSet("uid"), seq, op, true, flags)
+	return mbox.UpdateMessagesFlags(ctx.Bool("uid"), seq, op, true, flags)
 }
