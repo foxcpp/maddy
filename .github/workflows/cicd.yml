@@ -61,6 +61,7 @@ jobs:
         run: |
           ./build.sh --builddir ~/package-output/ --static build
           ver=$(cat .version)
+          if [ "$ver" != "${{github.ref_name}}" ]; then echo ".version does not match the Git tag"; exit 1; fi
           mv ~/package-output/ ~/maddy-$ver-x86_64-linux-musl
           cd ~
           tar c ./maddy-$ver-x86_64-linux-musl | zstd > ~/maddy-x86_64-linux-musl.tar.zst
