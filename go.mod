@@ -113,7 +113,3 @@ require (
 )
 
 replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887
-
-replace github.com/foxcpp/go-imap-sql => ../go-imap-sql
-
-replace github.com/foxcpp/go-imap-mess => ../go-imap-mess
