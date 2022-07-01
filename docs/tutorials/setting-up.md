@@ -44,11 +44,10 @@ Your options are:
 * Docker image (Linux, amd64)
 
     ```
-    docker pull foxcpp/maddy:latest
+    docker pull foxcpp/maddy:0.6
     ```
 
-    See README at [hub.docker.com](https://hub.docker.com/r/foxcpp/maddy)
-    for Docker-specific instructions.
+    See [here](../docker) for Docker-specific instructions.
 
 * Building from source
 
@@ -58,7 +57,7 @@ Your options are:
 
 	For Arch Linux users, `maddy` and `maddy-git` PKGBUILDs are available
 	in AUR. Additionally, binary packages are available in 3rd-party
-	repository at https://foxcpp.dev/archlinux/
+	repository at [https://maddy.email/archlinux/](https://maddy.email/archlinux/)
 
 ## System configuration (systemd-based distribution)
 
