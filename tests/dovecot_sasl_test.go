@@ -36,6 +36,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/foxcpp/maddy/tests"
 )
@@ -47,6 +48,7 @@ func init() {
 }
 
 const dovecotConf = `base_dir = $ROOT/run/
+state_dir = $ROOT/lib/
 log_path = /dev/stderr
 ssl = no
 
@@ -149,7 +151,8 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 			line := scnr.Text()
 
 			// One of messages printed near completing initialization.
-			if strings.Contains(line, "master: Error: file_dotlock_open(/var/lib/dovecot/instances) failed: Permission denied") {
+			if strings.Contains(line, "starting up for imap") {
+				time.Sleep(500*time.Millisecond)
 				ready <- struct{}{}
 			}
 
