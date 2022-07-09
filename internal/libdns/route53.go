@@ -1,4 +1,5 @@
-//+build libdns_route53 libdns_all
+//go:build libdns_route53 || libdns_all
+// +build libdns_route53 libdns_all
 
 package libdns
 

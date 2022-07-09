@@ -104,9 +104,6 @@ build_man_pages() {
 	for f in ./docs/man/*.1.scd; do
 		scdoc < "$f" > "${builddir}/man/$(basename "$f" .scd)"
 	done
-	for f in ./docs/man/*.5.scd; do
-		scdoc < "$f" > "${builddir}/man/$(basename "$f" .scd)"
-	done
 }
 
 build() {
@@ -158,10 +155,6 @@ install() {
 		command install -m 0755 -d "${destdir}/${prefix}/share/man/man1/"
 		for f in "${builddir}"/man/*.1; do
 			command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man1/"
-		done
-		command install -m 0755 -d "${destdir}/${prefix}/share/man/man5/"
-		for f in "${builddir}"/man/*.5; do
-			command install -m 0644 "$f" "${destdir}/${prefix}/share/man/man5/"
 		done
 	fi
 }

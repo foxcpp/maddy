@@ -1,4 +1,5 @@
-//+build libdns_gandi !libdns_separate
+//go:build libdns_gandi || !libdns_separate
+// +build libdns_gandi !libdns_separate
 
 package libdns
 

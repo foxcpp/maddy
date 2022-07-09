@@ -86,7 +86,7 @@ Complete configuration example using all of the mentioned directives:
 check {
     # Run a check to make sure source SMTP server identification
     # is legit.
-    require_matching_ehlo
+    spf
 }
 
 # Messages coming from senders at example.org will be handled in
@@ -129,12 +129,12 @@ Example:
 ```
 check {
     # Reference implicitly defined default configuration for check.
-    require_matching_ehlo
+    spf
 
     # Inline definition of custom config.
-    require_source_mx {
-         # Configuration for require_source_mx goes here.
-         fail_action reject
+    spf {
+         # Configuration for spf goes here.
+         permerr_action reject
     }
 }
 ```
@@ -143,7 +143,8 @@ It is also possible to define the block of checks at the top level
 as "checks" module and reference it using & syntax. Example:
 ```
 checks inbound_checks {
-	require_matching_ehlo
+	spf
+	dkim
 }
 
 # ... somewhere else ...

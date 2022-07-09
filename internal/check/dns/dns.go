@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dns
 
 import (
-	"net"
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/address"
@@ -156,92 +155,9 @@ func requireMXRecord(ctx check.StatelessCheckContext, mailFrom string) module.Ch
 
 	return module.CheckResult{}
 }
-
-func requireMatchingEHLO(ctx check.StatelessCheckContext) module.CheckResult {
-	ctx.Logger.Printf("require_matching_echo is deprecated and will be removed in the next release")
-
-	if ctx.MsgMeta.Conn == nil {
-		ctx.Logger.Printf("locally-generated message, skipping")
-		return module.CheckResult{}
-	}
-
-	tcpAddr, ok := ctx.MsgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		ctx.Logger.Printf("non-TCP/IP source, skipped")
-		return module.CheckResult{}
-	}
-
-	ehlo := ctx.MsgMeta.Conn.Hostname
-
-	if strings.HasPrefix(ehlo, "[") && strings.HasSuffix(ehlo, "]") {
-		// IP in EHLO, checking against source IP directly.
-
-		ehlo = ehlo[1 : len(ehlo)-1]
-		ehlo = strings.TrimPrefix(ehlo, "IPv6:")
-		ehloIP := net.ParseIP(ehlo)
-
-		if ehloIP == nil {
-			return module.CheckResult{
-				Reason: &exterrors.SMTPError{
-					Code:         550,
-					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-					Message:      "Malformed IP in EHLO",
-					CheckName:    "require_matching_ehlo",
-				},
-			}
-		}
-
-		if !ehloIP.Equal(tcpAddr.IP) {
-			return module.CheckResult{
-				Reason: &exterrors.SMTPError{
-					Code:         550,
-					EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-					Message:      "IP in EHLO is not the same as the actual client IP",
-					CheckName:    "require_matching_ehlo",
-				},
-			}
-		}
-
-		return module.CheckResult{}
-	}
-
-	srcIPs, err := ctx.Resolver.LookupIPAddr(ctx, dns.FQDN(ehlo))
-	if err != nil {
-		reason, misc := exterrors.UnwrapDNSErr(err)
-		return module.CheckResult{
-			Reason: &exterrors.SMTPError{
-				Code:         exterrors.SMTPCode(err, 450, 550),
-				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 7, 0}),
-				Message:      "DNS error during policy check",
-				CheckName:    "require_matching_ehlo",
-				Err:          err,
-				Reason:       reason,
-				Misc:         misc,
-			},
-		}
-	}
-
-	for _, ip := range srcIPs {
-		if tcpAddr.IP.Equal(ip.IP) {
-			ctx.Logger.Debugf("A/AAA record found for %s for %s domain", tcpAddr.IP, ehlo)
-			return module.CheckResult{}
-		}
-	}
-	return module.CheckResult{
-		Reason: &exterrors.SMTPError{
-			Code:         550,
-			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-			Message:      "No matching A/AAA records found for the EHLO hostname",
-			CheckName:    "require_matching_ehlo",
-		},
-	}
-}
-
 func init() {
 	check.RegisterStatelessCheck("require_matching_rdns", modconfig.FailAction{Quarantine: true},
 		requireMatchingRDNS, nil, nil, nil)
 	check.RegisterStatelessCheck("require_mx_record", modconfig.FailAction{Quarantine: true},
 		nil, requireMXRecord, nil, nil)
-	check.RegisterStatelessCheck("require_matching_ehlo", modconfig.FailAction{Quarantine: true},
-		requireMatchingEHLO, nil, nil, nil)
 }

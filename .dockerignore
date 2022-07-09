@@ -1,0 +1,4 @@
+testdata/
+cmd/maddy/maddy
+maddy
+tests/maddy.cover

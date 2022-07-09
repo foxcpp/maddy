@@ -1,4 +1,5 @@
-//+build libdns_cloudflare !libdns_separate
+//go:build libdns_cloudflare || !libdns_separate
+// +build libdns_cloudflare !libdns_separate
 
 package libdns
 

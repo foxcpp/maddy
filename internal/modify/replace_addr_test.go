@@ -103,7 +103,6 @@ func testReplaceAddr(t *testing.T, modName string) {
 		test("test@example.com", []string{"1@example.com", "2@example.com", "3@example.com"},
 			map[string][]string{"test@example.com": []string{"1@example.com", "2@example.com", "3@example.com"}})
 	}
-
 }
 
 func TestReplaceAddr_RewriteSender(t *testing.T) {

@@ -1,7 +1,0 @@
-###################
-## https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md
-
-debug = true
-
-# insecure-entitlements allows insecure entitlements, disabled by default.
-insecure-entitlements = [ "network.host", "security.insecure" ]

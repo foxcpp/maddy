@@ -199,6 +199,8 @@ func Run(c *cli.Context) error {
 		return cli.Exit(err.Error(), 2)
 	}
 
+	defer log.DefaultLogger.Out.Close()
+
 	if err := moduleMain(cfg); err != nil {
 		systemdStatusErr(err)
 		return cli.Exit(err.Error(), 1)
@@ -308,8 +310,6 @@ func moduleMain(cfg []config.Node) error {
 	if err := InitDirs(); err != nil {
 		return err
 	}
-
-	defer log.DefaultLogger.Out.Close()
 
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
 

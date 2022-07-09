@@ -1,4 +1,5 @@
-//+build cover_main
+//go:build cover_main
+// +build cover_main
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

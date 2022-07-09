@@ -1,4 +1,5 @@
-//+build cgo,libpam
+//go:build cgo && libpam
+// +build cgo,libpam
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

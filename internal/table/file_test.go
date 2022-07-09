@@ -112,7 +112,7 @@ func TestFileReload(t *testing.T) {
 	}
 
 	// This delay is somehow important. Not sure why.
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	if err := ioutil.WriteFile(f.Name(), []byte("dog: cat"), os.ModePerm); err != nil {
 		t.Fatal(err)

@@ -106,7 +106,7 @@ func hashCommand(ctx *cli.Context) error {
 		opts.Argon2Memory = uint32(ctx.Int("argon2-memory"))
 	}
 	if ctx.IsSet("argon2-time") {
-		opts.Argon2Memory = uint32(ctx.Int("argon2-time"))
+		opts.Argon2Time = uint32(ctx.Int("argon2-time"))
 	}
 	if ctx.IsSet("argon2-threads") {
 		opts.Argon2Threads = uint8(ctx.Int("argon2-threads"))

@@ -105,7 +105,6 @@ type Modifier struct {
 	bodyCanon      dkim.Canonicalization
 	sigExpiry      time.Duration
 	hash           crypto.Hash
-	senderMatch    map[string]struct{}
 	multipleFromOk bool
 	signSubdomains bool
 
@@ -145,7 +144,6 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		hashName        string
 		keyPathTemplate string
 		newKeyAlgo      string
-		senderMatch     []string
 	)
 
 	cfg.Bool("debug", true, false, &m.log.Debug)
@@ -165,8 +163,6 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		[]string{"sha256"}, "sha256", &hashName)
 	cfg.Enum("newkey_algo", false, false,
 		[]string{"rsa4096", "rsa2048", "ed25519"}, "rsa2048", &newKeyAlgo)
-	cfg.EnumList("require_sender_match", false, false,
-		[]string{"envelope", "auth_domain", "auth_user", "off"}, []string{"envelope", "auth"}, &senderMatch)
 	cfg.Bool("allow_multiple_from", false, false, &m.multipleFromOk)
 	cfg.Bool("sign_subdomains", false, false, &m.signSubdomains)
 
@@ -182,14 +178,6 @@ func (m *Modifier) Init(cfg *config.Map) error {
 	}
 	if m.signSubdomains && len(m.domains) > 1 {
 		return errors.New("sign_domain: only one domain is supported when sign_subdomains is enabled")
-	}
-
-	m.senderMatch = make(map[string]struct{}, len(senderMatch))
-	for _, method := range senderMatch {
-		m.senderMatch[method] = struct{}{}
-	}
-	if _, off := m.senderMatch["off"]; off && len(senderMatch) != 1 {
-		return errors.New("sign_domain: require_sender_match: 'off' should not be combined with other methods")
 	}
 
 	m.hash = hashFuncs[hashName]

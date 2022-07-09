@@ -1,4 +1,5 @@
-//+build integration
+//go:build integration
+// +build integration
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

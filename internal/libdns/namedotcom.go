@@ -1,4 +1,5 @@
-//+build libdns_namedotdom libdns_all
+//go:build libdns_namedotdom || libdns_all
+// +build libdns_namedotdom libdns_all
 
 package libdns
 

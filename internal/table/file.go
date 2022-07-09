@@ -119,11 +119,11 @@ func (f *File) reloader() {
 	}()
 
 	t := time.NewTicker(reloadInterval)
+	defer t.Stop()
 
 	for {
 		select {
 		case <-t.C:
-			var latestStamp time.Time
 			info, err := os.Stat(f.file)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -133,10 +133,10 @@ func (f *File) reloader() {
 					f.mLck.Unlock()
 					continue
 				}
-				f.log.Printf("%v", err)
+				f.log.Error("os stat", err)
 			}
-			if info.ModTime().After(latestStamp) {
-				latestStamp = info.ModTime()
+			if info.ModTime().Before(f.mStamp) {
+				continue // reload not necessary
 			}
 		case <-f.forceReload:
 		case <-f.stopReloader:

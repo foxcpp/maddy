@@ -1,4 +1,5 @@
-//+build libdns_digitalocean !libdns_separate
+//go:build libdns_digitalocean || !libdns_separate
+// +build libdns_digitalocean !libdns_separate
 
 package libdns
 

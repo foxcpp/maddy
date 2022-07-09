@@ -20,9 +20,7 @@ maddy along with any known deviations.
 ## IMAP
 
 - [RFC 3501] - Internet Message Access Protocol - Version 4rev1
-    * **Broken**: Unilateral updates are sent immedately, sequence numbers are not frozen.
-      [GH 188]
-    * **Partial**: `\Recent` flag is not implemented.
+    * **Partial**: `\Recent` flag is not reset sometimes.
 - [RFC 2152] - UTF-7
 
 ### Extensions

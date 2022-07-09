@@ -1,4 +1,5 @@
-//+build libdns_vultr !libdns_separate
+//go:build libdns_vultr || !libdns_separate
+// +build libdns_vultr !libdns_separate
 
 package libdns
 

@@ -1,4 +1,5 @@
-//+build libdns_googleclouddns libdns_all
+//go:build libdns_googleclouddns || libdns_all
+// +build libdns_googleclouddns libdns_all
 
 package libdns
 
