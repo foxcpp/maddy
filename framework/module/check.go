@@ -23,7 +23,6 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 )
 
@@ -52,15 +51,20 @@ type Check interface {
 // The Status of this check is accept (no error) or reject (error) only, no
 // advanced handling is available (such as 'quarantine' action and headers
 // prepending).
+//
+// If it s necessary to defer or affect further message processing
+// without outright killing the session, ConnState.ModData can be
+// used to store necessary information.
+//
+// It may be called multiple times for the same connection if TLS is negotiated
+// via STARTTLS. In this case, no state will be passed between before-TLS
+// context to the TLS one.
 type EarlyCheck interface {
-	CheckConnection(ctx context.Context, state *smtp.ConnectionState) error
+	CheckConnection(ctx context.Context, state *ConnState) error
 }
 
 type CheckState interface {
 	// CheckConnection is executed once when client sends a new message.
-	//
-	// Result may be cached for the whole client connection so this function
-	// may not be called sometimes.
 	CheckConnection(ctx context.Context) CheckResult
 
 	// CheckSender is executed once when client sends the message sender

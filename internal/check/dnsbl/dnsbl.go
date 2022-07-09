@@ -27,7 +27,6 @@ import (
 	"sync"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -365,11 +364,7 @@ func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom strin
 }
 
 // CheckConnection implements module.EarlyCheck.
-func (bl *DNSBL) CheckConnection(ctx context.Context, state *smtp.ConnectionState) error {
-	if !bl.checkEarly {
-		return nil
-	}
-
+func (bl *DNSBL) CheckConnection(ctx context.Context, state *module.ConnState) error {
 	defer trace.StartRegion(ctx, "dnsbl/CheckConnection (Early)").End()
 
 	ip, ok := state.RemoteAddr.(*net.TCPAddr)
@@ -381,9 +376,11 @@ func (bl *DNSBL) CheckConnection(ctx context.Context, state *smtp.ConnectionStat
 	}
 
 	result := bl.checkLists(ctx, ip.IP, state.Hostname, "")
-	if result.Reject {
+	if result.Reject && bl.checkEarly {
 		return result.Reason
 	}
+
+	state.ModData.Set(bl, true, result)
 
 	return nil
 }
@@ -403,11 +400,6 @@ func (bl *DNSBL) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetada
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
-	if s.bl.checkEarly {
-		// Already checked before.
-		return module.CheckResult{}
-	}
-
 	defer trace.StartRegion(ctx, "dnsbl/CheckConnection").End()
 
 	if s.msgMeta.Conn == nil {
@@ -415,13 +407,12 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	ip, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
-	if !ok {
-		s.log.Msg("non-TCP/IP source")
-		return module.CheckResult{}
+	result := s.msgMeta.Conn.ModData.Get(s.bl, true)
+	if result != nil {
+		return result.(module.CheckResult)
 	}
 
-	return s.bl.checkLists(ctx, ip.IP, s.msgMeta.Conn.Hostname, s.msgMeta.OriginalFrom)
+	return module.CheckResult{}
 }
 
 func (*state) CheckSender(context.Context, string) module.CheckResult {

@@ -22,7 +22,6 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -93,7 +92,7 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	}, err
 }
 
-func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *smtp.ConnectionState) error {
+func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *module.ConnState) error {
 	eg, checkCtx := errgroup.WithContext(ctx)
 
 	// TODO: See if there is some point in parallelization of this

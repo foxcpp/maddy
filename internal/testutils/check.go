@@ -22,7 +22,6 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
@@ -70,7 +69,7 @@ func (c *Check) InstanceName() string {
 	return "test_check"
 }
 
-func (c *Check) CheckConnection(ctx context.Context, state *smtp.ConnectionState) error {
+func (c *Check) CheckConnection(ctx context.Context, state *module.ConnState) error {
 	return c.EarlyErr
 }
 

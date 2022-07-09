@@ -22,7 +22,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/module"
@@ -51,11 +50,9 @@ func TestRequireMatchingRDNS(t *testing.T) {
 			},
 			MsgMeta: &module.MsgMetadata{
 				Conn: &module.ConnState{
-					ConnectionState: smtp.ConnectionState{
-						RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
-						Hostname:   srcHost,
-					},
-					RDNSName: rdnsFut,
+					RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
+					Hostname:   srcHost,
+					RDNSName:   rdnsFut,
 				},
 			},
 			Logger: testutils.Logger(t, "require_matching_rdns"),
@@ -92,9 +89,7 @@ func TestRequireMXRecord(t *testing.T) {
 			},
 			MsgMeta: &module.MsgMetadata{
 				Conn: &module.ConnState{
-					ConnectionState: smtp.ConnectionState{
-						RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
-					},
+					RemoteAddr: &net.TCPAddr{IP: net.IPv4(1, 2, 3, 4), Port: 55555},
 				},
 			},
 			Logger: testutils.Logger(t, "require_mx_record"),

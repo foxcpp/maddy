@@ -309,12 +309,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		mech := mech
 
 		endp.serv.EnableAuth(mech, func(c *smtp.Conn) sasl.Server {
-			state := c.State()
-			if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {
-				return auth.FailingSASLServ{Err: endp.wrapErr("", true, "AUTH", err)}
-			}
-
-			return endp.saslAuth.CreateSASL(mech, state.RemoteAddr, func(id string) error {
+			return endp.saslAuth.CreateSASL(mech, c.Conn().RemoteAddr(), func(id string) error {
 				c.Session().(*Session).connState.AuthUser = id
 				return nil
 			})
@@ -361,31 +356,47 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	return nil
 }
 
-func (endp *Endpoint) NewSession(state smtp.ConnectionState, _ string) (smtp.Session, error) {
+func (endp *Endpoint) NewSession(conn *smtp.Conn) (smtp.Session, error) {
+	sess := endp.newSession(conn)
+
 	// Executed before authentication and session initialization.
-	if err := endp.pipeline.RunEarlyChecks(context.TODO(), &state); err != nil {
+	if err := endp.pipeline.RunEarlyChecks(context.TODO(), &sess.connState); err != nil {
+		if err := sess.Logout(); err != nil {
+			endp.Log.Error("early checks logout failed", err)
+		}
 		return nil, endp.wrapErr("", true, "EHLO", err)
 	}
 
-	return endp.newSession(&state), nil
+	return sess, nil
 }
 
-func (endp *Endpoint) newSession(state *smtp.ConnectionState) smtp.Session {
+func (endp *Endpoint) newSession(conn *smtp.Conn) *Session {
 	s := &Session{
-		endp: endp,
-		log:  endp.Log,
-		connState: module.ConnState{
-			ConnectionState: *state,
-		},
+		endp:       endp,
+		log:        endp.Log,
 		sessionCtx: context.Background(),
+	}
+
+	// Used in tests.
+	if conn == nil {
+		return s
+	}
+
+	s.connState = module.ConnState{
+		Hostname:   conn.Hostname(),
+		LocalAddr:  conn.Conn().LocalAddr(),
+		RemoteAddr: conn.Conn().RemoteAddr(),
+	}
+	if tlsState, ok := conn.TLSConnectionState(); ok {
+		s.connState.TLS = tlsState
 	}
 
 	if endp.serv.LMTP {
 		s.connState.Proto = "LMTP"
 	} else {
-		// Check if TLS connection state struct is poplated.
+		// Check if TLS connection conn struct is poplated.
 		// If it is - we are ssing TLS.
-		if state.TLS.HandshakeComplete {
+		if s.connState.TLS.HandshakeComplete {
 			s.connState.Proto = "ESMTPS"
 		} else {
 			s.connState.Proto = "ESMTP"
