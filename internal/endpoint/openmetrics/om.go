@@ -80,6 +80,7 @@ func (e *Endpoint) Init(cfg *config.Map) error {
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				e.logger.Error("serve failed", err, "endpoint", a)
 			}
+			e.listenersWg.Done()
 		}()
 	}
 
