@@ -13,7 +13,7 @@ $(primary_domain) = example.org
 $(local_domains) = $(primary_domain) example.com
 ```
 
-The base configuration is done. You can create accounts using maddyctl using
+The base configuration is done. You can create accounts using
 both domains in the name, send and receive messages and so on.  Do not forget
 to configure corresponding SPF, DMARC and MTA-STS records as was
 recommended in the [introduction tutorial](tutorials/setting-up.md).
@@ -24,13 +24,26 @@ You can configure maddy to only use local part of the email
 as an account identifier instead of the complete email.
 
 This needs two changes to default configuration:
-``` 
+```
 storage.imapsql local_mailboxes {
     ...
     delivery_map email_localpart
     auth_normalize precis_casefold
 }
 ```
+
+This way, when authenticating as `foxcpp`, it will be mapped to
+`foxcpp` storage account. E.g. you will need to run
+`maddy imap-accts create foxcpp`, without the domain part.
+
+If you have existing accounts, you will need to rename them.
+
+Change to `auth_normalize` is necessary so that normalization function
+will not attempt to parse authentication identity as a email.
+
+When a email is received, `delivery_map email_localpart` will strip
+the domain part before looking up the account. That is,
+`foxcpp@example.org` will be become just `foxcpp`.
 
 You also need to make `authorize_sender` check (used in `submission` endpoint)
 accept non-email usernames:
@@ -46,7 +59,7 @@ If you want to allow sending from all domains, you need to remove `authorize_sen
 altogether since it is not currently supported.
 
 After that you can create accounts without specifying the domain part:
-``` 
+```
 maddyctl imap-acct create foxcpp
 maddyctl creds create foxcpp
 ```
