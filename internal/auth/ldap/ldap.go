@@ -113,7 +113,7 @@ func readBindDirective(c *config.Map, n config.Node) (interface{}, error) {
 			}, nil
 		}
 		return func(c *ldap.Conn) error {
-			return c.UnauthenticatedBind("maddy-auth")
+			return c.UnauthenticatedBind("")
 		}, nil
 	case "plain":
 		if len(n.Args) != 3 {
