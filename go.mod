@@ -3,7 +3,7 @@ module github.com/foxcpp/maddy
 go 1.17
 
 require (
-	blitiri.com.ar/go/spf v1.4.0
+	blitiri.com.ar/go/spf v1.5.1
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/caddyserver/certmagic v0.16.1
 	github.com/emersion/go-imap v1.2.1
