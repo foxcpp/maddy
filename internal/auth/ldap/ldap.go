@@ -107,7 +107,14 @@ func readBindDirective(c *config.Map, n config.Node) (interface{}, error) {
 	case "off":
 		return func(*ldap.Conn) error { return nil }, nil
 	case "unauth":
-		return (*ldap.Conn).UnauthenticatedBind, nil
+		if len(n.Args) == 2 {
+			return func(c *ldap.Conn) error {
+				return c.UnauthenticatedBind(n.Args[1])
+			}, nil
+		}
+		return func(c *ldap.Conn) error {
+			return c.UnauthenticatedBind("")
+		}, nil
 	case "plain":
 		if len(n.Args) != 3 {
 			return nil, fmt.Errorf("auth.ldap: username and password expected for plaintext bind")
@@ -145,7 +152,7 @@ func (a *Auth) newConn() (*ldap.Conn, error) {
 
 		conn, err = ldap.DialURL(u, ldap.DialWithDialer(a.dialer), ldap.DialWithTLSConfig(tlsCfg))
 		if err != nil {
-			a.log.Msg("cannot contact directory server", err, "url", u)
+			a.log.Error("cannot contact directory server", err, "url", u)
 			continue
 		}
 		break

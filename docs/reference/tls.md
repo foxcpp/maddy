@@ -10,7 +10,7 @@ below.
 ```
 tls file cert.pem key.pem {
 	protocols tls1.2 tls1.3
-	curve X25519
+	curves X25519
 	ciphers ...
 }
 
@@ -19,7 +19,7 @@ tls {
 		# Options for loader go here.
 	}
 	protocols tls1.2 tls1.3
-	curve X25519
+	curves X25519
 	ciphers ...
 }
 ```
@@ -88,7 +88,7 @@ Valid values:
 - ECDHE-RSA-WITH-CHACHA20-POLY1305
 - ECDHE-ECDSA-WITH-CHACHA20-POLY1305
 
-**Syntax**: curve _curves..._ <br>
+**Syntax**: curves _curves..._ <br>
 **Default**: defined by Go version
 
 The elliptic curves that will be used in an ECDHE handshake, in preference
@@ -106,7 +106,7 @@ enabling TLS client authentication.
 tls_client {
     protocols tls1.2 tls1.3
     ciphers ...
-    curve X25519
+    curves X25519
     root_ca /etc/ssl/cert.pem
 
     cert /etc/ssl/private/maddy-client.pem
@@ -132,7 +132,7 @@ List of supported cipher suites, in preference order. Not used with TLS 1.3.
 
 See TLS server configuration for list of supported values.
 
-**Syntax**: curve _curves..._ <br>
+**Syntax**: curves _curves..._ <br>
 **Default**: defined by Go version
 
 The elliptic curves that will be used in an ECDHE handshake, in preference

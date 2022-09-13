@@ -160,6 +160,8 @@ sha256 is the only supported algorithm now.
 
 Algorithm to use when generating a new key.
 
+Currently ed25519 is NOT supported by most platforms.
+
 **Syntax**: require\_sender\_match _ids..._ <br>
 **Default**: envelope auth
 
