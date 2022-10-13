@@ -397,8 +397,8 @@ func (store *Storage) Close() error {
 	store.Back.Close()
 
 	// Wait for 'updates replicate' goroutine to actually stop so we will send
-	// all updates before shuting down (this is especially important for
-	// maddyctl).
+	// all updates before shutting down (this is especially important for
+	// maddy subcommands).
 	if store.updPipe != nil {
 		close(store.outboundUpds)
 		<-store.updPushStop

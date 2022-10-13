@@ -22,10 +22,8 @@ _testmain.go
 
 # Compiled binaries
 cmd/maddy/maddy
-cmd/maddyctl/maddyctl
 cmd/maddy-*-helper/maddy-*-helper
 /maddy
-/maddyctl
 
 # Man pages
 docs/man/*.1

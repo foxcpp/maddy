@@ -148,7 +148,7 @@ or other buffering takes effect.`,
 				{
 					Name:  "appendlimit",
 					Usage: "Query or set accounts's APPENDLIMIT value",
-					Description: `APPENDLIMIT value determines the size of a message that 
+					Description: `APPENDLIMIT value determines the size of a message that
 can be saved into a mailbox using IMAP APPEND command. This does not affect the size
 of messages that can be delivered to the mailbox from non-IMAP sources (e.g. SMTP).
 
@@ -192,7 +192,7 @@ type SpecialUseUser interface {
 func imapAcctList(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
+		return cli.Exit("Error: storage backend does not support accounts management using maddy command", 2)
 	}
 
 	list, err := mbe.ListIMAPAccts()
@@ -213,7 +213,7 @@ func imapAcctList(be module.Storage, ctx *cli.Context) error {
 func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
+		return cli.Exit("Error: storage backend does not support accounts management using maddy command", 2)
 	}
 
 	username := ctx.Args().First()
@@ -274,7 +274,7 @@ func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 func imapAcctRemove(be module.Storage, ctx *cli.Context) error {
 	mbe, ok := be.(module.ManageableStorage)
 	if !ok {
-		return cli.Exit("Error: storage backend does not support accounts management using maddyctl", 2)
+		return cli.Exit("Error: storage backend does not support accounts management using maddy command", 2)
 	}
 
 	username := ctx.Args().First()
