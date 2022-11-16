@@ -15,6 +15,14 @@ import (
 
 const modName = "storage.blob.s3"
 
+const (
+	credsTypeFileMinio = "file_minio"
+	credsTypeFileAWS   = "file_aws"
+	credsTypeAccessKey = "access_key"
+	credsTypeIAM       = "iam"
+	credsTypeDefault   = credsTypeAccessKey
+)
+
 type Store struct {
 	instName string
 	log      log.Logger
@@ -42,6 +50,7 @@ func (s *Store) Init(cfg *config.Map) error {
 		secure          bool
 		accessKeyID     string
 		secretAccessKey string
+		credsType       string
 		location        string
 	)
 	cfg.String("endpoint", false, true, "", &s.endpoint)
@@ -51,6 +60,7 @@ func (s *Store) Init(cfg *config.Map) error {
 	cfg.String("bucket", false, true, "", &s.bucketName)
 	cfg.String("region", false, false, "", &location)
 	cfg.String("object_prefix", false, false, "", &s.objectPrefix)
+	cfg.String("creds", false, false, credsTypeDefault, &credsType)
 
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -59,8 +69,23 @@ func (s *Store) Init(cfg *config.Map) error {
 		return fmt.Errorf("%s: endpoint not set", modName)
 	}
 
+	var creds *credentials.Credentials
+
+	switch credsType {
+	case credsTypeFileMinio:
+		creds = credentials.NewFileMinioClient("", "")
+	case credsTypeFileAWS:
+		creds = credentials.NewFileAWSCredentials("", "")
+	case credsTypeIAM:
+		creds = credentials.NewIAM("")
+	case credsTypeAccessKey:
+		creds = credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
+	default:
+		creds = credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
+	}
+
 	cl, err := minio.New(s.endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Creds:  creds,
 		Secure: secure,
 		Region: location,
 	})
