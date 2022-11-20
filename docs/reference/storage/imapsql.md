@@ -4,7 +4,7 @@ The imapsql module implements database for IMAP index and message
 metadata using SQL-based relational database.
 
 Message contents are stored in an "blob store" defined by msg\_store
-directive. By default this is a file system directory under /var/lib/maddy.
+directive. By default this is a file system directory under /data/messages.
 
 Supported RDBMS:
 - SQLite 3.25.0
