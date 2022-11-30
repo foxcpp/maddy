@@ -21,12 +21,15 @@ package limiters
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 var ErrClosed = errors.New("limiters: Rate bucket is closed")
 
-// Rate structure implements a basic rate-limiter for requests using the token
+// Rate structure uses golang.org/x/time/rate rate-limiter for requests using a token
 // bucket approach.
 //
 // Take() is expected to be called before each request. Excessive calls will
@@ -37,81 +40,52 @@ var ErrClosed = errors.New("limiters: Rate bucket is closed")
 //
 // If burstSize = 0, all methods are no-op and always succeed.
 type Rate struct {
-	bucket chan struct{}
-	stop   chan struct{}
+	mu      sync.Mutex
+	limiter *rate.Limiter
+	closed  bool
 }
 
-func NewRate(burstSize int, interval time.Duration) Rate {
-	r := Rate{
-		bucket: make(chan struct{}, burstSize),
-		stop:   make(chan struct{}),
-	}
-
+func NewRate(burstSize int, interval time.Duration) *Rate {
+	limit := rate.Limit(interval)
 	if burstSize == 0 {
-		return r
+		limit = rate.Inf
 	}
-
-	for i := 0; i < burstSize; i++ {
-		r.bucket <- struct{}{}
-	}
-
-	go r.fill(burstSize, interval)
-	return r
-}
-
-func (r Rate) fill(burstSize int, interval time.Duration) {
-	t := time.NewTimer(interval)
-	defer t.Stop()
-	for {
-		t.Reset(interval)
-		select {
-		case <-t.C:
-		case <-r.stop:
-			close(r.bucket)
-			return
-		}
-
-	fill:
-		for i := 0; i < burstSize; i++ {
-			select {
-			case r.bucket <- struct{}{}:
-			default:
-				// If there are no Take pending and the bucket is already
-				// full - don't block.
-				break fill
-			}
-		}
+	return &Rate{
+		limiter: rate.NewLimiter(limit, burstSize),
+		closed:  false,
 	}
 }
 
-func (r Rate) Take() bool {
-	if cap(r.bucket) == 0 {
-		return true
+func (r *Rate) Take() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return false
 	}
 
-	_, ok := <-r.bucket
-	return ok
+	if err := r.limiter.Wait(context.Background()); err != nil {
+		// not changing the L interface of Take method and returning false in case of error
+		return false
+	}
+	return true
 }
 
-func (r Rate) TakeContext(ctx context.Context) error {
-	if cap(r.bucket) == 0 {
-		return nil
+func (r *Rate) TakeContext(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.closed {
+		return ErrClosed
 	}
 
-	select {
-	case _, ok := <-r.bucket:
-		if !ok {
-			return ErrClosed
-		}
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return r.limiter.WaitN(ctx, 1)
 }
 
 func (r Rate) Release() {
 }
 
-func (r Rate) Close() {
-	close(r.stop)
+func (r *Rate) Close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.closed = true
 }
