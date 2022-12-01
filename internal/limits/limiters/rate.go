@@ -46,7 +46,7 @@ type Rate struct {
 }
 
 func NewRate(burstSize int, interval time.Duration) *Rate {
-	limit := rate.Limit(interval)
+	limit := rate.Every(interval)
 	if burstSize == 0 {
 		limit = rate.Inf
 	}
