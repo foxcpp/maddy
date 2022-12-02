@@ -22,7 +22,7 @@ RUN set -ex && \
     apk upgrade --no-cache --available && \
     apk --no-cache add ca-certificates
 COPY --from=build-env /pkg/data/maddy.conf /data/maddy.conf
-COPY --from=build-env /pkg/usr/local/bin/maddy /pkg/usr/local/bin/maddyctl /bin/
+COPY --from=build-env /pkg/usr/local/bin/maddy /bin/
 
 EXPOSE 25 143 993 587 465
 VOLUME ["/data"]

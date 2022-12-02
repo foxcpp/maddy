@@ -60,8 +60,8 @@ altogether since it is not currently supported.
 
 After that you can create accounts without specifying the domain part:
 ```
-maddyctl imap-acct create foxcpp
-maddyctl creds create foxcpp
+maddy imap-acct create foxcpp
+maddy creds create foxcpp
 ```
 And authenticate using "foxcpp" in email clients.
 

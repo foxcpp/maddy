@@ -5,7 +5,7 @@
 Unfortunately, GMail policies are opaque so we cannot tell why this happens.
 
 Verify that you have a rDNS record set for the IP used
-by sender server. Also some IPs may just happen to 
+by sender server. Also some IPs may just happen to
 have bad reputation - check it with various DNSBLs. In this
 case you do not have much of a choice but to replace it.
 
@@ -21,19 +21,19 @@ all outbound messages via a "smart-host".
 
 ## What is resource usage of maddy?
 
-For a small personal server, you do not need much more than a 
+For a small personal server, you do not need much more than a
 single 1 GiB of RAM and disk space.
 
 ## How to setup a catchall address?
 
 https://github.com/foxcpp/maddy/issues/243#issuecomment-655694512
 
-## maddyctl prints a "permission denied" error
+## maddy command prints a "permission denied" error
 
-Run maddyctl under the same user as maddy itself.
+Run maddy command under the same user as maddy itself.
 E.g.
-``` 
-sudo -u maddy maddyctl creds ...
+```
+sudo -u maddy maddy creds ...
 ```
 
 ## How maddy compares to MailCow or Mail-In-The-Box?
