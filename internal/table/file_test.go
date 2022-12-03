@@ -111,6 +111,13 @@ func TestFileReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// ensure it is correctly loaded at first time.
+	m.mLck.RLock()
+	if m.m["cat"] == nil {
+		t.Fatalf("wrong content loaded, new m were not loaded, %v", m.m)
+	}
+	m.mLck.RUnlock()
+
 	for i := 0; i < 100; i++ {
 		// try to provoke race condition on file writing
 		if i%2 == 0 {
@@ -118,7 +125,7 @@ func TestFileReload(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		time.Sleep(2 * reloadInterval)
+		time.Sleep(reloadInterval + 5*time.Millisecond)
 		m.mLck.RLock()
 		if m.m["dog"] == nil {
 			t.Fatalf("wrong content loaded, new m were not loaded, %v", m.m)
