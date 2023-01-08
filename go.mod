@@ -6,7 +6,7 @@ require (
 	blitiri.com.ar/go/spf v1.5.1
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/caddyserver/certmagic v0.16.1
-	github.com/emersion/go-imap v1.2.1
+	github.com/emersion/go-imap v1.2.2-0.20220928192137-6fac715be9cf
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
 	github.com/emersion/go-imap-sortthread v1.2.0
 	github.com/emersion/go-message v0.16.0
@@ -17,7 +17,7 @@ require (
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
-	github.com/foxcpp/go-imap-mess v0.0.0-20220625145025-3c40e241d099
+	github.com/foxcpp/go-imap-mess v0.0.0-20230108134257-b7ec3a649613
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
 	github.com/foxcpp/go-imap-sql v0.5.1-0.20220627220518-df3b66a5b04f
 	github.com/foxcpp/go-mockdns v1.0.0

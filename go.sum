@@ -1,5 +1,3 @@
-blitiri.com.ar/go/spf v1.4.0 h1:nRqoBRSJ0Y6y90QKF13xbi3gOV5DtzlYFM5l3iEWNMU=
-blitiri.com.ar/go/spf v1.4.0/go.mod h1:/wDIKCvGkTlOLcCjV9yvSZcRy5cM15fpUpAhff8Zjbk=
 blitiri.com.ar/go/spf v1.5.1 h1:CWUEasc44OrANJD8CzceRnRn1Jv0LttY68cYym2/pbE=
 blitiri.com.ar/go/spf v1.5.1/go.mod h1:E71N92TfL4+Yyd5lpKuE9CAF2pd4JrUq1xQfkTxoNdk=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -162,6 +160,8 @@ github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtk
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005/go.mod h1:34FwxnjC2N+EFs2wMtsHevrZLWRKRuVU8wEcHWKq/nE=
 github.com/foxcpp/go-imap-mess v0.0.0-20220625145025-3c40e241d099 h1:e0r3qEQl1K/a3fXftbSGG78DGnmRG7hIhh0UzEW8UNs=
 github.com/foxcpp/go-imap-mess v0.0.0-20220625145025-3c40e241d099/go.mod h1:yESOLBW3uVSa7ncJYtDO1tnapt/xb9v1rrn8D5eXups=
+github.com/foxcpp/go-imap-mess v0.0.0-20230108134257-b7ec3a649613 h1:fw9OWfPxP1CK4D+XAEEg0JzhvFGo04L+F5Xw55t9s3E=
+github.com/foxcpp/go-imap-mess v0.0.0-20230108134257-b7ec3a649613/go.mod h1:P/O/qz4gaVkefzJ40BUtN/ZzBnaEg0YYe1no/SMp7Aw=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed h1:1Jo7geyvunrPSjL6F6D9EcXoNApS5v3LQaro7aUNPnE=
 github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed/go.mod h1:Shows1vmkBWO40ChOClaUe6DUnZrsP1UPAuoWzIUdgQ=
 github.com/foxcpp/go-imap-sql v0.5.1-0.20220627220518-df3b66a5b04f h1:Jz3h1e5ZYA+ANkVAb5kytcPYuew3lxWQyqHUEAPOQHo=
