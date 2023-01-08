@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../../css/style2.css">
+  <link rel="stylesheet" href="../../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>SPF - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="spf">SPF</h1>
+<p>check.spf the check module that verifies whether IP address of the client is
+authorized to send messages for domain in MAIL FROM address.</p>
+<p>SPF statuses are mapped to maddy check actions in a way
+specified by *_action directives. By default, SPF failure 
+results in the message being quarantined and errors (both permanent and 
+temporary) cause message to be rejected.
+Authentication-Results field is generated irregardless of status.</p>
+<h2 id="dmarc-override">DMARC override</h2>
+<p>It is recommended by the DMARC standard to don't fail delivery based solely on
+SPF policy and always check DMARC policy and take action based on it.</p>
+<p>If enforce_early is no, check.spf module will not take any action on SPF
+policy failure if sender domain does have a DMARC record with 'quarantine' or
+'reject' policy. Instead it will rely on DMARC support to take necesary
+actions using SPF results as an input.</p>
+<p>Disabling enforce_early without enabling DMARC support will make SPF policies
+no-op and is considered insecure.</p>
+<h2 id="configuration-directives">Configuration directives</h2>
+<pre class="codehilite"><code>check.spf {
+    debug no
+    enforce_early no
+    fail_action quarantine
+    softfail_action ignore
+    permerr_action reject
+    temperr_action reject
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: debug <em>boolean</em> <br>
+<strong>Default</strong>: global directive value</p>
+<p>Enable verbose logging for check.spf.</p>
+<p><strong>Syntax</strong>: enforce_early <em>boolean</em> <br>
+<strong>Default</strong>: no</p>
+<p>Make policy decision on MAIL FROM stage (before the message body is received).
+This makes it impossible to apply DMARC override (see above).</p>
+<p><strong>Syntax</strong>: none_action reject|qurantine|ignore <br>
+<strong>Default</strong>: ignore</p>
+<p>Action to take when SPF policy evaluates to a 'none' result.</p>
+<p>See <a href="https://tools.ietf.org/html/rfc7208#section-2.6">https://tools.ietf.org/html/rfc7208#section-2.6</a> for meaning of
+SPF results.</p>
+<p><strong>Syntax</strong>: neutral_action reject|qurantine|ignore <br>
+<strong>Default</strong>: ignore</p>
+<p>Action to take when SPF policy evaluates to a 'neutral' result.</p>
+<p>See <a href="https://tools.ietf.org/html/rfc7208#section-2.6">https://tools.ietf.org/html/rfc7208#section-2.6</a> for meaning of
+SPF results.</p>
+<p><strong>Syntax</strong>: fail_action reject|qurantine|ignore <br>
+<strong>Default</strong>: quarantine</p>
+<p>Action to take when SPF policy evaluates to a 'fail' result.</p>
+<p><strong>Syntax</strong>: softfail_action reject|qurantine|ignore <br>
+<strong>Default</strong>: ignore</p>
+<p>Action to take when SPF policy evaluates to a 'softfail' result.</p>
+<p><strong>Syntax</strong>: permerr_action reject|qurantine|ignore <br>
+<strong>Default</strong>: reject</p>
+<p>Action to take when SPF policy evaluates to a 'permerror' result.</p>
+<p><strong>Syntax</strong>: temperr_action reject|qurantine|ignore <br>
+<strong>Default</strong>: reject</p>
+<p>Action to take when SPF policy evaluates to a 'temperror' result.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="./"
+				class="current">
+			SPF</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#dmarc-override">DMARC override</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#configuration-directives">Configuration directives</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<a href="../milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../../..';</script>
+<script src="../../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

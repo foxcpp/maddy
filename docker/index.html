@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../css/style2.css">
+  <link rel="stylesheet" href="../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>Docker - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="docker">Docker</h1>
+<p>Official Docker image is available from Docker Hub.</p>
+<p>It expects configuration file to be available at /data/maddy.conf.</p>
+<p>If /data is a Docker volume, then default configuration will be placed there
+automatically. If it is used, then MADDY_HOSTNAME, MADDY_DOMAIN environment
+variables control the host name and primary domain for the server. TLS
+certificate should be placed in /data/tls/fullchain.pem, private key in
+/data/tls/privkey.pem</p>
+<p>DKIM keys are generated in /data/dkim_keys directory.</p>
+<h2 id="image-tags">Image tags</h2>
+<ul>
+<li><code>latest</code> - A latest stable release. May contain breaking changes.</li>
+<li><code>X.Y</code> - A specific feature branch, it is recommended to use these tags to
+  receive bugfixes without the risk of feature-related regressions or breaking
+  changes.</li>
+<li><code>X.Y.Z</code> - A specific stable release</li>
+</ul>
+<h2 id="ports">Ports</h2>
+<p>All standard ports, as described in maddy docs.</p>
+<ul>
+<li><code>25</code> - SMTP inbound port.</li>
+<li><code>465</code>, <code>587</code> - SMTP Submission ports</li>
+<li><code>993</code>, <code>143</code> - IMAP4 ports</li>
+</ul>
+<h2 id="volumes">Volumes</h2>
+<p><code>/data</code> - maddy state directory. Databases, queues, etc are stored here. You
+might want to mount a named volume there. The main configuration file is stored
+here too (<code>/data/maddy.conf</code>).</p>
+<h2 id="management-utility">Management utility</h2>
+<p>To run management commands, create a temporary container with the same
+/data directory and put the command after the image name, like this:</p>
+<pre class="codehilite"><code>docker run --rm -it -v maddydata:/data foxcpp/maddy:0.6.0 creds create foxcpp@maddy.test
+docker run --rm -it -v maddydata:/data foxcpp/maddy:0.6.0 imap-acct create foxcpp@maddy.test
+</code></pre>
+
+<p>Use the same image version as the running server. Things may break badly
+otherwise.</p>
+<p>Note that, if you modify messages using maddy subcommands while the server is running -
+you must ensure that  /tmp from the server is accessible for the management
+command. One way to it is to run it using <code>docker exec</code> instead of <code>docker run</code>:</p>
+<pre class="codehilite"><code>docker exec -it container_name_here maddy creds create foxcpp@maddy.test
+</code></pre>
+
+<h2 id="tldr">TL;DR</h2>
+<pre class="codehilite"><code>docker volume create maddydata
+docker run \
+  --name maddy \
+  -e MADDY_HOSTNAME=mx.maddy.test \
+  -e MADDY_DOMAIN=maddy.test \
+  -v maddydata:/data \
+  -p 25:25 \
+  -p 143:143 \
+  -p 587:587 \
+  -p 993:993 \
+  foxcpp/maddy:0.6
+</code></pre>
+
+<p>It will fail on first startup. Copy TLS certificate to /data/tls/fullchain.pem
+and key to /data/tls/privkey.pem. Run the server again. Finish DNS configuration
+(DKIM keys, etc) as described in <a href="tutorials/setting-up/">tutorials/setting-up/</a>.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="./"
+				class="current">
+			Docker</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#image-tags">Image tags</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#ports">Ports</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#volumes">Volumes</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#management-utility">Management utility</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#tldr">TL;DR</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../reference/smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../reference/config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '..';</script>
+<script src="../search/main.js" defer></script>
+
+
+</body>
+</html>
+

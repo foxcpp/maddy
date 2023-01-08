@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../css/style2.css">
+  <link rel="stylesheet" href="../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>SMTP message routing (pipeline) - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="smtp-message-routing-pipeline">SMTP message routing (pipeline)</h1>
+<h1 id="message-pipeline">Message pipeline</h1>
+<p>Message pipeline is a set of module references and associated rules that
+describe how to handle messages.</p>
+<p>The pipeline is responsible for
+- Running message filters (called "checks"), (e.g. DKIM signature verification,
+  DNSBL lookup and so on).</p>
+<ul>
+<li>
+<p>Running message modifiers (e.g. DKIM signature creation).</p>
+</li>
+<li>
+<p>Assocating each message recipient with one or more delivery targets.
+  Delivery target is a module that does final processing (delivery) of the
+  message.</p>
+</li>
+</ul>
+<p>Message handling flow is as follows:
+- Execute checks referenced in top-level 'check' blocks (if any)</p>
+<ul>
+<li>
+<p>Execute modifiers referenced in top-level 'modify' blocks (if any)</p>
+</li>
+<li>
+<p>If there are 'source' blocks - select one that matches message sender (as
+  specified in MAIL FROM). If there are no 'source' blocks - entire
+  configuration is assumed to be the 'default_source' block.</p>
+</li>
+<li>
+<p>Execute checks referenced in 'check' blocks inside selected 'source' block
+  (if any).</p>
+</li>
+<li>
+<p>Execute modifiers referenced in 'modify' blocks inside selected 'source'
+  block (if any).</p>
+</li>
+</ul>
+<p>Then, for each recipient:
+- Select 'destination' block that matches it. If there are
+  no 'destination' blocks - entire used 'source' block is interpreted as if it
+  was a 'default_destination' block.</p>
+<ul>
+<li>
+<p>Execute checks referenced in 'check' block inside selected 'destination' block
+  (if any).</p>
+</li>
+<li>
+<p>Execute modifiers referenced in 'modify' block inside selected 'destination'
+  block (if any).</p>
+</li>
+<li>
+<p>If used block contains 'reject' directive - reject the recipient with
+  specified SMTP status code.</p>
+</li>
+<li>
+<p>If used block contains 'deliver_to' directive - pass the message to the
+  specified target module. Only recipients that are handled
+  by used block are visible to the target.</p>
+</li>
+</ul>
+<p>Each recipient is handled only by a single 'destination' block, in case of
+overlapping 'destination' - first one takes priority.</p>
+<pre class="codehilite"><code>destination example.org {
+    deliver_to targetA
+}
+destination example.org { # ambiguous and thus not allowed
+    deliver_to targetB
+}
+</code></pre>
+
+<p>Same goes for 'source' blocks, each message is handled only by a single block.</p>
+<p>Each recipient block should contain at least one 'deliver_to' directive or
+'reject' directive. If 'destination' blocks are used, then
+'default_destination' block should also be used to specify behavior for
+unmatched recipients.  Same goes for source blocks, 'default_source' should be
+used if 'source' is used.</p>
+<p>That is, pipeline configuration should explicitly specify behavior for each
+possible sender/recipient combination.</p>
+<p>Additionally, directives that specify final handling decision ('deliver_to',
+'reject') can't be used at the same level as source/destination rules.
+Consider example:</p>
+<pre class="codehilite"><code>destination example.org {
+    deliver_to local_mboxes
+}
+reject
+</code></pre>
+
+<p>It is not obvious whether 'reject' applies to all recipients or
+just for non-example.org ones, hence this is not allowed.</p>
+<p>Complete configuration example using all of the mentioned directives:</p>
+<pre class="codehilite"><code>check {
+    # Run a check to make sure source SMTP server identification
+    # is legit.
+    spf
+}
+
+# Messages coming from senders at example.org will be handled in
+# accordance with the following configuration block.
+source example.org {
+    # We are example.com, so deliver all messages with recipients
+    # at example.com to our local mailboxes.
+    destination example.com {
+        deliver_to &amp;local_mailboxes
+    }
+
+    # We don't do anything with recipients at different domains
+    # because we are not an open relay, thus we reject them.
+    default_destination {
+        reject 521 5.0.0 &quot;User not local&quot;
+    }
+}
+
+# We do our business only with example.org, so reject all
+# other senders.
+default_source {
+    reject
+}
+</code></pre>
+
+<h2 id="directives">Directives</h2>
+<p><strong>Syntax</strong>: check <em>block name</em> { ... } <br>
+<strong>Context</strong>: pipeline configuration, source block, destination block</p>
+<p>List of the module references for checks that should be executed on
+messages handled by block where 'check' is placed in.</p>
+<p>Note that message body checks placed in destination block are currently
+ignored. Due to the way SMTP protocol is defined, they would cause message to
+be rejected for all recipients which is not what you usually want when using
+such configurations.</p>
+<p>Example:</p>
+<pre class="codehilite"><code>check {
+    # Reference implicitly defined default configuration for check.
+    spf
+
+    # Inline definition of custom config.
+    spf {
+         # Configuration for spf goes here.
+         permerr_action reject
+    }
+}
+</code></pre>
+
+<p>It is also possible to define the block of checks at the top level
+as "checks" module and reference it using &amp; syntax. Example:</p>
+<pre class="codehilite"><code>checks inbound_checks {
+    spf
+    dkim
+}
+
+# ... somewhere else ...
+{
+    ...
+    check &amp;inbound_checks
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: modify { ... } <br>
+<strong>Default</strong>: not specified <br>
+<strong>Context</strong>: pipeline configuration, source block, destination block</p>
+<p>List of the module references for modifiers that should be executed on
+messages handled by block where 'modify' is placed in.</p>
+<p>Message modifiers are similar to checks with the difference in that checks
+purpose is to verify whether the message is legitimate and valid per local
+policy, while modifier purpose is to post-process message and its metadata
+before final delivery.</p>
+<p>For example, modifier can replace recipient address to make message delivered
+to the different mailbox or it can cryptographically sign outgoing message
+(e.g. using DKIM). Some modifier can perform multiple unrelated modifications
+on the message.</p>
+<p><strong>Note</strong>: Modifiers that affect source address can be used only globally or on
+per-source basis, they will be no-op inside destination blocks. Modifiers that
+affect the message header will affect it for all recipients.</p>
+<p>It is also possible to define the block of modifiers at the top level
+as "modiifers" module and reference it using &amp; syntax. Example:</p>
+<pre class="codehilite"><code>modifiers local_modifiers {
+    replace_rcpt file /etc/maddy/aliases
+}
+
+# ... somewhere else ...
+{
+    ...
+    modify &amp;local_modifiers
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: <br>
+reject <em>smtp_code</em> <em>smtp_enhanced_code</em> <em>error_description</em> <br>
+reject <em>smtp_code</em> <em>smtp_enhanced_code</em> <br>
+reject <em>smtp_code</em> <br>
+reject <br>
+<strong>Context</strong>: destination block</p>
+<p>Messages handled by the configuration block with this directive will be
+rejected with the specified SMTP error.</p>
+<p>If you aren't sure which codes to use, use 541 and 5.4.0 with your message or
+just leave all arguments out, the error description will say "message is
+rejected due to policy reasons" which is usually what you want to mean.</p>
+<p>'reject' can't be used in the same block with 'deliver_to' or
+'destination/source' directives.</p>
+<p>Example:</p>
+<pre class="codehilite"><code>reject 541 5.4.0 &quot;We don't like example.org, go away&quot;
+</code></pre>
+
+<p><strong>Syntax</strong>: deliver_to <em>target-config-block</em> <br>
+<strong>Context</strong>: pipeline configuration, source block, destination block</p>
+<p>Deliver the message to the referenced delivery target. What happens next is
+defined solely by used target. If deliver_to is used inside 'destination'
+block, only matching recipients will be passed to the target.</p>
+<p><strong>Syntax</strong>: source_in <em>table reference</em> { ... } <br>
+<strong>Context</strong>: pipeline configuration</p>
+<p>Handle messages with envelope senders present in the specified table in
+accordance with the specified configuration block.</p>
+<p>Takes precedence over all 'sender' directives.</p>
+<p>Example:</p>
+<pre class="codehilite"><code>source_in file /etc/maddy/banned_addrs {
+    reject 550 5.7.0 &quot;You are not welcome here&quot;
+}
+source example.org {
+    ...
+}
+...
+</code></pre>
+
+<p>See 'destination_in' documentation for note about table configuration.</p>
+<p><strong>Syntax</strong>: source <em>rules...</em> { ... } <br>
+<strong>Context</strong>: pipeline configuration</p>
+<p>Handle messages with MAIL FROM value (sender address) matching any of the rules
+in accordance with the specified configuration block.</p>
+<p>"Rule" is either a domain or a complete address. In case of overlapping
+'rules', first one takes priority. Matching is case-insensitive.</p>
+<p>Example:</p>
+<pre class="codehilite"><code># All messages coming from example.org domain will be delivered
+# to local_mailboxes.
+source example.org {
+    deliver_to &amp;local_mailboxes
+}
+# Messages coming from different domains will be rejected.
+default_source {
+    reject 521 5.0.0 &quot;You were not invited&quot;
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: reroute { ... } <br>
+<strong>Context</strong>: pipeline configuration, source block, destination block</p>
+<p>This directive allows to make message routing decisions based on the
+result of modifiers. The block can contain all pipeline directives and they
+will be handled the same with the exception that source and destination rules
+will use the final recipient and sender values (e.g. after all modifiers are
+applied).</p>
+<p>Here is the concrete example how it can be useful:</p>
+<pre class="codehilite"><code>destination example.org {
+    modify {
+        replace_rcpt file /etc/maddy/aliases
+    }
+    reroute {
+        destination example.org {
+            deliver_to &amp;local_mailboxes
+        }
+        default_destination {
+            deliver_to &amp;remote_queue
+        }
+    }
+}
+</code></pre>
+
+<p>This configuration allows to specify alias local addresses to remote ones
+without being an open relay, since remote_queue can be used only if remote
+address was introduced as a result of rewrite of local address.</p>
+<p><strong>WARNING</strong>: If you have DMARC enabled (default), results generated by SPF
+and DKIM checks inside a reroute block <strong>will not</strong> be considered in DMARC
+evaluation.</p>
+<p><strong>Syntax</strong>: destination_in <em>table reference</em> { ... } <br>
+<strong>Context</strong>: pipeline configuration, source block</p>
+<p>Handle messages with envelope recipients present in the specified table in
+accordance with the specified configuration block.</p>
+<p>Takes precedence over all 'destination' directives.</p>
+<p>Example:</p>
+<pre class="codehilite"><code>destination_in file /etc/maddy/remote_addrs {
+    deliver_to smtp tcp://10.0.0.7:25
+}
+destination example.com {
+    deliver_to &amp;local_mailboxes
+}
+...
+</code></pre>
+
+<p>Note that due to the syntax restrictions, it is not possible to specify
+extended configuration for table module. E.g. this is not valid:</p>
+<pre class="codehilite"><code>destination_in sql_table {
+    dsn ...
+    driver ...
+} {
+    deliver_to whatever
+}
+</code></pre>
+
+<p>In this case, configuration should be specified separately and be referneced
+using '&amp;' syntax:</p>
+<pre class="codehilite"><code>table.sql_table remote_addrs {
+    dsn ...
+    driver ...
+}
+
+whatever {
+    destination_in &amp;remote_addrs {
+        deliver_to whatever
+    }
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: destination <em>rule...</em> { ... } <br>
+<strong>Context</strong>: pipeline configuration, source block</p>
+<p>Handle messages with RCPT TO value (recipient address) matching any of the
+rules in accordance with the specified configuration block.</p>
+<p>"Rule" is either a domain or a complete address. Duplicate rules are not
+allowed. Matching is case-insensitive.</p>
+<p>Note that messages with multiple recipients are split into multiple messages if
+they have recipients matched by multiple blocks. Each block will see the
+message only with recipients matched by its rules.</p>
+<p>Example:</p>
+<pre class="codehilite"><code># Messages with recipients at example.com domain will be
+# delivered to local_mailboxes target.
+destination example.com {
+    deliver_to &amp;local_mailboxes
+}
+
+# Messages with other recipients will be rejected.
+default_destination {
+    rejected 541 5.0.0 &quot;User not local&quot;
+}
+</code></pre>
+
+<h2 id="reusable-pipeline-snippets-msgpipeline-module">Reusable pipeline snippets (msgpipeline module)</h2>
+<p>The message pipeline can be used independently of the SMTP module in other
+contexts that require a delivery target via "msgpipeline" module.</p>
+<p>Example:</p>
+<pre class="codehilite"><code>msgpipeline local_routing {
+    destination whatever.com {
+        deliver_to dummy
+    }
+}
+
+# ... somewhere else ...
+deliver_to &amp;local_routing
+</code></pre>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="./"
+				class="current">
+			SMTP message routing (pipeline)</a>
+		
+			
+        
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#directives">Directives</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#reusable-pipeline-snippets-msgpipeline-module">Reusable pipeline snippets (msgpipeline module)</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../..';</script>
+<script src="../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

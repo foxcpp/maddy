@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../css/style2.css">
+  <link rel="stylesheet" href="../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>TLS configuration - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="tls-configuration">TLS configuration</h1>
+<h2 id="server-side">Server-side</h2>
+<p>TLS certificates are obtained by modules called "certificate loaders". 'tls' directive
+arguments specify name of loader to use and arguments. Due to syntax limitations
+advanced configuration for loader should be specified using 'loader' directive, see
+below.</p>
+<pre class="codehilite"><code>tls file cert.pem key.pem {
+    protocols tls1.2 tls1.3
+    curves X25519
+    ciphers ...
+}
+
+tls {
+    loader file cert.pem key.pem {
+        # Options for loader go here.
+    }
+    protocols tls1.2 tls1.3
+    curves X25519
+    ciphers ...
+}
+</code></pre>
+
+<h3 id="available-certificate-loaders">Available certificate loaders</h3>
+<ul>
+<li>file</li>
+</ul>
+<p>Accepts argument pairs specifying certificate and then key.
+  E.g. 'tls file certA.pem keyA.pem certB.pem keyB.pem'</p>
+<p>If multiple certificates are listed, SNI will be used.</p>
+<ul>
+<li>acme</li>
+</ul>
+<p>Automatically obtains a certificate using ACME protocol (Let's Encrypt)</p>
+<ul>
+<li>off</li>
+</ul>
+<p>Not really a loader but a special value for tls directive, explicitly disables TLS for
+  endpoint(s).</p>
+<h2 id="advanced-tls-configuration">Advanced TLS configuration</h2>
+<p><strong>Note: maddy uses secure defaults and TLS handshake is resistant to active downgrade attacks.</strong>
+<strong>There is no need to change anything in most cases.</strong></p>
+<p><strong>Syntax</strong>: <br>
+protocols <em>min_version</em> <em>max_version</em> <br>
+protocols <em>version</em> <br>
+<strong>Default</strong>: tls1.0 tls1.3</p>
+<p>Minimum/maximum accepted TLS version. If only one value is specified, it will
+be the only one usable version.</p>
+<p>Valid values are: tls1.0, tls1.1, tls1.2, tls1.3</p>
+<p><strong>Syntax</strong>: ciphers <em>ciphers...</em> <br>
+<strong>Default</strong>: Go version-defined set of 'secure ciphers', ordered by hardware
+performance</p>
+<p>List of supported cipher suites, in preference order. Not used with TLS 1.3.</p>
+<p>Valid values:</p>
+<ul>
+<li>RSA-WITH-RC4128-SHA</li>
+<li>RSA-WITH-3DES-EDE-CBC-SHA</li>
+<li>RSA-WITH-AES128-CBC-SHA</li>
+<li>RSA-WITH-AES256-CBC-SHA</li>
+<li>RSA-WITH-AES128-CBC-SHA256</li>
+<li>RSA-WITH-AES128-GCM-SHA256</li>
+<li>RSA-WITH-AES256-GCM-SHA384</li>
+<li>ECDHE-ECDSA-WITH-RC4128-SHA</li>
+<li>ECDHE-ECDSA-WITH-AES128-CBC-SHA</li>
+<li>ECDHE-ECDSA-WITH-AES256-CBC-SHA</li>
+<li>ECDHE-RSA-WITH-RC4128-SHA</li>
+<li>ECDHE-RSA-WITH-3DES-EDE-CBC-SHA</li>
+<li>ECDHE-RSA-WITH-AES128-CBC-SHA</li>
+<li>ECDHE-RSA-WITH-AES256-CBC-SHA</li>
+<li>ECDHE-ECDSA-WITH-AES128-CBC-SHA256</li>
+<li>ECDHE-RSA-WITH-AES128-CBC-SHA256</li>
+<li>ECDHE-RSA-WITH-AES128-GCM-SHA256</li>
+<li>ECDHE-ECDSA-WITH-AES128-GCM-SHA256</li>
+<li>ECDHE-RSA-WITH-AES256-GCM-SHA384</li>
+<li>ECDHE-ECDSA-WITH-AES256-GCM-SHA384</li>
+<li>ECDHE-RSA-WITH-CHACHA20-POLY1305</li>
+<li>ECDHE-ECDSA-WITH-CHACHA20-POLY1305</li>
+</ul>
+<p><strong>Syntax</strong>: curves <em>curves...</em> <br>
+<strong>Default</strong>: defined by Go version</p>
+<p>The elliptic curves that will be used in an ECDHE handshake, in preference
+order.</p>
+<p>Valid values: p256, p384, p521, X25519.</p>
+<h2 id="client">Client</h2>
+<p>tls_client directive allows to customize behavior of TLS client implementation,
+notably adjusting minimal and maximal TLS versions and allowed cipher suites,
+enabling TLS client authentication.</p>
+<pre class="codehilite"><code>tls_client {
+    protocols tls1.2 tls1.3
+    ciphers ...
+    curves X25519
+    root_ca /etc/ssl/cert.pem
+
+    cert /etc/ssl/private/maddy-client.pem
+    key /etc/ssl/private/maddy-client.pem
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: <br>
+protocols <em>min_version</em> <em>max_version</em> <br>
+protocols <em>version</em> <br>
+<strong>Default</strong>: tls1.0 tls1.3</p>
+<p>Minimum/maximum accepted TLS version. If only one value is specified, it will
+be the only one usable version.</p>
+<p>Valid values are: tls1.0, tls1.1, tls1.2, tls1.3</p>
+<p><strong>Syntax</strong>: ciphers <em>ciphers...</em> <br>
+<strong>Default</strong>: Go version-defined set of 'secure ciphers', ordered by hardware
+performance</p>
+<p>List of supported cipher suites, in preference order. Not used with TLS 1.3.</p>
+<p>See TLS server configuration for list of supported values.</p>
+<p><strong>Syntax</strong>: curves <em>curves...</em> <br>
+<strong>Default</strong>: defined by Go version</p>
+<p>The elliptic curves that will be used in an ECDHE handshake, in preference
+order.</p>
+<p>Valid values: p256, p384, p521, X25519.</p>
+<p><strong>Syntax</strong>: root_ca <em>paths...</em> <br>
+<strong>Default</strong>: system CA pool</p>
+<p>List of files with PEM-encoded CA certificates to use when verifying
+server certificates.</p>
+<p><strong>Syntax</strong>: <br>
+cert <em>cert_path</em> <br>
+key <em>key_path</em> <br>
+<strong>Default</strong>: not specified</p>
+<p>Present the specified certificate when server requests a client certificate.
+Files should use PEM format. Both directives should be specified.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="./"
+				class="current">
+			TLS configuration</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#server-side">Server-side</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#advanced-tls-configuration">Advanced TLS configuration</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#client">Client</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<a href="../tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../..';</script>
+<script src="../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

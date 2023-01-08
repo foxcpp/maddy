@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../css/style2.css">
+  <link rel="stylesheet" href="../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>Installation & initial configuration - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="installation-initial-configuration">Installation &amp; initial configuration</h1>
+<p>This is the practical guide on how to set up a mail server using maddy for
+personal use. It omits most of the technical details for brevity and just gives
+you the minimal list of things you need to be aware of and what to do to make
+stuff work.</p>
+<p>For purposes of clarity, these values are used in this tutorial as examples,
+wherever you see them, you need to replace them with your actual values:</p>
+<ul>
+<li>Domain: example.org</li>
+<li>MX domain (hostname): mx1.example.org</li>
+<li>IPv4 address: 10.2.3.4</li>
+<li>IPv6 address: 2001:beef::1</li>
+</ul>
+<h2 id="getting-a-server">Getting a server</h2>
+<p>Where to get a server to run maddy on is out of the scope of this article. Any
+VPS (virtual private server) will work fine for small configurations. However,
+there are a few things to keep in mind:</p>
+<ul>
+<li>
+<p>Make sure your provider does not block SMTP traffic (25 TCP port). Most VPS
+  providers don't do it, but some "cloud" providers (such as Google Cloud) do
+  it, so you can't host your mail there.</p>
+</li>
+<li>
+<p>It is recommended to run your own DNS resolver with DNSSEC verification
+  enabled.</p>
+</li>
+</ul>
+<h2 id="installing-maddy">Installing maddy</h2>
+<p>Your options are:</p>
+<ul>
+<li>
+<p>Pre-built tarball (Linux, amd64)</p>
+<p>Available on <a href="https://github.com/foxcpp/maddy/releases">GitHub</a> or
+<a href="https://maddy.email/builds/">maddy.email/builds</a>.</p>
+<p>The tarball includes maddy executable you can
+copy into /usr/local/bin as well as systemd unit file you can
+use on systemd-based distributions for automatic startup and service
+supervision. You should also create "maddy" user and group.
+See below for more detailed instructions.</p>
+</li>
+<li>
+<p>Docker image (Linux, amd64)</p>
+<p><code>docker pull foxcpp/maddy:0.6</code></p>
+<p>See <a href="../docker">here</a> for Docker-specific instructions.</p>
+</li>
+<li>
+<p>Building from source</p>
+<p>See <a href="../building-from-source">here</a> for instructions.</p>
+</li>
+<li>
+<p>Arch Linux packages</p>
+<p>For Arch Linux users, <code>maddy</code> and <code>maddy-git</code> PKGBUILDs are available
+in AUR. Additionally, binary packages are available in 3rd-party
+repository at <a href="https://maddy.email/archlinux/">https://maddy.email/archlinux/</a></p>
+</li>
+</ul>
+<h2 id="system-configuration-systemd-based-distribution">System configuration (systemd-based distribution)</h2>
+<p>If you built maddy from source and used <code>./build.sh install</code> then
+systemd unit files should be already installed. If you used
+a pre-built tarball - copy <code>systemd/*.service</code> to <code>/etc/systemd/system</code>
+manually.</p>
+<p>You need to reload service manager configuration to make service available:</p>
+<pre class="codehilite"><code>systemctl daemon-reload
+</code></pre>
+
+<p>Additionally, you should create maddy user and group. Unlike most other
+Linux mail servers, maddy never runs as root.</p>
+<pre class="codehilite"><code>useradd -mrU -s /sbin/nologin -d /var/lib/maddy -c &quot;maddy mail server&quot; maddy
+</code></pre>
+
+<h2 id="host-name-domain">Host name + domain</h2>
+<p>Open /etc/maddy/maddy.conf with vim^W your favorite editor and change
+the following lines to match your server name and domain you want to handle
+mail for.
+If you setup a very small mail server you can use example.org in both fields.
+However, to easier a future migration of service, it's recommended to use a
+separate DNS entry for that purpose. It's usually mx1.example.org, mx2, etc.
+You can of course use another subdomain, for instance: smtp1.example.org.
+An email failover server will become possible if you forward mx2.example.org
+to another server (as long as you configure it to handle your domain).</p>
+<pre class="codehilite"><code>$(hostname) = mx1.example.org
+$(primary_domain) = example.org
+</code></pre>
+
+<p>If you want to handle multiple domains, you still need to designate
+one as "primary". Add all other domains to the <code>local_domains</code> line:</p>
+<pre class="codehilite"><code>$(local_domains) = $(primary_domain) example.com other.example.com
+</code></pre>
+
+<h2 id="tls-certificates">TLS certificates</h2>
+<p>One thing that can't be automagically configured is TLS certs. If you already
+have them somewhere - use them, open /etc/maddy/maddy.conf and put the right
+paths in. You need to make sure maddy can read them while running as
+unprivileged user (maddy never runs as root, even during start-up), one way to
+do so is to use ACLs (replace with your actual paths):</p>
+<pre class="codehilite"><code>$ sudo setfacl -R -m u:maddy:rX /etc/ssl/mx1.example.org.crt /etc/ssl/mx1.example.org.key
+</code></pre>
+
+<p>maddy reloads TLS certificates from disk once in a minute so it will notice
+renewal. It is possible to force reload via <code>systemctl reload maddy</code> (or just
+<code>killall -USR2 maddy</code>).</p>
+<h3 id="lets-encrypt-and-certbot">Let's Encrypt and certbot</h3>
+<p>If you use certbot to manage your certificates, you can simply symlink
+/etc/maddy/certs into /etc/letsencrypt/live. maddy will pick the right
+certificate depending on the domain you specified during installation.</p>
+<p>You still need to make keys readable for maddy, though:</p>
+<pre class="codehilite"><code>$ sudo setfacl -R -m u:maddy:rX /etc/letsencrypt/{live,archive}
+</code></pre>
+
+<h3 id="acmesh">ACME.sh</h3>
+<p>If you use acme.sh to manage your certificates, you could simply run:</p>
+<pre class="codehilite"><code>mkdir -p /etc/maddy/certs/mx1.example.org
+acme.sh --force --install-cert -d mx1.example.org \
+  --key-file       /etc/maddy/certs/mx1.example.org/privkey.pem  \
+  --fullchain-file /etc/maddy/certs/mx1.example.org/fullchain.pem
+</code></pre>
+
+<h2 id="first-run">First run</h2>
+<pre class="codehilite"><code>systemctl start maddy
+</code></pre>
+
+<p>The daemon should be running now, except that it is useless because we haven't
+configured DNS records.</p>
+<h2 id="dns-records">DNS records</h2>
+<p>How it is configured depends on your DNS provider (or server, if you run your
+own). Here is how your DNS zone should look like:</p>
+<pre class="codehilite"><code>; Basic domain-&gt;IP records, you probably already have them.
+example.org.   A     10.2.3.4
+example.org.   AAAA  2001:beef::1
+
+; It says that &quot;server mx1.example.org is handling messages for example.org&quot;.
+example.org.   MX    10 mx1.example.org.
+; Of course, mx1 should have A/AAAA entry as well:
+mx1.example.org.   A     10.2.3.4
+mx1.example.org.   AAAA  2001:beef::1
+
+; Use SPF to say that the servers in &quot;MX&quot; above are allowed to send email
+; for this domain, and nobody else.
+example.org.     TXT   &quot;v=spf1 mx ~all&quot;
+; It is recommended to server SPF record for both domain and MX hostname
+mx1.example.org. TXT   &quot;v=spf1 mx ~all&quot;
+
+; Opt-in into DMARC with permissive policy and request reports about broken
+; messages.
+_dmarc.example.org.   TXT    &quot;v=DMARC1; p=quarantine; ruf=mailto:postmaster@example.org&quot;
+
+; Mark domain as MTA-STS compatible (see the next section)
+; and request reports about failures to be sent to postmaster@example.org
+_mta-sts.example.org.   TXT    &quot;v=STSv1; id=1&quot;
+_smtp._tls.example.org. TXT    &quot;v=TLSRPTv1;rua=mailto:postmaster@example.org&quot;
+</code></pre>
+
+<p>And the last one, DKIM key, is a bit tricky. maddy generated a key for you on
+the first start-up. You can find it in
+/var/lib/maddy/dkim_keys/example.org_default.dns. You need to put it in a TXT
+record for <code>default._domainkey.example.org.</code> domain, like that:</p>
+<pre class="codehilite"><code>default._domainkey.example.org.    TXT   &quot;v=DKIM1; k=ed25519; p=nAcUUozPlhc4VPhp7hZl+owES7j7OlEv0laaDEDBAqg=&quot;
+</code></pre>
+
+<h2 id="mta-sts-and-dane">MTA-STS and DANE</h2>
+<p>By default SMTP is not protected against active attacks. MTA-STS policy tells
+compatible senders to always use properly authenticated TLS when talking to
+your server, offering a simple-to-deploy way to protect your server against
+MitM attacks on port 25.</p>
+<p>Basically, you to create a file with following contents and make it available
+at https://mta-sts.example.org/.well-known/mta-sts.txt:</p>
+<pre class="codehilite"><code>version: STSv1
+mode: enforce
+max_age: 604800
+mx: mx1.example.org
+</code></pre>
+
+<p><strong>Note</strong>: mx1.example.org in the file is your MX hostname, In a simple configuration,
+it will be the same as your hostname example.org.
+In a more complex setups, you would have multiple MX servers - add them all once
+per line, like that:</p>
+<pre class="codehilite"><code>mx: mx1.example.org
+mx: mx2.example.org
+</code></pre>
+
+<p>It is also recommended to set a TLSA (DANE) record.
+Use https://www.huque.com/bin/gen_tlsa to generate one.
+Set port to 25, Transport Protocol to "tcp" and Domain Name to <strong>the MX hostname</strong>.
+Example of a valid record:</p>
+<pre class="codehilite"><code>_25._tcp.mx1.example.org. TLSA 3 1 1 7f59d873a70e224b184c95a4eb54caa9621e47d48b4a25d312d83d96e3498238
+</code></pre>
+
+<h2 id="user-accounts-and-maddy-command">User accounts and maddy command</h2>
+<p>A mail server is useless without mailboxes, right? Unlike software like postfix
+and dovecot, maddy uses "virtual users" by default, meaning it does not care or
+know about system users.</p>
+<p>IMAP mailboxes ("accounts") and authentication credentials are kept separate.</p>
+<p>To register user credentials, use <code>maddy creds create</code> command.
+Like that:</p>
+<pre class="codehilite"><code>$ maddy creds create postmaster@example.org
+</code></pre>
+
+<p>Note the username is a e-mail address. This is required as username is used to
+authorize IMAP and SMTP access (unless you configure custom mappings, not
+described here).</p>
+<p>After registering the user credentials, you also need to create a local
+storage account:</p>
+<pre class="codehilite"><code>$ maddy imap-acct create postmaster@example.org
+</code></pre>
+
+<p>That is it. Now you have your first e-mail address. when authenticating using
+your e-mail client, do not forget the username is "postmaster@example.org", not
+just "postmaster".</p>
+<p>You may find running <code>maddy creds --help</code> and <code>maddy imap-acct --help</code>
+useful to learn about other commands. Note that IMAP accounts and credentials
+are managed separately yet usernames should match by default for things to
+work.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="./"
+				class="current">
+			Installation & initial configuration</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#getting-a-server">Getting a server</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#installing-maddy">Installing maddy</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#system-configuration-systemd-based-distribution">System configuration (systemd-based distribution)</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#host-name-domain">Host name + domain</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#tls-certificates">TLS certificates</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#first-run">First run</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#dns-records">DNS records</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#mta-sts-and-dane">MTA-STS and DANE</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#user-accounts-and-maddy-command">User accounts and maddy command</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<a href="../building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../reference/auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../reference/config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../..';</script>
+<script src="../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

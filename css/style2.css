@@ -1,0 +1,168 @@
+:root {
+    --text-color: #111;
+    --link-color: #4322ff;
+    --code-color: rgb(10, 64, 148);
+    /*--pre-border: rgb(152, 190, 250);*/
+    --pre-border: #83bbb3;
+    --body-bg: #eeeeee;
+    --header-bg: #2d524d;
+    --header-fg: #ffffff;
+    --header-border: #e3f2fd;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Fira Sans", "Go", sans-serif;
+    color: var(--text-color);
+    background: var(--body-bg);
+    font-size: medium;
+    overflow-x: hidden;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    margin: 0;
+
+    /* More space between lines to make text more readable */
+    line-height: 1.5;
+}
+
+header {
+    padding: 0.5em 0;
+    background: var(--header-bg);
+    color: var(--header-fg);
+    border-bottom: solid 1px var(--header-border);
+    margin-bottom: 1em;
+}
+
+nav, main {
+    /* Center both in page */
+    margin: 0 auto;
+    max-width: 50em;
+    padding: 0;
+    clear: both;
+}
+
+nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+nav h1 {
+    flex: auto;
+    font-size: xx-large;
+    margin: 0 auto;
+}
+
+nav div.pages {
+    display: flex;
+    font-size: 0.8em;
+    text-align: right;
+    align-items: center;
+    margin-right: 1em;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+h1 a {
+    color: inherit;
+}
+
+pre, code {
+    font-family: "Fira Mono", "Go Mono", monospace;
+}
+
+pre {
+    padding: 1em;
+    color: var(--text-color);
+    border: 1px solid var(--pre-border);
+	border-left: 5px solid var(--pre-border);
+    white-space: pre-wrap;
+}
+
+blockquote {
+    margin: 0 0 0 0;
+    padding-left: 1em;
+    background-color: #efefef;
+    border: 1px solid var(--pre-border);
+	border-left: 5px solid var(--pre-border);
+}
+
+img {
+    float: right;
+    max-width: 40%;
+    max-height: 40vh;
+    width: auto;
+    height: auto;
+
+	margin-left: 1em;
+	margin-right: 1em;
+	margin-bottom: 1em;
+}
+
+hr {
+    margin-top: 2em;
+    margin-bottom: 2em;
+    margin-left: 1em;
+    margin-right: 1em;
+}
+
+/* to find the second td, we select "the TDs that come after another TD",
+ * knowing there will be only two */
+table.kvpairs td+td {
+	padding-left: 2em;
+}
+
+footer {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    border-top: solid 1px var(--header-border);
+    margin-top: 1.5em;
+    padding: 1em 0;
+}
+
+footer div {
+    text-align: right;
+    font-size: 90%;
+
+    /* Center in page, same as nav and main. */
+    margin: 0 auto;
+    max-width: 50em;
+    padding: 0;
+
+    /* Small padding to the right for legibility on small screens. */
+    padding-right: 0.5em;
+
+    /* Softer text. */
+    filter: opacity(50%);
+}
+
+@media screen and (max-width: 50em) {
+    nav, main{
+        padding-left: 0.5em;
+        padding-right: 0.5em;
+    }
+}
+
+/* TODO
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text-color: rgba(255, 255, 255, 0.92);
+        --link-color: #aaccee;
+        --code-color: rgb(212, 226, 247);
+        --pre-border: #233140;
+        --body-bg: #121212;
+        --header-bg: #273238;
+        --header-border: #37474f;
+    }
+}
+*/

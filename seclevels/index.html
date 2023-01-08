@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../css/style2.css">
+  <link rel="stylesheet" href="../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>Outbound delivery security - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="outbound-delivery-security">Outbound delivery security</h1>
+<p>maddy implements a number of schemes and protocols for discovery and
+enforcement of security features supported by the recipient MTA.</p>
+<h2 id="introduction-to-the-problems-of-secure-smtp">Introduction to the problems of secure SMTP</h2>
+<p>Outbound delivery security involves two independent problems:</p>
+<ul>
+<li>MX record authentication</li>
+<li>TLS enforcement</li>
+</ul>
+<h3 id="mx-record-authentication">MX record authentication</h3>
+<p>When MTA wants to deliver a message to a mailbox at remote domain, it needs to
+discover the server to use for it. It is done through the lookup of DNS MX
+records for the recipient.</p>
+<p>Problem arises from the fact that DNS does not have any cryptographic
+protection and so any malicious actor can technically modify the response to
+contain any server. And MTA would use that server!</p>
+<p>There are two protocols that solve this problem: MTA-STS and DNSSEC.
+Former requires the MTA to verify used records against a list of rules published
+via HTTPS. Later cryptographically signs the records themselves.</p>
+<h3 id="tls-enforcement">TLS enforcement</h3>
+<p>By default, server-server SMTP is unencrypted. If remote server supports TLS,
+it is advertised via the ESMTP extension named STARTTLS, but malicious actor
+controlling communication channel can hide the support for STARTTLS and sender
+MTA will have to use plaintext. There needs to be a out-of-band authenticated
+channel to indicate TLS support (and to require its use).</p>
+<p>MTA-STS and DANE solve this problem. In the first case, if policy is in
+"enforce" mode then MTA is required to use TLS when delivering messages to a
+remote server. DANE does pretty much the same thing, but using DNSSEC-signed
+TLSA records.</p>
+<h2 id="maddy-policy-details">maddy policy details</h2>
+<p>maddy defines two values indicating how "secure" delivery of message will be:</p>
+<ul>
+<li>MX security level</li>
+<li>TLS security level</li>
+</ul>
+<p>These values correspond to the problems described above. On delivery, the
+estabilished connection to the remote server is "ranked" using these values and
+then they are compared against a number of policies (including local
+configuration). If the effective value is lower than the required one, the
+connection is closed and next candidate server is used. If all connections fail
+this way - the delivery is failed (or deferred if there was a temporary error
+when checking policies).</p>
+<p>Below is the table summarizing the security level values defined in maddy and
+protection they offer.</p>
+<table>
+<thead>
+<tr>
+<th>MX/TLS level</th>
+<th>None</th>
+<th>Encrypted</th>
+<th>Authenticated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>-</td>
+<td>P</td>
+<td>P</td>
+</tr>
+<tr>
+<td>MTA-STS</td>
+<td>-</td>
+<td>P</td>
+<td>PA (see note 1)</td>
+</tr>
+<tr>
+<td>DNSSEC</td>
+<td>-</td>
+<td>P</td>
+<td>PA</td>
+</tr>
+</tbody>
+</table>
+<p>Legend: P - protects against passive attacks; A - protects against active
+attacks</p>
+<ul>
+<li>MX level: None. MX candidate was returned as a result of DNS lookup for the
+  recipient domain, no additional checks done.</li>
+<li>MX level: MTA-STS. Used MX matches the MTA-STS policy published by the
+  recepient domain (even one in testing mode).</li>
+<li>
+<p>MX level: DNSSEC. MX record is signed.</p>
+</li>
+<li>
+<p>TLS level: None. Plaintext connection was estabilished, TLS is not available
+  or failed.</p>
+</li>
+<li>TLS level: Encrypted. TLS connection was estabilished, the server certificate
+  failed X.509 and DANE verification.</li>
+<li>TLS level: Authenticated. TLS connection was estabilished, the server
+  certificate passes X.509 <strong>or</strong> DANE verification.</li>
+</ul>
+<p><strong>Note 1:</strong> Persistent attacker able to control network connection can
+interfere with policy refresh, downgrading protection to be secure only against
+passive attacks.</p>
+<h2 id="maddy-security-policies">maddy security policies</h2>
+<p>See <a href="/reference/targets/remote/">Remote MX delivery</a> for description of configuration options available for each policy mechanism
+supported by maddy.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="./"
+				class="current">
+			Outbound delivery security</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#introduction-to-the-problems-of-secure-smtp">Introduction to the problems of secure SMTP</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#maddy-policy-details">maddy policy details</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#maddy-security-policies">maddy security policies</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+
+    <li>
+		<a href="../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../reference/smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../reference/auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../reference/auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../reference/config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '..';</script>
+<script src="../search/main.js" defer></script>
+
+
+</body>
+</html>
+

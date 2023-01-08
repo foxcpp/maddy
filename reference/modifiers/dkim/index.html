@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../../css/style2.css">
+  <link rel="stylesheet" href="../../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>DKIM signing - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="dkim-signing">DKIM signing</h1>
+<p>modify.dkim module is a modifier that signs messages using DKIM
+protocol (RFC 6376).</p>
+<p>Each configuration block specifies a single selector
+and one or more domains.</p>
+<p>A key will be generated or read for each domain, the key to use
+for each message will be selected based on the SMTP envelope sender. Exception
+for that is that for domain-less postmaster address and null address, the
+key for the first domain will be used. If domain in envelope sender
+does not match any of loaded keys, message will not be signed.
+Additionally, for each messages From header is checked to 
+match MAIL FROM and authorization identity (username sender is logged in as).
+This can be controlled using require_sender_match directive.</p>
+<p>Generated private keys are stored in unencrypted PKCS#8 format
+in state_directory/dkim_keys (/var/lib/maddy/dkim_keys).
+In the same directory .dns files are generated that contain
+public key for each domain formatted in the form of a DNS record.</p>
+<h2 id="arguments">Arguments</h2>
+<p>domains and selector can be specified in arguments, so actual modify.dkim use can
+be shortened to the following:</p>
+<pre class="codehilite"><code>modify {
+    dkim example.org selector
+}
+</code></pre>
+
+<h2 id="configuration-directives">Configuration directives</h2>
+<pre class="codehilite"><code>modify.dkim {
+    debug no
+    domains example.org example.com
+    selector default
+    key_path dkim-keys/{domain}-{selector}.key
+    oversign_fields ...
+    sign_fields ...
+    header_canon relaxed
+    body_canon relaxed
+    sig_expiry 120h # 5 days
+    hash sha256
+    newkey_algo rsa2048
+}
+</code></pre>
+
+<p><strong>Syntax</strong>: debug <em>boolean</em> <br>
+<strong>Default</strong>: global directive value</p>
+<p>Enable verbose logging.</p>
+<p><strong>Syntax</strong>: domains <em>string list</em> <br>
+<strong>Default</strong>: not specified</p>
+<p><strong>REQUIRED.</strong></p>
+<p>ADministrative Management Domains (ADMDs) taking responsibility for messages.</p>
+<p>Should be specified either as a directive or as an argument.</p>
+<p><strong>Syntax</strong>: selector <em>string</em> <br>
+<strong>Default</strong>: not specified</p>
+<p><strong>REQUIRED.</strong></p>
+<p>Identifier of used key within the ADMD.
+Should be specified either as a directive or as an argument.</p>
+<p><strong>Syntax</strong>: key_path <em>string</em> <br>
+<strong>Default</strong>: dkim_keys/{domain}\_{selector}.key</p>
+<p>Path to private key. It should be in PKCS#8 format wrapped in PAM encoding.
+If key does not exist, it will be generated using algorithm specified
+in newkey_algo.</p>
+<p>Placeholders '{domain}' and '{selector}' will be replaced with corresponding
+values from domain and selector directives.</p>
+<p>Additionally, keys in PKCS#1 ("RSA PRIVATE KEY") and
+RFC 5915 ("EC PRIVATE KEY") can be read by modify.dkim. Note, however that
+newly generated keys are always in PKCS#8.</p>
+<p><strong>Syntax</strong>: oversign_fields <em>list...</em> <br>
+<strong>Default</strong>: see below</p>
+<p>Header fields that should be signed n+1 times where n is times they are
+present in the message. This makes it impossible to replace field
+value by prepending another field with the same name to the message.</p>
+<p>Fields specified here don't have to be also specified in sign_fields.</p>
+<p>Default set of oversigned fields:
+- Subject
+- To
+- From
+- Date
+- MIME-Version
+- Content-Type
+- Content-Transfer-Encoding
+- Reply-To
+- Message-Id
+- References
+- Autocrypt
+- Openpgp</p>
+<p><strong>Syntax</strong>: sign_fields <em>list...</em> <br>
+<strong>Default</strong>: see below</p>
+<p>Header fields that should be signed n+1 times where n is times they are
+present in the message. For these fields, additional values can be prepended
+by intermediate relays, but existing values can't be changed.</p>
+<p>Default set of signed fields:
+- List-Id
+- List-Help
+- List-Unsubscribe
+- List-Post
+- List-Owner
+- List-Archive
+- Resent-To
+- Resent-Sender
+- Resent-Message-Id
+- Resent-Date
+- Resent-From
+- Resent-Cc</p>
+<p><strong>Syntax</strong>: header_canon relaxed|simple <br>
+<strong>Default</strong>: relaxed</p>
+<p>Canonicalization algorithm to use for header fields. With 'relaxed', whitespace within
+fields can be modified without breaking the signature, with 'simple' no
+modifications are allowed.</p>
+<p><strong>Syntax</strong>: body_canon relaxed|simple <br>
+<strong>Default</strong>: relaxed</p>
+<p>Canonicalization algorithm to use for message body. With 'relaxed', whitespace within
+can be modified without breaking the signature, with 'simple' no
+modifications are allowed.</p>
+<p><strong>Syntax</strong>: sig_expiry <em>duration</em> <br>
+<strong>Default</strong>: 120h</p>
+<p>Time for which signature should be considered valid. Mainly used to prevent
+unauthorized resending of old messages.</p>
+<p><strong>Syntax</strong>: hash <em>hash</em> <br>
+<strong>Default</strong>: sha256</p>
+<p>Hash algorithm to use when computing body hash.</p>
+<p>sha256 is the only supported algorithm now.</p>
+<p><strong>Syntax</strong>: newkey_algo rsa4096|rsa2048|ed25519 <br>
+<strong>Default</strong>: rsa2048</p>
+<p>Algorithm to use when generating a new key.</p>
+<p>Currently ed25519 is NOT supported by most platforms.</p>
+<p><strong>Syntax</strong>: require_sender_match <em>ids...</em> <br>
+<strong>Default</strong>: envelope auth</p>
+<p>Require specified identifiers to match From header field and key domain,
+otherwise - don't sign the message.</p>
+<p>If From field contains multiple addresses, message will not be
+signed unless allow_multiple_from is also specified. In that
+case only first address will be compared.</p>
+<p>Matching is done in a case-insensitive way.</p>
+<p>Valid values:
+- off
+  Disable check, always sign.
+- envelope
+  Require MAIL FROM address to match From header.
+- auth
+  If authorization identity contains @ - then require it to
+  fully match From header. Otherwise, check only local-part
+  (username).</p>
+<p><strong>Syntax</strong>: allow_multiple_from <em>boolean</em> <br>
+<strong>Default</strong>: no</p>
+<p>Allow multiple addresses in From header field for purposes of
+require_sender_match checks. Only first address will be checked, however.</p>
+<p><strong>Syntax</strong>: sign_subdomains <em>boolean</em> <br>
+<strong>Default</strong>: no</p>
+<p>Sign emails from subdomains using a top domain key.</p>
+<p>Allows only one domain to be specified (can be workarounded using modify.dkim
+multiple times).</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../checks/actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/command/"
+				class="">
+			System command filter</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../checks/misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="./"
+				class="current">
+			DKIM signing</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#arguments">Arguments</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#configuration-directives">Configuration directives</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<a href="../envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../../..';</script>
+<script src="../../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../../../css/style2.css">
+  <link rel="stylesheet" href="../../../css/mkdocs.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ICBM" content="-37.1114, -56.8678">
+<title>System command filter - maddy</title>
+</head>
+<body>
+
+<header>
+<nav>
+<h1><a href="../../..">maddy</a></h1>
+</nav>
+</header>
+
+<main>
+
+<div class="content">
+
+<h1 id="system-command-filter">System command filter</h1>
+<p>This module executes an arbitrary system command during a specified stage of
+checks execution.</p>
+<pre class="codehilite"><code>command executable_name arg0 arg1 ... {
+    run_on body
+
+    code 1 reject
+    code 2 quarantine
+}
+</code></pre>
+
+<h2 id="arguments">Arguments</h2>
+<p>The module arguments specify the command to run. If the first argument is not
+an absolute path, it is looked up in the Libexec Directory (/usr/lib/maddy on
+Linux) and in $PATH (in that ordering). Note that no additional handling
+of arguments is done, especially, the command is executed directly, not via the
+system shell.</p>
+<p>There is a set of special strings that are replaced with the corresponding
+message-specific values:</p>
+<ul>
+<li>{source_ip}</li>
+</ul>
+<p>IPv4/IPv6 address of the sending MTA.</p>
+<ul>
+<li>{source_host}</li>
+</ul>
+<p>Hostname of the sending MTA, from the HELO/EHLO command.</p>
+<ul>
+<li>{source_rdns}</li>
+</ul>
+<p>PTR record of the sending MTA IP address.</p>
+<ul>
+<li>{msg_id}</li>
+</ul>
+<p>Internal message identifier. Unique for each delivery.</p>
+<ul>
+<li>{auth_user}</li>
+</ul>
+<p>Client username, if authenticated using SASL PLAIN</p>
+<ul>
+<li>{sender}</li>
+</ul>
+<p>Message sender address, as specified in the MAIL FROM SMTP command.</p>
+<ul>
+<li>{rcpts}</li>
+</ul>
+<p>List of accepted recipient addresses, including the currently handled
+  one.</p>
+<ul>
+<li>{address}</li>
+</ul>
+<p>Currently handled address. This is a recipient address if the command
+  is called during RCPT TO command handling ('run_on rcpt') or a sender
+  address if the command is called during MAIL FROM command handling ('run_on
+  sender').</p>
+<p>If value is undefined (e.g. {source_ip} for a message accepted over a Unix
+socket) or unavailable (the command is executed too early), the placeholder
+is replaced with an empty string. Note that it can not remove the argument.
+E.g. -i {source_ip} will not become just -i, it will be -i ""</p>
+<p>Undefined placeholders are not replaced.</p>
+<h2 id="command-stdout">Command stdout</h2>
+<p>The command stdout must be either empty or contain a valid RFC 5322 header.
+If it contains a byte stream that does not look a valid header, the message
+will be rejected with a temporary error.</p>
+<p>The header from stdout will be <strong>prepended</strong> to the message header.</p>
+<h2 id="configuration-directives">Configuration directives</h2>
+<p><strong>Syntax</strong>: run_on conn|sender|rcpt|body <br>
+<strong>Default</strong>: body</p>
+<p>When to run the command. This directive also affects the information visible
+for the message.</p>
+<ul>
+<li>conn</li>
+</ul>
+<p>Run before the sender address (MAIL FROM) is handled.</p>
+<p><strong>Stdin</strong>: Empty <br>
+  <strong>Available placeholders</strong>: {source_ip}, {source_host}, {msg_id}, {auth_user}.</p>
+<ul>
+<li>sender</li>
+</ul>
+<p>Run during sender address (MAIL FROM) handling.</p>
+<p><strong>Stdin</strong>: Empty <br>
+  <strong>Available placeholders</strong>: conn placeholders + {sender}, {address}.</p>
+<p>The {address} placeholder contains the MAIL FROM address.</p>
+<ul>
+<li>rcpt</li>
+</ul>
+<p>Run during recipient address (RCPT TO) handling. The command is executed
+  once for each RCPT TO command, even if the same recipient is specified
+  multiple times.</p>
+<p><strong>Stdin</strong>: Empty <br>
+  <strong>Available placeholders</strong>: sender placeholders + {rcpts}.</p>
+<p>The {address} placeholder contains the recipient address.</p>
+<ul>
+<li>body</li>
+</ul>
+<p>Run during message body handling.</p>
+<p><strong>Stdin</strong>: The message header + body <br>
+  <strong>Available placeholders</strong>: all except for {address}.</p>
+<p><strong>Syntax</strong>: <br>
+code <em>integer</em> ignore <br>
+code <em>integer</em> quarantine <br>
+code <em>integer</em> reject [SMTP code] [SMTP enhanced code] [SMTP message]</p>
+<p>This directives specified the mapping from the command exit code <em>integer</em> to
+the message pipeline action.</p>
+<p>Two codes are defined implicitly, exit code 1 causes the message to be rejected
+with a permanent error, exit code 2 causes the message to be quarantined. Both
+action can be overriden using the 'code' directive.</p>
+</div>
+
+<div class="side">
+
+
+
+
+<div class="search">
+  <form class="search" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs"
+        title="Type search term here" />
+  </form>
+</div>
+
+
+<div class="toc" aria-label="main navigation">
+<ul>
+
+    <li>
+		<a href="../../../faq/"
+				class="">
+			Frequently Asked Questions</a>
+
+        
+    </li>
+
+    <li>
+		<span>Tutorials</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../tutorials/setting-up/"
+				class="">
+			Installation & initial configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/building-from-source/"
+				class="">
+			Building from source</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/alias-to-remote/"
+				class="">
+			Forward messages to a remote MX</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../tutorials/pam/"
+				class="">
+			Using PAM authentication</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<a href="https://maddy.email/builds/"
+				class="">
+			Release builds</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../multiple-domains/"
+				class="">
+			Multiple domains configuration</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../upgrading/"
+				class="">
+			Upgrading from older maddy versions</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../seclevels/"
+				class="">
+			Outbound delivery security</a>
+
+        
+    </li>
+
+    <li>
+		<a href="../../../docker/"
+				class="">
+			Docker</a>
+
+        
+    </li>
+
+    <li>
+		<span>Reference manual</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../modules/"
+				class="">
+			Modules introduction</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../global-config/"
+				class="">
+			Global configuration directives</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls/"
+				class="">
+			TLS configuration</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../tls-acme/"
+				class="">
+			Automatic certificate management via ACME</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Endpoints configuration</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../endpoints/imap/"
+				class="">
+			IMAP4rev1 endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/smtp/"
+				class="">
+			SMTP/LMTP/Submission endpoint</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../endpoints/openmetrics/"
+				class="">
+			OpenMetrics/Prometheus telemetry</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>IMAP storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../storage/imap-filters/"
+				class="">
+			IMAP filters</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../storage/imapsql/"
+				class="">
+			SQL-indexed storage</a>
+
+        
+    </li>
+            
+                <li>
+		<span>Blob storage</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../blob/fs/"
+				class="">
+			Filesystem</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../blob/s3/"
+				class="">
+			Amazon S3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../smtp-pipeline/"
+				class="">
+			SMTP message routing (pipeline)</a>
+
+        
+    </li>
+            
+                <li>
+		<span>SMTP targets</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../targets/queue/"
+				class="">
+			Local queue</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/remote/"
+				class="">
+			Remote MX delivery</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../targets/smtp/"
+				class="">
+			SMTP & LMTP transparent forwarding</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP checks</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../actions/"
+				class="">
+			Check actions</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../dkim/"
+				class="">
+			DKIM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../spf/"
+				class="">
+			SPF</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../milter/"
+				class="">
+			Milter client</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../dnsbl/"
+				class="">
+			DNSBL lookup</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="./"
+				class="current">
+			System command filter</a>
+		
+			
+                <ul>
+                
+                    <li class="local">
+                        <a href="#arguments">Arguments</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#command-stdout">Command stdout</a>
+                    </li>
+                
+                    <li class="local">
+                        <a href="#configuration-directives">Configuration directives</a>
+                    </li>
+                
+                </ul>
+            
+        
+        
+
+        
+    </li>
+            
+                <li>
+		<a href="../authorize_sender/"
+				class="">
+			MAIL FROM and From authorization</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../misc/"
+				class="">
+			Misc checks</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>SMTP modifiers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../modifiers/dkim/"
+				class="">
+			DKIM signing</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../modifiers/envelope/"
+				class="">
+			Envelope sender / recipient rewriting</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Lookup tables (string translation)</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../table/static/"
+				class="">
+			Static table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/regexp/"
+				class="">
+			Regexp rewrite table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/file/"
+				class="">
+			File</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/sql_query/"
+				class="">
+			SQL query mapping</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/chain/"
+				class="">
+			Table chaining</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/email_localpart/"
+				class="">
+			Email local part</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../table/auth/"
+				class="">
+			Authentication providers</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<span>Authentication providers</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../auth/pass_table/"
+				class="">
+			Password table</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/pam/"
+				class="">
+			PAM</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/shadow/"
+				class="">
+			/etc/shadow</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/external/"
+				class="">
+			System command</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/ldap/"
+				class="">
+			LDAP BindDN</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/dovecot_sasl/"
+				class="">
+			Dovecot SASL</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../auth/plain_separate/"
+				class="">
+			Separate username and password lookup</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+            
+                <li>
+		<a href="../../config-syntax/"
+				class="">
+			Configuration files syntax</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Integration with software</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../third-party/dovecot/"
+				class="">
+			Dovecot</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/smtp-servers/"
+				class="">
+			External SMTP server</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/rspamd/"
+				class="">
+			rspamd</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../third-party/mailman3/"
+				class="">
+			Mailman 3</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+    <li>
+		<span>Internals</span>
+
+        
+            <ul>
+            
+                <li>
+		<a href="../../../internals/specifications/"
+				class="">
+			Followed specifications</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/unicode/"
+				class="">
+			Unicode support</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/quirks/"
+				class="">
+			Implementation quirks</a>
+
+        
+    </li>
+            
+                <li>
+		<a href="../../../internals/sqlite/"
+				class="">
+			maddy & SQLite</a>
+
+        
+    </li>
+            
+            </ul>
+        
+    </li>
+
+</ul>
+</div>
+</div>
+
+</main>
+
+<footer>
+<div>
+Thanks <a href="https://blitiri.com.ar/">Alberto Bertogli</a> for providing base for this neat mkdocs theme!
+Last updated: 2022-12-05
+</div>
+</footer>
+
+<!-- For search -->
+<script>var base_url = '../../..';</script>
+<script src="../../../search/main.js" defer></script>
+
+
+</body>
+</html>
+

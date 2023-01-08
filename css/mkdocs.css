@@ -1,0 +1,84 @@
+/* Widen everything a little bit to make room for the side nav */
+nav, main, footer div {
+    max-width: 65em;
+}
+
+@media screen and (max-width: 65em) {
+    nav, main {
+        padding-left: 0.5em;
+        padding-right: 0.5em;
+    }
+}
+
+main {
+    display: grid;
+    grid-gap: 1rem;
+    grid-template-columns: 15em auto;
+    grid-template-areas: "sidebar content";
+    align-items: stretch;
+}
+
+
+/* Move the sidebar below when the screen gets too narrow */
+@media screen and (max-width: 50em) {
+    main {
+        grid-template-columns: 100%;
+        grid-template-areas: "content" "sidebar";
+    }
+}
+
+div.side {
+    grid-area: sidebar;
+    /* background: var(--header-bg); */
+    padding-right: 0.5em;
+}
+
+div.side form.search {
+    padding: 0.7em 0 0 0.4em;
+}
+
+div.side form.search input {
+    max-width: 100%;
+}
+
+div.side ul {
+    list-style: none;
+    padding-left: 1em;
+}
+
+
+/* Element of the ToC that is currently being viewed. */
+div.toc a.current {
+    color: inherit;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+
+/* Anchor link on the current page. */
+div.toc li.local {
+    font-size: smaller;
+}
+
+div.content {
+    grid-area: content;
+}
+
+
+/* Adjust the default image style back to normal float. */
+div.content img {
+    float: none;
+    margin: 0 0;
+}
+
+div.content img.logo {
+    float: right;
+}
+
+
+/* Non-distracting link on the titles */
+h1 a, footer a {
+    color: inherit;
+    text-decoration: none;
+    font-weight: inherit;
+}
