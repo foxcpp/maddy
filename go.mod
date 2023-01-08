@@ -27,19 +27,19 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/lib/pq v1.10.6
-	github.com/libdns/alidns v1.0.2
-	github.com/libdns/cloudflare v0.1.0
+	github.com/libdns/alidns v1.0.3-0.20220501125541-4a895238a95d
+	github.com/libdns/cloudflare v0.1.1-0.20221006221909-9d3ab3c3cddd
 	github.com/libdns/digitalocean v0.0.0-20220518195853-a541bc8aa80f
-	github.com/libdns/gandi v1.0.2
-	github.com/libdns/googleclouddns v1.0.2
+	github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79
+	github.com/libdns/googleclouddns v1.1.0
 	github.com/libdns/hetzner v0.0.1
-	github.com/libdns/leaseweb v0.2.1
-	github.com/libdns/libdns v0.2.1
+	github.com/libdns/leaseweb v0.3.1
+	github.com/libdns/libdns v0.2.2-0.20221006221142-3ef90aee33fd
 	github.com/libdns/metaname v0.3.0
 	github.com/libdns/namecheap v0.0.0-20211109042440-fc7440785c8e
 	github.com/libdns/namedotcom v0.3.3
-	github.com/libdns/route53 v1.1.2
-	github.com/libdns/vultr v0.0.0-20211122184636-cd4cb5c12e51
+	github.com/libdns/route53 v1.3.0
+	github.com/libdns/vultr v0.0.0-20220906182619-5ea9da3d9625
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/miekg/dns v1.1.50
 	github.com/minio/minio-go/v7 v7.0.29
@@ -47,15 +47,25 @@ require (
 	github.com/urfave/cli/v2 v2.10.2
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
-	golang.org/x/net v0.0.0-20220622184535-263ec571b305
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
-	golang.org/x/text v0.3.7
+	golang.org/x/net v0.1.0
+	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
+	golang.org/x/text v0.4.0
 )
 
 require (
-	cloud.google.com/go/compute v1.7.0 // indirect
+	cloud.google.com/go/compute v1.10.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/aws/aws-sdk-go v1.44.40 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.10.0 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.9.0 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.5.0 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.2.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.4.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.12.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.5.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.8.0 // indirect
+	github.com/aws/smithy-go v1.8.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -65,10 +75,10 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
-	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.6.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -100,14 +110,14 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/oauth2 v0.0.0-20220622183110-fd043fe589d2 // indirect
-	golang.org/x/sys v0.0.0-20220622161953-175b2fd9d664 // indirect
-	golang.org/x/tools v0.1.11 // indirect
-	google.golang.org/api v0.85.0 // indirect
+	golang.org/x/oauth2 v0.1.0 // indirect
+	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/tools v0.1.12 // indirect
+	google.golang.org/api v0.100.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220622171453-ea41d75dfa0f // indirect
-	google.golang.org/grpc v1.47.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/genproto v0.0.0-20221018160656-63c7b68cfc55 // indirect
+	google.golang.org/grpc v1.50.1 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
