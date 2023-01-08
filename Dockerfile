@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine AS build-env
+FROM golang:1.18-alpine AS build-env
 
 RUN set -ex && \
     apk upgrade --no-cache --available && \
@@ -14,7 +14,7 @@ RUN mkdir -p /pkg/data && \
     cp maddy.conf.docker /pkg/data/maddy.conf && \
     ./build.sh --builddir /tmp --destdir /pkg/ --tags docker build install
 
-FROM alpine:3.16.0
+FROM alpine:3.17.0
 LABEL maintainer="fox.cpp@disroot.org"
 LABEL org.opencontainers.image.source=https://github.com/foxcpp/maddy
 
