@@ -10,7 +10,9 @@ import (
 
 func AuthorizeEmailUse(ctx context.Context, username string, addrs []string, mapping module.Table) (bool, error) {
 	var validEmails []string
+
 	if multi, ok := mapping.(module.MultiTable); ok {
+		var err error
 		validEmails, err = multi.LookupMulti(ctx, username)
 		if err != nil {
 			return false, fmt.Errorf("authz: %w", err)
