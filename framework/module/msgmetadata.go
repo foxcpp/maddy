@@ -20,8 +20,10 @@ package module
 
 import (
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"io"
+	"net"
 
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/future"
@@ -37,7 +39,10 @@ type ConnState struct {
 	// Information about the SMTP connection, including HELO hostname and
 	// source IP. Valid only if Proto refers the SMTP protocol or its variant
 	// (e.g. LMTP).
-	smtp.ConnectionState
+	Hostname   string
+	LocalAddr  net.Addr
+	RemoteAddr net.Addr
+	TLS        tls.ConnectionState
 
 	// The RDNSName field contains the result of Reverse DNS lookup on the
 	// client IP.
@@ -61,6 +66,8 @@ type ConnState struct {
 	// If the client successfully authenticated using a username/password pair.
 	// This field should be cleaned if the ConnState object is serialized
 	AuthPassword string
+
+	ModData ModSpecificData
 }
 
 // MsgMetadata structure contains all information about the origin of

@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -163,11 +162,7 @@ func TestGenerateSignVerify(t *testing.T) {
 	test := func(domains []string, envelopeFrom string, expectDomain []string, keyAlgo string, headerCanon, bodyCanon dkim.Canonicalization, reload bool) {
 		t.Helper()
 
-		dir, err := ioutil.TempDir("", "maddy-tests-dkim-")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer os.RemoveAll(dir)
+		dir := t.TempDir()
 
 		m := newTestModifier(t, dir, keyAlgo, domains)
 		m.bodyCanon = bodyCanon

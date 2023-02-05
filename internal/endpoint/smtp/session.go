@@ -150,7 +150,7 @@ func (s *Session) AuthPlain(username, password string) error {
 	}
 
 	// Executed before authentication and session initialization.
-	if err := s.endp.pipeline.RunEarlyChecks(context.TODO(), &s.connState.ConnectionState); err != nil {
+	if err := s.endp.pipeline.RunEarlyChecks(context.TODO(), &s.connState); err != nil {
 		return s.endp.wrapErr("", true, "AUTH", err)
 	}
 

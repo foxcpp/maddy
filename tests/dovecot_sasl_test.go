@@ -106,10 +106,7 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 		t.Fatal(err)
 	}
 
-	tempDir, err := ioutil.TempDir("", "maddy-dovecot-interop-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
 
 	curUser, err := user.Current()
 	if err != nil {

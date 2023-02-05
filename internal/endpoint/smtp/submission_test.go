@@ -59,7 +59,7 @@ func TestSubmissionPrepare(t *testing.T) {
 			endp.Close()
 		}()
 
-		session, err := endp.NewSession(smtp.ConnectionState{}, "")
+		session, err := endp.NewSession(nil)
 		if err != nil {
 			t.Fatal(err)
 		}

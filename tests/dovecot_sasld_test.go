@@ -89,16 +89,13 @@ Xi3olS9rB0J+Rvjz
 -----END PRIVATE KEY-----`
 
 func runChasquid(t *testing.T, authClientPath string) (string, *exec.Cmd) {
-	tempDir, err := ioutil.TempDir("", "maddy-chasquid-interop-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
 	t.Log("Using", tempDir)
 
 	chasquidConf := strings.NewReplacer(
 		"$ROOT", tempDir,
 		"$AUTH_CLIENT", authClientPath).Replace(chasquidConf)
-	err = ioutil.WriteFile(filepath.Join(tempDir, "chasquid.conf"), []byte(chasquidConf), os.ModePerm)
+	err := ioutil.WriteFile(filepath.Join(tempDir, "chasquid.conf"), []byte(chasquidConf), os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
 	}

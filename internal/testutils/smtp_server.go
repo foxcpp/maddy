@@ -38,7 +38,7 @@ type SMTPMessage struct {
 	Opts     smtp.MailOptions
 	To       []string
 	Data     []byte
-	State    *smtp.ConnectionState
+	Conn     *smtp.Conn
 	AuthUser string
 	AuthPass string
 }
@@ -56,15 +56,15 @@ type SMTPBackend struct {
 	LMTPDataErr []error
 }
 
-func (be *SMTPBackend) NewSession(state smtp.ConnectionState, _ string) (smtp.Session, error) {
+func (be *SMTPBackend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 	be.SessionCounter++
 	if be.SourceEndpoints == nil {
 		be.SourceEndpoints = make(map[string]struct{})
 	}
-	be.SourceEndpoints[state.RemoteAddr.String()] = struct{}{}
+	be.SourceEndpoints[conn.Conn().RemoteAddr().String()] = struct{}{}
 	return &session{
 		backend: be,
-		state:   &state,
+		conn:    conn,
 	}, nil
 }
 
@@ -96,7 +96,7 @@ type session struct {
 	backend  *SMTPBackend
 	user     string
 	password string
-	state    *smtp.ConnectionState
+	conn     *smtp.Conn
 	msg      *SMTPMessage
 }
 
@@ -149,7 +149,7 @@ func (s *session) Data(r io.Reader) error {
 		return err
 	}
 	s.msg.Data = b
-	s.msg.State = s.state
+	s.msg.Conn = s.conn
 	s.msg.AuthUser = s.user
 	s.msg.AuthPass = s.password
 	s.backend.Messages = append(s.backend.Messages, s.msg)
@@ -166,7 +166,7 @@ func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
 		return err
 	}
 	s.msg.Data = b
-	s.msg.State = s.state
+	s.msg.Conn = s.conn
 	s.msg.AuthUser = s.user
 	s.msg.AuthPass = s.password
 	s.backend.Messages = append(s.backend.Messages, s.msg)
