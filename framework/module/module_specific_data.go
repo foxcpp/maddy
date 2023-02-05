@@ -49,6 +49,9 @@ func (msd *ModSpecificData) Set(m Module, perInstance bool, value interface{}) {
 	key := msd.modKey(m, perInstance)
 	msd.modDataLck.Lock()
 	defer msd.modDataLck.Unlock()
+	if msd.modData == nil {
+		msd.modData = make(map[string]interface{})
+	}
 	msd.modData[key] = value
 }
 
