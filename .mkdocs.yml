@@ -60,6 +60,7 @@ nav:
           - reference/table/sql_query.md
           - reference/table/chain.md
           - reference/table/email_localpart.md
+          - reference/table/email_with_domains.md
           - reference/table/auth.md
       - Authentication providers:
           - reference/auth/pass_table.md

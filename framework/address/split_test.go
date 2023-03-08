@@ -90,3 +90,21 @@ func TestUnquoteMbox(t *testing.T) {
 	test(`postmaster`, "postmaster", false)
 	test(`foo`, "foo", false)
 }
+
+func TestQuoteMbox(t *testing.T) {
+	test := func(inputMbox, expectedMbox string) {
+		t.Helper()
+
+		actualMbox := QuoteMbox(inputMbox)
+		if actualMbox != expectedMbox {
+			t.Errorf("wrong local part, want %s, got %s", actualMbox, actualMbox)
+		}
+	}
+
+	test(`no"no`, `"no\"no"`)
+	test(`no@no`, `"no@no"`)
+	test(`no no`, `"no no"`)
+	test(`no\no`, `"no\\no"`)
+	test("postmaster", `postmaster`)
+	test("foo", `foo`)
+}

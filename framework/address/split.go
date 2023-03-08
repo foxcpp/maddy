@@ -101,3 +101,32 @@ func UnquoteMbox(mbox string) (string, error) {
 
 	return mailboxB.String(), nil
 }
+
+// "specials" from RFC5322 grammar with dot removed (it is defined in grammar separately, for some reason)
+var mboxSpecial = map[rune]struct{}{
+	'(': {}, ')': {}, '<': {}, '>': {},
+	'[': {}, ']': {}, ':': {}, ';': {},
+	'@': {}, '\\': {}, ',': {},
+	'"': {}, ' ': {},
+}
+
+func QuoteMbox(mbox string) string {
+	var mailboxEsc strings.Builder
+	mailboxEsc.Grow(len(mbox))
+	quoted := false
+	for _, ch := range mbox {
+		if _, ok := mboxSpecial[ch]; ok {
+			if ch == '\\' || ch == '"' {
+				mailboxEsc.WriteRune('\\')
+			}
+			mailboxEsc.WriteRune(ch)
+			quoted = true
+		} else {
+			mailboxEsc.WriteRune(ch)
+		}
+	}
+	if quoted {
+		return `"` + mailboxEsc.String() + `"`
+	}
+	return mbox
+}
