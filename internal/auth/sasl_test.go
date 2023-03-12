@@ -75,13 +75,13 @@ func TestCreateSASL(t *testing.T) {
 
 	t.Run("PLAIN with authorization identity", func(t *testing.T) {
 		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string) error {
-			if id != "user1a" {
+			if id != "user1" {
 				t.Fatal("Wrong authorization identity passed:", id)
 			}
 			return nil
 		})
 
-		_, _, err := srv.Next([]byte("user1a\x00user1\x00aa"))
+		_, _, err := srv.Next([]byte("user1\x00user1\x00aa"))
 		if err != nil {
 			t.Error("Unexpected error:", err)
 		}
