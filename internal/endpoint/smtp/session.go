@@ -154,6 +154,7 @@ func (s *Session) AuthPlain(username, password string) error {
 		return s.endp.wrapErr("", true, "AUTH", err)
 	}
 
+	// saslAuth will handle AuthMap and AuthNormalize.
 	err := s.endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		s.endp.Log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)

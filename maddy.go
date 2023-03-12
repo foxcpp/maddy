@@ -31,10 +31,12 @@ import (
 	"github.com/caddyserver/certmagic"
 	parser "github.com/foxcpp/maddy/framework/cfgparser"
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/internal/authz"
 	maddycli "github.com/foxcpp/maddy/internal/cli"
 	"github.com/urfave/cli/v2"
 
@@ -297,6 +299,8 @@ func ReadGlobals(cfg []config.Node) (map[string]interface{}, []config.Node, erro
 	globals.StringList("auth_domains", false, false, nil, nil)
 	globals.Custom("log", false, false, defaultLogOutput, logOutput, &log.DefaultLogger.Out)
 	globals.Bool("debug", false, log.DefaultLogger.Debug, &log.DefaultLogger.Debug)
+	config.EnumMapped(globals, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto, nil)
+	modconfig.Table(globals, "auth_map", true, false, nil, nil)
 	globals.AllowUnknown()
 	unknown, err := globals.Process()
 	return globals.Values, unknown, err

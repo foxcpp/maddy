@@ -151,7 +151,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	cfg.Custom("auth_map", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, modconfig.TableDirective, &store.authMap)
-	cfg.String("auth_normalize", false, false, "precis_casefold_email", &authNormalize)
+	cfg.String("auth_normalize", false, false, "auto", &authNormalize)
 	cfg.Custom("delivery_map", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, modconfig.TableDirective, &store.deliveryMap)
@@ -189,6 +189,9 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
+	if authNormalize != "auto" {
+		store.Log.Msg("auth_normalize in storage.imapsql is deprecated and will be removed in the next release, use storage_map in imap config instead")
+	}
 	authNormFunc, ok := authz.NormalizeFuncs[authNormalize]
 	if !ok {
 		return errors.New("imapsql: unknown normalization function: " + authNormalize)
@@ -197,6 +200,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return authNormFunc(s)
 	}
 	if store.authMap != nil {
+		store.Log.Msg("auth_map in storage.imapsql is deprecated and will be removed in the next release, use storage_map in imap config instead")
 		store.authNormalize = func(ctx context.Context, username string) (string, error) {
 			username, err := authNormFunc(username)
 			if err != nil {

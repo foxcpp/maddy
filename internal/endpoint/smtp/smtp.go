@@ -43,6 +43,7 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
+	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"golang.org/x/net/idna"
@@ -67,6 +68,9 @@ type Endpoint struct {
 	maxLoggedRcptErrors int
 	maxReceived         int
 	maxHeaderBytes      int
+
+	authNormalize authz.NormalizeFunc
+	authMap       module.Table
 
 	listenersWg sync.WaitGroup
 
@@ -242,6 +246,9 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.String("hostname", true, true, "", &hostname)
+	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
+		&endp.authNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
@@ -299,6 +306,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 			return fmt.Errorf("%s: auth. provider must be set for submission endpoint", endp.name)
 		}
 	}
+	endp.saslAuth.AuthNormalize = endp.authNormalize
+	endp.saslAuth.AuthMap = endp.authMap
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		// The code below lacks handling to set AuthPassword. Don't
 		// override sasl.Plain handler so Login() will be called as usual.
@@ -354,6 +363,31 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	}
 
 	return nil
+}
+
+func (endp *Endpoint) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
+	saslUsername, err := endp.authNormalize(saslUsername)
+	if err != nil {
+		return "", err
+	}
+
+	if endp.authMap == nil {
+		return saslUsername, nil
+	}
+
+	mapped, ok, err := endp.authMap.Lookup(ctx, saslUsername)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Invalid credentials",
+		}
+	}
+
+	return mapped, nil
 }
 
 func (endp *Endpoint) NewSession(conn *smtp.Conn) (smtp.Session, error) {

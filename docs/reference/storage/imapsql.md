@@ -156,6 +156,8 @@ See auth\_normalize.
 **Syntax**: auth\_map **table** <br>
 **Default**: identity
 
+**DEPRECATED:** Use `storage_map` in imap config instead.
+
 Use specified table module to map authentication
 usernames to mailbox names.
 
@@ -164,6 +166,8 @@ auth\_map.
 
 **Syntax**: auth\_normalize _name_ <br>
 **Default**: precis\_casefold\_email
+
+**DEPRECATED:** Use `storage_map_normalize` in imap config instead.
 
 Normalization function to apply to authentication usernames before mapping
 them to mailboxes.

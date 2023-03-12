@@ -31,13 +31,14 @@ func MessageCheck(globals map[string]interface{}, args []string, block config.No
 	return check, nil
 }
 
-// deliveryDirective is a callback for use in config.Map.Custom.
+// DeliveryDirective is a callback for use in config.Map.Custom.
 //
 // It does all work necessary to create a module instance from the config
 // directive with the following structure:
-// directive_name mod_name [inst_name] [{
-//   inline_mod_config
-// }]
+//
+//	directive_name mod_name [inst_name] [{
+//	  inline_mod_config
+//	}]
 //
 // Note that if used configuration structure lacks directive_name before mod_name - this function
 // should not be used (call DeliveryTarget directly).
@@ -75,6 +76,17 @@ func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 		return nil, err
 	}
 	return backend, nil
+}
+
+// Table is a convenience wrapper for TableDirective.
+//
+//	cfg.Bool(...)
+//	modconfig.Table(cfg, "auth_map", false, false, nil, &mod.authMap)
+//	cfg.Process()
+func Table(cfg *config.Map, name string, inheritGlobal, required bool, defaultVal module.Table, store *module.Table) {
+	cfg.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, TableDirective, store)
 }
 
 func TableDirective(m *config.Map, node config.Node) (interface{}, error) {

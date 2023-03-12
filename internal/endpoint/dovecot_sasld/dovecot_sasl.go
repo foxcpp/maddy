@@ -28,9 +28,11 @@ import (
 	"github.com/emersion/go-sasl"
 	dovecotsasl "github.com/foxcpp/go-dovecot-sasl"
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
+	"github.com/foxcpp/maddy/internal/authz"
 )
 
 const modName = "dovecot_sasld"
@@ -41,6 +43,9 @@ type Endpoint struct {
 	saslAuth auth.SASLAuth
 
 	listenersWg sync.WaitGroup
+
+	authNormalize authz.NormalizeFunc
+	authMap       module.Table
 
 	srv *dovecotsasl.Server
 }
@@ -67,6 +72,9 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
+	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
+		&endp.authNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -74,6 +82,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.srv = dovecotsasl.NewServer()
 	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
+	endp.saslAuth.AuthMap = endp.authMap
+	endp.saslAuth.AuthNormalize = endp.authNormalize
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {

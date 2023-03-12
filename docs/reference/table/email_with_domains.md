@@ -12,8 +12,8 @@ with `table.chain`. Example:
 ```
 modify {
     replace_rcpt chain {
-        email_local_part
-        email_with_domains example.org example.com
+        step email_local_part
+        step email_with_domains example.org example.com
     }
 }
 ```

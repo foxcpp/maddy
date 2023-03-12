@@ -16,8 +16,8 @@ check.authorize_sender {
     malformed_action reject
     err_action reject
 
-    auth_normalize precis_casefold_email
-    from_normalize precis_casefold_email
+    auth_normalize auto
+    from_normalize auto
 }
 ```
 ```
@@ -88,25 +88,26 @@ What to do if From or Sender header fields contain malformed values.
 What to do if error happens during prepare\_email or user\_to\_email lookup.
 
 **Syntax:** auth\_normalize _action_ <br>
-**Default:** precis\_casefold\_email
+**Default:** auto
 
 Normalization function to apply to authorization username before
 further processing.
 
 Available options:
-- precis\_casefold\_email   PRECIS UsernameCaseMapped profile + Unicode form for domain
-- precis\_casefold         PRECIS UsernameCaseMapped profile for the entire string
-- precis\_email            PRECIS UsernameCasePreserved profile + Unicode form for domain
-- precis                  PRECIS UsernameCasePreserved profile for the entire string
-- casefold                Convert to lower case
-- noop                    Nothing
+- `auto`                    `precis_casefold_email` for valid emails, `precise_casefold` otherwise.
+- `precis_casefold_email`   PRECIS UsernameCaseMapped profile + U-labels form for domain
+- `precis_casefold`         PRECIS UsernameCaseMapped profile for the entire string
+- `precis_email`            PRECIS UsernameCasePreserved profile + U-labels form for domain
+- `precis`                  PRECIS UsernameCasePreserved profile for the entire string
+- `casefold`                Convert to lower case
+- `noop`                    Nothing
 
 PRECIS profiles are defined by RFC 8265. In short, they make sure
 that Unicode strings that look the same will be compared as if they were
 the same. CaseMapped profiles also convert strings to lower case.
 
 **Syntax:** from\_normalize _action_ <br>
-**Default:** precis\_casefold\_email
+**Default:** auto
 
 Normalization function to apply to email addresses before
 further processing.

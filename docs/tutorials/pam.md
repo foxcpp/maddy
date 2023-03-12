@@ -65,42 +65,12 @@ auth.pam local_authdb {
 
 ## Account names
 
-Since PAM does not use emails for authentication you should also
-configure storage backend to use username only as an account identifier,
-not full email addresses:
-```
-storage.imapsql local_mailboxes {
-    ...
-    delivery_map email_localpart
-    auth_normalize precis_casefold
-}
-```
+Since PAM does not use emails for authentication you should configure
+maddy to either strip domain part when checking credentials or do not
+use email when authenticating.
 
-This way, when authenticating as `foxcpp`, it will be mapped to
-`foxcpp` storage account. E.g. you will need to run
-`maddy imap-accts create foxcpp`, without the domain part.
-
-If you have existing accounts, you will need to rename them.
-
-Change to `auth_normalize` is necessary so that normalization function
-will not attempt to parse authentication identity as a email.
-
-When a email is received, `delivery_map email_localpart` will strip
-the domain part before looking up the account. That is,
-`foxcpp@example.org` will be become just `foxcpp`.
-
-You also need to make `authorize_sender` check (used in `submission` endpoint)
-accept non-email usernames:
-```
-authorize_sender {
-  ...
-  auth_normalize precis_casefold
-  user_to_email regexp "(.*)" "$1@$(primary_domain)"
-}
-```
-Note that is would work only if clients use only one domain as sender (`$(primary_domain)`).
-If you want to allow sending from all domains, you need to remove `authorize_sender` check
-altogether since it is not currently supported.
+See [Multiple domains configuration](/multiple-domains) for how to configure
+authentication.
 
 ## PAM service
 
