@@ -66,9 +66,12 @@ func (s *SASLAuth) SASLMechanisms() []string {
 }
 
 func (s *SASLAuth) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
-	saslUsername, err := s.AuthNormalize(saslUsername)
-	if err != nil {
-		return "", err
+	if s.AuthNormalize != nil {
+		var err error
+		saslUsername, err = s.AuthNormalize(saslUsername)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if s.AuthMap == nil {
