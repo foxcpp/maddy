@@ -122,6 +122,9 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 			if identity == "" {
 				identity = username
 			}
+			if identity != username {
+				return ErrInvalidAuthCred
+			}
 
 			err := s.AuthPlain(username, password)
 			if err != nil {
