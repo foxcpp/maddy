@@ -2,6 +2,8 @@ module github.com/foxcpp/maddy
 
 go 1.19
 
+replace github.com/emersion/go-smtp => github.com/dioad/go-smtp v0.16.0
+
 require (
 	blitiri.com.ar/go/spf v1.5.1
 	github.com/GehirnInc/crypt v0.0.0-20230320061759-8cc1b52080c5
