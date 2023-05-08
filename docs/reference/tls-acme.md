@@ -223,3 +223,13 @@ dns namedotcom {
 }
 ```
 
+- inwx
+
+```
+dns inwx {
+    user "..."
+    password "..."
+    # optional: if two-factor authentication is enabled
+    shared_secret "..."
+}
+```
