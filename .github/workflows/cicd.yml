@@ -117,8 +117,8 @@ jobs:
         id: meta
         with:
           images: |
-            foxcpp/maddy
-            ghcr.io/foxcpp/maddy
+            dioad/maddy
+            ghcr.io/dioad/maddy
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
