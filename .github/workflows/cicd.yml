@@ -37,14 +37,6 @@ jobs:
       run: |
         cd tests/
         ./run.sh
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./coverage.out
-        flags: unit
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./tests/coverage.out
-        flags: integration
   artifact-builder:
     name: "Prepare release artifacts"
     needs: build-and-test
