@@ -56,9 +56,9 @@ limits amount of messages tried to be delivered concurrently.
 **Default**: 20
 
 Attempt delivery up to _integer_ times. Note that no more attempts will be done
-is permanent error occured during previous attempt.
+is permanent error occurred during previous attempt.
 
-Delay before the next attempt will be increased exponentally using the
+Delay before the next attempt will be increased exponentially using the
 following formula: 15mins \* 1.2 ^ (n - 1) where n is the attempt number.
 This gives you approximately the following sequence of delays:
 18mins, 21mins, 25mins, 31mins, 37mins, 44mins, 53mins, 64mins, ...
@@ -67,7 +67,7 @@ This gives you approximately the following sequence of delays:
 **Default**: not specified
 
 This configuration contains pipeline configuration to be used for generated DSN
-(Delivery Status Notifiaction) messages.
+(Delivery Status Notification) messages.
 
 If this is block is not present in configuration, DSNs will not be generated.
 Note, however, this is not what you want most of the time.

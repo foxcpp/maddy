@@ -31,7 +31,7 @@ imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
 **Default**: global directive value
 
 TLS certificate & key to use. Fine-tuning of other TLS properties is possible
-by specifing a configuration block and options inside it:
+by specifying a configuration block and options inside it:
 ```
 tls cert.crt key.key {
     protocols tls1.2 tls1.3

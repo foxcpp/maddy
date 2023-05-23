@@ -127,5 +127,5 @@ the message pipeline action.
 
 Two codes are defined implicitly, exit code 1 causes the message to be rejected
 with a permanent error, exit code 2 causes the message to be quarantined. Both
-action can be overriden using the 'code' directive.
+action can be overridden using the 'code' directive.
 

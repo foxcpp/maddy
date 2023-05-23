@@ -37,7 +37,7 @@ auth.netauth {}
 
 OPTIONAL.
 
-Group that entities must posess to be able to use maddy services.
+Group that entities must possess to be able to use maddy services.
 This can be used to provide email to just a subset of the entities
 present in NetAuth.
 

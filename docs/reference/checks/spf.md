@@ -46,7 +46,7 @@ Enable verbose logging for check.spf.
 Make policy decision on MAIL FROM stage (before the message body is received).
 This makes it impossible to apply DMARC override (see above).
 
-**Syntax**: none\_action reject|qurantine|ignore <br>
+**Syntax**: none\_action reject|quarantine|ignore <br>
 **Default**: ignore
 
 Action to take when SPF policy evaluates to a 'none' result.
@@ -54,7 +54,7 @@ Action to take when SPF policy evaluates to a 'none' result.
 See [https://tools.ietf.org/html/rfc7208#section-2.6](https://tools.ietf.org/html/rfc7208#section-2.6) for meaning of
 SPF results.
 
-**Syntax**: neutral\_action reject|qurantine|ignore <br>
+**Syntax**: neutral\_action reject|quarantine|ignore <br>
 **Default**: ignore
 
 Action to take when SPF policy evaluates to a 'neutral' result.
@@ -62,22 +62,22 @@ Action to take when SPF policy evaluates to a 'neutral' result.
 See [https://tools.ietf.org/html/rfc7208#section-2.6](https://tools.ietf.org/html/rfc7208#section-2.6) for meaning of
 SPF results.
 
-**Syntax**: fail\_action reject|qurantine|ignore <br>
+**Syntax**: fail\_action reject|quarantine|ignore <br>
 **Default**: quarantine
 
 Action to take when SPF policy evaluates to a 'fail' result.
 
-**Syntax**: softfail\_action reject|qurantine|ignore <br>
+**Syntax**: softfail\_action reject|quarantine|ignore <br>
 **Default**: ignore
 
 Action to take when SPF policy evaluates to a 'softfail' result.
 
-**Syntax**: permerr\_action reject|qurantine|ignore <br>
+**Syntax**: permerr\_action reject|quarantine|ignore <br>
 **Default**: reject
 
 Action to take when SPF policy evaluates to a 'permerror' result.
 
-**Syntax**: temperr\_action reject|qurantine|ignore <br>
+**Syntax**: temperr\_action reject|quarantine|ignore <br>
 **Default**: reject
 
 Action to take when SPF policy evaluates to a 'temperror' result.
