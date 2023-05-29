@@ -19,7 +19,7 @@ check.dkim {
 **Syntax**: debug _boolean_ <br>
 **Default**: global directive value
 
-Log both successfull and unsuccessful check executions instead of just
+Log both successful and unsuccessful check executions instead of just
 unsuccessful.
 
 **Syntax**: required\_fields _string..._ <br>

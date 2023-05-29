@@ -195,5 +195,5 @@ require\_sender\_match checks. Only first address will be checked, however.
 
 Sign emails from subdomains using a top domain key.
 
-Allows only one domain to be specified (can be workarounded using modify.dkim
+Allows only one domain to be specified (can be worked around by using modify.dkim
 multiple times).

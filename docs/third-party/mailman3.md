@@ -20,7 +20,7 @@ lmtp_port: 8024
 
 After that, you will need to configure maddy to send messages to Mailman.
 
-The preferrable way of doing so is destination_in and table.regexp:
+The preferable way of doing so is destination_in and table.regexp:
 ```
 msgpipeline local_routing {
     destination_in regexp "first-mailinglist(-(bounces\+.*|confirm\+.*|join|leave|owner|request|subscribe|unsubscribe))?@lists.example.org" {

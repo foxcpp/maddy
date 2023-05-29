@@ -4,7 +4,7 @@ The check.dnsbl module implements checking of source IP and hostnames against a 
 of DNS-based Blackhole lists (DNSBLs).
 
 Its configuration consists of module configuration directives and a set
-of blocks specifing lists to use and kind of lookups to perform on them.
+of blocks specifying lists to use and kind of lookups to perform on them.
 
 ```
 check.dnsbl {

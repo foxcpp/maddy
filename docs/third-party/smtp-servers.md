@@ -43,7 +43,7 @@ lmtp unix:/run/maddy/lmtp.sock {
 Look up documentation for your SMTP server on how to make it
 send messages using LMTP to /run/maddy/lmtp.sock.
 
-To handle authentiation for Submission (client-server SMTP) SMTP server
+To handle authentication for Submission (client-server SMTP) SMTP server
 needs to access credentials database used by maddy. maddy implements
 server side of Dovecot authentication protocol so you can use
 it if SMTP server implements "Dovecot SASL" client.

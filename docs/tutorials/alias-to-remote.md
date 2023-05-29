@@ -88,7 +88,7 @@ msgpipeline local_routing {
 ## Bounce handling
 
 Once the message is delivered to `remote_queue`, it will follow the usual path
-for outbound delivery, including queueing and multiple attempts. This also
+for outbound delivery, including queuing and multiple attempts. This also
 means bounce messages will be generated on failures. When accepting messages
 from arbitrary senders via the 25 port, the DSN recipient will be whatever
 sender specifies in the MAIL FROM command. This is prone to [collateral spam]

@@ -15,8 +15,8 @@ Action to take when check fails. See Check actions for details.
 **Syntax**: debug _boolean_ <br>
 **Default**: global directive value
 
-Log both sucessfull and unsucessfull check executions instead of just
-unsucessfull.
+Log both successful and unsuccessful check executions instead of just
+unsuccessful.
 
 ## require\_mx\_record
 
