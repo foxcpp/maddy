@@ -20,7 +20,13 @@ smtp tcp://127.0.0.1:25 {
 You can also use a global `tls` directive to use automatically
 obtained certificates for all endpoints:
 ```
-tls &local_tls
+tls {
+    loader acme {
+        email maddy-acme@example.org
+        agreed
+        challenge dns-01
+    }
+}
 ```
 
 Currently the only supported challenge is dns-01 one therefore
@@ -86,6 +92,15 @@ using test\_ca until it succeeds then it will switch
 back to the one configured via 'ca' option.
 
 This avoids rate limit issues with production CA.
+
+**Syntax:** override\_domain _domain_ <br>
+**Default:** not set
+
+Override the domain to set the TXT record on for DNS-01 challenge.
+This is to delegate the challenge to a different domain.
+
+See https://www.eff.org/deeplinks/2018/02/technical-deep-dive-securing-automation-acme-dns-challenge-validation
+for explanation why this might be useful.
 
 **Syntax:** email _str_ <br>
 **Default:** not set
