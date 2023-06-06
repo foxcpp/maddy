@@ -138,7 +138,7 @@ mtasts {
 ```
 
 If the mx\_auth directive is not specified, no mechanisms are enabled. Note
-that, however, this makes outbound SMTP vulnerable to a numberous downgrade
+that, however, this makes outbound SMTP vulnerable to a numerous downgrade
 attacks and hence not recommended.
 
 It is possible to share the same set of policies for multiple 'remote' module
@@ -201,9 +201,9 @@ Filesystem directory to use for policies caching if 'cache' is set to 'fs'.
 
 Checks whether MX records are signed. Sets MX level to "dnssec" is they are.
 
-maddy does not validate DNSSEC signatures on its own. Instead it reslies on
+maddy does not validate DNSSEC signatures on its own. Instead it relies on
 the upstream resolver to do so by causing lookup to fail when verification
-fails and setting the AD flag for signed and verfified zones. As a safety
+fails and setting the AD flag for signed and verified zones. As a safety
 measure, if the resolver is not 127.0.0.1 or ::1, the AD flag is ignored.
 
 DNSSEC is currently not supported on Windows and other platforms that do not

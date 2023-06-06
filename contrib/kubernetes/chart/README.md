@@ -9,7 +9,7 @@ load balancer in front of the nodes.
 
 ## Requirement
 
-In order to run maddy properly, you need to have TLS secret undet name maddy present in the cluster. If you have commercial
+In order to run maddy properly, you need to have TLS secret under name maddy present in the cluster. If you have commercial
 certificate, you can create it by the following command:
 
 ```sh
@@ -20,9 +20,9 @@ If you use cert-manager, just create the secret under name maddy.
 
 ## Replication
 
-Default for this chart is 1 replica of maddy. If you try to increse this, you will probably get an error because of
+Default for this chart is 1 replica of maddy. If you try to increase this, you will probably get an error because of
 the busy ports 25, 143, 587, etc. We do not support this feature at the moment, so please use just 1 replica. Like said
-at the begining of this document, multiple replicas would probably require to switch do DaemonSet which would further require
+at the beginning of this document, multiple replicas would probably require to switch do DaemonSet which would further require
 to have TCP load balancer and shared storage between all replicas. This is not supported by this chart, sorry.
 This chart is used on one node cluster and then installation is straight forward, like described bellow, but if you have
 multiple node cluster, please use taints and tolerations to select the desired node. This chart supports tolerations to

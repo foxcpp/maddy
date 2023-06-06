@@ -1,7 +1,7 @@
 # Dovecot
 
 Builtin maddy IMAP server may not match your requirements in terms of
-performance, reliabilty or anything. For this reason it is possible to
+performance, reliability or anything. For this reason it is possible to
 integrate it with any external IMAP server that implements necessary
 protocols. Here is how to do it for Dovecot.
 
@@ -69,7 +69,7 @@ smtp tcp://127.0.0.1:587 {
     deliver_to &remote_queue
 }
 ```
-And configure IMAP servers's Submission service to forward outbound messages
+And configure IMAP server's Submission service to forward outbound messages
 there.
 
 Depending on how Submission service is implemented you may also need to route

@@ -22,7 +22,7 @@ Additionally, unit files apply strict sandboxing, limiting maddy permissions on
 the system to a bare minimum. Subset of these options makes it impossible for
 privileged authentication helper binaries to gain required permissions, so you
 may have to disable it when using system account-based authentication with
-maddy running as a unprivilieged user.
+maddy running as a unprivileged user.
 
 ## fail2ban configuration
 

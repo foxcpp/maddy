@@ -94,7 +94,8 @@ Normalization function to apply to authorization username before
 further processing.
 
 Available options:
-- `auto`                    `precis_casefold_email` for valid emails, `precise_casefold` otherwise.
+
+- `auto`                    `precis_casefold_email` for valid emails, `precis_casefold` otherwise.
 - `precis_casefold_email`   PRECIS UsernameCaseMapped profile + U-labels form for domain
 - `precis_casefold`         PRECIS UsernameCaseMapped profile for the entire string
 - `precis_email`            PRECIS UsernameCasePreserved profile + U-labels form for domain

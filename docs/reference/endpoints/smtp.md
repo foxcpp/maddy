@@ -49,7 +49,7 @@ Server name to use in SMTP banner.
 **Default**: global directive value
 
 TLS certificate & key to use. Fine-tuning of other TLS properties is possible
-by specifing a configuration block and options inside it:
+by specifying a configuration block and options inside it:
 ```
 tls cert.crt key.key {
     protocols tls1.2 tls1.3
@@ -111,7 +111,7 @@ clients that don't expect an error early in session.
 **Default**: 5
 
 Amount of RCPT-time errors that should be logged. Further errors will be
-handled silently. This is to prevent log flooding during email dictonary
+handled silently. This is to prevent log flooding during email dictionary
 attacks (address probing).
 
 **Syntax**: max\_received _integer_ <br>
@@ -202,7 +202,7 @@ for all messages ("all"), per-sender IP ("ip"), per-sender domain ("source") or
 per-recipient domain ("destination"). Having a scope other than "all" means
 that the restriction will be enforced independently for each group determined
 by scope. E.g.  "ip rate 20" means that the same IP cannot send more than 20
-messages in a scond. "destination concurrency 5" means that no more than 5
+messages per second. "destination concurrency 5" means that no more than 5
 messages can be sent in parallel to a single domain.
 
 **Note**: At the moment, SMTP endpoint on its own does not support per-recipient
@@ -233,7 +233,7 @@ messages can enter the server through both endpoints in one second.
 # Submission module (submission)
 
 Module 'submission' implements all functionality of the 'smtp' module and adds
-certain message preprocessing on top of it, additionaly authentication is
+certain message preprocessing on top of it, additionally authentication is
 always required.
 
 'submission' module checks whether addresses in header fields From, Sender, To,

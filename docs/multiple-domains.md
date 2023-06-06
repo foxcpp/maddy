@@ -28,7 +28,7 @@ the [introduction tutorial](tutorials/setting-up.md).
 
 Also note that you do not really need a separate TLS certificate for each
 managed domain. You can have one hostname e.g. mail.example.org set as an MX
-record for mulitple domains.
+record for multiple domains.
 
 **If you want multiple domains to share username namespace**, you should change
 several more options.
@@ -53,7 +53,7 @@ maddy imap-acct create user@example.com
 "user"**, you can set `storage_map` in IMAP endpoint and `delivery_map` in
 storage backend to use `email_locapart`:
 ```
-straoge.imapsql local_mailboxes {
+storage.imapsql local_mailboxes {
    ...
    delivery_map email_localpart # deliver "user@*" to "user"
 }
