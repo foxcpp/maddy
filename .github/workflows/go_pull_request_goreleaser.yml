@@ -2,7 +2,7 @@ name: Go Pull Request (goreleaser)
 
 on:
   pull_request:
-    branches: [ feat/reverse-proxy-mode ]
+    branches: [ "feat/reverse-proxy-mode" ]
 
 jobs:
 
