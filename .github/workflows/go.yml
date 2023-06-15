@@ -1,0 +1,132 @@
+name: Go
+
+on:
+  push:
+    branches: [ "feat/reverse-proxy-mode" ]
+
+jobs:
+
+  test:
+    name: Vet and Test
+    runs-on: ubuntu-20.04
+
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.18
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Configure github token
+        env:
+          TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+          TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+        run: |
+          git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Get dependencies
+        run: |
+          git config -l --global
+          go get -v -t -d ./...
+
+      - name: Generate
+        run: |
+          go generate ./...
+        env:
+          CI: false
+
+      - name: Vet
+        run: |
+          go vet ./...
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Test Race Conditions
+        run: go test -race -v ./...
+
+      - name: 'Qodana Scan'
+        uses: JetBrains/qodana-action@main
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        os: [ darwin, linux, windows ]
+        arch: [ amd64 ]
+        include:
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: arm64
+
+    env:
+      GOOS: ${{ matrix.os }}
+      GOARCH: ${{ matrix.arch }}
+      OUTPUT_BINARY: ${{ github.event.repository.name }}_${{ matrix.os }}_${{ matrix.arch }}
+      OUTPUT_ZIP: ${{ github.event.repository.name }}_${{ matrix.os }}_${{ matrix.arch }}.zip
+
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.18
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Configure github token
+        env:
+          TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+          TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+        run: |
+          git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Get dependencies
+        run: |
+          git config -l --global
+          go get -v -t -d ./...
+
+      - name: Build
+        run: |
+          go generate ./...
+          go build -o ${{ env.OUTPUT_BINARY }} -v .
+          zip ${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
+        env:
+          CI: false
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.OUTPUT_ZIP }}
+          path: ${{ env.OUTPUT_ZIP }}
+
+      - name: Upload S3 Release Asset
+        id: upload-s3-release-asset
+        env:
+          AWS_S3_BUCKET: releases.lab.dioad.net
+          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACT_UPLOAD_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACT_UPLOAD_S3_SECRET_ACCESS_KEY }}
+          AWS_REGION: 'eu-west-2'
+        run: |
+          sha256sum ${{ env.OUTPUT_ZIP }} > ${{ env.OUTPUT_ZIP }}_SHA256SUMS
+          aws s3 cp ${{ env.OUTPUT_ZIP }} s3://${{ env.AWS_S3_BUCKET }}/data/${{ github.event.repository.name }}/build/${{ env.OUTPUT_ZIP }} \
+             --no-guess-mime-type \
+             --content-type "application/zip" \
+             --no-progress \
+             --sse AES256
+          aws s3 cp ${{ env.OUTPUT_ZIP }}_SHA256SUMS s3://${{ env.AWS_S3_BUCKET }}/data/${{ github.event.repository.name }}/build/${{ env.OUTPUT_ZIP }}_SHA256SUMS \
+             --no-guess-mime-type \
+             --content-type "text/plain" \
+             --no-progress \
+             --sse AES256
