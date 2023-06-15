@@ -1,0 +1,46 @@
+
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+
+snapshot:
+  name_template: "{{ .Tag }}-{{ .ShortComit }}"
+
+builds:
+  - id: static
+    main: cmd/maddy/main.go
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+      - windows
+    goarch:
+      - arm64
+      - amd64
+    flags:
+      - -trimpath
+      - -buildmode=pie
+    ldflags:
+      - -extldflags='-fno-PIC -static'
+      - -X github.com/foxcpp/maddy.Version={{ .Version }}
+    tags:
+      - osuser
+      - go
+      - netgo
+      - static_build
+  - id: default
+    main: cmd/maddy/main.go
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+      - windows
+    goarch:
+      - arm64
+      - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -X github.com/foxcpp/maddy.Version={{ .Version }}
+
