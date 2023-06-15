@@ -5,7 +5,7 @@ before:
     - go generate ./...
 
 snapshot:
-  name_template: "{{ .Tag }}-{{ .ShortComit }}"
+  name_template: "{{ .Tag }}-{{ .ShortCommit }}"
 
 builds:
   - id: static
