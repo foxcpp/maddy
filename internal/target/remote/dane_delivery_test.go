@@ -460,11 +460,11 @@ func TestRemoteDelivery_DANE_TLSError(t *testing.T) {
 
 	// Cause failure through version incompatibility.
 	tgt.tlsConfig = &tls.Config{
-		MaxVersion: tls.VersionTLS12,
-		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+		MinVersion: tls.VersionTLS13,
 	}
-	srv.TLSConfig.MinVersion = tls.VersionTLS11
-	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	srv.TLSConfig.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MaxVersion = tls.VersionTLS12
 
 	// DANE should prevent the fallback to plaintext.
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})

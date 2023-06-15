@@ -78,6 +78,10 @@ func isVerifyError(err error) bool {
 		return true
 	}
 	_, ok = err.(x509.CertificateInvalidError)
+	if ok {
+		return true
+	}
+	_, ok = err.(*tls.CertificateVerificationError)
 	return ok
 }
 
