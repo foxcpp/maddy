@@ -9,6 +9,11 @@ if [ "${GOFLAGS}" = "" ]; then
 	GOFLAGS="-trimpath" # set some flags to avoid passing "" to go
 fi
 
+output_suffix=
+if [[ -n "${GOOS}" ]] && [[ -n "${GOARCH}" ]]; then
+  output_suffix="_${GOOS}_${GOARCH}"
+fi
+
 print_help() {
 	cat >&2 <<EOF
 Usage:
@@ -119,10 +124,10 @@ build() {
 		# using only POSIX sh features (and even with Bash extensions I can't figure it out).
 		go build -trimpath -buildmode pie -tags "$tags osusergo netgo static_build" \
 			-ldflags "-extldflags '-fno-PIC -static' -X \"github.com/foxcpp/maddy.Version=${version}\"" \
-			-o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
+			-o "${builddir}/maddy${output_suffix}" ${GOFLAGS} ./cmd/maddy
 	else
 		echo "-- Building main server executable..." >&2
-		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy" ${GOFLAGS} ./cmd/maddy
+		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy${output_suffix}" ${GOFLAGS} ./cmd/maddy
 	fi
 
 	build_man_pages
