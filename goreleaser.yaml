@@ -1,0 +1,111 @@
+
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+
+dist: goreleaser-dist
+
+snapshot:
+  name_template: "{{ .Tag }}-{{ .ShortCommit }}"
+
+builds:
+  - id: static
+    main: cmd/maddy/main.go
+#    env:
+#      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    flags:
+      - -trimpath
+      - -buildmode=pie
+    ldflags:
+      - -extldflags=-fno-PIC
+      - -extldflags=-static
+      - -X github.com/foxcpp/maddy.Version={{ .Version }}
+    tags:
+      - osuser
+      - go
+      - netgo
+      - static_build
+  - id: default
+    main: cmd/maddy/main.go
+#    env:
+#      - CGO_ENABLED=1
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -X github.com/foxcpp/maddy.Version={{ .Version }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Ar
+m }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+nfpms:
+  - package_name: dioad-maddy
+    homepage: https://maddy.email
+    description: Dioad fork of the Awesome Maddy Email Server
+    maintainer: Patrick Downey <patrick.downey@dioadconsulting.com>
+    license: GPL-3.0
+    vendor: Dioad Consulting Ltd.
+    contents:
+      - src: ./dist/systemd/maddy.service
+        dst: /usr/lib/systemd/system/maddy.service
+      - src: ./dist/systemd/maddy@.service
+        dst: /usr/lib/systemd/system/maddy@.service
+      - src: ./dist/fail2ban/jail.d/maddy-auth.conf
+        dst: /etc/fail22ban/jail.d/maddy-auth.conf
+      - src: ./dist/fail2ban/jail.d/maddy-dictionary-attack.conf
+        dst: /etc/fail22ban/jail.d/maddy-dictionary-attack.conf
+      - src: ./dist/fail2ban/filter.d/maddy-auth.conf
+        dst: /etc/fail22ban/filter.d/maddy-auth.conf
+      - src: ./dist/fail2ban/filter.d/maddy-dictionary-attack.conf
+        dst: /etc/fail22ban/filter.d/maddy-dictionary-attack.conf
+    formats:
+      - apk
+      - deb
+      - rpm
+
+checksum:
+  # docker-base_0.0.3_SHA256SUMS
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SU
+MS"
+  algorithm: sha256
+
+publishers:
+  - name: aws S3
+    cmd: aws s3 cp --quiet --sse AES256 {{ abs .ArtifactPath
+}} s3://releases.lab.dioad.net/data/{{ .ProjectName }}/{{ .V
+ersion }}/{{ .ArtifactName }}
+    checksum: true
+    env:
+      - AWS_DEFAULT_REGION={{ .Env.AWS_DEFAULT_REGION }}
+      - AWS_EC2_METADATA_DISABLED={{ .Env.AWS_EC2_METADATA_D
+ISABLED }}
+      - AWS_ACCESS_KEY_ID={{ .Env.AWS_ACCESS_KEY_ID }}
+      - AWS_SECRET_ACCESS_KEY={{ .Env.AWS_SECRET_ACCESS_KEY
+}}
+
+
