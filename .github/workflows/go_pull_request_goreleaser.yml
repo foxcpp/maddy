@@ -1,0 +1,98 @@
+name: Go Pull Request (goreleaser)
+
+on:
+  pull_request:
+    branches: [ feat/reverse-proxy-mode ]
+
+jobs:
+
+  test:
+    name: Vet and Test
+    runs-on: ubuntu-20.04
+
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.20
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Configure github token
+        env:
+          TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+          TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+        run: |
+          git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Get dependencies
+        run: |
+          git config -l --global
+          go get -v -t -d ./...
+
+      - name: Generate
+        run: |
+          go generate ./...
+
+      - name: Vet
+        run: |
+          go vet ./... || true
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Test Race Conditions
+        run: go test -race -v ./...
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-20.04
+
+    env:
+      GOOS: linux
+      GOARCH: amd64
+
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.18
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Configure github token
+        env:
+          TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+          TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+        run: |
+          git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          config-inline: |
+            [worker.oci]
+              platforms = [ "linux/amd64", "linux/arm64/v8"  ]
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          version: latest
+          args: release --rm-dist --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          AWS_REGION: eu-west-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACT_UPLOAD_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACT_UPLOAD_S3_SECRET_ACCESS_KEY }}
+
