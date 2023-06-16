@@ -621,10 +621,10 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_TLSFail(t *testing.T) {
 	})
 	tgt.relaxedREQUIRETLS = true
 	// Cause failure through version incompatibility.
-	clientCfg.MaxVersion = tls.VersionTLS12
-	clientCfg.MinVersion = tls.VersionTLS12
-	srv.TLSConfig.MinVersion = tls.VersionTLS11
-	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	clientCfg.MaxVersion = tls.VersionTLS13
+	clientCfg.MinVersion = tls.VersionTLS13
+	srv.TLSConfig.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MaxVersion = tls.VersionTLS12
 	tgt.tlsConfig = clientCfg
 	defer tgt.Close()
 

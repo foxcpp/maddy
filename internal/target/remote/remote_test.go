@@ -868,10 +868,10 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 	}
 
 	// Cause failure through version incompatibility.
-	clientCfg.MaxVersion = tls.VersionTLS12
-	clientCfg.MinVersion = tls.VersionTLS12
-	srv.TLSConfig.MinVersion = tls.VersionTLS11
-	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	clientCfg.MaxVersion = tls.VersionTLS13
+	clientCfg.MinVersion = tls.VersionTLS13
+	srv.TLSConfig.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MaxVersion = tls.VersionTLS12
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
@@ -942,10 +942,10 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	}
 
 	// Cause failure through version incompatibility.
-	clientCfg.MaxVersion = tls.VersionTLS12
-	clientCfg.MinVersion = tls.VersionTLS12
-	srv.TLSConfig.MinVersion = tls.VersionTLS11
-	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	clientCfg.MaxVersion = tls.VersionTLS13
+	clientCfg.MinVersion = tls.VersionTLS13
+	srv.TLSConfig.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MaxVersion = tls.VersionTLS12
 
 	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		&localPolicy{minTLSLevel: module.TLSEncrypted},
@@ -1002,10 +1002,10 @@ func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
 	}
 
 	// Cause failure through version incompatibility.
-	clientCfg.MaxVersion = tls.VersionTLS12
-	clientCfg.MinVersion = tls.VersionTLS12
-	srv.TLSConfig.MinVersion = tls.VersionTLS11
-	srv.TLSConfig.MaxVersion = tls.VersionTLS11
+	clientCfg.MaxVersion = tls.VersionTLS13
+	clientCfg.MinVersion = tls.VersionTLS13
+	srv.TLSConfig.MinVersion = tls.VersionTLS12
+	srv.TLSConfig.MaxVersion = tls.VersionTLS12
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
