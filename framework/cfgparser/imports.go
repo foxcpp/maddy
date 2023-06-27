@@ -79,7 +79,10 @@ func (ctx *parseContext) resolveImport(node Node, name string, expansionDepth in
 		return subtree, nil
 	}
 
-	file := filepath.Join(filepath.Dir(ctx.fileLocation), name)
+	file := name
+	if !filepath.IsAbs(name) {
+		file = filepath.Join(filepath.Dir(ctx.fileLocation), name)
+	}
 	src, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) {
