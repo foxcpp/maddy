@@ -20,6 +20,8 @@ package address
 
 import (
 	"strings"
+
+	"golang.org/x/net/idna"
 )
 
 /*
@@ -109,17 +111,23 @@ func ValidMailboxName(mbox string) bool {
 
 // ValidDomain checks whether the specified string is a valid DNS domain.
 func ValidDomain(domain string) bool {
-	if len(domain) > 255 {
+	if len(domain) > 255 || len(domain) == 0 {
 		return false
 	}
-	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
+	if strings.HasPrefix(domain, ".") {
 		return false
 	}
 	if strings.Contains(domain, "..") {
 		return false
 	}
 
-	labels := strings.Split(domain, ".")
+	// Length checks are to be applied to A-labels form.
+	// maddy uses U-labels representation across the code (for lookups, etc).
+	domainASCII, err := idna.ToASCII(domain)
+	if err != nil {
+		return false
+	}
+	labels := strings.Split(domainASCII, ".")
 	for _, label := range labels {
 		if len(label) > 64 {
 			return false

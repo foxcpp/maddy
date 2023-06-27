@@ -134,6 +134,59 @@ func (m *Map) Enum(name string, inheritGlobal, required bool, allowed []string, 
 	}, store)
 }
 
+// EnumMapped is similar to Map.Enum but maps a stirng to a custom type.
+func EnumMapped[V any](m *Map, name string, inheritGlobal, required bool, mapped map[string]V, defaultVal V, store *V) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(_ *Map, node Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, NodeErr(node, "can't declare a block here")
+		}
+		if len(node.Args) != 1 {
+			return nil, NodeErr(node, "expected exactly one argument")
+		}
+
+		val, ok := mapped[node.Args[0]]
+		if !ok {
+			validValues := make([]string, 0, len(mapped))
+			for k := range mapped {
+				validValues = append(validValues, k)
+			}
+			return nil, NodeErr(node, "invalid argument, valid values are: %v", validValues)
+		}
+
+		return val, nil
+	}, store)
+}
+
+// EnumListMapped is similar to Map.EnumList but maps a stirng to a custom type.
+func EnumListMapped[V any](m *Map, name string, inheritGlobal, required bool, mapped map[string]V, defaultVal []V, store *[]V) {
+	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
+		return defaultVal, nil
+	}, func(_ *Map, node Node) (interface{}, error) {
+		if len(node.Children) != 0 {
+			return nil, NodeErr(node, "can't declare a block here")
+		}
+		if len(node.Args) == 0 {
+			return nil, NodeErr(node, "expected at least one argument")
+		}
+
+		values := make([]V, 0, len(node.Args))
+		for _, arg := range node.Args {
+			val, ok := mapped[arg]
+			if !ok {
+				validValues := make([]string, 0, len(mapped))
+				for k := range mapped {
+					validValues = append(validValues, k)
+				}
+				return nil, NodeErr(node, "invalid argument, valid values are: %v", validValues)
+			}
+			values = append(values, val)
+		}
+		return values, nil
+	}, store)
+}
+
 // Duration maps configuration directive to a time.Duration variable.
 //
 // Directive must be in form 'name duration' where duration is any string accepted by

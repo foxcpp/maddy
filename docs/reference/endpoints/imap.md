@@ -20,6 +20,10 @@ imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
     insecure_auth no
     auth pam
     storage &local_mailboxes
+    auth_map identity
+    auth_map_normalize auto
+    storage_map identity
+    storage_map_normalize auto
 }
 ```
 
@@ -35,6 +39,25 @@ tls cert.crt key.key {
 ```
 
 See [TLS configuration / Server](/reference/tls/#server-side) for details.
+
+**Syntax**: proxy_protocol _trusted ips..._ { ... } <br>
+**Default**: not enabled
+
+Enable use of HAProxy PROXY protocol. Supports both v1 and v2 protocols.
+If a list of trusted IP addresses or subnets is provided, only connections
+from those will be trusted.
+
+TLS for the channel between the proxies and maddy can be configured
+using a 'tls' directive:
+```
+proxy_protocol {
+    trust 127.0.0.1 ::1 192.168.0.1/24
+    tls &proxy_tls
+}
+```
+Note that the top-level 'tls' directive is not inherited here. If you
+need TLS on top of the PROXY protocol, securing the protocol header,
+you must declare TLS explicitly.
 
 **Syntax**: io\_debug _boolean_ <br>
 **Default**: no
@@ -63,3 +86,45 @@ Use the specified module for authentication.
 
 Use the specified module for message storage.
 **Required.**
+
+**Syntax**: storage\_map _module\_reference_ <br>
+**Default**: identity
+
+Use the specified table to map SASL usernames to storage account names.
+
+Before username is looked up, it is normalized using function defined by
+`storage_map_normalize`.
+
+This directive is useful if you want users user@example.org and user@example.com
+to share the same storage account named "user". In this case, use
+```
+    storage_map email_localpart
+```
+
+Note that `storage_map` does not affect the username passed to the
+authentication provider.
+
+It also does not affect how message delivery is handled, you should specify
+`delivery_map` in storage module to define how to map email addresses
+to storage accounts. E.g.
+```
+    storage.imapsql local_mailboxes {
+        ...
+        delivery_map email_localpart # deliver "user@*" to mailbox for "user"
+    }
+```
+
+**Syntax**: storage\_map_normalize _function_ <br>
+**Default**: auto
+
+Same as `auth_map_normalize` but for `storage_map`.
+
+**Syntax**: auth\_map_normalize _function_ <br>
+**Default**: auto
+
+Overrides global `auth_map_normalize` value for this endpoint.
+
+See [Global configuration](/reference/global-config) for details.
+
+
+

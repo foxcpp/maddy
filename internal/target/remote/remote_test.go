@@ -982,7 +982,8 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 
 	// But it should still be delivered over TLS.
-	if !be.Messages[0].State.TLS.HandshakeComplete {
+	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
+	if !ok || !tlsState.HandshakeComplete {
 		t.Fatal("Message was not delivered over TLS")
 	}
 }

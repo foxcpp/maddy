@@ -9,26 +9,28 @@ import (
 )
 
 func AuthorizeEmailUse(ctx context.Context, username string, addrs []string, mapping module.Table) (bool, error) {
+	var validEmails []string
+
+	if multi, ok := mapping.(module.MultiTable); ok {
+		var err error
+		validEmails, err = multi.LookupMulti(ctx, username)
+		if err != nil {
+			return false, fmt.Errorf("authz: %w", err)
+		}
+	} else {
+		validEmail, ok, err := mapping.Lookup(ctx, username)
+		if err != nil {
+			return false, fmt.Errorf("authz: %w", err)
+		}
+		if ok {
+			validEmails = []string{validEmail}
+		}
+	}
+
 	for _, addr := range addrs {
 		_, domain, err := address.Split(addr)
 		if err != nil {
 			return false, fmt.Errorf("authz: %w", err)
-		}
-
-		var validEmails []string
-		if multi, ok := mapping.(module.MultiTable); ok {
-			validEmails, err = multi.LookupMulti(ctx, username)
-			if err != nil {
-				return false, fmt.Errorf("authz: %w", err)
-			}
-		} else {
-			validEmail, ok, err := mapping.Lookup(ctx, username)
-			if err != nil {
-				return false, fmt.Errorf("authz: %w", err)
-			}
-			if ok {
-				validEmails = []string{validEmail}
-			}
 		}
 
 		for _, ent := range validEmails {

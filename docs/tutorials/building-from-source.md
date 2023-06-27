@@ -6,12 +6,12 @@ You need C toolchain, Go toolchain and Make:
 
 On Debian-based system this should work:
 ```
-apt-get install golang-1.17 gcc libc6-dev make
+apt-get install golang-1.18 gcc libc6-dev make
 ```
 
 Additionally, if you want manual pages, you should also have scdoc installed.
 Figuring out the appropriate way to get scdoc is left as an exercise for
-reader (for Ubuntu 19.10 it is in repositories).
+reader (for Ubuntu 22.04 LTS it is in repositories).
 
 ## Recent Go toolchain
 
@@ -20,8 +20,8 @@ available in some distributions (*cough* Debian *cough*).
 
 It should not be hard to grab a recent built toolchain from golang.org:
 ```
-wget "https://dl.google.com/go/go1.17.11.linux-amd64.tar.gz"
-tar xf "go1.17.11.linux-amd64.tar.gz"
+wget "https://dl.google.com/go/go1.18.9.linux-amd64.tar.gz"
+tar xf "go1.18.19.linux-amd64.tar.gz"
 export GOROOT="$PWD/go"
 export PATH="$PWD/go/bin:$PATH"
 ```

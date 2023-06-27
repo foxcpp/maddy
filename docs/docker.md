@@ -5,7 +5,7 @@ Official Docker image is available from Docker Hub.
 It expects configuration file to be available at /data/maddy.conf.
 
 If /data is a Docker volume, then default configuration will be placed there
-automatically. If it is used, then MADDY_HOSTNAME, MADDY_DOMAIN environment 
+automatically. If it is used, then MADDY_HOSTNAME, MADDY_DOMAIN environment
 variables control the host name and primary domain for the server. TLS
 certificate should be placed in /data/tls/fullchain.pem, private key in
 /data/tls/privkey.pem
@@ -15,8 +15,8 @@ DKIM keys are generated in /data/dkim_keys directory.
 ## Image tags
 
 - `latest` - A latest stable release. May contain breaking changes.
-- `X.Y` - A specific feature branch, it is recommended to use these tags to 
-  receive bugfixes without the risk of feature-related regressions or breaking 
+- `X.Y` - A specific feature branch, it is recommended to use these tags to
+  receive bugfixes without the risk of feature-related regressions or breaking
   changes.
 - `X.Y.Z` - A specific stable release
 
@@ -30,8 +30,8 @@ All standard ports, as described in maddy docs.
 
 ## Volumes
 
-`/data` - maddy state directory. Databases, queues, etc are stored here. You 
-might want to mount a named volume there. The main configuration file is stored 
+`/data` - maddy state directory. Databases, queues, etc are stored here. You
+might want to mount a named volume there. The main configuration file is stored
 here too (`/data/maddy.conf`).
 
 ## Management utility
@@ -47,7 +47,7 @@ docker run --rm -it -v maddydata:/data foxcpp/maddy:0.6.0 imap-acct create foxcp
 Use the same image version as the running server. Things may break badly
 otherwise.
 
-Note that, if you modify messages using maddyctl while the server is running -
+Note that, if you modify messages using maddy subcommands while the server is running -
 you must ensure that  /tmp from the server is accessible for the management
 command. One way to it is to run it using `docker exec` instead of `docker run`:
 ```
@@ -70,6 +70,6 @@ docker run \
   foxcpp/maddy:0.6
 ```
 
-It will fail on first startup. Copy TLS certificate to /data/tls/fullchain.pem 
-and key to /data/tls/privkey.pem. Run the server again. Finish DNS configuration 
+It will fail on first startup. Copy TLS certificate to /data/tls/fullchain.pem
+and key to /data/tls/privkey.pem. Run the server again. Finish DNS configuration
 (DKIM keys, etc) as described in [tutorials/setting-up/](tutorials/setting-up/).

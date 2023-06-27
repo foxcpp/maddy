@@ -74,7 +74,7 @@ pass_table local_authdb {
 }
 ```
 
-6. Use `maddyctl creds create ACCOUNT_NAME` to add credentials to `pass_table`
+6. Use `maddy creds create ACCOUNT_NAME` to add credentials to `pass_table`
    store.
 
 7. Start the server back.

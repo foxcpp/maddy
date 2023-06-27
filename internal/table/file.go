@@ -124,44 +124,61 @@ func (f *File) reloader() {
 	for {
 		select {
 		case <-t.C:
-			info, err := os.Stat(f.file)
-			if err != nil {
-				if os.IsNotExist(err) {
-					f.mLck.Lock()
-					f.m = map[string][]string{}
-					f.mStamp = time.Now()
-					f.mLck.Unlock()
-					continue
-				}
-				f.log.Error("os stat", err)
-			}
-			if info.ModTime().Before(f.mStamp) {
-				continue // reload not necessary
-			}
+			f.reload()
+
 		case <-f.forceReload:
+			f.reload()
+
 		case <-f.stopReloader:
 			f.stopReloader <- struct{}{}
 			return
 		}
+	}
+}
 
-		f.log.Debugf("reloading")
+func (f *File) reload() {
+	info, err := os.Stat(f.file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			f.mLck.Lock()
+			f.m = map[string][]string{}
+			f.mLck.Unlock()
+			return
+		}
+		f.log.Error("os stat", err)
+	}
+	if info.ModTime().Before(f.mStamp) || time.Since(info.ModTime()) < (reloadInterval/2) {
+		return // reload not necessary
+	}
 
-		newm := make(map[string][]string, len(f.m)+5)
-		if err := readFile(f.file, newm); err != nil {
-			if os.IsNotExist(err) {
-				f.log.Printf("ignoring non-existent file: %s", f.file)
-				continue
-			}
+	f.log.Debugf("reloading")
 
-			f.log.Println(err)
-			continue
+	newm := make(map[string][]string, len(f.m)+5)
+	if err := readFile(f.file, newm); err != nil {
+		if os.IsNotExist(err) {
+			f.log.Printf("ignoring non-existent file: %s", f.file)
+			return
 		}
 
-		f.mLck.Lock()
-		f.m = newm
-		f.mStamp = time.Now()
-		f.mLck.Unlock()
+		f.log.Println(err)
+		return
 	}
+	// after reading we need to check whether file has changed in between
+	info2, err := os.Stat(f.file)
+	if err != nil {
+		f.log.Println(err)
+		return
+	}
+
+	if !info2.ModTime().Equal(info.ModTime()) {
+		// file has changed in the meantime
+		return
+	}
+
+	f.mLck.Lock()
+	f.m = newm
+	f.mStamp = info.ModTime()
+	f.mLck.Unlock()
 }
 
 func (f *File) Close() error {

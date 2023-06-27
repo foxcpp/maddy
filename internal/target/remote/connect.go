@@ -238,7 +238,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 			return nil, &exterrors.SMTPError{
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
-				Message:      "Failed to estabilish the MX record authenticity (REQUIRETLS)",
+				Message:      "Failed to establish the MX record authenticity (REQUIRETLS)",
 				Misc: map[string]interface{}{
 					"mx_level": conn.mxLevel,
 				},

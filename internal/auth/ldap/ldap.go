@@ -183,6 +183,7 @@ func (a *Auth) getConn() (*ldap.Conn, error) {
 	if a.conn == nil {
 		conn, err := a.newConn()
 		if err != nil {
+			a.connLock.Unlock()
 			return nil, err
 		}
 		a.conn = conn
@@ -191,6 +192,7 @@ func (a *Auth) getConn() (*ldap.Conn, error) {
 		a.conn.Close()
 		conn, err := a.newConn()
 		if err != nil {
+			a.connLock.Unlock()
 			return nil, err
 		}
 		a.conn = conn

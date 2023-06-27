@@ -27,14 +27,16 @@ import (
 )
 
 type EmailLocalpart struct {
-	modName  string
-	instName string
+	modName       string
+	instName      string
+	allowNonEmail bool
 }
 
 func NewEmailLocalpart(modName, instName string, _, _ []string) (module.Module, error) {
 	return &EmailLocalpart{
-		modName:  modName,
-		instName: instName,
+		modName:       modName,
+		instName:      instName,
+		allowNonEmail: modName == "table.email_localpart_optional",
 	}, nil
 }
 
@@ -53,6 +55,9 @@ func (s *EmailLocalpart) InstanceName() string {
 func (s *EmailLocalpart) Lookup(ctx context.Context, key string) (string, bool, error) {
 	mbox, _, err := address.Split(key)
 	if err != nil {
+		if s.allowNonEmail {
+			return key, true, nil
+		}
 		// Invalid email, no local part mapping.
 		return "", false, nil
 	}
@@ -61,4 +66,5 @@ func (s *EmailLocalpart) Lookup(ctx context.Context, key string) (string, bool, 
 
 func init() {
 	module.Register("table.email_localpart", NewEmailLocalpart)
+	module.Register("table.email_localpart_optional", NewEmailLocalpart)
 }

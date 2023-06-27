@@ -33,7 +33,7 @@ type PlainAuth interface {
 	AuthPlain(username, password string) error
 }
 
-// PlainUserDB is a local credentials store that can be managed using maddyctl
+// PlainUserDB is a local credentials store that can be managed using maddy command
 // utility.
 type PlainUserDB interface {
 	PlainAuth

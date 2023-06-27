@@ -107,10 +107,15 @@ func (s *Session) Reset() {
 }
 
 func (s *Session) releaseLimits() {
-	_, domain, err := address.Split(s.mailFrom)
-	if err != nil {
-		return
+	domain := ""
+	if s.mailFrom != "" {
+		var err error
+		_, domain, err = address.Split(s.mailFrom)
+		if err != nil {
+			return
+		}
 	}
+
 	addr, ok := s.msgMeta.Conn.RemoteAddr.(*net.TCPAddr)
 	if !ok {
 		addr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
@@ -149,6 +154,7 @@ func (s *Session) AuthPlain(username, password string) error {
 		return s.endp.wrapErr("", true, "AUTH", err)
 	}
 
+	// saslAuth will handle AuthMap and AuthNormalize.
 	err := s.endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		s.endp.Log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)

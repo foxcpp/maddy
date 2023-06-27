@@ -33,12 +33,12 @@ smtp tcp://0.0.0.0:587 {
 pass\_table expects the used table to contain certain structured values with
 hash algorithm name, salt and other necessary parameters.
 
-You should use 'maddyctl hash' command to generate suitable values.
-See 'maddyctl hash --help' for details.
+You should use 'maddy hash' command to generate suitable values.
+See 'maddy hash --help' for details.
 
-## maddyctl creds
+## maddy creds
 
 If the underlying table is a "mutable" table (see maddy-tables(5)) then
-the 'maddyctl creds' command can be used to modify the underlying tables
+the 'maddy creds' command can be used to modify the underlying tables
 via pass\_table module. It will act on a "local credentials store" and will write
 appropriate hash values to the table.

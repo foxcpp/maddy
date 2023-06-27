@@ -229,8 +229,10 @@ func TestDownstreamDelivery_AttemptTLS(t *testing.T) {
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-	if !be.Messages[0].State.TLS.HandshakeComplete {
-		t.Error("Expected TLS to be used, but it was not")
+
+	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
+	if !ok || !tlsState.HandshakeComplete {
+		t.Fatal("Message was not delivered over TLS")
 	}
 }
 
@@ -278,8 +280,9 @@ func TestDownstreamDelivery_RequireTLS(t *testing.T) {
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-	if !be.Messages[0].State.TLS.HandshakeComplete {
-		t.Error("Expected TLS to be used, but it was not")
+	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
+	if !ok || !tlsState.HandshakeComplete {
+		t.Fatal("Message was not delivered over TLS")
 	}
 }
 
@@ -305,8 +308,9 @@ func TestDownstreamDelivery_RequireTLS_Implicit(t *testing.T) {
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-	if !be.Messages[0].State.TLS.HandshakeComplete {
-		t.Error("Expected TLS to be used, but it was not")
+	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
+	if !ok || !tlsState.HandshakeComplete {
+		t.Fatal("Message was not delivered over TLS")
 	}
 }
 

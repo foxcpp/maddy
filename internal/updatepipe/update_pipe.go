@@ -19,10 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Package updatepipe implements utilities for serialization and transport of
 // IMAP update objects between processes and machines.
 //
-// Its main goal is provide maddyctl with ability to properly notify the server
-// about changes without relying on it to coordinate access in the first place
-// (so maddyctl can work without a running server or with a broken server
-// instance).
+// Its main goal is provide maddy command with ability to properly notify the
+// server about changes without relying on it to coordinate access in the
+// first place (so maddy command can work without a running server or with a
+// broken server instance).
 //
 // Additionally, it can be used to transfer IMAP updates between replicated
 // nodes.

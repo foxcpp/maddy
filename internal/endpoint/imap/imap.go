@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package imap
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -42,19 +43,27 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
+	"github.com/foxcpp/maddy/internal/authz"
+	"github.com/foxcpp/maddy/internal/proxy_protocol"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 
 type Endpoint struct {
-	addrs     []string
-	serv      *imapserver.Server
-	listeners []net.Listener
-	Store     module.Storage
+	addrs         []string
+	serv          *imapserver.Server
+	listeners     []net.Listener
+	proxyProtocol *proxy_protocol.ProxyProtocol
+	Store         module.Storage
 
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
 
 	saslAuth auth.SASLAuth
+
+	storageNormalize authz.NormalizeFunc
+	storageMap       module.Table
+	authNormalize    authz.NormalizeFunc
+	authMap          module.Table
 
 	Log log.Logger
 }
@@ -83,10 +92,17 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
+	cfg.Custom("proxy_protocol", false, false, nil, proxy_protocol.ProxyProtocolDirective, &endp.proxyProtocol)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)
 	cfg.Bool("debug", true, false, &endp.Log.Debug)
+	config.EnumMapped(cfg, "storage_map_normalize", false, false, authz.NormalizeFuncs, authz.NormalizeAuto,
+		&endp.storageNormalize)
+	modconfig.Table(cfg, "storage_map", false, false, nil, &endp.storageMap)
+	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
+		&endp.authNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -123,6 +139,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
+	endp.saslAuth.AuthNormalize = endp.authNormalize
+	endp.saslAuth.AuthMap = endp.authMap
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
@@ -150,6 +168,10 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 				return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
 			}
 			l = tls.NewListener(l, endp.tlsConfig)
+		}
+
+		if endp.proxyProtocol != nil {
+			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.Log)
 		}
 
 		endp.listeners = append(endp.listeners, l)
@@ -194,8 +216,63 @@ func (endp *Endpoint) Close() error {
 	return nil
 }
 
+func (endp *Endpoint) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
+	saslUsername, err := endp.authNormalize(saslUsername)
+	if err != nil {
+		return "", err
+	}
+
+	if endp.authMap == nil {
+		return saslUsername, nil
+	}
+
+	mapped, ok, err := endp.authMap.Lookup(ctx, saslUsername)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", imapbackend.ErrInvalidCredentials
+	}
+
+	return mapped, nil
+}
+
+func (endp *Endpoint) usernameForStorage(ctx context.Context, saslUsername string) (string, error) {
+	saslUsername, err := endp.storageNormalize(saslUsername)
+	if err != nil {
+		return "", err
+	}
+
+	if endp.storageMap == nil {
+		return saslUsername, nil
+	}
+
+	mapped, ok, err := endp.storageMap.Lookup(ctx, saslUsername)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", imapbackend.ErrInvalidCredentials
+	}
+
+	if saslUsername != mapped {
+		endp.Log.DebugMsg("using mapped username for storage", "username", saslUsername, "mapped_username", mapped)
+	}
+
+	return mapped, nil
+}
+
 func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
-	u, err := endp.Store.GetOrCreateIMAPAcct(identity)
+	username, err := endp.usernameForStorage(context.TODO(), identity)
+	if err != nil {
+		if errors.Is(err, imapbackend.ErrInvalidCredentials) {
+			return err
+		}
+		endp.Log.Error("failed to determine storage account name", err, "username", username)
+		return fmt.Errorf("internal server error")
+	}
+
+	u, err := endp.Store.GetOrCreateIMAPAcct(username)
 	if err != nil {
 		return err
 	}
@@ -206,13 +283,23 @@ func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
 }
 
 func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
+	// saslAuth handles AuthMap calling.
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
 		endp.Log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
-	return endp.Store.GetOrCreateIMAPAcct(username)
+	storageUsername, err := endp.usernameForStorage(context.TODO(), username)
+	if err != nil {
+		if errors.Is(err, imapbackend.ErrInvalidCredentials) {
+			return nil, err
+		}
+		endp.Log.Error("authentication failed due to an internal error", err, "username", username, "src_ip", connInfo.RemoteAddr)
+		return nil, fmt.Errorf("internal server error")
+	}
+
+	return endp.Store.GetOrCreateIMAPAcct(storageUsername)
 }
 
 func (endp *Endpoint) I18NLevel() int {

@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -28,6 +29,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/internal/authz"
 )
 
 var (
@@ -38,11 +40,17 @@ var (
 // SASLAuth is a wrapper that initializes sasl.Server using authenticators that
 // call maddy module objects.
 //
+// It also handles username translation using auth_map and auth_map_normalize
+// (AuthMap and AuthMapNormalize should be set).
+//
 // It supports reporting of multiple authorization identities so multiple
 // accounts can be associated with a single set of credentials.
 type SASLAuth struct {
 	Log         log.Logger
 	OnlyFirstID bool
+
+	AuthMap       module.Table
+	AuthNormalize authz.NormalizeFunc
 
 	Plain []module.PlainAuth
 }
@@ -57,6 +65,34 @@ func (s *SASLAuth) SASLMechanisms() []string {
 	return mechs
 }
 
+func (s *SASLAuth) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
+	if s.AuthNormalize != nil {
+		var err error
+		saslUsername, err = s.AuthNormalize(saslUsername)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if s.AuthMap == nil {
+		return saslUsername, nil
+	}
+
+	mapped, ok, err := s.AuthMap.Lookup(ctx, saslUsername)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", ErrInvalidAuthCred
+	}
+
+	if saslUsername != mapped {
+		s.Log.DebugMsg("using mapped username for authentication", "username", saslUsername, "mapped_username", mapped)
+	}
+
+	return mapped, nil
+}
+
 func (s *SASLAuth) AuthPlain(username, password string) error {
 	if len(s.Plain) == 0 {
 		return ErrUnsupportedMech
@@ -64,6 +100,11 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 
 	var lastErr error
 	for _, p := range s.Plain {
+		username, err := s.usernameForAuth(context.TODO(), username)
+		if err != nil {
+			return err
+		}
+
 		lastErr = p.AuthPlain(username, password)
 		if lastErr == nil {
 			return nil
@@ -80,6 +121,9 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 		return sasl.NewPlainServer(func(identity, username, password string) error {
 			if identity == "" {
 				identity = username
+			}
+			if identity != username {
+				return ErrInvalidAuthCred
 			}
 
 			err := s.AuthPlain(username, password)
