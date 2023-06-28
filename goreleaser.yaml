@@ -90,20 +90,18 @@ nfpms:
 
 checksum:
   # docker-base_0.0.3_SHA256SUMS
-  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SU
-MS"
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
   algorithm: sha256
 
 publishers:
   - name: aws S3
-    cmd: aws s3 cp --quiet --sse AES256 {{ abs .ArtifactPath
+    cmd: "aws s3 cp --quiet --sse AES256 {{ abs .ArtifactPath
 }} s3://releases.lab.dioad.net/data/{{ .ProjectName }}/{{ .V
-ersion }}/{{ .ArtifactName }}
+ersion }}/{{ .ArtifactName }}"
     checksum: true
     env:
       - AWS_DEFAULT_REGION={{ .Env.AWS_DEFAULT_REGION }}
-      - AWS_EC2_METADATA_DISABLED={{ .Env.AWS_EC2_METADATA_D
-ISABLED }}
+      - AWS_EC2_METADATA_DISABLED={{ .Env.AWS_EC2_METADATA_DISABLED }}
       - AWS_ACCESS_KEY_ID={{ .Env.AWS_ACCESS_KEY_ID }}
       - AWS_SECRET_ACCESS_KEY={{ .Env.AWS_SECRET_ACCESS_KEY
 }}
