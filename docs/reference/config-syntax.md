@@ -182,21 +182,15 @@ Also note that the following is not valid, unlike Duration values syntax:
 32M5K
 ```
 
-# ADDRESS DEFINITIONS
+## Address Definitions
 
 Maddy configuration uses URL-like syntax to specify network addresses.
 
-- unix://file\_path
-  Unix domain socket. Relative paths are relative to runtime directory
-  (/run/maddy).
+- `unix://file_path` – Unix domain socket. Relative paths are relative to runtime directory (`/run/maddy`).
+- `tcp://ADDRESS:PORT` – TCP/IP socket.
+- `tls://ADDRESS:PORT` – TCP/IP socket using TLS.
 
-- tcp://ADDRESS:PORT
-  TCP/IP socket.
-
-- tls://ADDRESS:PORT
-  TCP/IP socket using TLS.
-
-# DUMMY MODULE
+## Dummy Module
 
 No-op module. It doesn't need to be configured explicitly and can be referenced
 using "dummy" name. It can act as a delivery target or auth.

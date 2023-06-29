@@ -60,13 +60,15 @@ check {
 
 ## Configuration directives
 
-**Syntax**: debug _boolean_ <br>
-**Default**: global directive value
+### debug _boolean_
+Default: global directive value
 
 Enable verbose logging.
 
-**Syntax**: check\_early _boolean_ <br>
-**Default**: no
+---
+
+### check_early _boolean_
+Default: `no`
 
 Check BLs before mail delivery starts and silently reject blacklisted clients.
 
@@ -74,22 +76,27 @@ For this to work correctly, check should not be used in source/destination
 pipeline block.
 
 In particular, this means:
+
 - No logging is done for rejected messages.
-- No action is taken if quarantine\_threshold is hit, only reject\_threshold
+- No action is taken if `quarantine_threshold` is hit, only `reject_threshold`
   applies.
-- defer\_sender\_reject from SMTP configuration takes no effect.
+- `defer_sender_reject` from SMTP configuration takes no effect.
 - MAIL FROM is not checked, even if specified.
 
 If you often get hit by spam attacks, it is recommended to enable this
 setting to save server resources.
 
-**Syntax**: quarantine\_threshold _integer_ <br>
-**Default**: 1
+---
+
+### quarantine_threshold _integer_
+Default: `1`
 
 DNSBL score needed (equals-or-higher) to quarantine the message.
 
-**Syntax**: reject\_threshold _integer_ <br>
-**Default**: 9999
+---
+
+### reject_threshold _integer_
+Default: `9999`
 
 DNSBL score needed (equals-or-higher) to reject the message.
 
@@ -110,46 +117,56 @@ Directive name and arguments specify the actual DNS zone to query when checking
 the list. Using multiple arguments is equivalent to specifying the same
 configuration separately for each list.
 
-**Syntax**: client\_ipv4 _boolean_ <br>
-**Default**: yes
+### client_ipv4 _boolean_
+Default: `yes`
 
 Whether to check address of the IPv4 clients against the list.
 
-**Syntax**: client\_ipv6 _boolean_ <br>
-**Default**: yes
+---
+
+### client_ipv6 _boolean_
+Default: `yes`
 
 Whether to check address of the IPv6 clients against the list.
 
-**Syntax**: ehlo _boolean_ <br>
-**Default**: no
+---
+
+### ehlo _boolean_
+Default: `no`
 
 Whether to check hostname specified n the HELO/EHLO command
 against the list.
 
 This works correctly only with domain-based DNSBLs.
 
-**Syntax**: mailfrom _boolean_ <br>
-**Default**: no
+---
+
+### mailfrom _boolean_
+Default: `no`
 
 Whether to check domain part of the MAIL FROM address against the list.
 
 This works correctly only with domain-based DNSBLs.
 
-**Syntax**: responses _cidr|ip..._ <br>
-**Default**: 127.0.0.1/24
+---
+
+### responses _cidr_ | _ip..._
+Default: `127.0.0.1/24`
 
 IP networks (in CIDR notation) or addresses to permit in list lookup results.
 Addresses not matching any entry in this directives will be ignored.
 
-**Syntax**: score _integer_ <br>
-**Default**: 1
+---
+
+### score _integer_
+Default: `1`
 
 Score value to add for the message if it is listed.
 
-If sum of list scores is equals or higher than quarantine\_threshold, the
+If sum of list scores is equals or higher than `quarantine_threshold`, the
 message will be quarantined.
 
-If sum of list scores is equals or higher than rejected\_threshold, the message
+If sum of list scores is equals or higher than `rejected_threshold`, the message
 will be rejected.
 
 It is possible to specify a negative value to make list act like a whitelist

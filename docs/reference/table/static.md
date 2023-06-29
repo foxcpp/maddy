@@ -13,7 +13,7 @@ table.static {
 
 ## Configuration directives
 
-***Syntax***: entry _key_ _value\_
+### entry _key_ _value_
 
 Add an entry to the table.
 

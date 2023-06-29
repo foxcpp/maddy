@@ -32,15 +32,17 @@ via. See below.
 
 ## Configuration directives
 
-***Syntax:*** endpoint _scheme://path_ <br>
-***Default:*** not set
+### endpoint _scheme://path_
+Default: not set
 
 Specifies milter protocol endpoint to use.
 The endpoit is specified in standard URL-like format:
-'tcp://127.0.0.1:6669' or 'unix:///var/lib/milter/filter.sock'
+`tcp://127.0.0.1:6669` or `unix:///var/lib/milter/filter.sock`
 
-***Syntax:*** fail\_open _boolean_ <br>
-***Default:*** false
+---
+
+### fail_open _boolean_
+Default: `false`
 
 Toggles behavior on milter I/O errors. If false ("fail closed") - message is
 rejected with temporary error code. If true ("fail open") - check is skipped.

@@ -18,8 +18,9 @@ table.regexp <regexp> [replacement] {
 
 Note that [replacement] is optional. If it is not included - table.regexp
 will return the original string, therefore acting as a regexp match check.
-This can be useful in combination in destination\_in for
+This can be useful in combination in `destination_in` for
 advanced matching:
+
 ```
 destination_in regexp ".*-bounce+.*@example.com" {
 	...
@@ -28,27 +29,31 @@ destination_in regexp ".*-bounce+.*@example.com" {
 
 ## Configuration directives
 
-***Syntax***: full\_match _boolean_ <br>
-***Default***: yes
+### full_match _boolean_
+Default: `yes`
 
 Whether to implicitly add start/end anchors to the regular expression.
-That is, if 'full\_match' is yes, then the provided regular expression should
-match the whole string. With no - partial match is enough.
+That is, if `full_match` is `yes`, then the provided regular expression should
+match the whole string. With `no` - partial match is enough.
 
-***Syntax***: case\_insensitive _boolean_ <br>
-***Default***: yes
+---
+
+### case_insensitive _boolean_
+Default: `yes`
 
 Whether to make matching case-insensitive.
 
-***Syntax***: expand\_placeholders _boolean_ <br>
-***Default***: yes
+---
+
+### expand_placeholders _boolean_
+Default: `yes`
 
 Replace '$name' and '${name}' in the replacement string with contents of
 corresponding capture groups from the match.
 
 To insert a literal $ in the output, use $$ in the template.
 
-# Identity table (table.identity)
+## Identity table (table.identity)
 
 The module 'identity' is a table module that just returns the key looked up.
 

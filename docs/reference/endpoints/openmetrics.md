@@ -4,6 +4,7 @@ Various server statistics are provided in OpenMetrics format by the
 "openmetrics" module.
 
 To enable it, add the following line to the server config:
+
 ```
 openmetrics tcp://127.0.0.1:9749 { }
 ```

@@ -1,6 +1,6 @@
 # Envelope sender / recipient rewriting
 
-'replace\_sender' and 'replace\_rcpt' modules replace SMTP envelope addresses
+`replace_sender` and `replace_rcpt` modules replace SMTP envelope addresses
 based on the mapping defined by the table module (maddy-tables(5)). It is possible
 to specify 1:N mappings. This allows, for example, implementing mailing lists.
 
@@ -17,6 +17,7 @@ multiple times to a single recipient. However, used delivery target can apply
 such deduplication (imapsql storage does it).
 
 Definition:
+
 ```
 replace_rcpt <table> [table arguments] {
 	[extended table config]
@@ -27,6 +28,7 @@ replace_sender <table> [table arguments] {
 ```
 
 Use examples:
+
 ```
 modify {
 	replace_rcpt file /etc/maddy/aliases
@@ -40,6 +42,7 @@ modify {
 ```
 
 Possible contents of /etc/maddy/aliases in the example above:
+
 ```
 # Replace 'cat' with any domain to 'dog'.
 # E.g. cat@example.net -> dog@example.net
