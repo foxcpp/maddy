@@ -102,7 +102,7 @@ jobs:
       - name: Build
         run: |
           go generate ./...
-          go build -o ${{ env.OUTPUT_BINARY }} -v .
+          go build -trimpath -tags "osusergo netgo" -o ${{ env.OUTPUT_BINARY }} -v cmd/maddy/main.go
           zip ${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
         env:
           CI: false
