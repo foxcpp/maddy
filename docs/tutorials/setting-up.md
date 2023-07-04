@@ -47,7 +47,7 @@ Your options are:
     docker pull foxcpp/maddy:0.6
     ```
 
-    See [here](../docker) for Docker-specific instructions.
+    See [here](../../docker) for Docker-specific instructions.
 
 * Building from source
 
