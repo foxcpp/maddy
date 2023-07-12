@@ -10,7 +10,7 @@ if [ "${GOFLAGS}" = "" ]; then
 fi
 
 output_suffix=
-if [[ -n "${GOOS}" ]] && [[ -n "${GOARCH}" ]]; then
+if [ -n "${GOOS}" ] && [ -n "${GOARCH}" ]; then
   output_suffix="_${GOOS}_${GOARCH}"
 fi
 
