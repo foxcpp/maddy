@@ -12,6 +12,9 @@ fi
 output_suffix=
 if [ -n "${GOOS}" ] && [ -n "${GOARCH}" ]; then
   output_suffix="_${GOOS}_${GOARCH}"
+  if [ "${GOOS}" -eq "linux ] && [ "${GOARCH}" -eq "arm64" ]; then
+    go env CC=aarch64-linux-gnu-gcc
+  fi
 fi
 
 print_help() {

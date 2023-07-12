@@ -32,7 +32,7 @@ jobs:
         run: |
           git config -l --global
           go get -v -t -d ./...
-          sudo apt-get install libpam0g-dev
+          sudo apt-get install libpam0g-dev gcc-9-aarch64-linux-gnu
 
       - name: Generate
         run: |
@@ -62,13 +62,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ darwin, linux, windows ]
-        arch: [ amd64 ]
-        include:
-          - os: linux
-            arch: arm64
-          - os: darwin
-            arch: arm64
+        os: [ linux ]
+        arch: [ amd64, arm64 ]
 
     env:
       GOOS: ${{ matrix.os }}
