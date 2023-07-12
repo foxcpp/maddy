@@ -2,7 +2,7 @@ name: "Testing and release preparation"
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, feat/reverse-proxy-mode ]
     tags: [ "v*" ]
   pull_request:
     branches: [ master, dev ]
