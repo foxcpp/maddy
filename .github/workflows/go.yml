@@ -96,7 +96,7 @@ jobs:
 
       - name: Build
         run: |
-          ./build.sh 
+          ./build.sh  --static
           cd build && zip ../${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
         env:
           CI: false
