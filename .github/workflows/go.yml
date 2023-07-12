@@ -101,9 +101,8 @@ jobs:
 
       - name: Build
         run: |
-          go generate ./...
-          go build -trimpath -tags "osusergo netgo" -o ${{ env.OUTPUT_BINARY }} -v cmd/maddy/main.go
-          zip ${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
+          ./build.sh 
+          cd build && zip ../${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
         env:
           CI: false
       - name: Upload artifacts
