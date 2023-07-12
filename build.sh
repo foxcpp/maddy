@@ -9,12 +9,10 @@ if [ "${GOFLAGS}" = "" ]; then
 	GOFLAGS="-trimpath" # set some flags to avoid passing "" to go
 fi
 
+prev_go_env_cc=$(go env CC)
 output_suffix=
 if [ -n "${GOOS}" ] && [ -n "${GOARCH}" ]; then
   output_suffix="_${GOOS}_${GOARCH}"
-  if [ "${GOOS}" -eq "linux ] && [ "${GOARCH}" -eq "arm64" ]; then
-    go env CC=aarch64-linux-gnu-gcc
-  fi
 fi
 
 print_help() {
@@ -118,8 +116,12 @@ build() {
 	mkdir -p "${builddir}"
 	echo "-- Version: ${version}" >&2
 	if [ "$(go env CC)" = "" ]; then
-        echo '-- [!] No C compiler available. maddy will be built without SQLite3 support and default configuration will be unusable.' >&2
-    fi
+	        echo '-- [!] No C compiler available. maddy will be built without SQLite3 support and default configuration will be unusable.' >&2
+	fi
+
+	if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "arm64" ]; then
+		go env CC=aarch64-linux-gnu-gcc
+	fi
 
 	if [ "$static" -eq 1 ]; then
 		echo "-- Building main server executable..." >&2
@@ -131,6 +133,10 @@ build() {
 	else
 		echo "-- Building main server executable..." >&2
 		go build -tags "$tags" -trimpath -ldflags="-X \"github.com/foxcpp/maddy.Version=${version}\"" -o "${builddir}/maddy${output_suffix}" ${GOFLAGS} ./cmd/maddy
+	fi
+
+	if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "arm64" ]; then
+		go env CC="${prev_go_env_cc}"
 	fi
 
 	build_man_pages
