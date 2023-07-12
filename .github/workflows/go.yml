@@ -32,7 +32,6 @@ jobs:
         run: |
           git config -l --global
           go get -v -t -d ./...
-          sudo apt-get install libpam0g-dev gcc-9-aarch64-linux-gnu
 
       - name: Generate
         run: |
@@ -93,6 +92,7 @@ jobs:
         run: |
           git config -l --global
           go get -v -t -d ./...
+          sudo apt-get install libpam0g-dev gcc-9-aarch64-linux-gnu
 
       - name: Build
         run: |
