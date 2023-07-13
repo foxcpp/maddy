@@ -99,6 +99,7 @@ jobs:
 
       - name: Build
         run: |
+          go env CC
           ./build.sh --static build
           cd build && zip ../${{ env.OUTPUT_ZIP }} ${{ env.OUTPUT_BINARY }}
         env:
