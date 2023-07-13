@@ -120,7 +120,7 @@ build() {
 	fi
 
 	if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "arm64" ]; then
-		go env CC=aarch64-linux-gnu-gcc
+		go env -w CC=aarch64-linux-gnu-gcc
 	fi
 
 	if [ "$static" -eq 1 ]; then
@@ -136,7 +136,7 @@ build() {
 	fi
 
 	if [ "${GOOS}" = "linux" ] && [ "${GOARCH}" = "arm64" ]; then
-		go env CC="${prev_go_env_cc}"
+		go env -w CC="${prev_go_env_cc}"
 	fi
 
 	build_man_pages
