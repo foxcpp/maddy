@@ -89,7 +89,13 @@ jobs:
         run: |
           git config -l --global
           go get -v -t -d ./...
-          sudo apt-get install libpam0g-dev gcc-9-aarch64-linux-gnu gcc
+          sudo apt-get install libpam0g-dev
+
+      - name: Setup arm64 cross compilation
+        if: ${{ matrix.arch=='arm64' }}
+        run: |
+          sudo apt-get install gcc-aarch64-linux-gnu
+          go env -w CC=aarch64-linux-gnu-gcc
 
       - name: Build
         run: |
