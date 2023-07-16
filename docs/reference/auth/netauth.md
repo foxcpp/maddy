@@ -9,7 +9,7 @@ mail address.
 
 Note that storage backends conventionally use email addresses.  Since
 NetAuth recommends *nix compatible usernames, you will need to map the
-email identifiers to NetAuth Entity IDs using auth\_map (see
+email identifiers to NetAuth Entity IDs using `auth_map` (see
 documentation page for used storage backend).
 
 auth.netauth also can be used as a table module.  This way you can
@@ -33,15 +33,16 @@ auth.netauth {}
 
 ## Configuration directives
 
-**Syntax:** require\_group _group_
+### require_group _group_
 
-OPTIONAL.
+Optional.
 
 Group that entities must possess to be able to use maddy services.
 This can be used to provide email to just a subset of the entities
 present in NetAuth.
 
-**Syntax** debug off <br>
-debug on <br>
-debug off <br>
-**Default:** off
+---
+
+### debug `on` | `off`
+
+Default: `off`

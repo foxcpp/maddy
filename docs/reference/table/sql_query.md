@@ -1,8 +1,9 @@
 # SQL query mapping
 
-The table.sql\_query module implements table interface using SQL queries.
+The table.sql_query module implements table interface using SQL queries.
 
 Definition:
+
 ```
 table.sql_query {
 	driver <driver name>
@@ -19,6 +20,7 @@ table.sql_query {
 ```
 
 Usage example:
+
 ```
 # Resolve SMTP address aliases using PostgreSQL DB.
 modify {
@@ -32,22 +34,26 @@ modify {
 
 ## Configuration directives
 
-***Syntax***: driver _driver name_ <br>
-***REQUIRED***
+### driver _driver name_ 
+**Required.**
 
 Driver to use to access the database.
 
-Supported drivers: postgres, sqlite3 (if compiled with C support)
+Supported drivers: `postgres`, `sqlite3` (if compiled with C support)
 
-***Syntax***: dsn _data source name_ <br>
-***REQUIRED***
+---
+
+### dsn _data source name_
+**Required.**
 
 Data Source Name to pass to the driver. For SQLite3 this is just a path to DB
 file. For Postgres, see
 [https://pkg.go.dev/github.com/lib/pq?tab=doc#hdr-Connection\_String\_Parameters](https://pkg.go.dev/github.com/lib/pq?tab=doc#hdr-Connection\_String\_Parameters)
 
-***Syntax***: lookup _query_ <br>
-***REQUIRED***
+---
+
+### lookup _query_
+**Required.**
 
 SQL query to use to obtain the lookup result.
 
@@ -58,12 +64,15 @@ rows, they will be ignored. If there are more columns, lookup will fail.  If
 there are no rows, lookup returns "no results". If there are any error - lookup
 will fail.
 
-***Syntax***: init _queries..._ <br>
-***Default***: empty
+---
+
+### init _queries..._
+Default: empty
 
 List of queries to execute on initialization. Can be used to configure RDBMS.
 
 Example, to improve SQLite3 performance:
+
 ```
 table.sql_query {
 	driver sqlite3
@@ -74,8 +83,10 @@ table.sql_query {
 }
 ```
 
-**Syntax:** named\_args _boolean_ <br>
-**Default:** yes
+---
+
+### named_args _boolean_
+Default: `yes`
 
 Whether to use named parameters binding when executing SQL queries
 or not.
@@ -84,11 +95,10 @@ Note that maddy's PostgreSQL driver does not support named parameters and
 SQLite3 driver has issues handling numbered parameters:
 [https://github.com/mattn/go-sqlite3/issues/472](https://github.com/mattn/go-sqlite3/issues/472)
 
-***Syntax:*** add _query_ <br>
-***Syntax:*** list _query_ <br>
-***Syntax:*** set _query_ <br>
-***Syntax:*** del _query_ <br>
-***Default:*** none
+---
+
+### add _query_<br>list _query_<br>set _query_ <br>del _query_
+Default: none
 
 If queries are set to implement corresponding table operations - table becomes
 "mutable" and can be used in contexts that require writable key-value store.
@@ -105,6 +115,6 @@ entry in the database.
 
 'del' query gets :key argument - key and should remove it from the database.
 
-If named\_args is set to "no" - key is passed as the first numbered parameter
+If `named_args` is set to `no` - key is passed as the first numbered parameter
 ($1), value is passed as the second numbered parameter ($2).
 

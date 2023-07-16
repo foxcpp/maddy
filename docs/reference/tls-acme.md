@@ -2,9 +2,10 @@
 
 Maddy supports obtaining certificates using ACME protocol.
 
-To use it, create a configuration name for tls.loader.acme
+To use it, create a configuration name for `tls.loader.acme`
 and reference it from endpoints that should use automatically
 configured certificates:
+
 ```
 tls.loader.acme local_tls {
     email put-your-email-here@example.org
@@ -17,8 +18,10 @@ smtp tcp://127.0.0.1:25 {
     ...
 }
 ```
+
 You can also use a global `tls` directive to use automatically
 obtained certificates for all endpoints:
+
 ```
 tls {
     loader acme {
@@ -29,8 +32,9 @@ tls {
 }
 ```
 
-Currently the only supported challenge is dns-01 one therefore
+Currently the only supported challenge is `dns-01` one therefore
 you also need to configure the DNS provider:
+
 ```
 tls.loader.acme local_tls {
     email maddy-acme@example.org
@@ -41,6 +45,7 @@ tls.loader.acme local_tls {
     }
 }
 ```
+
 See below for supported providers and necessary configuration
 for each.
 
@@ -60,41 +65,52 @@ tls.loader.acme {
 }
 ```
 
-**Syntax:** debug _boolean_ <br>
-**Default:** global directive value
+### debug _boolean_
+Default: global directive value
 
 Enable debug logging.
 
-**Syntax:** hostname _str_ <br>
-**Default:** global directive value
+---
 
-Domain name to issue certificate for. Required.
+### hostname _str_
+**Required.**<br>
+Default: global directive value
 
-**Syntax:** store\_path _path_ <br>
-**Default:** state\_dir/acme
+Domain name to issue certificate for.
+
+---
+
+### store_path _path_
+Default: `state_dir/acme`
 
 Where to store issued certificates and associated metadata.
 Currently only filesystem-based store is supported.
 
-**Syntax:** ca _url_ <br>
-**Default:** Let's Encrypt production CA
+---
+
+### ca _url_ 
+Default: Let's Encrypt production CA
 
 URL of ACME directory to use.
 
-**Syntax:** test\_ca _url_ <br>
-**Default:** Let's Encrypt staging CA
+---
+
+### test_ca _url_
+Default: Let's Encrypt staging CA
 
 URL of ACME directory to use for retries should
 primary CA fail.
 
 maddy will keep attempting to issues certificates
-using test\_ca until it succeeds then it will switch
+using `test_ca` until it succeeds then it will switch
 back to the one configured via 'ca' option.
 
 This avoids rate limit issues with production CA.
 
-**Syntax:** override\_domain _domain_ <br>
-**Default:** not set
+---
+
+### override_domain _domain_
+Default: not set
 
 Override the domain to set the TXT record on for DNS-01 challenge.
 This is to delegate the challenge to a different domain.
@@ -102,18 +118,24 @@ This is to delegate the challenge to a different domain.
 See https://www.eff.org/deeplinks/2018/02/technical-deep-dive-securing-automation-acme-dns-challenge-validation
 for explanation why this might be useful.
 
-**Syntax:** email _str_ <br>
-**Default:** not set
+---
+
+### email _str_
+Default: not set
 
 Email to pass while registering an ACME account.
 
-**Syntax:** agreed _boolean_ <br>
-**Default:** false
+---
+
+### agreed _boolean_
+Default: false
 
 Whether you agreed to ToS of the CA service you are using.
 
-**Syntax:** challenge dns-01 <br>
-**Default:** not set
+---
+
+### challenge `dns-01`
+Default: not set
 
 Challenge(s) to use while performing domain verification.
 
@@ -121,7 +143,7 @@ Challenge(s) to use while performing domain verification.
 
 Support for some providers is not provided by standard builds.
 To be able to use these, you need to compile maddy
-with "libdns\_PROVIDER" build tag.
+with "libdns_PROVIDER" build tag.
 E.g.
 ```
 ./build.sh -tags 'libdns_googleclouddns'

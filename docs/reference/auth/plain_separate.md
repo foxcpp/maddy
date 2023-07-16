@@ -1,6 +1,6 @@
 # Separate username and password lookup
 
-auth.plain\_separate module implements authentication using username:password pairs but can
+auth.plain_separate module implements authentication using username:password pairs but can
 use zero or more "table modules" (maddy-tables(5)) and one or more
 authentication providers to verify credentials.
 
@@ -24,19 +24,22 @@ How it works:
 
 ## Configuration directives
 
-***Syntax:*** user _table module\_
+### user _table-module_
 
 Configuration block for any module from maddy-tables(5) can be used here.
 
 Example:
+
 ```
 user file /etc/maddy/allowed_users
 ```
 
-***Syntax:*** pass _auth provider\_
+---
+
+### pass _auth-provider_
 
 Configuration block for any auth. provider module can be used here, even
-'plain\_split' itself.
+'plain_split' itself.
 
 The used auth. provider must provide username:password pair-based
 authentication.

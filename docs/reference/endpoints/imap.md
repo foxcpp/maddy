@@ -27,11 +27,12 @@ imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
 }
 ```
 
-**Syntax**: tls _certificate\_path_ _key\_path_ { ... } <br>
-**Default**: global directive value
+### tls _certificate-path_ _key-path_ { ... }
+Default: global directive value
 
 TLS certificate & key to use. Fine-tuning of other TLS properties is possible
 by specifying a configuration block and options inside it:
+
 ```
 tls cert.crt key.key {
     protocols tls1.2 tls1.3
@@ -40,36 +41,50 @@ tls cert.crt key.key {
 
 See [TLS configuration / Server](/reference/tls/#server-side) for details.
 
-**Syntax**: io\_debug _boolean_ <br>
-**Default**: no
+---
+
+### io_debug _boolean_
+Default: `no`
 
 Write all commands and responses to stderr.
 
-**Syntax**: io\_errors _boolean_ <br>
-**Default**: no
+---
+
+### io_errors _boolean_
+Default: `no`
 
 Log I/O errors.
 
-**Syntax**: debug _boolean_ <br>
-**Default**: global directive value
+---
+
+### debug _boolean_
+Default: global directive value
 
 Enable verbose logging.
 
-**Syntax**: insecure\_auth _boolean_ <br>
-**Default**: no (yes if TLS is disabled)
+---
 
-**Syntax**: auth _module\_reference\_
+### insecure_auth _boolean_
+Default: `no` (`yes` if TLS is disabled)
+
+---
+
+### auth _module-reference_
+**Required.**
 
 Use the specified module for authentication.
-**Required.**
 
-**Syntax**: storage _module\_reference\_
+---
+
+### storage _module-reference_
+**Required.**
 
 Use the specified module for message storage.
-**Required.**
 
-**Syntax**: storage\_map _module\_reference_ <br>
-**Default**: identity
+---
+
+### storage_map _module-reference_
+Default: `identity`
 
 Use the specified table to map SASL usernames to storage account names.
 
@@ -78,6 +93,7 @@ Before username is looked up, it is normalized using function defined by
 
 This directive is useful if you want users user@example.org and user@example.com
 to share the same storage account named "user". In this case, use
+
 ```
     storage_map email_localpart
 ```
@@ -88,6 +104,7 @@ authentication provider.
 It also does not affect how message delivery is handled, you should specify
 `delivery_map` in storage module to define how to map email addresses
 to storage accounts. E.g.
+
 ```
     storage.imapsql local_mailboxes {
         ...
@@ -95,13 +112,17 @@ to storage accounts. E.g.
     }
 ```
 
-**Syntax**: storage\_map_normalize _function_ <br>
-**Default**: auto
+---
+
+### storage_map_normalize _function_
+Default: `auto`
 
 Same as `auth_map_normalize` but for `storage_map`.
 
-**Syntax**: auth\_map_normalize _function_ <br>
-**Default**: auto
+---
+
+### auth_map_normalize _function_
+Default: `auto`
 
 Overrides global `auth_map_normalize` value for this endpoint.
 

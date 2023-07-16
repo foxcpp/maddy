@@ -36,8 +36,8 @@ smtp tcp://0.0.0.0:25 {
 
 ## Configuration directives
 
-**Syntax**: hostname _string_ <br>
-**Default**: global directive value
+### hostname _string_
+Default: global directive value
 
 Server name to use in SMTP banner.
 
@@ -45,11 +45,14 @@ Server name to use in SMTP banner.
 220 example.org ESMTP Service Ready
 ```
 
-**Syntax**: tls _certificate\_path_ _key\_path_ { ... } <br>
-**Default**: global directive value
+---
+
+### tls _certificate-path_ _key-path_ { ... }
+Default: global directive value
 
 TLS certificate & key to use. Fine-tuning of other TLS properties is possible
 by specifying a configuration block and options inside it:
+
 ```
 tls cert.crt key.key {
     protocols tls1.2 tls1.3
@@ -58,94 +61,107 @@ tls cert.crt key.key {
 
 See [TLS configuration / Server](/reference/tls/#server-side) for details.
 
+---
 
-**Syntax**: io\_debug _boolean_ <br>
-**Default**: no
+### io_debug _boolean_
+Default: `no`
 
 Write all commands and responses to stderr.
 
-**Syntax**: debug _boolean_ <br>
-**Default**: global directive value
+---
+
+### debug _boolean_
+Default: global directive value
 
 Enable verbose logging.
 
-**Syntax**: insecure\_auth _boolean_ <br>
-**Default**: no (yes if TLS is disabled)
+---
+
+### insecure_auth _boolean_
+Default: `no` (`yes` if TLS is disabled)
 
 Allow plain-text authentication over unencrypted connections. Not recommended!
 
-**Syntax**: read\_timeout _duration_ <br>
-**Default**: 10m
+---
+
+### read_timeout _duration_
+Default: `10m`
 
 I/O read timeout.
 
-**Syntax**: write\_timeout _duration_ <br>
-**Default**: 1m
+---
+
+### write_timeout _duration_
+Default: `1m`
 
 I/O write timeout.
 
-**Syntax**: max\_message\_size _size_ <br>
-**Default**: 32M
+---
+
+### max_message_size _size_
+Default: `32M`
 
 Limit the size of incoming messages to 'size'.
 
-**Syntax**: max\_header\_size _size_ <br>
-**Default**: 1M
+---
+
+### max_header_size _size_
+Default: `1M`
 
 Limit the size of incoming message headers to 'size'.
 
-**Syntax**: auth _module\_reference_ <br>
-**Default**: not specified
+---
+
+### auth _module-reference_
+Default: not specified
 
 Use the specified module for authentication.
 
-**Syntax**: defer\_sender\_reject _boolean_ <br>
-**Default**: yes
+---
+
+### defer_sender_reject _boolean_
+Default: `yes`
 
 Apply sender-based checks and routing logic when first RCPT TO command
 is received. This allows maddy to log recipient address of the rejected
 message and also improves interoperability with (improperly implemented)
 clients that don't expect an error early in session.
 
-**Syntax**: max\_logged\_rcpt\_errors _integer_ <br>
-**Default**: 5
+---
+
+### max_logged_rcpt_errors _integer_
+Default: `5`
 
 Amount of RCPT-time errors that should be logged. Further errors will be
 handled silently. This is to prevent log flooding during email dictionary
 attacks (address probing).
 
-**Syntax**: max\_received _integer_ <br>
-**Default**: 50
+---
+
+### max_received _integer_
+Default: `50`
 
 Max. amount of Received header fields in the message header. If the incoming
 message has more fields than this number, it will be rejected with the permanent error
 5.4.6 ("Routing loop detected").
 
-**Syntax**: <br>
-buffer ram <br>
-buffer fs _[path]_ <br>
-buffer auto _max\_size_ _[path]_ <br>
-**Default**: auto 1M StateDirectory/buffer
+---
+
+### buffer `ram`<br>buffer `fs` _path_ <br>buffer `auto` _max-size_ _path_
+Default: `auto 1M StateDirectory/buffer`
 
 Temporary storage to use for the body of accepted messages.
 
-- ram
-
-Store the body in RAM.
-
-- fs
-
-Write out the message to the FS and read it back as needed.
+- `ram` – Store the body in RAM.
+- `fs` – Write out the message to the FS and read it back as needed.
 _path_ can be omitted and defaults to StateDirectory/buffer.
+- `auto` – Store message bodies smaller than `_max_size_` entirely in RAM, 
+otherwise write them out to the FS. _path_ can be omitted and defaults to `StateDirectory/buffer`.
 
-- auto
+---
 
-Store message bodies smaller than _max\_size_ entirely in RAM, otherwise write
-them out to the FS.
-_path_ can be omitted and defaults to StateDirectory/buffer.
-
-**Syntax**: smtp\_max\_line\_length _integer_ <br>
-**Default**: 4000
+### smtp_max_line_length _integer_
+Default: `4000`
 
 The maximum line length allowed in the SMTP input stream. If client sends a
 longer line - connection will be closed and message (if any) will be rejected
@@ -157,26 +173,31 @@ to handle longer lines correctly but some senders may produce them.
 Unless BDAT extension is used by the sender, this limitation also applies to
 the message body.
 
-**Syntax**: dmarc _boolean_ <br>
-**Default**: yes
+---
+
+### dmarc _boolean_
+Default: `yes`
 
 Enforce sender's DMARC policy. Due to implementation limitations, it is not a
 check module.
 
-**NOTE**: Report generation is not implemented now.
+**Note**: Report generation is not implemented now.
 
-**NOTE**: DMARC needs SPF and DKIM checks to function correctly.
+**Note**: DMARC needs SPF and DKIM checks to function correctly.
 Without these, DMARC check will not run.
+
+---
 
 ## Rate & concurrency limiting
 
-**Syntax**: limits _config block_ <br>
-**Default**: no limits
+### limits { ... }
+Default: no limits
 
 This allows configuring a set of message flow restrictions including
 max. concurrency and rate per-endpoint, per-source, per-destination.
 
 Limits are specified as directives inside the block:
+
 ```
 limits {
 	all rate 20
@@ -186,16 +207,14 @@ limits {
 
 Supported limits:
 
-- Rate limit
+### _scope_ rate _burst_ _period_
 
-**Syntax**: _scope_ rate _burst_ _[period]_ <br>
-Restrict the amount of messages processed in _period_ to _burst_ messages.
-If period is not specified, 1 second is used.
+Rate limit. Restrict the amount of messages processed in _period_ to 
+_burst_ messages. If period is not specified, 1 second is used.
 
-- Concurrency limit
-
-**Syntax**: _scope_ concurrency _max_ <br>
-Restrict the amount of messages processed in parallel to _max\_.
+### _scope_ concurrency _max_
+Concurrency limit. Restrict the amount of messages processed in parallel 
+to _max_.
 
 For each supported limitation, _scope_ determines whether it should be applied
 for all messages ("all"), per-sender IP ("ip"), per-sender domain ("source") or
@@ -212,6 +231,7 @@ on outbound messages, do so using 'limits' directive for the 'table.remote' modu
 It is possible to share limit counters between multiple endpoints (or any other
 modules). To do so define a top-level configuration block for module "limits"
 and reference it where needed using standard & syntax. E.g.
+
 ```
 limits inbound_limits {
 	all rate 20
@@ -227,6 +247,7 @@ submission tls://0.0.0.0:465 {
 	...
 }
 ```
+
 Using an "all rate" restriction in such way means that no more than 20
 messages can enter the server through both endpoints in one second.
 
@@ -259,7 +280,6 @@ lmtp unix://lmtp.sock {
 ## Limitations of LMTP implementation
 
 - Can't be used with TCP.
-
 - Delivery to 'sql' module storage is always atomic, either all recipients will
   succeed or none of them will.
 
