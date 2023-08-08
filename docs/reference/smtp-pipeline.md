@@ -2,54 +2,47 @@
 
 # Message pipeline
 
-Message pipeline is a set of module references and associated rules that
+A message pipeline is a set of module references and associated rules that
 describe how to handle messages.
 
 The pipeline is responsible for
+
 - Running message filters (called "checks"), (e.g. DKIM signature verification,
-  DNSBL lookup and so on).
-
+  DNSBL lookup, and so on).
 - Running message modifiers (e.g. DKIM signature creation).
-
-- Assocating each message recipient with one or more delivery targets.
-  Delivery target is a module that does final processing (delivery) of the
+- Associating each message recipient with one or more delivery targets.
+  Delivery target is a module that does the final processing (delivery) of the
   message.
 
 Message handling flow is as follows:
+
 - Execute checks referenced in top-level `check` blocks (if any)
-
 - Execute modifiers referenced in top-level `modify` blocks (if any)
-
-- If there are `source` blocks - select one that matches message sender (as
-  specified in MAIL FROM). If there are no `source` blocks - entire
+- If there are `source` blocks - select one that matches the message sender (as
+  specified in MAIL FROM). If there are no `source` blocks - the entire
   configuration is assumed to be the `default_source` block.
-
-- Execute checks referenced in 'check' blocks inside selected 'source' block
+- Execute checks referenced in `check` blocks inside the selected `source` block
   (if any).
-
 - Execute modifiers referenced in `modify` blocks inside selected `source`
   block (if any).
 
 Then, for each recipient:
-- Select `destination` block that matches it. If there are
-  no `destination` blocks - entire used `source` block is interpreted as if it
+
+- Select the `destination` block that matches it. If there are
+  no `destination` blocks - the entire used `source` block is interpreted as if it
   was a `default_destination` block.
-
-- Execute checks referenced in `check` block inside selected `destination` block
-  (if any).
-
-- Execute modifiers referenced in `modify` block inside selected `destination`
+- Execute checks referenced in the `check` block inside the selected `destination`
   block (if any).
-
-- If used block contains `reject` directive - reject the recipient with
-  specified SMTP status code.
-
-- If used block contains `deliver_to` directive - pass the message to the
+- Execute modifiers referenced in `modify` block inside the selected `destination`
+  block (if any).
+- If the used block contains the `reject` directive - reject the recipient with
+  the specified SMTP status code.
+- If the used block contains the `deliver_to` directive - pass the message to the
   specified target module. Only recipients that are handled
-  by used block are visible to the target.
+  by the used block are visible to the target.
 
 Each recipient is handled only by a single `destination` block, in case of
-overlapping `destination` - first one takes priority.
+overlapping `destination` - the first one takes priority.
 
 ```
 destination example.org {
