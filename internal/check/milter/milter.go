@@ -90,9 +90,6 @@ func (c *Check) Init(cfg *config.Map) error {
 	default:
 		return fmt.Errorf("%s: scheme unsupported: %v", modName, endp.Scheme)
 	}
-	if endp.Path != "" {
-		return fmt.Errorf("%s: stray path in endpoint: %v", modName, endp)
-	}
 
 	c.cl = milter.NewClientWithOptions(endp.Network(), endp.Address(), milter.ClientOptions{
 		Dialer: &net.Dialer{
