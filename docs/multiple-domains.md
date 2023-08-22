@@ -75,8 +75,8 @@ accept non-email usernames:
 authorize_sender {
   ...
   user_to_email chain {
-    step email_localpart_optional            # remove domain from username if present
-    step email_with_domains $(local_domains) # expand username with all allowed domains
+    step email_localpart_optional           # remove domain from username if present
+    step email_with_domain $(local_domains) # expand username with all allowed domains
   }
 }
 ```
@@ -141,8 +141,8 @@ mailboxes.**
         authorize_sender {
           ...
           user_to_email chain {
-            step email_localpart_optional            # remove domain from username if present
-            step email_with_domains $(local_domains) # expand username with all allowed domains
+            step email_localpart_optional           # remove domain from username if present
+            step email_with_domain $(local_domains) # expand username with all allowed domains
           }
         }
       }

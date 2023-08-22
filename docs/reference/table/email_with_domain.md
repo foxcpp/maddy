@@ -4,7 +4,7 @@ The table module `table.email_with_domain` appends one or more
 domains (allowing 1:N expansion) to the specified value.
 
 ```
-table.email_with_domains DOMAIN DOMAIN... { }
+table.email_with_domain DOMAIN DOMAIN... { }
 ```
 
 It can be used to implement domain-level expansion for aliases if used together
@@ -14,7 +14,7 @@ with `table.chain`. Example:
 modify {
     replace_rcpt chain {
         step email_local_part
-        step email_with_domains example.org example.com
+        step email_with_domain example.org example.com
     }
 }
 ```
