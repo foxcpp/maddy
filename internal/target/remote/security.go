@@ -180,7 +180,7 @@ func (c *mtastsDelivery) CheckMX(ctx context.Context, mxLevel module.MXLevel, do
 			return module.MXNone, &exterrors.SMTPError{
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
-				Message:      "Failed to establish the module.MX record authenticity (MTA-STS)",
+				Message:      "Failed to establish the MX record authenticity (MTA-STS)",
 			}
 		}
 		c.log.Msg("MX does not match published non-enforced MTA-STS policy", "mx", mx, "domain", c.domain)
@@ -213,7 +213,7 @@ func (c *mtastsDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel, 
 		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message: "Recipient server module.TLS certificate is not trusted but " +
+			Message: "Recipient server TLS certificate is not trusted but " +
 				"authentication is required by MTA-STS",
 			Misc: map[string]interface{}{
 				"tls_level": tlsLevel,
@@ -608,9 +608,10 @@ func (l localPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain
 			// a temporary error (we can't know with the current design).
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 0},
-			Message:      "Failed to establish the module.MX record authenticity",
+			Message:      "Failed to establish the MX record authenticity",
 			Misc: map[string]interface{}{
-				"mx_level": mxLevel,
+				"mx_level":          mxLevel,
+				"required_mx_level": l.minMXLevel,
 			},
 		}
 	}
@@ -624,7 +625,8 @@ func (l localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsL
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
 			Message:      "TLS it not available or unauthenticated but required",
 			Misc: map[string]interface{}{
-				"tls_level": tlsLevel,
+				"tls_level":          tlsLevel,
+				"required_tls_level": l.minTLSLevel,
 			},
 		}
 	}
