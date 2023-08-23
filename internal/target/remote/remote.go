@@ -142,8 +142,8 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Duration("submission_timeout", false, false, 5*time.Minute, &rt.submissionTimeout)
 
 	poolCfg := pool.Config{
-		MaxKeys:             20000,
-		MaxConnsPerKey:      10,     // basically, max. amount of idle connections in cache
+		MaxKeys:             5000,
+		MaxConnsPerKey:      5,      // basically, max. amount of idle connections in cache
 		MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
 		StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
 	}
