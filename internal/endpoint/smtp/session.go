@@ -319,13 +319,13 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 			return
 		}
 
-		reason, misc := exterrors.UnwrapDNSErr(err)
-		misc["reason"] = reason
-		if !strings.HasSuffix(reason, "canceled") {
+		if !errors.Is(err, context.Canceled) {
 			// Often occurs when transaction completes before rDNS lookup and
 			// rDNS name was not actually needed. So do not log cancelation
 			// error if that's the case.
 
+			reason, misc := exterrors.UnwrapDNSErr(err)
+			misc["reason"] = reason
 			s.log.Error("rDNS error", exterrors.WithFields(err, misc), "src_ip", s.connState.RemoteAddr)
 		}
 		s.connState.RDNSName.Set(nil, err)
