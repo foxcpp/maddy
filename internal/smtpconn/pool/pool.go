@@ -47,6 +47,8 @@ type P struct {
 	cfg      Config
 	keys     map[string]slot
 	keysLock sync.Mutex
+
+	cleanupStop chan struct{}
 }
 
 func New(cfg Config) *P {
@@ -56,9 +58,46 @@ func New(cfg Config) *P {
 		}
 	}
 
-	return &P{
-		cfg:  cfg,
-		keys: make(map[string]slot, cfg.MaxKeys),
+	p := &P{
+		cfg:         cfg,
+		keys:        make(map[string]slot, cfg.MaxKeys),
+		cleanupStop: make(chan struct{}),
+	}
+
+	go p.cleanUpTick(p.cleanupStop)
+
+	return p
+}
+
+func (p *P) cleanUpTick(stop chan struct{}) {
+	ctx := context.Background()
+	tick := time.NewTicker(time.Minute)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-tick.C:
+			p.CleanUp(ctx)
+		case <-stop:
+			return
+		}
+	}
+}
+
+func (p *P) CleanUp(ctx context.Context) {
+	p.keysLock.Lock()
+	defer p.keysLock.Unlock()
+
+	for k, v := range p.keys {
+		if v.lastUse+p.cfg.StaleKeyLifetimeSec > time.Now().Unix() {
+			continue
+		}
+
+		close(v.c)
+		for conn := range v.c {
+			conn.Close()
+		}
+		delete(p.keys, k)
 	}
 }
 
@@ -95,6 +134,7 @@ func (p *P) Get(ctx context.Context, key string) (Conn, error) {
 		}
 
 		if !conn.Usable() {
+			conn.Close()
 			continue
 		}
 
@@ -144,6 +184,8 @@ func (p *P) Return(key string, c Conn) {
 }
 
 func (p *P) Close() {
+	p.cleanupStop <- struct{}{}
+
 	p.keysLock.Lock()
 	defer p.keysLock.Unlock()
 

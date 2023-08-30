@@ -14,12 +14,12 @@ Authentication-Results field is generated irregardless of status.
 It is recommended by the DMARC standard to don't fail delivery based solely on
 SPF policy and always check DMARC policy and take action based on it.
 
-If enforce\_early is no, check.spf module will not take any action on SPF
+If `enforce_early` is `no`, check.spf module will not take any action on SPF
 policy failure if sender domain does have a DMARC record with 'quarantine' or
 'reject' policy. Instead it will rely on DMARC support to take necesary
 actions using SPF results as an input.
 
-Disabling enforce\_early without enabling DMARC support will make SPF policies
+Disabling `enforce_early` without enabling DMARC support will make SPF policies
 no-op and is considered insecure.
 
 ## Configuration directives
@@ -35,49 +35,63 @@ check.spf {
 }
 ```
 
-**Syntax**: debug _boolean_ <br>
-**Default**: global directive value
+### debug _boolean_
+Default: global directive value
 
 Enable verbose logging for check.spf.
 
-**Syntax**: enforce\_early _boolean_ <br>
-**Default**: no
+---
+
+### enforce_early _boolean_
+Default: `no`
 
 Make policy decision on MAIL FROM stage (before the message body is received).
 This makes it impossible to apply DMARC override (see above).
 
-**Syntax**: none\_action reject|quarantine|ignore <br>
-**Default**: ignore
+---
+
+### none_action `reject` | `quarantine` | `ignore`
+Default: `ignore`
 
 Action to take when SPF policy evaluates to a 'none' result.
 
 See [https://tools.ietf.org/html/rfc7208#section-2.6](https://tools.ietf.org/html/rfc7208#section-2.6) for meaning of
 SPF results.
 
-**Syntax**: neutral\_action reject|quarantine|ignore <br>
-**Default**: ignore
+---
+
+### neutral_action `reject` | `quarantine` | `ignore`
+Default: `ignore`
 
 Action to take when SPF policy evaluates to a 'neutral' result.
 
 See [https://tools.ietf.org/html/rfc7208#section-2.6](https://tools.ietf.org/html/rfc7208#section-2.6) for meaning of
 SPF results.
 
-**Syntax**: fail\_action reject|quarantine|ignore <br>
-**Default**: quarantine
+---
+
+### fail_action `reject` | `quarantine` | `ignore`
+Default: `quarantine`
 
 Action to take when SPF policy evaluates to a 'fail' result.
 
-**Syntax**: softfail\_action reject|quarantine|ignore <br>
-**Default**: ignore
+---
+
+### softfail_action `reject` | `quarantine` | `ignore`
+Default: `ignore`
 
 Action to take when SPF policy evaluates to a 'softfail' result.
 
-**Syntax**: permerr\_action reject|quarantine|ignore <br>
-**Default**: reject
+---
+
+### permerr_action `reject` | `quarantine` | `ignore`
+Default: `reject`
 
 Action to take when SPF policy evaluates to a 'permerror' result.
 
-**Syntax**: temperr\_action reject|quarantine|ignore <br>
-**Default**: reject
+---
+
+### temperr_action `reject` | `quarantine` | `ignore`
+Default: `reject`
 
 Action to take when SPF policy evaluates to a 'temperror' result.

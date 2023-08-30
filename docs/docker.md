@@ -72,4 +72,4 @@ docker run \
 
 It will fail on first startup. Copy TLS certificate to /data/tls/fullchain.pem
 and key to /data/tls/privkey.pem. Run the server again. Finish DNS configuration
-(DKIM keys, etc) as described in [tutorials/setting-up/](tutorials/setting-up/).
+(DKIM keys, etc) as described in [tutorials/setting-up/](../tutorials/setting-up/).

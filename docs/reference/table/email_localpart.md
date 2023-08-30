@@ -1,11 +1,12 @@
 # Email local part
 
-The module 'table.email\_localpart' extracts and unescapes local ("username") part
+The module `table.email_localpart` extracts and unescapes local ("username") part
 of the email address.
 
 E.g.
-test@example.org => test
-"test @ a"@example.org => test @ a
+
+* `test@example.org` => `test`
+* `"test @ a"@example.org` => `test @ a`
 
 Mappings for invalid emails are not defined (will be treated as non-existing
 values).
