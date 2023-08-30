@@ -89,6 +89,7 @@ jobs:
         run: |
           git config -l --global
           go get -v -t -d ./...
+          sudo apt-get update
           sudo apt-get install libpam0g-dev
 
       - name: Setup arm64 cross compilation
