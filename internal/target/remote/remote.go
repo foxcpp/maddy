@@ -194,6 +194,9 @@ func (rt *Target) Init(cfg *config.Map) error {
 
 		if rt.socks5 != nil {
 			rt.dialer, err = rt.socks5.Dialer(rt.dialer)
+			if err != nil {
+				return fmt.Errorf("remote: failed to initialize SOCKS5 proxy: %w", err)
+			}
 		}
 	}
 
