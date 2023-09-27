@@ -58,6 +58,8 @@ func moduleError(err error) error {
 	})
 }
 
+type DialerFunc func(ctx context.Context, network string, addr string) (net.Conn, error)
+
 type Target struct {
 	name      string
 	hostname  string
@@ -66,7 +68,7 @@ type Target struct {
 	tlsConfig *tls.Config
 
 	resolver    dns.Resolver
-	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
+	dialer      DialerFunc
 	extResolver *dns.ExtResolver
 
 	policies          []module.MXAuthPolicy
@@ -82,6 +84,7 @@ type Target struct {
 	connectTimeout    time.Duration
 	commandTimeout    time.Duration
 	submissionTimeout time.Duration
+	socks5            *Socks5Group
 }
 
 var _ module.DeliveryTarget = &Target{}
@@ -134,6 +137,16 @@ func (rt *Target) Init(cfg *config.Map) error {
 		}
 		return g, nil
 	}, &rt.limits)
+	cfg.Custom("socks5", false, false, func() (interface{}, error) {
+		return nil, nil
+	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
+		var s *Socks5Group
+		if err := modconfig.GroupFromNode("socks5", n.Args, n, cfg.Globals, &s); err != nil {
+			return nil, err
+		}
+		return s, nil
+	}, &rt.socks5)
+
 	cfg.Bool("requiretls_override", false, true, &rt.allowSecOverride)
 	cfg.Bool("relaxed_requiretls", false, true, &rt.relaxedREQUIRETLS)
 	cfg.Int("conn_reuse_limit", false, false, 10, &rt.connReuseLimit)
@@ -177,6 +190,10 @@ func (rt *Target) Init(cfg *config.Map) error {
 				network = "tcp4"
 			}
 			return dial(ctx, network, addr)
+		}
+
+		if rt.socks5 != nil {
+			rt.dialer, err = rt.socks5.Dialer(rt.dialer)
 		}
 	}
 
