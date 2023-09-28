@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
@@ -27,12 +28,35 @@ func NewSocks5Group(_, instName string, _, _ []string) (module.Module, error) {
 }
 
 func (sg *Socks5Group) Init(cfg *config.Map) error {
-	cfg.String("host", true, false, "127.0.0.1", &sg.host)
-	cfg.Int("port", true, false, 1080, &sg.port)
-
-	cfg.String("user", true, false, "", &sg.user)
-	cfg.String("password", true, false, "", &sg.password)
-
+	for _, child := range cfg.Block.Children {
+		switch scope := child.Name; scope {
+		case "host":
+			if len(child.Args) != 1 {
+				return config.NodeErr(child, "exactly one argument is required")
+			}
+			sg.host = child.Args[0]
+		case "port":
+			if len(child.Args) != 1 {
+				return config.NodeErr(child, "exactly one argument is required")
+			}
+			port, err := strconv.Atoi(child.Args[0])
+			if err != nil {
+				return config.NodeErr(child, "invalid port number: %v", err)
+			}
+			sg.port = port
+		case "user":
+			if len(child.Args) != 1 {
+				return config.NodeErr(child, "exactly one argument is required")
+			}
+			sg.user = child.Args[0]
+		case "password":
+			if len(child.Args) != 1 {
+				return config.NodeErr(child, "exactly one argument is required")
+			}
+			sg.password = child.Args[0]
+		}
+	}
+	
 	return nil
 }
 
