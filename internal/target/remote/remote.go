@@ -138,8 +138,10 @@ func (rt *Target) Init(cfg *config.Map) error {
 		return g, nil
 	}, &rt.limits)
 	cfg.Custom("socks5", false, false, func() (interface{}, error) {
+		rt.Log.Debugf("remote: not configuring SOCKS5 proxy")
 		return nil, nil
 	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
+		rt.Log.Debugf("remote: configuring SOCKS5 proxy")
 		var s *Socks5Group
 		if err := modconfig.GroupFromNode("socks5", n.Args, n, cfg.Globals, &s); err != nil {
 			return nil, err
