@@ -56,7 +56,7 @@ func (sg *Socks5Group) Init(cfg *config.Map) error {
 			sg.password = child.Args[0]
 		}
 	}
-	
+
 	return nil
 }
 

@@ -193,13 +193,13 @@ func (rt *Target) Init(cfg *config.Map) error {
 			}
 			return dial(ctx, network, addr)
 		}
-
-		if rt.socks5 != nil {
-			rt.Log.Debugf("remote: SOCKS5 proxy is configured, force IPv4 mode")
-			rt.dialer, err = rt.socks5.Dialer(rt.dialer)
-			if err != nil {
-				return fmt.Errorf("remote: failed to initialize SOCKS5 proxy: %w", err)
-			}
+	}
+	if rt.socks5 != nil {
+		dial := rt.dialer
+		rt.Log.Debugf("remote: SOCKS5 proxy is configured, force IPv4 mode")
+		rt.dialer, err = rt.socks5.Dialer(dial)
+		if err != nil {
+			return fmt.Errorf("remote: failed to initialize SOCKS5 proxy: %w", err)
 		}
 	}
 
