@@ -229,7 +229,7 @@ func (e ExtResolver) CheckCNAMEAD(ctx context.Context, host string) (ad bool, rn
 	if rname == "" {
 		// IPv6-only host? Try to find out rname using AAAA lookup.
 		msg := new(dns.Msg)
-		msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+		msg.SetQuestion(dns.Fqdn(host), dns.TypeAAAA)
 		msg.SetEdns0(4096, false)
 		msg.AuthenticatedData = true
 		resp, err := e.exchange(ctx, msg)
