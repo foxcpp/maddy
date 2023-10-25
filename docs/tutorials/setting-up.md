@@ -168,7 +168,7 @@ mx1.example.org.   AAAA  2001:beef::1
 ; for this domain, and nobody else.
 example.org.     TXT   "v=spf1 mx ~all"
 ; It is recommended to server SPF record for both domain and MX hostname
-mx1.example.org. TXT   "v=spf1 mx ~all"
+mx1.example.org. TXT   "v=spf1 a ~all"
 
 ; Opt-in into DMARC with permissive policy and request reports about broken
 ; messages.
