@@ -21,7 +21,7 @@ package dkim
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -106,7 +106,7 @@ func verifyTestMsg(t *testing.T, keysPath string, expectedDomains []string, hdr 
 	domainsMap := make(map[string]bool)
 	zones := map[string]mockdns.Zone{}
 	for _, domain := range expectedDomains {
-		dnsRecord, err := ioutil.ReadFile(filepath.Join(keysPath, domain+".dns"))
+		dnsRecord, err := os.ReadFile(filepath.Join(keysPath, domain+".dns"))
 		if err != nil {
 			t.Fatal(err)
 		}

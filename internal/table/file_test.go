@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package table
 
 import (
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -33,7 +32,7 @@ func TestReadFile(t *testing.T) {
 	test := func(file string, expected map[string][]string) {
 		t.Helper()
 
-		f, err := ioutil.TempFile("", "maddy-tests-")
+		f, err := os.CreateTemp("", "maddy-tests-")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +87,7 @@ func TestFileReload(t *testing.T) {
 
 	const file = `cat: dog`
 
-	f, err := ioutil.TempFile("", "maddy-tests-")
+	f, err := os.CreateTemp("", "maddy-tests-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +138,7 @@ func TestFileReload_Broken(t *testing.T) {
 
 	const file = `cat: dog`
 
-	f, err := ioutil.TempFile("", "maddy-tests-")
+	f, err := os.CreateTemp("", "maddy-tests-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +184,7 @@ func TestFileReload_Removed(t *testing.T) {
 
 	const file = `cat: dog`
 
-	f, err := ioutil.TempFile("", "maddy-tests-")
+	f, err := os.CreateTemp("", "maddy-tests-")
 	if err != nil {
 		t.Fatal(err)
 	}
