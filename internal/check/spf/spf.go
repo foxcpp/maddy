@@ -314,6 +314,12 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		return module.CheckResult{}
 	}
 
+	if s.msgMeta.OriginalFrom == "" {
+		s.skip = true
+		s.log.Println("sender address is empty")
+		return module.CheckResult{}
+	}
+
 	mailFrom, err := prepareMailFrom(s.msgMeta.OriginalFrom)
 	if err != nil {
 		s.skip = true

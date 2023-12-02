@@ -218,6 +218,9 @@ func TestCheckSPF(tt *testing.T) {
 	conn.Writeln("RSET")
 	conn.ExpectPattern("250 *")
 
+	conn.Writeln("MAIL FROM:<>")
+	conn.ExpectPattern("250 *")
+
 	conn.Writeln("MAIL FROM:<testing@none.maddy.test>")
 	conn.ExpectPattern("551 5.7.0 *")
 
@@ -453,7 +456,7 @@ func TestCheckAuthorizeSender(tt *testing.T) {
 						auth_normalize precis_casefold
 						user_to_email static {
 							entry "test-user1" "test@example1.org"
-							entry "test-user2" "é@example1.org" 
+							entry "test-user2" "é@example1.org"
 						}
 					}
 				}
