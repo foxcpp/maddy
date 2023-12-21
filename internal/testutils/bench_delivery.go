@@ -23,7 +23,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"testing"
@@ -100,7 +100,7 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 	for i := 0; i < ExtraMessageHeaderFields; i++ {
 		hdr.Add("AAAAAAAAAAAA-"+strconv.Itoa(i), strings.Repeat("A", ExtraMessageHeaderFieldSize))
 	}
-	bodyBlob, _ := ioutil.ReadAll(body)
+	bodyBlob, _ := io.ReadAll(body)
 
 	return module.MsgMetadata{
 		DontTraceSender: true,

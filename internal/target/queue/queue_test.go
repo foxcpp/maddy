@@ -24,7 +24,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -122,7 +122,7 @@ func (utd *unreliableTargetDelivery) Body(ctx context.Context, header textproto.
 	}
 
 	r, _ := body.Open()
-	utd.msg.Body, _ = ioutil.ReadAll(r)
+	utd.msg.Body, _ = io.ReadAll(r)
 
 	if len(utd.ut.bodyFailures) > utd.ut.passedMessages {
 		return utd.ut.bodyFailures[utd.ut.passedMessages]
@@ -133,7 +133,7 @@ func (utd *unreliableTargetDelivery) Body(ctx context.Context, header textproto.
 
 func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	r, _ := body.Open()
-	utd.msg.Body, _ = ioutil.ReadAll(r)
+	utd.msg.Body, _ = io.ReadAll(r)
 
 	if len(utd.ut.bodyFailuresPartial) > utd.ut.passedMessages {
 		for rcpt, err := range utd.ut.bodyFailuresPartial[utd.ut.passedMessages] {
@@ -200,7 +200,7 @@ func checkQueueDir(t *testing.T, q *Queue, expectedIDs []string) {
 		expectedMap[id] = false
 	}
 
-	dir, err := ioutil.ReadDir(q.location)
+	dir, err := os.ReadDir(q.location)
 	if err != nil {
 		t.Fatalf("failed to read queue directory: %v", err)
 	}

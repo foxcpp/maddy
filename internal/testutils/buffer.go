@@ -22,7 +22,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -38,7 +37,7 @@ func BodyFromStr(t *testing.T, literal string) (textproto.Header, buffer.MemoryB
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := ioutil.ReadAll(bufr)
+	body, err := io.ReadAll(bufr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,10 +66,10 @@ type FailingBuffer struct {
 }
 
 func (fb FailingBuffer) Open() (io.ReadCloser, error) {
-	r := ioutil.NopCloser(bytes.NewReader(fb.Blob))
+	r := io.NopCloser(bytes.NewReader(fb.Blob))
 
 	if fb.IOError != nil {
-		return ioutil.NopCloser(&errorReader{r, fb.IOError}), fb.OpenError
+		return io.NopCloser(&errorReader{r, fb.IOError}), fb.OpenError
 	}
 
 	return r, fb.OpenError

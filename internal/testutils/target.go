@@ -24,7 +24,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"sort"
 	"testing"
@@ -131,7 +130,7 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c modul
 	}
 	defer body.Close()
 
-	dtd.msg.Body, err = ioutil.ReadAll(body)
+	dtd.msg.Body, err = io.ReadAll(body)
 	if err != nil {
 		for rcpt, err := range dtd.tgt.PartialBodyErr {
 			c.SetStatus(rcpt, err)
@@ -157,11 +156,11 @@ func (dtd *testTargetDelivery) Body(ctx context.Context, header textproto.Header
 
 	if dtd.tgt.DiscardMessages {
 		// Don't bother.
-		_, err = io.Copy(ioutil.Discard, body)
+		_, err = io.Copy(io.Discard, body)
 		return err
 	}
 
-	dtd.msg.Body, err = ioutil.ReadAll(body)
+	dtd.msg.Body, err = io.ReadAll(body)
 	return err
 }
 

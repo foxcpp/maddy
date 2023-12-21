@@ -22,7 +22,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io"
-	"io/ioutil"
 	"net"
 	"reflect"
 	"sort"
@@ -144,7 +143,7 @@ func (s *session) Data(r io.Reader) error {
 		return s.backend.DataErr
 	}
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}
@@ -161,7 +160,7 @@ func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
 		return s.backend.DataErr
 	}
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}
