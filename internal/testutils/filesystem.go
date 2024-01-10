@@ -19,14 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package testutils
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
-// Dir is a wrapper for ioutil.TempDir that
+// Dir is a wrapper for os.MkdirTemp that
 // fails the test on errors.
 func Dir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "maddy-tests-")
+	dir, err := os.MkdirTemp("", "maddy-tests-")
 	if err != nil {
 		t.Fatalf("can't create test dir: %v", err)
 	}

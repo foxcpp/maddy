@@ -27,7 +27,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -150,7 +149,7 @@ func (t *T) Run(waitListeners int) {
 	}
 
 	// Setup file system, create statedir, runtimedir, write out config.
-	testDir, err := ioutil.TempDir("", "maddy-tests-")
+	testDir, err := os.MkdirTemp("", "maddy-tests-")
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
@@ -182,7 +181,7 @@ func (t *T) Run(waitListeners int) {
 	configPreable := "state_dir " + filepath.Join(t.testDir, "statedir") + "\n" +
 		"runtime_dir " + filepath.Join(t.testDir, "runtime") + "\n\n"
 
-	err = ioutil.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
+	err = os.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}

@@ -63,7 +63,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -640,7 +639,7 @@ func (q *Queue) removeFromDisk(msgMeta *module.MsgMetadata) {
 }
 
 func (q *Queue) readDiskQueue() error {
-	dirInfo, err := ioutil.ReadDir(q.location)
+	dirInfo, err := os.ReadDir(q.location)
 	if err != nil {
 		return err
 	}

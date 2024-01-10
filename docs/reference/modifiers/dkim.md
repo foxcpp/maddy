@@ -121,7 +121,7 @@ Default set of oversigned fields:
 ### sign_fields _list..._
 Default: see below
 
-Header fields that should be signed n+1 times where n is times they are
+Header fields that should be signed n times where n is times they are
 present in the message. For these fields, additional values can be prepended
 by intermediate relays, but existing values can't be changed.
 

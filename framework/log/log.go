@@ -22,7 +22,6 @@ package log
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -199,7 +198,7 @@ func (l Logger) Write(s []byte) (int, error) {
 // Write method of returned object will be no-op.
 func (l Logger) DebugWriter() io.Writer {
 	if !l.Debug {
-		return ioutil.Discard
+		return io.Discard
 	}
 	l.Debug = true
 	return &l
