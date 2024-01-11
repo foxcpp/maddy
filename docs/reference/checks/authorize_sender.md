@@ -35,9 +35,9 @@ Table that maps authorization username to the list of sender emails
 the user is allowed to use.
 
 In additional to email addresses, the table can contain domain names or
-special string "*" as a value. If the value is a domain - user
+special string "\*" as a value. If the value is a domain - user
 will be allowed to use any mailbox within it as a sender address.
-If it is "*" - user will be allowed to use any address.
+If it is "\*" - user will be allowed to use any address.
 
 By default, table.identity is used, meaning that username should
 be equal to the sender email.
