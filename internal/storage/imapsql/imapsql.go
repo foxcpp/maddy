@@ -168,6 +168,17 @@ func (store *Storage) Init(cfg *config.Map) error {
 		return errors.New("imapsql: driver is required")
 	}
 
+	if driver == "sqlite3" {
+		if sqliteImpl == "modernc" {
+			store.Log.Println("using transpiled SQLite (modernc.org/sqlite), this is experimental")
+			driver = "sqlite"
+		} else if sqliteImpl == "cgo" {
+			store.Log.Debugln("using cgo SQLite")
+		} else if sqliteImpl == "missing" {
+			return errors.New("imapsql: SQLite is not supported, recompile without no_sqlite3 tag set")
+		}
+	}
+
 	deliveryNormFunc, ok := authz.NormalizeFuncs[deliveryNormalize]
 	if !ok {
 		return errors.New("imapsql: unknown normalization function: " + deliveryNormalize)
