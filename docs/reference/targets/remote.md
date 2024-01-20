@@ -280,16 +280,16 @@ local_policy {
 Using `local_policy off` is equivalent to setting both directives to `none`.
 
 ### min_tls_level `none` | `encrypted` | `authenticated`
-Default: `none`
+Default: `encrypted`
 
 Set the minimal TLS security level required for all outbound messages.
 
-See [Security levels](../../../seclevels) page for details.
+See [Security levels](/seclevels) page for details.
 
 ### min_mx_level `none` | `mtasts` | `dnssec`
 Default: `none`
 
 Set the minimal MX security level required for all outbound messages.
 
-See [Security levels](../../../seclevels) page for details.
+See [Security levels](/seclevels) page for details.
 
