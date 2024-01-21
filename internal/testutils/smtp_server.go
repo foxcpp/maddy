@@ -25,6 +25,7 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -53,10 +54,13 @@ type SMTPBackend struct {
 	RcptErr     map[string]error
 	DataErr     error
 	LMTPDataErr []error
+
+	ActiveSessionsCounter atomic.Int32
 }
 
 func (be *SMTPBackend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 	be.SessionCounter++
+	be.ActiveSessionsCounter.Add(1)
 	if be.SourceEndpoints == nil {
 		be.SourceEndpoints = make(map[string]struct{})
 	}
@@ -65,6 +69,10 @@ func (be *SMTPBackend) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 		backend: be,
 		conn:    conn,
 	}, nil
+}
+
+func (be *SMTPBackend) ConnectionCount() int {
+	return int(be.ActiveSessionsCounter.Load())
 }
 
 func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) {
@@ -104,6 +112,7 @@ func (s *session) Reset() {
 }
 
 func (s *session) Logout() error {
+	s.backend.ActiveSessionsCounter.Add(-1)
 	return nil
 }
 
@@ -129,7 +138,7 @@ func (s *session) Mail(from string, opts *smtp.MailOptions) error {
 	return nil
 }
 
-func (s *session) Rcpt(to string) error {
+func (s *session) Rcpt(to string, _ *smtp.RcptOptions) error {
 	if err := s.backend.RcptErr[to]; err != nil {
 		return err
 	}
@@ -368,17 +377,23 @@ func SMTPServerTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*t
 	return clientCfg, be, s
 }
 
+type smtpBackendConnCounter interface {
+	ConnectionCount() int
+}
+
 func CheckSMTPConnLeak(t *testing.T, srv *smtp.Server) {
 	t.Helper()
+
+	ccb, ok := srv.Backend.(smtpBackendConnCounter)
+	if !ok {
+		t.Error("CheckSMTPConnLeak used for smtp.Server with backend without ConnectionCount method")
+		return
+	}
 
 	// Connection closure is handled asynchronously, so before failing
 	// wait a bit for handleQuit in go-smtp to do its work.
 	for i := 0; i < 10; i++ {
-		found := false
-		srv.ForEachConn(func(_ *smtp.Conn) {
-			found = true
-		})
-		if !found {
+		if ccb.ConnectionCount() == 0 {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)

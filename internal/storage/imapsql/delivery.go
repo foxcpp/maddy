@@ -25,6 +25,7 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/backend"
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	imapsql "github.com/foxcpp/go-imap-sql"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/exterrors"
@@ -58,7 +59,7 @@ func userDoesNotExist(actual error) error {
 	}
 }
 
-func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
+func (d *delivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOptions) error {
 	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
 
 	accountName, err := d.store.deliveryNormalize(ctx, rcptTo)

@@ -30,12 +30,12 @@ All scheduled deliveries are attempted to the configured DeliveryTarget.
 All metadata is preserved on disk.
 
 Failure status is determined on per-recipient basis:
-- Delivery.Start fail handled as a failure for all recipients.
-- Delivery.AddRcpt fail handled as a failure for the corresponding recipient.
-- Delivery.Body fail handled as a failure for all recipients.
-- If Delivery implements PartialDelivery, then
-  PartialDelivery.BodyNonAtomic is used instead. Failures are determined based
-  on StatusCollector.SetStatus calls done by target in this case.
+  - Delivery.Start fail handled as a failure for all recipients.
+  - Delivery.AddRcpt fail handled as a failure for the corresponding recipient.
+  - Delivery.Body fail handled as a failure for all recipients.
+  - If Delivery implements PartialDelivery, then
+    PartialDelivery.BodyNonAtomic is used instead. Failures are determined based
+    on StatusCollector.SetStatus calls done by target in this case.
 
 For each failure check is done to see if it is a permanent failure
 or a temporary one. This is done using exterrors.IsTemporaryOrUnspec.
@@ -487,7 +487,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
 		rcptCtx, rcptTask := trace.NewTask(msgCtx, "RCPT TO")
-		if err := delivery.AddRcpt(rcptCtx, rcpt); err != nil {
+		if err := delivery.AddRcpt(rcptCtx, rcpt, smtp.RcptOptions{} /* TODO: DSN support */); err != nil {
 			dl.Debugf("delivery.AddRcpt %s failed: %v", rcpt, err)
 			perr.Errs[rcpt] = err
 		} else {
@@ -558,7 +558,7 @@ type queueDelivery struct {
 	body   buffer.Buffer
 }
 
-func (qd *queueDelivery) AddRcpt(ctx context.Context, rcptTo string) error {
+func (qd *queueDelivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOptions) error {
 	qd.meta.To = append(qd.meta.To, rcptTo)
 	return nil
 }
@@ -975,7 +975,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	}()
 
 	rcptCtx, rcptTask := trace.NewTask(msgCtx, "RCPT TO")
-	if err = dsnDelivery.AddRcpt(rcptCtx, meta.From); err != nil {
+	if err = dsnDelivery.AddRcpt(rcptCtx, meta.From, smtp.RcptOptions{}); err != nil {
 		rcptTask.End()
 		return
 	}

@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// The package smtpconn contains the code shared between target.smtp and
+// Package smtpconn contains the code shared between target.smtp and
 // remote modules.
 //
 // It implements the wrapper over the SMTP connection (go-smtp.Client) object
@@ -222,13 +222,9 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 	c.lmtp = lmtp
 	// This uses initial greeting timeout of 5 minutes (hardcoded).
 	if lmtp {
-		cl, err = smtp.NewClientLMTP(conn, endp.Host)
+		cl = smtp.NewClientLMTP(conn)
 	} else {
-		cl, err = smtp.NewClient(conn, endp.Host)
-	}
-	if err != nil {
-		conn.Close()
-		return false, nil, err
+		cl = smtp.NewClient(conn)
 	}
 
 	cl.CommandTimeout = c.CommandTimeout
@@ -336,8 +332,12 @@ func (c *C) IsLMTP() bool {
 //
 // If the address is non-ASCII and cannot be converted to ASCII and the remote
 // server does not support SMTPUTF8, error will be returned.
-func (c *C) Rcpt(ctx context.Context, to string) error {
+func (c *C) Rcpt(ctx context.Context, to string, opts smtp.RcptOptions) error {
 	defer trace.StartRegion(ctx, "smtpconn/RCPT TO").End()
+
+	outOpts := &smtp.RcptOptions{
+		// TODO: DSN support
+	}
 
 	// If necessary, the extension flag is enabled in Start.
 	if ok, _ := c.cl.Extension("SMTPUTF8"); !address.IsASCII(to) && !ok {
@@ -356,7 +356,7 @@ func (c *C) Rcpt(ctx context.Context, to string) error {
 		}
 	}
 
-	if err := c.cl.Rcpt(to); err != nil {
+	if err := c.cl.Rcpt(to, outOpts); err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 

@@ -284,7 +284,7 @@ func ParseDataSize(s string) (int, error) {
 // data unit and allows multiple arguments (they will be added together).
 //
 // See Map.Custom for description of arguments.
-func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int, store *int) {
+func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int64, store *int64) {
 	m.Custom(name, inheritGlobal, required, func() (interface{}, error) {
 		return defaultVal, nil
 	}, func(_ *Map, node Node) (interface{}, error) {
@@ -301,7 +301,7 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 			return nil, NodeErr(node, "%v", err)
 		}
 
-		return dur, nil
+		return int64(dur), nil
 	}, store)
 }
 

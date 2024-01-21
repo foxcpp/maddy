@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 )
 
@@ -56,7 +57,7 @@ type Delivery interface {
 	// recipients that can't be used.  Note: MsgMetadata object passed to Start
 	// contains BodyLength field. If it is non-zero, it can be used to check
 	// storage quota for the user before Body.
-	AddRcpt(ctx context.Context, rcptTo string) error
+	AddRcpt(ctx context.Context, rcptTo string, opts smtp.RcptOptions) error
 
 	// Body sets the body and header contents for the message.
 	// If this method fails, message is assumed to be undeliverable

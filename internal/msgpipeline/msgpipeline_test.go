@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/modify"
@@ -422,10 +423,10 @@ func TestMsgPipeline_PerRcptReject(t *testing.T) {
 		}
 	}()
 
-	if err := delivery.AddRcpt(context.Background(), "rcpt2@example.com"); err == nil {
+	if err := delivery.AddRcpt(context.Background(), "rcpt2@example.com", smtp.RcptOptions{}); err == nil {
 		t.Fatalf("expected error for delivery.AddRcpt(rcpt2@example.com), got nil")
 	}
-	if err := delivery.AddRcpt(context.Background(), "rcpt1@example.com"); err != nil {
+	if err := delivery.AddRcpt(context.Background(), "rcpt1@example.com", smtp.RcptOptions{}); err != nil {
 		t.Fatalf("unexpected AddRcpt err for %s: %v", "rcpt1@example.com", err)
 	}
 	if err := delivery.Body(context.Background(), textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("foobar")}); err != nil {

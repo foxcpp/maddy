@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 )
@@ -63,7 +64,7 @@ func (d *Dummy) Start(ctx context.Context, msgMeta *MsgMetadata, mailFrom string
 
 type dummyDelivery struct{}
 
-func (dd dummyDelivery) AddRcpt(ctx context.Context, to string) error {
+func (dd dummyDelivery) AddRcpt(ctx context.Context, rcptTo string, opts smtp.RcptOptions) error {
 	return nil
 }
 

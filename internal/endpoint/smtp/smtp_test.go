@@ -124,7 +124,7 @@ func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, o
 		return err
 	}
 	for _, rcpt := range rcpts {
-		if err := cl.Rcpt(rcpt); err != nil {
+		if err := cl.Rcpt(rcpt, &smtp.RcptOptions{}); err != nil {
 			return err
 		}
 	}
@@ -334,9 +334,9 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 		}
 	}
 
-	checkErr(cl.Rcpt("test1@example.org"))
-	checkErr(cl.Rcpt("test1@example.org"))
-	checkErr(cl.Rcpt("test2@example.org"))
+	checkErr(cl.Rcpt("test1@example.org", &smtp.RcptOptions{}))
+	checkErr(cl.Rcpt("test1@example.org", &smtp.RcptOptions{}))
+	checkErr(cl.Rcpt("test2@example.org", &smtp.RcptOptions{}))
 }
 
 func TestSMTPDelivery_Multi(t *testing.T) {
@@ -394,7 +394,7 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	if err := cl.Mail("sender@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Rcpt("test@example.com"); err != nil {
+	if err := cl.Rcpt("test@example.com", &smtp.RcptOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	data, err := cl.Data()
@@ -432,7 +432,7 @@ func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 	if err := cl.Mail("sender@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Rcpt("test@example.com"); err != nil {
+	if err := cl.Rcpt("test@example.com", &smtp.RcptOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	data, err := cl.Data()
@@ -471,7 +471,7 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	if err := cl.Mail("sender@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Rcpt("test@example.com"); err != nil {
+	if err := cl.Rcpt("test@example.com", &smtp.RcptOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -499,7 +499,7 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 	if err := cl.Mail("from-garbage@example.org", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Rcpt("to-garbage@example.org"); err != nil {
+	if err := cl.Rcpt("to-garbage@example.org", &smtp.RcptOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Reset(); err != nil {

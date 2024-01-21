@@ -60,7 +60,7 @@ func TestSMTPFlood_FullMsg_NoLimits_1Conn(tt *testing.T) {
 	defer c.Close()
 	c.SMTPNegotation("helo.maddy.test", nil, nil)
 	floodSmtp(&c, []string{
-		"MAIL FROM:<from@maddy.test",
+		"MAIL FROM:<from@maddy.test>",
 		"RCPT TO:<to@maddy.test>",
 		"DATA",
 		"From: <from@maddy.test>",
@@ -103,7 +103,7 @@ func TestSMTPFlood_FullMsg_NoLimits_10Conns(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@maddy.test",
+				"MAIL FROM:<from@maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"DATA",
 				"From: <from@maddy.test>",
@@ -151,7 +151,7 @@ func TestSMTPFlood_EnvelopeAbort_NoLimits_10Conns(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@maddy.test",
+				"MAIL FROM:<from@maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"RSET",
 			}, []string{
@@ -202,7 +202,7 @@ func TestSMTPFlood_EnvelopeAbort_Ratelimited(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@maddy.test",
+				"MAIL FROM:<from@maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"RSET",
 			}, []string{
@@ -265,7 +265,7 @@ func TestSMTPFlood_FullMsg_Ratelimited_PerSource(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@1.maddy.test",
+				"MAIL FROM:<from@1.maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"DATA",
 				"From: <from@1.maddy.test>",
@@ -292,7 +292,7 @@ func TestSMTPFlood_FullMsg_Ratelimited_PerSource(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@2.maddy.test",
+				"MAIL FROM:<from@2.maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"DATA",
 				"From: <from@1.maddy.test>",
@@ -364,7 +364,7 @@ func TestSMTPFlood_EnvelopeAbort_Ratelimited_PerIP(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@maddy.test",
+				"MAIL FROM:<from@maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"RSET",
 			}, []string{
@@ -383,7 +383,7 @@ func TestSMTPFlood_EnvelopeAbort_Ratelimited_PerIP(tt *testing.T) {
 			defer c.Close()
 			c.SMTPNegotation("helo.maddy.test", nil, nil)
 			floodSmtp(&c, []string{
-				"MAIL FROM:<from@maddy.test",
+				"MAIL FROM:<from@maddy.test>",
 				"RCPT TO:<to@maddy.test>",
 				"RSET",
 			}, []string{

@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/module"
 )
@@ -124,7 +125,7 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 		for i, rcptTemplate := range recipientTemplates {
 			rcpt := strings.Replace(rcptTemplate, "X", strconv.Itoa(i), -1)
 
-			if err := delivery.AddRcpt(benchCtx, rcpt); err != nil {
+			if err := delivery.AddRcpt(benchCtx, rcpt, smtp.RcptOptions{}); err != nil {
 				b.Fatal(err)
 			}
 		}

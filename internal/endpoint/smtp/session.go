@@ -335,7 +335,7 @@ func (s *Session) fetchRDNSName(ctx context.Context) {
 	s.connState.RDNSName.Set(name, nil)
 }
 
-func (s *Session) Rcpt(to string) error {
+func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	s.msgLock.Lock()
 	defer s.msgLock.Unlock()
 
@@ -363,7 +363,7 @@ func (s *Session) Rcpt(to string) error {
 	rcptCtx, rcptTask := trace.NewTask(s.msgCtx, "RCPT TO")
 	defer rcptTask.End()
 
-	if err := s.rcpt(rcptCtx, to); err != nil {
+	if err := s.rcpt(rcptCtx, to, opts); err != nil {
 		if s.loggedRcptErrors < s.endp.maxLoggedRcptErrors {
 			s.log.Error("RCPT error", err, "rcpt", to, "msg_id", s.msgMeta.ID)
 			s.loggedRcptErrors++
@@ -377,7 +377,7 @@ func (s *Session) Rcpt(to string) error {
 	return nil
 }
 
-func (s *Session) rcpt(ctx context.Context, to string) error {
+func (s *Session) rcpt(ctx context.Context, to string, opts *smtp.RcptOptions) error {
 	// INTERNATIONALIZATION: Do not permit non-ASCII addresses unless SMTPUTF8 is
 	// used.
 	if !address.IsASCII(to) && !s.opts.UTF8 {
@@ -396,7 +396,7 @@ func (s *Session) rcpt(ctx context.Context, to string) error {
 		}
 	}
 
-	return s.delivery.AddRcpt(ctx, cleanTo)
+	return s.delivery.AddRcpt(ctx, cleanTo, *opts)
 }
 
 func (s *Session) Logout() error {
@@ -413,6 +413,9 @@ func (s *Session) Logout() error {
 	if s.cancelRDNS != nil {
 		s.cancelRDNS()
 	}
+
+	s.endp.sessionCnt.Add(-1)
+
 	return nil
 }
 

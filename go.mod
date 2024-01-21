@@ -13,7 +13,7 @@ require (
 	github.com/emersion/go-milter v0.3.3
 	github.com/emersion/go-msgauth v0.6.6
 	github.com/emersion/go-sasl v0.0.0-20220912192320-0145f2c60ead
-	github.com/emersion/go-smtp v0.16.0
+	github.com/emersion/go-smtp v0.20.2-0.20240121112028-434ddca4792e
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20200522223722-c4699d7a24bf
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
@@ -52,6 +52,7 @@ require (
 	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.2.0
 	golang.org/x/text v0.14.0
+	modernc.org/sqlite v1.28.0
 )
 
 require (
@@ -153,7 +154,6 @@ require (
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/opt v0.1.3 // indirect
-	modernc.org/sqlite v1.28.0 // indirect
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.0.1 // indirect
 )

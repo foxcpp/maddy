@@ -107,7 +107,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	var (
 		driver            string
 		dsn               []string
-		appendlimitVal    = -1
+		appendlimitVal    int64 = -1
 		compression       []string
 		authNormalize     string
 		deliveryNormalize string
@@ -232,7 +232,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 	} else {
 		// int is 32-bit on some platforms, so cut off values we can't actually
 		// use.
-		if int(uint32(appendlimitVal)) != appendlimitVal {
+		if int64(uint32(appendlimitVal)) != appendlimitVal {
 			return errors.New("imapsql: appendlimit value is too big")
 		}
 		opts.MaxMsgBytes = new(uint32)

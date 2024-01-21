@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
@@ -104,7 +105,7 @@ type unreliableTargetDeliveryPartial struct {
 	*unreliableTargetDelivery
 }
 
-func (utd *unreliableTargetDelivery) AddRcpt(ctx context.Context, rcptTo string) error {
+func (utd *unreliableTargetDelivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOptions) error {
 	if len(utd.ut.rcptFailures) > utd.ut.passedMessages {
 		rcptErrs := utd.ut.rcptFailures[utd.ut.passedMessages]
 		if err := rcptErrs[rcptTo]; err != nil {
@@ -610,7 +611,7 @@ func TestQueueDelivery_AbortNoDangling(t *testing.T) {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt, smtp.RcptOptions{}); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
@@ -790,7 +791,7 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt, smtp.RcptOptions{}); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
