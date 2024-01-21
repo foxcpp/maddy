@@ -14,7 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: "Install libpam"
-      run: sudo apt-get install -y libpam-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpam-dev
     - uses: actions/cache@v2
       with:
         path: |
