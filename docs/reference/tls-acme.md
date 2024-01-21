@@ -32,6 +32,9 @@ tls {
 }
 ```
 
+Note: `tls &local_tls` as a global directive won't work because
+global directives are initialized before other configuration blocks.
+
 Currently the only supported challenge is `dns-01` one therefore
 you also need to configure the DNS provider:
 
@@ -88,7 +91,7 @@ Currently only filesystem-based store is supported.
 
 ---
 
-### ca _url_ 
+### ca _url_
 Default: Let's Encrypt production CA
 
 URL of ACME directory to use.
