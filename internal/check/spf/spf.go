@@ -314,7 +314,17 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 		return module.CheckResult{}
 	}
 
-	mailFrom, err := prepareMailFrom(s.msgMeta.OriginalFrom)
+	mailFromOriginal := s.msgMeta.OriginalFrom
+	if mailFromOriginal == "" {
+		// RFC 7208 Section 2.4.
+		// >When the reverse-path is null, this document
+		// >defines the "MAIL FROM" identity to be the mailbox composed of the
+		// >local-part "postmaster" and the "HELO" identity (which might or might
+		// >not have been checked separately before).
+		mailFromOriginal = "postmaster@" + s.msgMeta.Conn.Hostname
+	}
+
+	mailFrom, err := prepareMailFrom(mailFromOriginal)
 	if err != nil {
 		s.skip = true
 		return module.CheckResult{

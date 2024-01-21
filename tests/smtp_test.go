@@ -122,11 +122,20 @@ func TestCheckSPF(tt *testing.T) {
 
 	conn := t.Conn("smtp")
 	defer conn.Close()
-	conn.SMTPNegotation("localhost", nil, nil)
+	conn.SMTPNegotation("fail.maddy.test", nil, nil)
 
 	conn.Writeln("MAIL FROM:<testing@pass.maddy.test>")
 	conn.ExpectPattern("250 *")
 	conn.Writeln("RSET")
+	conn.ExpectPattern("250 *")
+
+	// Actually checks fail.maddy.test.
+	conn.Writeln("MAIL FROM:<>")
+	conn.ExpectPattern("552 5.7.0 *")
+
+	conn.SMTPNegotation("pass.maddy.test", nil, nil)
+
+	conn.Writeln("MAIL FROM:<>")
 	conn.ExpectPattern("250 *")
 
 	conn.Writeln("MAIL FROM:<testing@none.maddy.test>")
@@ -364,7 +373,7 @@ func TestCheckAuthorizeSender(tt *testing.T) {
 						auth_normalize precis_casefold
 						user_to_email static {
 							entry "test-user1" "test@example1.org"
-							entry "test-user2" "é@example1.org" 
+							entry "test-user2" "é@example1.org"
 						}
 					}
 				}
