@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -142,8 +143,8 @@ func (rt *Target) Init(cfg *config.Map) error {
 	cfg.Duration("submission_timeout", false, false, 5*time.Minute, &rt.submissionTimeout)
 
 	poolCfg := pool.Config{
-		MaxKeys:             20000,
-		MaxConnsPerKey:      10,     // basically, max. amount of idle connections in cache
+		MaxKeys:             5000,
+		MaxConnsPerKey:      5,      // basically, max. amount of idle connections in cache
 		MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
 		StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
 	}
@@ -269,7 +270,7 @@ func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 	}, nil
 }
 
-func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
+func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string, opts smtp.RcptOptions) error {
 	defer trace.StartRegion(ctx, "remote/AddRcpt").End()
 
 	if rd.msgMeta.Quarantine {
@@ -311,7 +312,7 @@ func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string) error {
 		return err
 	}
 
-	if err := conn.Rcpt(ctx, to); err != nil {
+	if err := conn.Rcpt(ctx, to, opts); err != nil {
 		return moduleError(err)
 	}
 

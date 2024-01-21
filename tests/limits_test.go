@@ -51,14 +51,14 @@ func TestConcurrencyLimit(tt *testing.T) {
 	c1 := t.Conn("smtp")
 	defer c1.Close()
 	c1.SMTPNegotation("localhost", nil, nil)
-	c1.Writeln("MAIL FROM:<testing@maddy.test")
+	c1.Writeln("MAIL FROM:<testing@maddy.test>")
 	c1.ExpectPattern("250 *")
 	// Down on semaphore.
 
 	c2 := t.Conn("smtp")
 	defer c2.Close()
 	c2.SMTPNegotation("localhost", nil, nil)
-	c1.Writeln("MAIL FROM:<testing@maddy.test")
+	c1.Writeln("MAIL FROM:<testing@maddy.test>")
 	// Temporary error due to lock timeout.
 	c1.ExpectPattern("451 *")
 }
@@ -87,21 +87,21 @@ func TestPerIPConcurrency(tt *testing.T) {
 	c1 := t.Conn("smtp")
 	defer c1.Close()
 	c1.SMTPNegotation("localhost", nil, nil)
-	c1.Writeln("MAIL FROM:<testing@maddy.test")
+	c1.Writeln("MAIL FROM:<testing@maddy.test>")
 	c1.ExpectPattern("250 *")
 	// Down on semaphore.
 
 	c3 := t.Conn4("127.0.0.2", "smtp")
 	defer c3.Close()
 	c3.SMTPNegotation("localhost", nil, nil)
-	c3.Writeln("MAIL FROM:<testing@maddy.test")
+	c3.Writeln("MAIL FROM:<testing@maddy.test>")
 	c3.ExpectPattern("250 *")
 	// Down on semaphore (different IP).
 
 	c2 := t.Conn("smtp")
 	defer c2.Close()
 	c2.SMTPNegotation("localhost", nil, nil)
-	c1.Writeln("MAIL FROM:<testing@maddy.test")
+	c1.Writeln("MAIL FROM:<testing@maddy.test>")
 	// Temporary error due to lock timeout.
 	c1.ExpectPattern("451 *")
 }

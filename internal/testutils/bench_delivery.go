@@ -23,12 +23,13 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/module"
 )
@@ -100,7 +101,7 @@ func RandomMsg(b *testing.B) (module.MsgMetadata, textproto.Header, buffer.Buffe
 	for i := 0; i < ExtraMessageHeaderFields; i++ {
 		hdr.Add("AAAAAAAAAAAA-"+strconv.Itoa(i), strings.Repeat("A", ExtraMessageHeaderFieldSize))
 	}
-	bodyBlob, _ := ioutil.ReadAll(body)
+	bodyBlob, _ := io.ReadAll(body)
 
 	return module.MsgMetadata{
 		DontTraceSender: true,
@@ -124,7 +125,7 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 		for i, rcptTemplate := range recipientTemplates {
 			rcpt := strings.Replace(rcptTemplate, "X", strconv.Itoa(i), -1)
 
-			if err := delivery.AddRcpt(benchCtx, rcpt); err != nil {
+			if err := delivery.AddRcpt(benchCtx, rcpt, smtp.RcptOptions{}); err != nil {
 				b.Fatal(err)
 			}
 		}

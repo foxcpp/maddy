@@ -251,8 +251,8 @@ func (d *delivery) connect(ctx context.Context) error {
 	return nil
 }
 
-func (d *delivery) AddRcpt(ctx context.Context, rcptTo string) error {
-	err := d.conn.Rcpt(ctx, rcptTo)
+func (d *delivery) AddRcpt(ctx context.Context, rcptTo string, opts smtp.RcptOptions) error {
+	err := d.conn.Rcpt(ctx, rcptTo, opts)
 	if err != nil {
 		return d.u.moduleError(err)
 	}

@@ -22,6 +22,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"runtime/trace"
 	"sort"
@@ -65,20 +66,19 @@ func (c *mxConn) Close() error {
 }
 
 func isVerifyError(err error) bool {
-	_, ok := err.(x509.UnknownAuthorityError)
-	if ok {
+	if errors.As(err, &x509.UnknownAuthorityError{}) {
 		return true
 	}
-	_, ok = err.(x509.HostnameError)
-	if ok {
+	if errors.As(err, &x509.HostnameError{}) {
 		return true
 	}
-	_, ok = err.(x509.ConstraintViolationError)
-	if ok {
+	if errors.As(err, &x509.ConstraintViolationError{}) {
 		return true
 	}
-	_, ok = err.(x509.CertificateInvalidError)
-	return ok
+	if errors.As(err, &x509.CertificateInvalidError{}) {
+		return true
+	}
+	return false
 }
 
 // connect attempts to connect to the MX, first trying STARTTLS with X.509

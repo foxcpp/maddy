@@ -4,7 +4,7 @@ maddy source tree
 Main maddy code base lives here. No packages are intended to be used in
 third-party software hence API is not stable.
 
-Subdirectories are organised as follows:
+Subdirectories are organized as follows:
 ```
 /
   auxiliary libraries

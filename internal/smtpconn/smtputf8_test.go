@@ -37,7 +37,7 @@ func doTestDelivery(t *testing.T, conn *C, from string, to []string, opts smtp.M
 		return err
 	}
 	for _, rcpt := range to {
-		if err := conn.Rcpt(context.Background(), rcpt); err != nil {
+		if err := conn.Rcpt(context.Background(), rcpt, smtp.RcptOptions{}); err != nil {
 			return err
 		}
 	}

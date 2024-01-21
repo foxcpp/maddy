@@ -147,8 +147,8 @@ func (a *Auth) newConn() (*ldap.Conn, error) {
 			return nil, fmt.Errorf("auth.ldap: invalid server URL: %w", err)
 		}
 		hostname := parsedURL.Host
+		a.tlsCfg.ServerName = strings.Split(hostname, ":")[0]
 		tlsCfg = a.tlsCfg.Clone()
-		a.tlsCfg.ServerName = hostname
 
 		conn, err = ldap.DialURL(u, ldap.DialWithDialer(a.dialer), ldap.DialWithTLSConfig(tlsCfg))
 		if err != nil {

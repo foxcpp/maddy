@@ -24,7 +24,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
@@ -104,7 +105,7 @@ type unreliableTargetDeliveryPartial struct {
 	*unreliableTargetDelivery
 }
 
-func (utd *unreliableTargetDelivery) AddRcpt(ctx context.Context, rcptTo string) error {
+func (utd *unreliableTargetDelivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOptions) error {
 	if len(utd.ut.rcptFailures) > utd.ut.passedMessages {
 		rcptErrs := utd.ut.rcptFailures[utd.ut.passedMessages]
 		if err := rcptErrs[rcptTo]; err != nil {
@@ -122,7 +123,7 @@ func (utd *unreliableTargetDelivery) Body(ctx context.Context, header textproto.
 	}
 
 	r, _ := body.Open()
-	utd.msg.Body, _ = ioutil.ReadAll(r)
+	utd.msg.Body, _ = io.ReadAll(r)
 
 	if len(utd.ut.bodyFailures) > utd.ut.passedMessages {
 		return utd.ut.bodyFailures[utd.ut.passedMessages]
@@ -133,7 +134,7 @@ func (utd *unreliableTargetDelivery) Body(ctx context.Context, header textproto.
 
 func (utd *unreliableTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	r, _ := body.Open()
-	utd.msg.Body, _ = ioutil.ReadAll(r)
+	utd.msg.Body, _ = io.ReadAll(r)
 
 	if len(utd.ut.bodyFailuresPartial) > utd.ut.passedMessages {
 		for rcpt, err := range utd.ut.bodyFailuresPartial[utd.ut.passedMessages] {
@@ -200,7 +201,7 @@ func checkQueueDir(t *testing.T, q *Queue, expectedIDs []string) {
 		expectedMap[id] = false
 	}
 
-	dir, err := ioutil.ReadDir(q.location)
+	dir, err := os.ReadDir(q.location)
 	if err != nil {
 		t.Fatalf("failed to read queue directory: %v", err)
 	}
@@ -610,7 +611,7 @@ func TestQueueDelivery_AbortNoDangling(t *testing.T) {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt, smtp.RcptOptions{}); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}
@@ -790,7 +791,7 @@ func TestQueueDSN_RcptRewrite(t *testing.T) {
 		t.Fatalf("unexpected Start err: %v", err)
 	}
 	for _, rcpt := range [...]string{"test@example.org", "test2@example.org"} {
-		if err := delivery.AddRcpt(context.Background(), rcpt); err != nil {
+		if err := delivery.AddRcpt(context.Background(), rcpt, smtp.RcptOptions{}); err != nil {
 			t.Fatalf("unexpected AddRcpt err for %s: %v", rcpt, err)
 		}
 	}

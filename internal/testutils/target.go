@@ -24,12 +24,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/exterrors"
@@ -101,7 +101,7 @@ func (dt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFr
 	}, dt.StartErr
 }
 
-func (dtd *testTargetDelivery) AddRcpt(ctx context.Context, to string) error {
+func (dtd *testTargetDelivery) AddRcpt(ctx context.Context, to string, _ smtp.RcptOptions) error {
 	if dtd.tgt.RcptErr != nil {
 		if err := dtd.tgt.RcptErr[to]; err != nil {
 			return err
@@ -131,7 +131,7 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c modul
 	}
 	defer body.Close()
 
-	dtd.msg.Body, err = ioutil.ReadAll(body)
+	dtd.msg.Body, err = io.ReadAll(body)
 	if err != nil {
 		for rcpt, err := range dtd.tgt.PartialBodyErr {
 			c.SetStatus(rcpt, err)
@@ -157,11 +157,11 @@ func (dtd *testTargetDelivery) Body(ctx context.Context, header textproto.Header
 
 	if dtd.tgt.DiscardMessages {
 		// Don't bother.
-		_, err = io.Copy(ioutil.Discard, body)
+		_, err = io.Copy(io.Discard, body)
 		return err
 	}
 
-	dtd.msg.Body, err = ioutil.ReadAll(body)
+	dtd.msg.Body, err = io.ReadAll(body)
 	return err
 }
 
@@ -220,7 +220,7 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
-		if err := delivery.AddRcpt(testCtx, rcpt); err != nil {
+		if err := delivery.AddRcpt(testCtx, rcpt, smtp.RcptOptions{}); err != nil {
 			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
 			t.Log("-- delivery.Abort")
 			if err := delivery.Abort(testCtx); err != nil {
@@ -270,7 +270,7 @@ func DoTestDeliveryErrMeta(t *testing.T, tgt module.DeliveryTarget, from string,
 	}
 	for _, rcpt := range to {
 		t.Log("-- delivery.AddRcpt", rcpt)
-		if err := delivery.AddRcpt(testCtx, rcpt); err != nil {
+		if err := delivery.AddRcpt(testCtx, rcpt, smtp.RcptOptions{}); err != nil {
 			t.Log("-- ... delivery.AddRcpt", rcpt, err, exterrors.Fields(err))
 			t.Log("-- delivery.Abort")
 			if err := delivery.Abort(testCtx); err != nil {

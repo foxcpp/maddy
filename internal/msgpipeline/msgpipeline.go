@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -276,7 +277,7 @@ type msgpipelineDelivery struct {
 	checkRunner *checkRunner
 }
 
-func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
+func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string, opts smtp.RcptOptions) error {
 	if err := dd.checkRunner.checkRcpt(ctx, dd.d.globalChecks, to); err != nil {
 		return err
 	}
@@ -363,7 +364,7 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string) error {
 					return wrapErr(err)
 				}
 
-				if err := delivery.AddRcpt(ctx, to); err != nil {
+				if err := delivery.AddRcpt(ctx, to, opts); err != nil {
 					return wrapErr(err)
 				}
 				delivery.recipients = append(delivery.recipients, originalTo)

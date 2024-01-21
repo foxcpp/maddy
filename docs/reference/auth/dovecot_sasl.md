@@ -1,6 +1,6 @@
 # Dovecot SASL
 
-The 'auth.dovecot\_sasl' module implements the client side of the Dovecot
+The 'auth.dovecot_sasl' module implements the client side of the Dovecot
 authentication protocol, allowing maddy to use it as a credentials source.
 
 Currently SASL mechanisms support is limited to mechanisms supported by maddy
@@ -16,11 +16,11 @@ dovecot_sasl unix://socket_path
 
 ## Configuration directives
 
-**Syntax**: endpoint _schema://address_ <br>
-**Default**: not set
+### endpoint _schema://address_
+Default: not set
 
 Set the address to use to contact Dovecot SASL server in the standard endpoint
 format.
 
-tcp://10.0.0.1:2222 for TCP, unix:///var/lib/dovecot/auth.sock for Unix
+`tcp://10.0.0.1:2222` for TCP, `unix:///var/lib/dovecot/auth.sock` for Unix
 domain sockets.

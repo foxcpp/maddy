@@ -22,7 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
@@ -58,7 +58,7 @@ func TLSClientBlock(_ *config.Map, node config.Node) (interface{}, error) {
 	if len(rootCAPaths) != 0 {
 		pool := x509.NewCertPool()
 		for _, path := range rootCAPaths {
-			blob, err := ioutil.ReadFile(path)
+			blob, err := os.ReadFile(path)
 			if err != nil {
 				return nil, err
 			}

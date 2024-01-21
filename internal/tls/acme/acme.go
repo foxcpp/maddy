@@ -39,15 +39,16 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 
 func (l *Loader) Init(cfg *config.Map) error {
 	var (
-		hostname   string
-		extraNames []string
-		storePath  string
-		caPath     string
-		testCAPath string
-		email      string
-		agreed     bool
-		challenge  string
-		provider   certmagic.ACMEDNSProvider
+		hostname       string
+		extraNames     []string
+		storePath      string
+		caPath         string
+		testCAPath     string
+		email          string
+		agreed         bool
+		challenge      string
+		overrideDomain string
+		provider       certmagic.ACMEDNSProvider
 	)
 	cfg.Bool("debug", true, false, &l.log.Debug)
 	cfg.String("hostname", true, true, "", &hostname)
@@ -60,6 +61,8 @@ func (l *Loader) Init(cfg *config.Map) error {
 		certmagic.LetsEncryptStagingCA, &testCAPath)
 	cfg.String("email", false, false,
 		"", &email)
+	cfg.String("override_domain", false, false,
+		"", &overrideDomain)
 	cfg.Bool("agreed", false, false, &agreed)
 	cfg.Enum("challenge", false, true,
 		[]string{"dns-01"}, "dns-01", &challenge)
@@ -80,10 +83,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 	l.cache = certmagic.NewCache(certmagic.CacheOptions{
 		Logger: cmLog,
 		GetConfigForCert: func(c certmagic.Certificate) (*certmagic.Config, error) {
-			return &certmagic.Config{
-				Storage: l.store,
-				Logger:  cmLog,
-			}, nil
+			return l.cfg, nil
 		},
 	})
 
@@ -92,7 +92,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 		Logger:            cmLog,
 		DefaultServerName: hostname,
 	})
-	mngr := certmagic.NewACMEIssuer(l.cfg, certmagic.ACMEIssuer{
+	issuer := certmagic.NewACMEIssuer(l.cfg, certmagic.ACMEIssuer{
 		Logger: cmLog,
 		CA:     caPath,
 		Email:  email,
@@ -101,18 +101,19 @@ func (l *Loader) Init(cfg *config.Map) error {
 
 	switch challenge {
 	case "dns-01":
-		mngr.DisableTLSALPNChallenge = true
-		mngr.DisableHTTPChallenge = true
+		issuer.DisableTLSALPNChallenge = true
+		issuer.DisableHTTPChallenge = true
 		if provider == nil {
 			return fmt.Errorf("tls.loader.acme: dns-01 challenge requires a configured DNS provider")
 		}
-		mngr.DNS01Solver = &certmagic.DNS01Solver{
-			DNSProvider: provider,
+		issuer.DNS01Solver = &certmagic.DNS01Solver{
+			DNSProvider:    provider,
+			OverrideDomain: overrideDomain,
 		}
 	default:
 		return fmt.Errorf("tls.loader.acme: challenge not supported")
 	}
-	l.cfg.Issuers = []certmagic.Issuer{mngr}
+	l.cfg.Issuers = []certmagic.Issuer{issuer}
 
 	if module.NoRun {
 		return nil

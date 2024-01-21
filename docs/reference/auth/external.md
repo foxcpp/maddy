@@ -1,12 +1,12 @@
 # System command
 
 auth.external module for authentication using external helper binary. It looks for binary
-named maddy-auth-helper in $PATH and libexecdir and uses it for authentication
+named `maddy-auth-helper` in $PATH and libexecdir and uses it for authentication
 using username/password pair.
 
 The protocol is very simple:
 Program is launched for each authentication. Username and password are written
-to stdin, adding \\n to the end. If binary exits with 0 status code -
+to stdin, adding \n to the end. If binary exits with 0 status code -
 authentication is considered successful. If the status code is 1 -
 authentication is failed. If the status code is 2 - another unrelated error has
 happened. Additional information should be written to stderr.
@@ -21,19 +21,24 @@ auth.external {
 
 ## Configuration directives
 
-**Syntax**: helper _file\_path\_
+### helper _file_path_
 
-Location of the helper binary. **Required.**
+**Required.** <br>
+Location of the helper binary. 
 
-**Syntax**: perdomain _boolean_ <br>
-**Default**: no
+---
+
+### perdomain _boolean_
+Default: `no`
 
 Don't remove domain part of username when authenticating and require it to be
 present. Can be used if you want user@domain1 and user@domain2 to be different
 accounts.
 
-**Syntax**: domains _domains..._ <br>
-**Default**: not specified
+---
+
+### domains _domains..._
+Default: not specified
 
 Domains that should be allowed in username during authentication.
 
@@ -43,5 +48,5 @@ name in addition to just username.
 
 If used without 'perdomain', domain part will be removed from login before
 check with underlying auth. mechanism. If 'perdomain' is set, then
-domains must be also set and domain part WILL NOT be removed before check.
+domains must be also set and domain part **will not** be removed before check.
 

@@ -146,10 +146,23 @@ install() {
 	# Attempt to install systemd units only for Linux.
 	# Check is done using GOOS instead of uname -s to account for possible
 	# package cross-compilation.
-	if [ "$(go env GOOS)" = "linux" ]; then
-		command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
-		command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
-	fi
+	# Though go command might be unavailable if build.sh is run
+	# with sudo and go installation is user-specific, so fallback
+	# to using uname -s in the end.
+	set +e
+  if command -v go >/dev/null 2>/dev/null; then
+    set -e
+    if [ "$(go env GOOS)" = "linux" ]; then
+    		command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
+    		command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+    fi
+  else
+    set -e
+    if [ "$(uname -s)" = "Linux" ]; then
+        		command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
+        		command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+        fi
+  fi
 
 	if [ -e "${builddir}"/man ]; then
 		command install -m 0755 -d "${destdir}/${prefix}/share/man/man1/"

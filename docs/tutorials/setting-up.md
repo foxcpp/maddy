@@ -47,7 +47,7 @@ Your options are:
     docker pull foxcpp/maddy:0.6
     ```
 
-    See [here](../docker) for Docker-specific instructions.
+    See [here](../../docker) for Docker-specific instructions.
 
 * Building from source
 
@@ -168,7 +168,7 @@ mx1.example.org.   AAAA  2001:beef::1
 ; for this domain, and nobody else.
 example.org.     TXT   "v=spf1 mx ~all"
 ; It is recommended to server SPF record for both domain and MX hostname
-mx1.example.org. TXT   "v=spf1 mx ~all"
+mx1.example.org. TXT   "v=spf1 a ~all"
 
 ; Opt-in into DMARC with permissive policy and request reports about broken
 ; messages.
@@ -245,6 +245,9 @@ storage account:
 ```
 $ maddy imap-acct create postmaster@example.org
 ```
+
+Note: to run `maddy` CLI commands, your user should be in the `maddy`
+group. Alternatively, just use `sudo -u maddy`.
 
 That is it. Now you have your first e-mail address. when authenticating using
 your e-mail client, do not forget the username is "postmaster@example.org", not

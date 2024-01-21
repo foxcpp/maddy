@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/emersion/go-sasl"
@@ -69,7 +70,9 @@ type Endpoint struct {
 	deferServerReject   bool
 	maxLoggedRcptErrors int
 	maxReceived         int
-	maxHeaderBytes      int
+	maxHeaderBytes      int64
+
+	sessionCnt atomic.Int32
 
 	authNormalize authz.NormalizeFunc
 	authMap       module.Table
@@ -408,6 +411,8 @@ func (endp *Endpoint) NewSession(conn *smtp.Conn) (smtp.Session, error) {
 		return nil, endp.wrapErr("", true, "EHLO", err)
 	}
 
+	endp.sessionCnt.Add(1)
+
 	return sess, nil
 }
 
@@ -452,6 +457,10 @@ func (endp *Endpoint) newSession(conn *smtp.Conn) *Session {
 	}
 
 	return s
+}
+
+func (endp *Endpoint) ConnectionCount() int {
+	return int(endp.sessionCnt.Load())
 }
 
 func (endp *Endpoint) Close() error {

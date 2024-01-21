@@ -6,7 +6,7 @@ modifying IMAP-specific message attributes. In particular, it allows
 code to change target folder and add IMAP flags (keywords) to the message.
 
 There is no way to reject message using IMAP filters, this should be done
-eariler in SMTP pipeline logic. Quarantined messages are not processed
+earlier in SMTP pipeline logic. Quarantined messages are not processed
 by IMAP filters and are unconditionally delivered to Junk folder (or other
 folder with \Junk special-use attribute).
 
@@ -44,7 +44,7 @@ access to the SMTP envelope recipient (before and after any rewrites),
 
 Note that if you use provided systemd units on Linux, maddy executable is
 sandboxed - all commands will be executed with heavily restricted filesystem
-acccess and other privileges. Notably, /tmp is isolated and all directories
+access and other privileges. Notably, /tmp is isolated and all directories
 except for /var/lib/maddy and /run/maddy are read-only. You will need to modify
 systemd unit if your command needs more privileges.
 

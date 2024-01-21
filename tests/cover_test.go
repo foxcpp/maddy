@@ -38,6 +38,7 @@ https://github.com/albertito/chasquid/blob/master/coverage_test.go
 
 import (
 	"flag"
+	"io"
 	"os"
 	"testing"
 
@@ -71,11 +72,14 @@ func TestMain(m *testing.M) {
 	}
 
 	// Silence output produced by "testing" runtime.
-	_, w, err := os.Pipe()
+	r, w, err := os.Pipe()
 	if err == nil {
 		os.Stderr = w
 		os.Stdout = w
 	}
+	go func() {
+		_, _ = io.ReadAll(r)
+	}()
 
 	// Even though we do not have any tests to run, we need to call out into
 	// "testing" to make it process flags and produce the coverage report.

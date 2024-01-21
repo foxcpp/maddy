@@ -93,4 +93,4 @@ mentioned above).
 
 Clients that want to implement proper handling for Unicode strings may assume
 maddy does not handle them properly in e.g. SEARCH commands and so such clients
-may download messsages and process them locally.
+may download messages and process them locally.
