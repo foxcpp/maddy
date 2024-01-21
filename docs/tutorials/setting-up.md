@@ -246,6 +246,9 @@ storage account:
 $ maddy imap-acct create postmaster@example.org
 ```
 
+Note: to run `maddy` CLI commands, your user should be in the `maddy`
+group. Alternatively, just use `sudo -u maddy`.
+
 That is it. Now you have your first e-mail address. when authenticating using
 your e-mail client, do not forget the username is "postmaster@example.org", not
 just "postmaster".

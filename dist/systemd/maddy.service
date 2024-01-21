@@ -54,8 +54,9 @@ KillSignal=SIGTERM
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
-# Force all files created by maddy to be only readable by it.
-UMask=0027
+# Force all files created by maddy to be only readable by it
+# and maddy group.
+UMask=0007
 
 # Bump FD limitations. Even idle mail server can have a lot of FDs open (think
 # of idle IMAP connections, especially ones abandoned on the other end and

@@ -34,17 +34,19 @@ $ git clone https://github.com/foxcpp/maddy.git
 $ cd maddy
 ```
 
-3. Select the appropriate version to build:
+2. Select the appropriate version to build:
 ```
 $ git checkout v0.7.0      # a specific release
 $ git checkout master      # next bugfix release
 $ git checkout dev         # next feature release
 ```
 
-2. Build & install it
+3. Build & install it
 ```
 $ ./build.sh
-# ./build.sh install
+$ sudo ./build.sh install
 ```
 
-3. Have fun!
+4. Finish setup as described in [Setting up](../setting-up) (starting from System configuration).
+
+
