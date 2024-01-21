@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-hclog v1.6.2
 	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/lib/pq v1.10.9
-	github.com/libdns/alidns v1.0.3
+	github.com/libdns/alidns v1.0.3-0.20230628155627-8d5d630d5516
 	github.com/libdns/cloudflare v0.1.1-0.20221006221909-9d3ab3c3cddd
 	github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea
 	github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79
