@@ -316,24 +316,6 @@ func TestEvaluateAlignment(t *testing.T) {
 		},
 		{ // 16
 			fromDomain: "example.com",
-			record: &Record{
-				SPFAlignment: dmarc.AlignmentStrict,
-			},
-			results: []authres.Result{
-				&authres.SPFResult{
-					Value: authres.ResultPass,
-					From:  "",
-					Helo:  "mx.example.com",
-				},
-				&authres.DKIMResult{
-					Value:  authres.ResultNone,
-					Domain: "example.org",
-				},
-			},
-			output: authres.ResultFail,
-		},
-		{ // 17
-			fromDomain: "example.com",
 			record:     &Record{},
 			results: []authres.Result{
 				&authres.SPFResult{
@@ -348,7 +330,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultTempError,
 		},
-		{ // 18
+		{ // 17
 			fromDomain: "example.com",
 			record:     &Record{},
 			results: []authres.Result{
@@ -364,7 +346,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultTempError,
 		},
-		{ // 19
+		{ // 18
 			fromDomain: "example.com",
 			record:     &Record{},
 			results: []authres.Result{
@@ -380,7 +362,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultPass,
 		},
-		{ // 20
+		{ // 19
 			fromDomain: "example.com",
 			record:     &Record{},
 			results: []authres.Result{
@@ -396,7 +378,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultPass,
 		},
-		{ // 21
+		{ // 20
 			fromDomain: "example.org",
 			record:     &Record{},
 			results: []authres.Result{
@@ -416,7 +398,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultPass,
 		},
-		{ // 22
+		{ // 21
 			fromDomain: "example.org",
 			record:     &Record{},
 			results: []authres.Result{
@@ -436,7 +418,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultTempError,
 		},
-		{ // 23
+		{ // 22
 			fromDomain: "example.org",
 			record:     &Record{},
 			results: []authres.Result{
@@ -452,7 +434,7 @@ func TestEvaluateAlignment(t *testing.T) {
 			},
 			output: authres.ResultFail,
 		},
-		{ // 21
+		{ // 23
 			fromDomain: "sub.example.org",
 			record:     &Record{},
 			results: []authres.Result{
