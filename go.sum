@@ -500,6 +500,8 @@ github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea h1:IGlMNZCUp8H
 github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea/go.mod h1:B2TChhOTxvBflpRTHlguXWtwa1Ha5WI6JkB6aCViM+0=
 github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79 h1:s5zuoIehXkSKg6Yfd5Oh1jEfvWXSn+eAttVHufSzDPE=
 github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79/go.mod h1:VN+Lh8Teq6nYszNsPSLKdIv24hOCcQu0rJWHQa2jPZc=
+github.com/libdns/gandi v1.0.3 h1:FIvipWOg/O4zi75fPRmtcolRKqI6MgrbpFy2p5KYdUk=
+github.com/libdns/gandi v1.0.3/go.mod h1:G6dw58Xnji2xX+lb+uZxGbtmfxKllm1CGHE2bOPG3WA=
 github.com/libdns/googleclouddns v1.1.0 h1:murPR1LfTZZObLV2OLxUVmymWH25glkMFKpDjkk2m0E=
 github.com/libdns/googleclouddns v1.1.0/go.mod h1:3tzd056dfqKlf71V8Oy19En4WjJ3ybyuWx6P9bQSCIw=
 github.com/libdns/hetzner v0.0.1 h1:WsmcsOKnfpKmzwhfyqhGQEIlEeEaEUvb7ezoJgBKaqU=
