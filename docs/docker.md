@@ -65,6 +65,7 @@ docker run \
   -v maddydata:/data \
   -p 25:25 \
   -p 143:143 \
+  -p 465:465 \
   -p 587:587 \
   -p 993:993 \
   foxcpp/maddy:0.6
