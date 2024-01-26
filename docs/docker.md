@@ -40,8 +40,8 @@ To run management commands, create a temporary container with the same
 /data directory and put the command after the image name, like this:
 
 ```
-docker run --rm -it -v maddydata:/data foxcpp/maddy:0.6.0 creds create foxcpp@maddy.test
-docker run --rm -it -v maddydata:/data foxcpp/maddy:0.6.0 imap-acct create foxcpp@maddy.test
+docker run --rm -it -v maddydata:/data foxcpp/maddy:latest creds create foxcpp@maddy.test
+docker run --rm -it -v maddydata:/data foxcpp/maddy:latest imap-acct create foxcpp@maddy.test
 ```
 
 Use the same image version as the running server. Things may break badly
@@ -68,7 +68,7 @@ docker run \
   -p 465:465 \
   -p 587:587 \
   -p 993:993 \
-  foxcpp/maddy:0.6
+  foxcpp/maddy:latest
 ```
 
 It will fail on first startup. Copy TLS certificate to /data/tls/fullchain.pem
