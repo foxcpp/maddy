@@ -31,7 +31,7 @@ require (
 	github.com/libdns/alidns v1.0.3-0.20230628155627-8d5d630d5516
 	github.com/libdns/cloudflare v0.1.1-0.20221006221909-9d3ab3c3cddd
 	github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea
-	github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79
+	github.com/libdns/gandi v1.0.3
 	github.com/libdns/googleclouddns v1.1.0
 	github.com/libdns/hetzner v0.0.1
 	github.com/libdns/leaseweb v0.3.1
@@ -168,3 +168,5 @@ require (
 )
 
 replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887
+
+replace github.com/libdns/gandi => github.com/foxcpp/libdns-gandi v1.0.4-0.20240127130558-4782f9d5ce3e // v1.0.3+maddy.1

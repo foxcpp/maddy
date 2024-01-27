@@ -325,6 +325,8 @@ github.com/foxcpp/go-mockdns v1.0.0 h1:7jBqxd3WDWwi/6WhDvacvH1XsN3rOLXyHM1uhvIx6
 github.com/foxcpp/go-mockdns v1.0.0/go.mod h1:lgRN6+KxQBawyIghpnl5CezHFGS9VLzvtVlwxvzXTQ4=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8 h1:k8w0iy6GP9oeSZWUH3p2DqZHaXDKZGNs3NZGZMGfQHc=
 github.com/foxcpp/go-mtasts v0.0.0-20191219193356-62bc3f1f74b8/go.mod h1:HO1YOCbBM8KjpgThMMFejHx6K/UsnEv2Oh9YGtBIlOU=
+github.com/foxcpp/libdns-gandi v1.0.4-0.20240127130558-4782f9d5ce3e h1:hKk+CGUtwnKDGKINPEojeo91kx0tnV6V4tlzHehJPfg=
+github.com/foxcpp/libdns-gandi v1.0.4-0.20240127130558-4782f9d5ce3e/go.mod h1:G6dw58Xnji2xX+lb+uZxGbtmfxKllm1CGHE2bOPG3WA=
 github.com/frankban/quicktest v1.5.0/go.mod h1:jaStnuzAqU1AJdCO0l53JDCJrVDKcS03DbaAcR7Ks/o=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
 github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
@@ -498,8 +500,6 @@ github.com/libdns/cloudflare v0.1.1-0.20221006221909-9d3ab3c3cddd h1:c5hc0b5/pFq
 github.com/libdns/cloudflare v0.1.1-0.20221006221909-9d3ab3c3cddd/go.mod h1:ob9J/elFVmPWKNHOMynwtH0h+T3pBrEL18amCSliwAQ=
 github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea h1:IGlMNZCUp8Ho7NYYorpP5ZJgg2mFXARs6eHs/pSqFkA=
 github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea/go.mod h1:B2TChhOTxvBflpRTHlguXWtwa1Ha5WI6JkB6aCViM+0=
-github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79 h1:s5zuoIehXkSKg6Yfd5Oh1jEfvWXSn+eAttVHufSzDPE=
-github.com/libdns/gandi v1.0.3-0.20220921161957-dcd0274d2c79/go.mod h1:VN+Lh8Teq6nYszNsPSLKdIv24hOCcQu0rJWHQa2jPZc=
 github.com/libdns/googleclouddns v1.1.0 h1:murPR1LfTZZObLV2OLxUVmymWH25glkMFKpDjkk2m0E=
 github.com/libdns/googleclouddns v1.1.0/go.mod h1:3tzd056dfqKlf71V8Oy19En4WjJ3ybyuWx6P9bQSCIw=
 github.com/libdns/hetzner v0.0.1 h1:WsmcsOKnfpKmzwhfyqhGQEIlEeEaEUvb7ezoJgBKaqU=
