@@ -95,6 +95,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 	issuer := certmagic.NewACMEIssuer(l.cfg, certmagic.ACMEIssuer{
 		Logger: cmLog,
 		CA:     caPath,
+		TestCA: testCAPath,
 		Email:  email,
 		Agreed: agreed,
 	})
