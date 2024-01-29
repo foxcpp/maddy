@@ -148,7 +148,7 @@ func (rt *Target) Init(cfg *config.Map) error {
 		MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
 		StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
 	}
-	cfg.Int("conn_max_idle_count", false, false, 10, &poolCfg.MaxConnsPerKey)
+	cfg.Int("conn_max_idle_count", false, false, 5, &poolCfg.MaxConnsPerKey)
 	cfg.Int64("conn_max_idle_time", false, false, 150, &poolCfg.MaxConnLifetimeSec)
 
 	if _, err := cfg.Process(); err != nil {
@@ -315,6 +315,7 @@ func (rd *remoteDelivery) AddRcpt(ctx context.Context, to string, opts smtp.Rcpt
 	if err := conn.Rcpt(ctx, to, opts); err != nil {
 		return moduleError(err)
 	}
+	conn.lastUseAt = time.Now()
 
 	rd.recipients = append(rd.recipients, to)
 	return nil
@@ -425,6 +426,7 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 				c.SetStatus(rcpt, err)
 			}
 			rd.connections[i].errored = err != nil
+			conn.lastUseAt = time.Now()
 		}()
 	}
 
@@ -446,12 +448,12 @@ func (rd *remoteDelivery) Close() error {
 		rd.rt.limits.ReleaseDest(conn.domain)
 		conn.transactions++
 
-		if conn.C == nil || conn.transactions > rd.rt.connReuseLimit || conn.C.Client() == nil || conn.errored {
-			rd.Log.Debugf("disconnected from %s (errored=%v,transactions=%v,disconnected before=%v)",
-				conn.ServerName(), conn.errored, conn.transactions, conn.C.Client() == nil)
+		if !conn.Usable() {
+			rd.Log.Debugf("disconnected %v from %s (errored=%v,transactions=%v,disconnected before=%v)",
+				conn.LocalAddr(), conn.ServerName(), conn.errored, conn.transactions, conn.C.Client() == nil)
 			conn.Close()
 		} else {
-			rd.Log.Debugf("returning connection for %s to pool", conn.ServerName())
+			rd.Log.Debugf("returning connection %v for %s to pool", conn.LocalAddr(), conn.ServerName())
 			rd.rt.pool.Return(conn.domain, conn)
 		}
 	}
