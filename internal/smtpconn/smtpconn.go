@@ -172,6 +172,10 @@ func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool, tl
 	c.serverName = endp.Host
 	c.cl = cl
 	c.conn = conn
+
+	c.Log.DebugMsg("connected", "remote_server", c.serverName,
+		"local_addr", c.LocalAddr(), "remote_addr", c.RemoteAddr())
+
 	return didTLS, nil
 }
 
@@ -186,6 +190,10 @@ func (c *C) ConnectLMTP(ctx context.Context, endp config.Endpoint, starttls bool
 	c.serverName = endp.Host
 	c.cl = cl
 	c.conn = conn
+
+	c.Log.DebugMsg("connected", "remote_server", c.serverName,
+		"local_addr", c.LocalAddr(), "remote_addr", c.RemoteAddr())
+
 	return didTLS, nil
 }
 
@@ -221,7 +229,6 @@ func (c *C) RemoteAddr() net.Addr {
 }
 
 func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, cl *smtp.Client, conn net.Conn, err error) {
-
 	dialCtx, cancel := context.WithTimeout(ctx, c.ConnectTimeout)
 	conn, err = c.Dialer(dialCtx, endp.Network(), endp.Address())
 	cancel()
@@ -253,11 +260,11 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 	}
 
 	if endp.IsTLS() || !starttls {
-		return endp.IsTLS(), cl, nil, nil
+		return endp.IsTLS(), cl, conn, nil
 	}
 
 	if ok, _ := cl.Extension("STARTTLS"); !ok {
-		return false, cl, nil, nil
+		return false, cl, conn, nil
 	}
 
 	cfg := tlsConfig.Clone()
@@ -323,8 +330,6 @@ func (c *C) Mail(ctx context.Context, from string, opts smtp.MailOptions) error 
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	c.Log.DebugMsg("connected", "remote_server", c.serverName,
-		"local_addr", c.LocalAddr(), "remote_addr", c.RemoteAddr())
 	return nil
 }
 
