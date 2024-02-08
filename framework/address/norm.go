@@ -36,6 +36,10 @@ import (
 //
 // On error, case-folded addr is also returned.
 func ForLookup(addr string) (string, error) {
+	if addr == "" { // Null return-path case.
+		return "", nil
+	}
+
 	mbox, domain, err := Split(addr)
 	if err != nil {
 		return strings.ToLower(addr), err
@@ -64,6 +68,10 @@ func ForLookup(addr string) (string, error) {
 //
 // Original value is also returned on the error.
 func CleanDomain(addr string) (string, error) {
+	if addr == "" { // Null return-path
+		return "", nil
+	}
+
 	mbox, domain, err := Split(addr)
 	if err != nil {
 		return addr, err
