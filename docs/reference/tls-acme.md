@@ -263,3 +263,14 @@ dns namedotcom {
 }
 ```
 
+- rfc2136 (non-default)
+
+```
+dns rfc2136 {
+    KeyName "..."
+    Key "..."
+    KeyAlg "..."
+    Server "..."
+}
+```
+
