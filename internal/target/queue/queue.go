@@ -402,7 +402,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 		meta.RcptErrs[rcpt] = toSMTPErr(rcptErr)
 
 		temporary := exterrors.IsTemporaryOrUnspec(rcptErr)
-		if !temporary || meta.TriesCount[rcpt]+1 == q.maxTries {
+		if !temporary || meta.TriesCount[rcpt]+1 >= q.maxTries {
 			delete(meta.TriesCount, rcpt)
 			dl.Msg("not delivered, permanent error", "rcpt", rcpt)
 			failedRcpts = append(failedRcpts, rcpt)
