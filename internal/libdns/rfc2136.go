@@ -16,10 +16,10 @@ func init() {
 			RecordDeleter:  &p,
 			RecordAppender: &p,
 			setConfig: func(c *config.Map) {
-				c.String("KeyName", false, true, "", &p.KeyName)
-				c.String("Key", false, true, "", &p.Key)
-				c.String("KeyAlg", false, true, "", &p.KeyAlg)
-				c.String("Server", false, true, "", &p.Server)
+				c.String("key_name", false, true, "", &p.KeyName)
+				c.String("key", false, true, "", &p.Key)
+				c.String("key_alg", false, true, "", &p.KeyAlg)
+				c.String("server", false, true, "", &p.Server)
 			},
 			instName: instName,
 			modName:  modName,

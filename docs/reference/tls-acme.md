@@ -267,10 +267,14 @@ dns namedotcom {
 
 ```
 dns rfc2136 {
-    KeyName "..."
-    Key "..."
-    KeyAlg "..."
-    Server "..."
+    key_name "..."
+    # Secret
+    key "..."
+    # HMAC algorithm used to generate the key, lowercase, e.g. hmac-sha512
+    key_alg "..."
+    # server to which the dynamic update will be sent, e.g. 127.0.0.1
+    # you can also specify the port: 127.0.0.1:53
+    server "..."
 }
 ```
 
