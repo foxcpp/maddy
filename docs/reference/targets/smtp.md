@@ -65,7 +65,7 @@ Refuse to pass messages over plain-text connections.
 
 ---
 
-### auth `off` | `plain` _username_ _password_ | `forward`  | `external`
+### auth `off` | `plain` _username_ _password_ | `login` _username_ _password_ | `forward`  | `external`
 Default: `off`
 
 Specify the way to authenticate to the remote server.
@@ -73,6 +73,10 @@ Valid values:
 
 - `off` – No authentication.
 - `plain` – Authenticate using specified username-password pair.
+  **Don't use** this without enforced TLS (`require_tls`).
+- `login` - Authenticate using specified username-password pair.
+  Uses obsolete SASL LOGIN mechanism instead of SASL PLAIN.
+  This is required for compatibility with some SMTP services (e.g. Office 365).
   **Don't use** this without enforced TLS (`require_tls`).
 - `forward` – Forward credentials specified by the client.
   **Don't use** this without enforced TLS (`require_tls`).
