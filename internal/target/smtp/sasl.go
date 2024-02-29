@@ -57,12 +57,18 @@ func saslAuthDirective(_ *config.Map, node config.Node) (interface{}, error) {
 			}
 			return sasl.NewPlainClient("", msgMeta.Conn.AuthUser, msgMeta.Conn.AuthPassword), nil
 		}, nil
-	case "plain":
+	case "plain", "login":
 		if len(node.Args) != 3 {
 			return nil, config.NodeErr(node, "two additional arguments are required (username, password)")
 		}
 		return func(*module.MsgMetadata) (sasl.Client, error) {
-			return sasl.NewPlainClient("", node.Args[1], node.Args[2]), nil
+			if node.Args[0] == "plain" {
+				return sasl.NewPlainClient("", node.Args[1], node.Args[2]), nil
+			} else if node.Args[0] == "login" {
+				return sasl.NewLoginClient(node.Args[1], node.Args[2]), nil
+			} else {
+				return nil, config.NodeErr(node, "unknown authentication mechanism: %s", node.Args[0])
+			}
 		}, nil
 	case "external":
 		if len(node.Args) > 1 {

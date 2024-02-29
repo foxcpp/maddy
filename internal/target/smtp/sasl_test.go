@@ -96,6 +96,64 @@ func TestSASL_Plain_AuthFail(t *testing.T) {
 	}
 }
 
+func TestSASL_Login(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		saslFactory: testSaslFactory(t, "login", "test", "testpass"),
+		log:         testutils.Logger(t, "target.smtp"),
+	}
+
+	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
+	if be.Messages[0].AuthUser != "test" {
+		t.Errorf("Wrong AuthUser: %v", be.Messages[0].AuthUser)
+	}
+	if be.Messages[0].AuthPass != "testpass" {
+		t.Errorf("Wrong AuthPass: %v", be.Messages[0].AuthPass)
+	}
+}
+
+func TestSASL_Login_AuthFail(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
+	defer srv.Close()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	be.AuthErr = &smtp.SMTPError{
+		Code:         550,
+		EnhancedCode: smtp.EnhancedCode{5, 1, 2},
+		Message:      "Hey",
+	}
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		saslFactory: testSaslFactory(t, "login", "test", "testpass"),
+		log:         testutils.Logger(t, "target.smtp"),
+	}
+
+	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+}
+
 func TestSASL_Forward(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
 	defer srv.Close()

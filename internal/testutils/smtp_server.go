@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/exterrors"
 )
@@ -202,6 +203,19 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 
 	be := new(SMTPBackend)
 	s := smtp.NewServer(be)
+
+	// Enable AUTH LOGIN with a custom handler that just calls AuthPlain.
+	s.EnableAuth(sasl.Login, func(conn *smtp.Conn) sasl.Server {
+		return sasl.NewLoginServer(func(username, password string) error {
+			sess := conn.Session()
+			if sess == nil {
+				panic("No session when AUTH is called")
+			}
+
+			return sess.AuthPlain(username, password)
+		})
+	})
+
 	s.Domain = "localhost"
 	s.AllowInsecureAuth = true
 	for _, f := range fn {
@@ -282,6 +296,19 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 
 	be := new(SMTPBackend)
 	s := smtp.NewServer(be)
+
+	// Enable AUTH LOGIN with a custom handler that just calls AuthPlain.
+	s.EnableAuth(sasl.Login, func(conn *smtp.Conn) sasl.Server {
+		return sasl.NewLoginServer(func(username, password string) error {
+			sess := conn.Session()
+			if sess == nil {
+				panic("No session when AUTH is called")
+			}
+
+			return sess.AuthPlain(username, password)
+		})
+	})
+
 	s.Domain = "localhost"
 	s.AllowInsecureAuth = true
 	s.TLSConfig = &tls.Config{
@@ -341,6 +368,19 @@ func SMTPServerTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*t
 
 	be := new(SMTPBackend)
 	s := smtp.NewServer(be)
+
+	// Enable AUTH LOGIN with a custom handler that just calls AuthPlain.
+	s.EnableAuth(sasl.Login, func(conn *smtp.Conn) sasl.Server {
+		return sasl.NewLoginServer(func(username, password string) error {
+			sess := conn.Session()
+			if sess == nil {
+				panic("No session when AUTH is called")
+			}
+
+			return sess.AuthPlain(username, password)
+		})
+	})
+
 	s.Domain = "localhost"
 	for _, f := range fn {
 		f(s)
