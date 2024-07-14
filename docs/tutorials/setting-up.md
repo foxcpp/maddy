@@ -81,7 +81,7 @@ useradd -mrU -s /sbin/nologin -d /var/lib/maddy -c "maddy mail server" maddy
 
 ## Host name + domain
 
-Open /etc/maddy/maddy.conf with vim^W your favorite editor and change
+Open /etc/maddy/maddy.conf with vim or your favorite editor and change
 the following lines to match your server name and domain you want to handle
 mail for.
 If you setup a very small mail server you can use example.org in both fields.
