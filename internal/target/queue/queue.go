@@ -498,7 +498,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	}
 
 	if len(acceptedRcpts) == 0 {
-		dl.Debugf("delivery.Abort (no accepted receipients)")
+		dl.Debugf("delivery.Abort (no accepted recipients)")
 		if err := delivery.Abort(msgCtx); err != nil {
 			dl.Error("delivery.Abort failed", err)
 		}
