@@ -31,8 +31,42 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/foxcpp/maddy/framework/dns"
+	"golang.org/x/net/idna"
 )
 
+func (m *Modifier) generateKeyForDomain(domain string) (crypto.Signer, error) {
+	if _, err := idna.ToASCII(domain); err != nil {
+		m.log.Printf("warning: unable to convert domain %s to A-labels form, non-EAI messages will not be signed: %v", domain, err)
+	}
+
+	keyValues := strings.NewReplacer("{domain}", domain, "{selector}", m.selector)
+	keyPath := keyValues.Replace(m.keyPathTemplate)
+
+	signer, newKey, err := m.loadOrGenerateKey(keyPath, m.newKeyAlgo)
+	if err != nil {
+		return nil, err
+	}
+
+	if newKey {
+		dnsPath := keyPath + ".dns"
+		if filepath.Ext(keyPath) == ".key" {
+			dnsPath = keyPath[:len(keyPath)-4] + ".dns"
+		}
+		m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
+			"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
+			m.newKeyAlgo, keyPath, dnsPath, m.selector, domain)
+	}
+
+	normDomain, err := dns.ForLookup(domain)
+	if err != nil {
+		return nil, fmt.Errorf("sign_skim: unable to normalize domain %s: %w", domain, err)
+	}
+	m.signers[normDomain] = signer
+	return signer, nil
+}
 func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Signer, newKey bool, err error) {
 	f, err := os.Open(keyPath)
 	if err != nil {
