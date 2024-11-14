@@ -39,7 +39,6 @@ import (
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/foxcpp/maddy/internal/table"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
@@ -95,27 +94,40 @@ var (
 	}
 )
 
-type Modifier struct {
-	instName string
+type (
+	Modifier struct {
+		instName string
 
-	domains         []string
-	selector        string
-	signers         map[string]crypto.Signer
-	oversignHeader  []string
-	signHeader      []string
-	headerCanon     dkim.Canonicalization
-	bodyCanon       dkim.Canonicalization
-	sigExpiry       time.Duration
-	hash            crypto.Hash
-	multipleFromOk  bool
-	signSubdomains  bool
-	keyPathTemplate string
-	hashName        string
-	newKeyAlgo      string
-	sqlTable        *table.SQL
+		domains         []string
+		selector        string
+		signers         map[string]crypto.Signer
+		oversignHeader  []string
+		signHeader      []string
+		headerCanon     dkim.Canonicalization
+		bodyCanon       dkim.Canonicalization
+		sigExpiry       time.Duration
+		hash            crypto.Hash
+		multipleFromOk  bool
+		signSubdomains  bool
+		keyPathTemplate string
+		hashName        string
+		newKeyAlgo      string
+		table           module.MutableTable
+		storeKeysInDB   bool
 
-	log log.Logger
-}
+		log log.Logger
+	}
+
+	DKIM struct {
+		Domain     string        `json:"domain"`
+		PrivateKey string        `json:"privateKey,omitempty"`
+		PublicKey  string        `json:"publicKey,omitempty"`
+		DNSName    string        `json:"dnsName"`
+		DNSValue   string        `json:"dnsValue"`
+		Expires    time.Time     `json:"expires,omitempty"`
+		pkey       crypto.Signer `json:"-"`
+	}
+)
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	m := &Modifier{
@@ -147,11 +159,11 @@ func (m *Modifier) InstanceName() string {
 
 func (m *Modifier) Init(cfg *config.Map) error {
 
-	var domainTbl module.Table
 	cfg.Bool("debug", true, false, &m.log.Debug)
+	cfg.Bool("store_keys_in_database", false, false, &m.storeKeysInDB)
 	cfg.StringList("domains", false, false, m.domains, &m.domains)
 	cfg.String("selector", false, false, m.selector, &m.selector)
-	cfg.Custom("domain_table", true, false, nil, modconfig.TableDirective, &domainTbl)
+	cfg.Custom("domain_table", true, false, nil, modconfig.TableDirective, &m.table)
 	cfg.String("key_path", false, false, "dkim_keys/{domain}_{selector}.key", &m.keyPathTemplate)
 	cfg.StringList("oversign_fields", false, false, oversignDefault, &m.oversignHeader)
 	cfg.StringList("sign_fields", false, false, signDefault, &m.signHeader)
@@ -188,15 +200,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		panic("modify.dkim.Init: Hash function allowed by config matcher but not present in hashFuncs")
 	}
 
-	var ok bool
-	m.sqlTable, ok = domainTbl.(*table.SQL)
-	if !ok && domainTbl != nil {
-		return errors.New("modify.dkim: table is not SQLTable")
-	}
-
 	// If available, include domains from SQL table
-	if ok {
-		domains, err := m.sqlTable.Keys()
+	if m.table != nil {
+		domains, err := m.table.Keys()
 		if err != nil {
 			return err
 		}
@@ -206,6 +212,8 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		}
 	}
 
+	storeKeysInDB := m.storeKeysInDB && m.table != nil
+
 	for _, domain := range m.domains {
 		if _, err := idna.ToASCII(domain); err != nil {
 			m.log.Printf("warning: unable to convert domain %s to A-labels form, non-EAI messages will not be signed: %v", domain, err)
@@ -214,7 +222,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		keyValues := strings.NewReplacer("{domain}", domain, "{selector}", m.selector)
 		keyPath := keyValues.Replace(m.keyPathTemplate)
 
-		signer, newKey, err := m.loadOrGenerateKey(keyPath, m.newKeyAlgo)
+		signer, newKey, err := m.loadOrGenerateKey(domain, keyPath, m.newKeyAlgo, storeKeysInDB)
 		if err != nil {
 			return err
 		}
@@ -326,7 +334,7 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 	}
 	keySigner := s.m.signers[normDomain]
 	if keySigner == nil {
-		if s.m.sqlTable == nil {
+		if s.m.table == nil {
 			s.log.Msg("no key for domain", "domain", normDomain)
 			return nil
 		}
