@@ -79,19 +79,15 @@ func (m *Modifier) loadOrGenerateKey(domain, keyPath, newKeyAlgo string, storeIn
 		if err != nil {
 			return nil, false, err
 		}
-		if !ok {
+		if !ok || keyData == "" {
 			pkey, err = m.generateAndWrite(domain, keyPath, newKeyAlgo, storeInDB)
 			return pkey, true, err
 		}
 		var dkimKey DKIM
-		err = json.Unmarshal([]byte(keyData), &dkimKey)
-		if err != nil {
+		if err = json.Unmarshal([]byte(keyData), &dkimKey); err != nil {
 			return nil, false, err
 		}
-		pemBlob, err = base64.StdEncoding.DecodeString(dkimKey.PrivateKey)
-		if err != nil {
-			return nil, false, err
-		}
+		pemBlob = []byte(dkimKey.PrivateKey)
 	} else {
 		f, err := os.Open(keyPath)
 		if err != nil {
@@ -111,7 +107,11 @@ func (m *Modifier) loadOrGenerateKey(domain, keyPath, newKeyAlgo string, storeIn
 
 	block, _ := pem.Decode(pemBlob)
 	if block == nil {
-		return nil, false, fmt.Errorf("modify.dkim: %s: invalid PEM block", keyPath)
+		reference := keyPath
+		if storeInDB && m.table != nil {
+			reference = domain
+		}
+		return nil, false, fmt.Errorf("modify.dkim: %s: invalid PEM block", reference)
 	}
 
 	var key interface{}
@@ -233,7 +233,6 @@ func keyToJSON(domain, selector, algo string) (result DKIM, err error) {
 		dkimName   = algo
 		pkey       crypto.Signer
 		pubKeyBlob []byte
-		pubkey     = pkey.Public()
 	)
 
 	switch algo {
@@ -257,6 +256,7 @@ func keyToJSON(domain, selector, algo string) (result DKIM, err error) {
 		return DKIM{}, err
 	}
 
+	pubkey := pkey.Public()
 	switch pubkey := pubkey.(type) {
 	case *rsa.PublicKey:
 		var err error
@@ -271,7 +271,6 @@ func keyToJSON(domain, selector, algo string) (result DKIM, err error) {
 	}
 
 	pubKeyString := base64.StdEncoding.EncodeToString(pubKeyBlob)
-	privKeyString := base64.StdEncoding.EncodeToString(keyBlob)
 	keyRecord := fmt.Sprintf("v=DKIM1; k=%s; p=%s", dkimName, pubKeyString)
 
 	keyBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBlob})
@@ -282,7 +281,7 @@ func keyToJSON(domain, selector, algo string) (result DKIM, err error) {
 
 	result = DKIM{
 		DNSValue:   keyRecord,
-		PrivateKey: privKeyString,
+		PrivateKey: string(keyBytes),
 		PublicKey:  pubKeyString,
 		pkey:       pkey,
 		Domain:     domain,
