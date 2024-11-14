@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dkim
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -26,12 +27,14 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/foxcpp/maddy/framework/dns"
 	"golang.org/x/net/idna"
@@ -45,7 +48,8 @@ func (m *Modifier) generateKeyForDomain(domain string) (crypto.Signer, error) {
 	keyValues := strings.NewReplacer("{domain}", domain, "{selector}", m.selector)
 	keyPath := keyValues.Replace(m.keyPathTemplate)
 
-	signer, newKey, err := m.loadOrGenerateKey(keyPath, m.newKeyAlgo)
+	storeInDB := m.storeKeysInDB && m.table != nil
+	signer, newKey, err := m.loadOrGenerateKey(domain, keyPath, m.newKeyAlgo, storeInDB)
 	if err != nil {
 		return nil, err
 	}
@@ -67,20 +71,42 @@ func (m *Modifier) generateKeyForDomain(domain string) (crypto.Signer, error) {
 	m.signers[normDomain] = signer
 	return signer, nil
 }
-func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Signer, newKey bool, err error) {
-	f, err := os.Open(keyPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			pkey, err = m.generateAndWrite(keyPath, newKeyAlgo)
+func (m *Modifier) loadOrGenerateKey(domain, keyPath, newKeyAlgo string, storeInDB bool) (pkey crypto.Signer, newKey bool, err error) {
+	var pemBlob []byte
+	if storeInDB && m.table != nil {
+		ctx := context.Background()
+		keyData, ok, err := m.table.Lookup(ctx, domain)
+		if err != nil {
+			return nil, false, err
+		}
+		if !ok {
+			pkey, err = m.generateAndWrite(domain, keyPath, newKeyAlgo, storeInDB)
 			return pkey, true, err
 		}
-		return nil, false, err
-	}
-	defer f.Close()
+		var dkimKey DKIM
+		err = json.Unmarshal([]byte(keyData), &dkimKey)
+		if err != nil {
+			return nil, false, err
+		}
+		pemBlob, err = base64.StdEncoding.DecodeString(dkimKey.PrivateKey)
+		if err != nil {
+			return nil, false, err
+		}
+	} else {
+		f, err := os.Open(keyPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				pkey, err = m.generateAndWrite(domain, keyPath, newKeyAlgo, storeInDB)
+				return pkey, true, err
+			}
+			return nil, false, err
+		}
+		defer f.Close()
 
-	pemBlob, err := io.ReadAll(f)
-	if err != nil {
-		return nil, false, err
+		pemBlob, err = io.ReadAll(f)
+		if err != nil {
+			return nil, false, err
+		}
 	}
 
 	block, _ := pem.Decode(pemBlob)
@@ -125,7 +151,7 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 	}
 }
 
-func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, error) {
+func (m *Modifier) generateAndWrite(domain, keyPath, newKeyAlgo string, storeInDB bool) (crypto.Signer, error) {
 	wrapErr := func(err error) error {
 		return fmt.Errorf("modify.dkim: generate %s: %w", keyPath, err)
 	}
@@ -158,6 +184,24 @@ func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, 
 		return nil, wrapErr(err)
 	}
 
+	selector := fmt.Sprintf("%s._domainkey.%s", m.selector, domain)
+	dkimKey, err := keyToJSON(domain, selector, newKeyAlgo)
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+
+	dkimKey.Expires = time.Now().Add(m.sigExpiry)
+
+	resultString, err := json.Marshal(dkimKey)
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+
+	if storeInDB && m.table != nil {
+		err = m.table.SetKey(domain, string(resultString))
+		return pkey, err
+	}
+
 	// 0777 because we have public keys in here too and they don't
 	// need protection. Individual private key files have 0600 perms.
 	if err := os.MkdirAll(filepath.Dir(keyPath), 0o777); err != nil {
@@ -182,6 +226,70 @@ func (m *Modifier) generateAndWrite(keyPath, newKeyAlgo string) (crypto.Signer, 
 	}
 
 	return pkey, nil
+}
+
+func keyToJSON(domain, selector, algo string) (result DKIM, err error) {
+	var (
+		dkimName   = algo
+		pkey       crypto.Signer
+		pubKeyBlob []byte
+		pubkey     = pkey.Public()
+	)
+
+	switch algo {
+	case "rsa4096":
+		dkimName = "rsa"
+		pkey, err = rsa.GenerateKey(rand.Reader, 4096)
+	case "rsa2048":
+		dkimName = "rsa"
+		pkey, err = rsa.GenerateKey(rand.Reader, 2048)
+	case "ed25519":
+		_, pkey, err = ed25519.GenerateKey(rand.Reader)
+	default:
+		err = fmt.Errorf("unknown key algorithm: %s", algo)
+	}
+	if err != nil {
+		return DKIM{}, err
+	}
+
+	keyBlob, err := x509.MarshalPKCS8PrivateKey(pkey)
+	if err != nil {
+		return DKIM{}, err
+	}
+
+	switch pubkey := pubkey.(type) {
+	case *rsa.PublicKey:
+		var err error
+		pubKeyBlob, err = x509.MarshalPKIXPublicKey(pubkey)
+		if err != nil {
+			return DKIM{}, err
+		}
+	case ed25519.PublicKey:
+		pubKeyBlob = pubkey
+	default:
+		panic("modify.dkim.writeDNSRecord: unknown key algorithm")
+	}
+
+	pubKeyString := base64.StdEncoding.EncodeToString(pubKeyBlob)
+	privKeyString := base64.StdEncoding.EncodeToString(keyBlob)
+	keyRecord := fmt.Sprintf("v=DKIM1; k=%s; p=%s", dkimName, pubKeyString)
+
+	keyBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBlob})
+	if keyBytes == nil {
+		err := fmt.Errorf("failed to encode private key")
+		return DKIM{}, err
+	}
+
+	result = DKIM{
+		DNSValue:   keyRecord,
+		PrivateKey: privKeyString,
+		PublicKey:  pubKeyString,
+		pkey:       pkey,
+		Domain:     domain,
+		DNSName:    selector,
+	}
+
+	return result, nil
 }
 
 func writeDNSRecord(keyPath, dkimAlgoName string, pkey crypto.Signer) (string, error) {
