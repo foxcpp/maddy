@@ -149,7 +149,7 @@ To be able to use these, you need to compile maddy
 with "libdns_PROVIDER" build tag.
 E.g.
 ```
-./build.sh -tags 'libdns_googleclouddns'
+./build.sh --tags 'libdns_googleclouddns'
 ```
 
 - gandi
@@ -263,3 +263,13 @@ dns namedotcom {
 }
 ```
 
+- acmedns (non-default)
+
+```
+dns acmedns {
+    username "..."
+    password "..."
+    subdomain "..."
+    server_url "..."
+}
+```
