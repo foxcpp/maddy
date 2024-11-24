@@ -7,7 +7,7 @@ If rspamd is running locally, it is enough to just add `rspamd` check
 with default configuration into appropriate check block (probably in
 local_routing):
 ```
-checks {
+check {
     ...
     rspamd
 }
