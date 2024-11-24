@@ -1,7 +1,7 @@
 # Unicode support
 
 maddy has the first-class Unicode support in all components (modules). You do
-have to take any actions to make it work with internationalized domains,
+not have to take any actions to make it work with internationalized domains,
 mailbox names or non-ASCII message headers.
 
 Internally, all text fields in maddy are represented in UTF-8 and handled using
