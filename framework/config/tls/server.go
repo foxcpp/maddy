@@ -69,7 +69,10 @@ func TLSDirective(m *config.Map, node config.Node) (interface{}, error) {
 }
 
 func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSConfig, error) {
-	baseCfg := tls.Config{}
+	baseCfg := tls.Config{
+		// Workaround for issue https://github.com/foxcpp/maddy/issues/730
+		SessionTicketsDisabled: true,
+	}
 
 	var loader module.TLSLoader
 	if len(blockNode.Args) > 0 {
