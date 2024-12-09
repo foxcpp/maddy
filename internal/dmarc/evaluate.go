@@ -207,6 +207,10 @@ func isAligned(fromDomain, authDomain string, mode AlignmentMode) bool {
 		return strings.EqualFold(fromDomain, authDomain)
 	}
 
+	tld, _ := publicsuffix.PublicSuffix(fromDomain)
+	if strings.EqualFold(fromDomain, tld) {
+		return strings.EqualFold(fromDomain, authDomain)
+	}
 	orgDomainFrom, err := publicsuffix.EffectiveTLDPlusOne(fromDomain)
 	if err != nil {
 		return false
