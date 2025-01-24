@@ -73,12 +73,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          logout: false
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v3
         with:
           registry: "ghcr.io"
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          logout: false # https://news.ycombinator.com/item?id=28607735
       - name: "Generate container metadata"
         uses: docker/metadata-action@v5
         id: meta
