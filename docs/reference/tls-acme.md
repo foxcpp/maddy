@@ -263,6 +263,21 @@ dns namedotcom {
 }
 ```
 
+- rfc2136 (non-default)
+
+```
+dns rfc2136 {
+    key_name "..."
+    # Secret
+    key "..."
+    # HMAC algorithm used to generate the key, lowercase, e.g. hmac-sha512
+    key_alg "..."
+    # server to which the dynamic update will be sent, e.g. 127.0.0.1
+    # you can also specify the port: 127.0.0.1:53
+    server "..."
+}
+```
+
 - acmedns (non-default)
 
 ```

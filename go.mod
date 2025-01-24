@@ -5,6 +5,7 @@ go 1.19
 require (
 	blitiri.com.ar/go/spf v1.5.1
 	github.com/GehirnInc/crypt v0.0.0-20230320061759-8cc1b52080c5
+	github.com/c0va23/go-proxyprotocol v0.9.1
 	github.com/caddyserver/certmagic v0.20.0
 	github.com/emersion/go-imap v1.2.2-0.20220928192137-6fac715be9cf
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
@@ -39,6 +40,7 @@ require (
 	github.com/libdns/metaname v0.3.0
 	github.com/libdns/namecheap v0.0.0-20211109042440-fc7440785c8e
 	github.com/libdns/namedotcom v0.3.3
+	github.com/libdns/rfc2136 v0.1.0
 	github.com/libdns/route53 v1.3.3
 	github.com/libdns/vultr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.19
@@ -75,7 +77,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.7 // indirect
 	github.com/aws/smithy-go v1.19.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/c0va23/go-proxyprotocol v0.9.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/digitalocean/godo v1.108.0 // indirect
