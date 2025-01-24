@@ -54,6 +54,11 @@ command. One way to it is to run it using `docker exec` instead of `docker run`:
 docker exec -it container_name_here maddy creds create foxcpp@maddy.test
 ```
 
+## Build Tags
+
+Some Maddy features (such as automatic certificate management via ACME with [a non-default libdns provider](../reference/tls-acme/#dns-providers)) require build tags to be passed to Maddy's `build.sh`, as this is run in the Dockerfile you must compile your own Docker image. Build tags can be set via the docker build argument `ADDITIONAL_BUILD_TAGS` e.g. `docker build --build-arg ADDITIONAL_BUILD_TAGS="libdns_acmedns libdns_route53" -t yourorgname/maddy:yourtagname .`.
+
+
 ## TL;DR
 
 ```
