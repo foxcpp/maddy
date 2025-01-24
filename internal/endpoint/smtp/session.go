@@ -435,7 +435,7 @@ func (s *Session) Logout() error {
 }
 
 func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
-	limitr := limitReader(r, int64(s.endp.maxHeaderBytes), &exterrors.SMTPError{
+	limitr := limitReader(r, s.endp.maxHeaderBytes, &exterrors.SMTPError{
 		Code:         552,
 		EnhancedCode: exterrors.EnhancedCode{5, 3, 4},
 		Message:      "Message header size exceeds limit",

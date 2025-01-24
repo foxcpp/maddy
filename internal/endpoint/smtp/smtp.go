@@ -252,8 +252,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	cfg.String("hostname", true, true, "", &hostname)
 	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
-		&endp.authNormalize)
-	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
+		&endp.saslAuth.AuthNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.saslAuth.AuthMap)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
@@ -356,31 +356,6 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	}
 
 	return nil
-}
-
-func (endp *Endpoint) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
-	saslUsername, err := endp.authNormalize(saslUsername)
-	if err != nil {
-		return "", err
-	}
-
-	if endp.authMap == nil {
-		return saslUsername, nil
-	}
-
-	mapped, ok, err := endp.authMap.Lookup(ctx, saslUsername)
-	if err != nil {
-		return "", err
-	}
-	if !ok {
-		return "", &smtp.SMTPError{
-			Code:         535,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
-			Message:      "Invalid credentials",
-		}
-	}
-
-	return mapped, nil
 }
 
 func (endp *Endpoint) NewSession(conn *smtp.Conn) (smtp.Session, error) {

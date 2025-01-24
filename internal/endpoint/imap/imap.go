@@ -62,8 +62,6 @@ type Endpoint struct {
 
 	storageNormalize authz.NormalizeFunc
 	storageMap       module.Table
-	authNormalize    authz.NormalizeFunc
-	authMap          module.Table
 
 	Log log.Logger
 }
@@ -102,8 +100,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		&endp.storageNormalize)
 	modconfig.Table(cfg, "storage_map", false, false, nil, &endp.storageMap)
 	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
-		&endp.authNormalize)
-	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
+		&endp.saslAuth.AuthNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.saslAuth.AuthMap)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -140,8 +138,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	endp.saslAuth.AuthNormalize = endp.authNormalize
-	endp.saslAuth.AuthMap = endp.authMap
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
@@ -215,27 +211,6 @@ func (endp *Endpoint) Close() error {
 	}
 	endp.listenersWg.Wait()
 	return nil
-}
-
-func (endp *Endpoint) usernameForAuth(ctx context.Context, saslUsername string) (string, error) {
-	saslUsername, err := endp.authNormalize(saslUsername)
-	if err != nil {
-		return "", err
-	}
-
-	if endp.authMap == nil {
-		return saslUsername, nil
-	}
-
-	mapped, ok, err := endp.authMap.Lookup(ctx, saslUsername)
-	if err != nil {
-		return "", err
-	}
-	if !ok {
-		return "", imapbackend.ErrInvalidCredentials
-	}
-
-	return mapped, nil
 }
 
 func (endp *Endpoint) usernameForStorage(ctx context.Context, saslUsername string) (string, error) {

@@ -44,9 +44,6 @@ type Endpoint struct {
 
 	listenersWg sync.WaitGroup
 
-	authNormalize authz.NormalizeFunc
-	authMap       module.Table
-
 	srv *dovecotsasl.Server
 }
 
@@ -74,8 +71,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	})
 	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
-		&endp.authNormalize)
-	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
+		&endp.saslAuth.AuthNormalize)
+	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.saslAuth.AuthMap)
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -83,8 +80,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.srv = dovecotsasl.NewServer()
 	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
-	endp.saslAuth.AuthMap = endp.authMap
-	endp.saslAuth.AuthNormalize = endp.authNormalize
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
