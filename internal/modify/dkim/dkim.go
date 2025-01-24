@@ -34,6 +34,7 @@ import (
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
@@ -93,23 +94,40 @@ var (
 	}
 )
 
-type Modifier struct {
-	instName string
+type (
+	Modifier struct {
+		instName string
 
-	domains        []string
-	selector       string
-	signers        map[string]crypto.Signer
-	oversignHeader []string
-	signHeader     []string
-	headerCanon    dkim.Canonicalization
-	bodyCanon      dkim.Canonicalization
-	sigExpiry      time.Duration
-	hash           crypto.Hash
-	multipleFromOk bool
-	signSubdomains bool
+		domains         []string
+		selector        string
+		signers         map[string]crypto.Signer
+		oversignHeader  []string
+		signHeader      []string
+		headerCanon     dkim.Canonicalization
+		bodyCanon       dkim.Canonicalization
+		sigExpiry       time.Duration
+		hash            crypto.Hash
+		multipleFromOk  bool
+		signSubdomains  bool
+		keyPathTemplate string
+		hashName        string
+		newKeyAlgo      string
+		table           module.MutableTable
+		storeKeysInDB   bool
 
-	log log.Logger
-}
+		log log.Logger
+	}
+
+	DKIM struct {
+		Domain     string        `json:"domain"`
+		PrivateKey string        `json:"privateKey,omitempty"`
+		PublicKey  string        `json:"publicKey,omitempty"`
+		DNSName    string        `json:"dnsName"`
+		DNSValue   string        `json:"dnsValue"`
+		Expires    time.Time     `json:"expires,omitempty"`
+		pkey       crypto.Signer `json:"-"`
+	}
+)
 
 func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	m := &Modifier{
@@ -140,16 +158,13 @@ func (m *Modifier) InstanceName() string {
 }
 
 func (m *Modifier) Init(cfg *config.Map) error {
-	var (
-		hashName        string
-		keyPathTemplate string
-		newKeyAlgo      string
-	)
 
 	cfg.Bool("debug", true, false, &m.log.Debug)
+	cfg.Bool("store_keys_in_database", false, false, &m.storeKeysInDB)
 	cfg.StringList("domains", false, false, m.domains, &m.domains)
 	cfg.String("selector", false, false, m.selector, &m.selector)
-	cfg.String("key_path", false, false, "dkim_keys/{domain}_{selector}.key", &keyPathTemplate)
+	cfg.Custom("domain_table", true, false, nil, modconfig.TableDirective, &m.table)
+	cfg.String("key_path", false, false, "dkim_keys/{domain}_{selector}.key", &m.keyPathTemplate)
 	cfg.StringList("oversign_fields", false, false, oversignDefault, &m.oversignHeader)
 	cfg.StringList("sign_fields", false, false, signDefault, &m.signHeader)
 	cfg.Enum("header_canon", false, false,
@@ -160,9 +175,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		dkim.CanonicalizationRelaxed, (*string)(&m.bodyCanon))
 	cfg.Duration("sig_expiry", false, false, 5*Day, &m.sigExpiry)
 	cfg.Enum("hash", false, false,
-		[]string{"sha256"}, "sha256", &hashName)
+		[]string{"sha256"}, "sha256", &m.hashName)
 	cfg.Enum("newkey_algo", false, false,
-		[]string{"rsa4096", "rsa2048", "ed25519"}, "rsa2048", &newKeyAlgo)
+		[]string{"rsa4096", "rsa2048", "ed25519"}, "rsa2048", &m.newKeyAlgo)
 	cfg.Bool("allow_multiple_from", false, false, &m.multipleFromOk)
 	cfg.Bool("sign_subdomains", false, false, &m.signSubdomains)
 
@@ -180,10 +195,24 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		return errors.New("sign_domain: only one domain is supported when sign_subdomains is enabled")
 	}
 
-	m.hash = hashFuncs[hashName]
+	m.hash = hashFuncs[m.hashName]
 	if m.hash == 0 {
 		panic("modify.dkim.Init: Hash function allowed by config matcher but not present in hashFuncs")
 	}
+
+	// If available, include domains from SQL table
+	if m.table != nil {
+		domains, err := m.table.Keys()
+		if err != nil {
+			return err
+		}
+
+		if len(domains) > 0 {
+			m.domains = append(m.domains, domains...)
+		}
+	}
+
+	storeKeysInDB := m.storeKeysInDB && m.table != nil
 
 	for _, domain := range m.domains {
 		if _, err := idna.ToASCII(domain); err != nil {
@@ -191,9 +220,9 @@ func (m *Modifier) Init(cfg *config.Map) error {
 		}
 
 		keyValues := strings.NewReplacer("{domain}", domain, "{selector}", m.selector)
-		keyPath := keyValues.Replace(keyPathTemplate)
+		keyPath := keyValues.Replace(m.keyPathTemplate)
 
-		signer, newKey, err := m.loadOrGenerateKey(keyPath, newKeyAlgo)
+		signer, newKey, err := m.loadOrGenerateKey(domain, keyPath, m.newKeyAlgo, storeKeysInDB)
 		if err != nil {
 			return err
 		}
@@ -205,7 +234,7 @@ func (m *Modifier) Init(cfg *config.Map) error {
 			}
 			m.log.Printf("generated a new %s keypair, private key is in %s, TXT record with public key is in %s,\n"+
 				"put its contents into TXT record for %s._domainkey.%s to make signing and verification work",
-				newKeyAlgo, keyPath, dnsPath, m.selector, domain)
+				m.newKeyAlgo, keyPath, dnsPath, m.selector, domain)
 		}
 
 		normDomain, err := dns.ForLookup(domain)
@@ -305,8 +334,17 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 	}
 	keySigner := s.m.signers[normDomain]
 	if keySigner == nil {
-		s.log.Msg("no key for domain", "domain", normDomain)
-		return nil
+		if s.m.table == nil {
+			s.log.Msg("no key for domain", "domain", normDomain)
+			return nil
+		}
+		keySigner, err = s.m.generateKeyForDomain(normDomain)
+		if err != nil {
+			s.log.Msg("no key for domain", "domain", normDomain)
+			return err
+		}
+		s.m.signers[normDomain] = keySigner
+		s.m.domains = append(s.m.domains, domain)
 	}
 
 	// If the message is non-EAI, we are not allowed to use domains in U-labels,

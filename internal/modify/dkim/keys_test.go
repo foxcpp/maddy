@@ -36,7 +36,7 @@ func TestKeyLoad_new(t *testing.T) {
 
 	dir := t.TempDir()
 
-	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "ed25519")
+	signer, newKey, err := m.loadOrGenerateKey("", filepath.Join(dir, "testkey.key"), "ed25519", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestKeyLoad_existing_pkcs8(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "ed25519")
+	signer, newKey, err := m.loadOrGenerateKey("", filepath.Join(dir, "testkey.key"), "ed25519", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestKeyLoad_existing_pkcs1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, newKey, err := m.loadOrGenerateKey(filepath.Join(dir, "testkey.key"), "rsa2048")
+	signer, newKey, err := m.loadOrGenerateKey("", filepath.Join(dir, "testkey.key"), "rsa2048", false)
 	if err != nil {
 		t.Fatal(err)
 	}
