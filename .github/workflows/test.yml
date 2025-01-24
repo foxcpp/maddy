@@ -1,0 +1,61 @@
+name: "Testing"
+
+on:
+  push:
+    branches: [ master, dev ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60
+  buildsh:
+    name: "Verify build.sh"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: "Install libpam"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam-dev
+      - name: "Verify build.sh"
+        run: |
+          ./build.sh
+          ./build.sh --destdir destdir/ install
+          find destdir/
+  test:
+    name: "Build and test"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+    - name: "Unit & module tests"
+      run: |
+        go test ./... -coverprofile=coverage.out -covermode=atomic
+    - name: "Integration tests"
+      run: |
+        cd tests/
+        ./run.sh
+    - uses: codecov/codecov-action@v2
+      with:
+        files: ./coverage.out
+        flags: unit
+    - uses: codecov/codecov-action@v2
+      with:
+        files: ./tests/coverage.out
+        flags: integration

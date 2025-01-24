@@ -1,52 +1,10 @@
-name: "Testing and release preparation"
+name: "Prepare release artifacts"
 
 on:
   push:
-    branches: [ master, dev ]
     tags: [ "v*" ]
-  pull_request:
-    branches: [ master, dev ]
 
 jobs:
-  build-and-test:
-    name: "Build and test"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: "Install libpam"
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpam-dev
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: ${{ runner.os }}-go-
-    - uses: actions/setup-go@v2
-      with:
-        go-version: 1.19
-    - name: "Verify build.sh"
-      run: |
-        ./build.sh
-        ./build.sh --destdir destdir/ install
-        find destdir/
-    - name: "Unit & module tests"
-      run: |
-        go test ./... -coverprofile=coverage.out -covermode=atomic
-    - name: "Integration tests"
-      run: |
-        cd tests/
-        ./run.sh
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./coverage.out
-        flags: unit
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./tests/coverage.out
-        flags: integration
   artifact-builder:
     name: "Prepare release artifacts"
     needs: build-and-test
