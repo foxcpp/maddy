@@ -31,10 +31,10 @@ import (
 
 // Node struct describes a parsed configurtion block or a simple directive.
 //
-// name arg0 arg1 {
-//  children0
-//  children1
-// }
+//	name arg0 arg1 {
+//	 children0
+//	 children1
+//	}
 type Node struct {
 	// Name is the first string at node's line.
 	Name string
@@ -209,9 +209,10 @@ func (ctx *parseContext) parseAsMacro(node *Node) (macroName string, args []stri
 //
 // The lexer's cursor should point to the opening brace
 // name arg0 arg1 {  #< this one
-//   c0
-//   c1
-// }
+//
+//	  c0
+//	  c1
+//	}
 //
 // To stay consistent with readNode after this function returns the lexer's cursor points
 // to the last token of the black (closing brace).

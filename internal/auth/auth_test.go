@@ -75,7 +75,6 @@ func TestCheckDomainAuth(t *testing.T) {
 	}
 
 	for _, case_ := range cases {
-		case_ := case_
 		t.Run(fmt.Sprintf("%+v", case_), func(t *testing.T) {
 			loginName, allowed := CheckDomainAuth(case_.rawUsername, case_.perDomain, case_.allowedDomains)
 			if case_.loginName != "" && !allowed {

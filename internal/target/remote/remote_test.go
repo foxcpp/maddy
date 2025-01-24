@@ -27,7 +27,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -1020,7 +1019,6 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if *remoteSmtpPort == "random" {
-		rand.Seed(time.Now().UnixNano())
 		*remoteSmtpPort = strconv.Itoa(rand.Intn(65536-10000) + 10000)
 	}
 

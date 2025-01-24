@@ -530,7 +530,6 @@ func (c *C) Close() error {
 			c.Log.DebugMsg("QUIT error", "reason", c.wrapClientErr(err, c.serverName))
 		} else if errors.As(err, &netErr) &&
 			(netErr.Timeout() || netErr.Err.Error() == "write: broken pipe" || netErr.Err.Error() == "read: connection reset") {
-
 			// The case for silently closed connections.
 			c.Log.DebugMsg("QUIT error", "reason", c.wrapClientErr(err, c.serverName))
 		} else {

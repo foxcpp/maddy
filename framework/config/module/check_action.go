@@ -36,19 +36,22 @@ import (
 // returns. It is intended to be used as follows:
 //
 // Add the configuration directive to allow user to specify the action:
-//     cfg.Custom("SOME_action", false, false,
-//     	func() (interface{}, error) {
-//     		return modconfig.FailAction{Quarantine: true}, nil
-//     	}, modconfig.FailActionDirective, &yourModule.SOMEAction)
+//
+//	cfg.Custom("SOME_action", false, false,
+//		func() (interface{}, error) {
+//			return modconfig.FailAction{Quarantine: true}, nil
+//		}, modconfig.FailActionDirective, &yourModule.SOMEAction)
+//
 // return in func literal is the default value, you might want to adjust it.
 //
 // Call yourModule.SOMEAction.Apply on CheckResult containing only the
 // Reason field:
-//     func (yourModule YourModule) CheckConnection() module.CheckResult {
-//         return yourModule.SOMEAction.Apply(module.CheckResult{
-//             Reason: ...,
-//         })
-//     }
+//
+//	func (yourModule YourModule) CheckConnection() module.CheckResult {
+//	    return yourModule.SOMEAction.Apply(module.CheckResult{
+//	        Reason: ...,
+//	    })
+//	}
 type FailAction struct {
 	Quarantine bool
 	Reject     bool
