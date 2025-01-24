@@ -9,7 +9,7 @@ on:
 
 jobs:
   golangci:
-    name: lint
+    name: Lint
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +44,10 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
+    - name: "Install libpam"
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpam-dev
     - name: "Unit & module tests"
       run: |
         go test ./... -coverprofile=coverage.out -covermode=atomic
