@@ -44,14 +44,16 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
+	"github.com/foxcpp/maddy/internal/proxy_protocol"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 
 type Endpoint struct {
-	addrs     []string
-	serv      *imapserver.Server
-	listeners []net.Listener
-	Store     module.Storage
+	addrs         []string
+	serv          *imapserver.Server
+	listeners     []net.Listener
+	proxyProtocol *proxy_protocol.ProxyProtocol
+	Store         module.Storage
 
 	tlsConfig   *tls.Config
 	listenersWg sync.WaitGroup
@@ -90,6 +92,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	})
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
+	cfg.Custom("proxy_protocol", false, false, nil, proxy_protocol.ProxyProtocolDirective, &endp.proxyProtocol)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)
@@ -165,6 +168,10 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 				return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
 			}
 			l = tls.NewListener(l, endp.tlsConfig)
+		}
+
+		if endp.proxyProtocol != nil {
+			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.Log)
 		}
 
 		endp.listeners = append(endp.listeners, l)

@@ -1,5 +1,7 @@
 FROM golang:1.19-alpine AS build-env
 
+ARG ADDITIONAL_BUILD_TAGS=""
+
 RUN set -ex && \
     apk upgrade --no-cache --available && \
     apk add --no-cache build-base
@@ -12,7 +14,7 @@ RUN go mod download
 COPY . ./
 RUN mkdir -p /pkg/data && \
     cp maddy.conf.docker /pkg/data/maddy.conf && \
-    ./build.sh --builddir /tmp --destdir /pkg/ --tags docker build install
+    ./build.sh --builddir /tmp --destdir /pkg/ --tags "docker ${ADDITIONAL_BUILD_TAGS}" build install
 
 FROM alpine:3.18.4
 LABEL maintainer="fox.cpp@disroot.org"

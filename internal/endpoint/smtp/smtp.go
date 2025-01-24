@@ -47,18 +47,20 @@ import (
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
+	"github.com/foxcpp/maddy/internal/proxy_protocol"
 	"golang.org/x/net/idna"
 )
 
 type Endpoint struct {
-	saslAuth  auth.SASLAuth
-	serv      *smtp.Server
-	name      string
-	addrs     []string
-	listeners []net.Listener
-	pipeline  *msgpipeline.MsgPipeline
-	resolver  dns.Resolver
-	limits    *limits.Group
+	saslAuth      auth.SASLAuth
+	serv          *smtp.Server
+	name          string
+	addrs         []string
+	listeners     []net.Listener
+	proxyProtocol *proxy_protocol.ProxyProtocol
+	pipeline      *msgpipeline.MsgPipeline
+	resolver      dns.Resolver
+	limits        *limits.Group
 
 	buffer func(r io.Reader) (buffer.Buffer, error)
 
@@ -266,6 +268,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		return autoBufferMode(1*1024*1024 /* 1 MiB */, path), nil
 	}, bufferModeDirective, &endp.buffer)
 	cfg.Custom("tls", true, endp.name != "lmtp", nil, tls2.TLSDirective, &endp.serv.TLSConfig)
+	cfg.Custom("proxy_protocol", false, false, nil, proxy_protocol.ProxyProtocolDirective, &endp.proxyProtocol)
 	cfg.Bool("insecure_auth", endp.name == "lmtp", false, &endp.serv.AllowInsecureAuth)
 	cfg.Int("smtp_max_line_length", false, false, 4000, &endp.serv.MaxLineLength)
 	cfg.Bool("io_debug", false, false, &ioDebug)
@@ -351,6 +354,10 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 				return fmt.Errorf("%s: can't bind on SMTPS endpoint without TLS configuration", endp.name)
 			}
 			l = tls.NewListener(l, endp.serv.TLSConfig)
+		}
+
+		if endp.proxyProtocol != nil {
+			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.Log)
 		}
 
 		endp.listeners = append(endp.listeners, l)

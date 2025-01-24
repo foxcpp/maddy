@@ -63,6 +63,24 @@ See [TLS configuration / Server](/reference/tls/#server-side) for details.
 
 ---
 
+### proxy_protocol _trusted ips..._ { ... } <br>
+Default: not enabled
+
+Enable use of HAProxy PROXY protocol. Supports both v1 and v2 protocols.
+If a list of trusted IP addresses or subnets is provided, only connections
+from those will be trusted.
+
+TLS for the channel between the proxies and maddy can be configured
+using a 'tls' directive:
+```
+proxy_protocol {
+    trust 127.0.0.1 ::1 192.168.0.1/24
+    tls &proxy_tls
+}
+```
+
+---
+
 ### io_debug _boolean_
 Default: `no`
 
@@ -155,7 +173,7 @@ Temporary storage to use for the body of accepted messages.
 - `ram` – Store the body in RAM.
 - `fs` – Write out the message to the FS and read it back as needed.
 _path_ can be omitted and defaults to StateDirectory/buffer.
-- `auto` – Store message bodies smaller than `_max_size_` entirely in RAM, 
+- `auto` – Store message bodies smaller than `_max_size_` entirely in RAM,
 otherwise write them out to the FS. _path_ can be omitted and defaults to `StateDirectory/buffer`.
 
 ---
@@ -209,11 +227,11 @@ Supported limits:
 
 ### _scope_ rate _burst_ _period_
 
-Rate limit. Restrict the amount of messages processed in _period_ to 
+Rate limit. Restrict the amount of messages processed in _period_ to
 _burst_ messages. If period is not specified, 1 second is used.
 
 ### _scope_ concurrency _max_
-Concurrency limit. Restrict the amount of messages processed in parallel 
+Concurrency limit. Restrict the amount of messages processed in parallel
 to _max_.
 
 For each supported limitation, _scope_ determines whether it should be applied
