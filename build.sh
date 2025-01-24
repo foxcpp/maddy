@@ -163,14 +163,14 @@ install() {
 	if command -v go >/dev/null 2>/dev/null; then
 		set -e
 		if [ "$(go env GOOS)" = "linux" ]; then
-			command install -C -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
-			command install -C -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+			command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
+			command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
 		fi
 	else
 		set -e
 		if [ "$(uname -s)" = "Linux" ]; then
-			command install -C -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
-			command install -C -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
+			command install -m 0755 -d "${destdir}/${prefix}/lib/systemd/system/"
+			command install -m 0644 "${builddir}"/systemd/*.service "${destdir}/${prefix}/lib/systemd/system/"
 		fi
 	fi
 
