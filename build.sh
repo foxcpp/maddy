@@ -3,7 +3,6 @@
 destdir=/
 builddir="$PWD/build"
 prefix=/usr/local
-configdir="${destdir}etc/maddy"
 version=
 static=0
 if [ "${GOFLAGS}" = "" ]; then
@@ -77,6 +76,7 @@ while :; do
 	shift
 done
 
+configdir="${destdir}etc/maddy"
 
 if [ "$version" = "" ]; then
 	version=unknown
