@@ -31,8 +31,9 @@ import (
 )
 
 // These certificates are related like this:
-//   Root A -> Intermediate A -> Leaf A
-//   Root B -> LeafB
+//
+//	Root A -> Intermediate A -> Leaf A
+//	Root B -> LeafB
 var (
 	rootA = `-----BEGIN CERTIFICATE-----
 MIIBMDCB46ADAgECAhRDwag3n5CG90BEO87zEMAPejn6YTAFBgMrZXAwFjEUMBIG
