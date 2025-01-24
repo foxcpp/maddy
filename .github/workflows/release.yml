@@ -39,13 +39,13 @@ jobs:
           tar c ./maddy-$ver-src | zstd > ~/maddy-src.tar.zst
           cd -
       - name: "Upload source tree"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: maddy-src.tar.zst
           path: '~/maddy-src.tar.zst'
           if-no-files-found: error
       - name: "Upload binary tree"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: maddy-binary.tar.zst
           path: '~/maddy-x86_64-linux-musl.tar.zst'
