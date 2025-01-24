@@ -7,7 +7,6 @@ on:
 jobs:
   artifact-builder:
     name: "Prepare release artifacts"
-    needs: build-and-test
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     container:
@@ -48,7 +47,6 @@ jobs:
           if-no-files-found: error
   docker-builder:
     name: "Build & push Docker image"
-    needs: build-and-test # Upload
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
