@@ -21,6 +21,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      - name: "Install libpam"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam-dev
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60
