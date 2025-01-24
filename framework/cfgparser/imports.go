@@ -89,7 +89,7 @@ func (ctx *parseContext) resolveImport(node Node, name string, expansionDepth in
 			src, err = os.Open(file + ".conf")
 			if err != nil {
 				if os.IsNotExist(err) {
-					return nil, NodeErr(node, "unknown import: "+name)
+					return nil, NodeErr(node, "unknown import: %s", name)
 				}
 				return nil, err
 			}

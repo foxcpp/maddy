@@ -81,7 +81,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		mech := mech
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
 			var remoteAddr net.Addr
 			if req.RemoteIP != nil && req.RemotePort != 0 {

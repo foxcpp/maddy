@@ -406,8 +406,6 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 	var wg sync.WaitGroup
 
 	for i, conn := range rd.connections {
-		i := i
-		conn := conn
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

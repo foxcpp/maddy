@@ -385,7 +385,6 @@ func RegisterModules(globals map[string]interface{}, nodes []config.Node) (endpo
 			return nil, nil, err
 		}
 
-		block := block
 		module.RegisterInstance(inst, config.NewMap(globals, block))
 		for _, alias := range modAliases {
 			if module.HasInstance(alias) {

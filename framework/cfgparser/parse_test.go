@@ -583,7 +583,6 @@ func TestRead(t *testing.T) {
 	os.Setenv("TESTING_VARIABLE2", "ABC2 DEF2")
 
 	for _, case_ := range cases {
-		case_ := case_
 		t.Run(case_.name, func(t *testing.T) {
 			tree, err := Read(strings.NewReader(case_.cfg), "test")
 			if !case_.fail && err != nil {

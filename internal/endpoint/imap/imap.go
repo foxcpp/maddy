@@ -139,7 +139,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	}
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		mech := mech
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
 			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string, data auth.ContextData) error {
 				return endp.openAccount(c, identity)
@@ -174,7 +173,6 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		endp.listeners = append(endp.listeners, l)
 
 		endp.listenersWg.Add(1)
-		addr := addr
 		go func() {
 			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 				endp.Log.Printf("imap: failed to serve %s: %s", addr, err)

@@ -24,7 +24,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -346,7 +345,6 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		endp.listeners = append(endp.listeners, l)
 
 		endp.listenersWg.Add(1)
-		addr := addr
 		go func() {
 			if err := endp.serv.Serve(l); err != nil {
 				endp.Log.Printf("failed to serve %s: %s", addr, err)
@@ -431,6 +429,4 @@ func init() {
 	module.RegisterEndpoint("smtp", New)
 	module.RegisterEndpoint("submission", New)
 	module.RegisterEndpoint("lmtp", New)
-
-	rand.Seed(time.Now().UnixNano())
 }

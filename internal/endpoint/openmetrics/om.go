@@ -60,7 +60,6 @@ func (e *Endpoint) Init(cfg *config.Map) error {
 	e.serv.Handler = e.mux
 
 	for _, a := range e.addrs {
-		a := a
 		endp, err := config.ParseEndpoint(a)
 		if err != nil {
 			return fmt.Errorf("%s: malformed endpoint: %v", modName, err)

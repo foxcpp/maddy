@@ -24,7 +24,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"time"
 )
 
 var testPort string
@@ -34,7 +33,6 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if *remoteSmtpPort == "random" {
-		rand.Seed(time.Now().UnixNano())
 		*remoteSmtpPort = strconv.Itoa(rand.Intn(65536-10000) + 10000)
 	}
 

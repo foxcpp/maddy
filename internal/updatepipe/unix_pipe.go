@@ -34,7 +34,8 @@ import (
 // Listen goroutine can be running.
 //
 // The socket is stream-oriented and consists of the following messages:
-//		SENDER_ID;JSON_SERIALIZED_INTERNAL_OBJECT\n
+//
+//	SENDER_ID;JSON_SERIALIZED_INTERNAL_OBJECT\n
 //
 // And SENDER_ID is Process ID and UnixSockPipe address concated as a string.
 // It is used to deduplicate updates sent to Push and recevied via Listen.

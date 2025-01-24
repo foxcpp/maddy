@@ -125,7 +125,6 @@ func (cr *checkRunner) checkStates(ctx context.Context, checks []module.Check) (
 
 	if len(cr.checkedRcpts) != 0 {
 		for _, rcpt := range cr.checkedRcpts {
-			rcpt := rcpt
 			err := cr.runAndMergeResults(states, func(s module.CheckState) module.CheckResult {
 				// Avoid calling CheckRcpt for the same recipient for the same check
 				// multiple times, even if requested.
@@ -176,7 +175,6 @@ func (cr *checkRunner) runAndMergeResults(states []module.CheckState, runner fun
 	}{}
 
 	for _, state := range states {
-		state := state
 		data.wg.Add(1)
 		go func() {
 			defer func() {

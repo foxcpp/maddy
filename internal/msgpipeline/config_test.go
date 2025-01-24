@@ -224,7 +224,6 @@ func TestMsgPipelineCfg(t *testing.T) {
 	}
 
 	for _, case_ := range cases {
-		case_ := case_
 		t.Run(case_.name, func(t *testing.T) {
 			cfg, _ := parser.Read(strings.NewReader(case_.str), "literal")
 			parsed, err := parseMsgPipelineRootCfg(nil, cfg)

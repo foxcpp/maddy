@@ -113,10 +113,6 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 		return nil, err
 	}
 
-	if len(baseCfg.CipherSuites) != 0 {
-		baseCfg.PreferServerCipherSuites = true
-	}
-
 	baseCfg.MinVersion = tlsVersions[0]
 	baseCfg.MaxVersion = tlsVersions[1]
 	log.Debugf("tls: min version: %x, max version: %x", tlsVersions[0], tlsVersions[1])

@@ -301,7 +301,6 @@ func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom strin
 	)
 
 	for _, list := range bl.bls {
-		list := list
 		eg.Go(func() error {
 			err := bl.checkList(ctx, list, ip, ehlo, mailFrom)
 			if err != nil {
