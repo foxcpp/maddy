@@ -49,19 +49,27 @@ Advanced TLS client configuration options. See [TLS configuration / Client](/ref
 
 ---
 
+### starttls _boolean_
+Default: `yes` (`no` for `target.lmtp`)
+
+Use STARTTLS to enable TLS encryption. If STARTTLS is not supported
+by the remote server - connection will fail.
+
+maddy will use `localhost` as HELO hostname before STARTTLS
+and will only send its actual hostname after STARTTLS.
+
 ### attempt_starttls _boolean_
 Default: `yes` (`no` for `target.lmtp`)
 
-Attempt to use STARTTLS if it is supported by the remote server.
-If TLS handshake fails, connection will be retried without STARTTLS
-unless `require_tls` is also specified.
+DEPRECATED: Equivalent to `starttls`. Plaintext fallback is no longer
+supported.
 
 ---
 
 ### require_tls _boolean_
 Default: `no`
 
-Refuse to pass messages over plain-text connections.
+DEPRECATED: Ignored. Set `starttls yes` to use STARTLS.
 
 ---
 

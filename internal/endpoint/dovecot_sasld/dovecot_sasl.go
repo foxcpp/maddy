@@ -72,6 +72,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
+	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
 		&endp.authNormalize)
 	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.authMap)
@@ -92,7 +93,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 				remoteAddr = &net.TCPAddr{IP: req.RemoteIP, Port: int(req.RemotePort)}
 			}
 
-			return endp.saslAuth.CreateSASL(mech, remoteAddr, func(_ string) error { return nil })
+			return endp.saslAuth.CreateSASL(mech, remoteAddr, func(_ string, _ auth.ContextData) error { return nil })
 		})
 	}
 

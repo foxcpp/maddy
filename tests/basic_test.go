@@ -56,7 +56,8 @@ func TestBasic(tt *testing.T) {
 	conn.ExpectPattern("250-ENHANCEDSTATUSCODES")
 	conn.ExpectPattern("250-CHUNKING")
 	conn.ExpectPattern("250-SMTPUTF8")
-	conn.ExpectPattern("250 SIZE *")
+	conn.ExpectPattern("250-SIZE *")
+	conn.ExpectPattern("250 LIMITS RCPTMAX=20000")
 	conn.Writeln("QUIT")
 	conn.ExpectPattern("221 *")
 }

@@ -52,7 +52,7 @@ func TestCreateSASL(t *testing.T) {
 	}
 
 	t.Run("XWHATEVER", func(t *testing.T) {
-		srv := a.CreateSASL("XWHATEVER", &net.TCPAddr{}, func(string) error { return nil })
+		srv := a.CreateSASL("XWHATEVER", &net.TCPAddr{}, func(string, ContextData) error { return nil })
 		_, _, err := srv.Next([]byte(""))
 		if err == nil {
 			t.Error("No error for XWHATEVER use")
@@ -60,7 +60,7 @@ func TestCreateSASL(t *testing.T) {
 	})
 
 	t.Run("PLAIN", func(t *testing.T) {
-		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string) error {
+		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string, data ContextData) error {
 			if id != "user1" {
 				t.Fatal("Wrong auth. identities passed to callback:", id)
 			}
@@ -74,7 +74,7 @@ func TestCreateSASL(t *testing.T) {
 	})
 
 	t.Run("PLAIN with authorization identity", func(t *testing.T) {
-		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string) error {
+		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string, data ContextData) error {
 			if id != "user1" {
 				t.Fatal("Wrong authorization identity passed:", id)
 			}

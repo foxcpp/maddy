@@ -33,7 +33,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
@@ -250,6 +249,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
+	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	cfg.String("hostname", true, true, "", &hostname)
 	config.EnumMapped(cfg, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto,
 		&endp.authNormalize)
@@ -305,7 +305,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	endp.pipeline.Log = log.Logger{Name: "smtp/pipeline", Debug: endp.Log.Debug}
 	endp.pipeline.FirstPipeline = true
 
-	endp.serv.AuthDisabled = len(endp.saslAuth.SASLMechanisms()) == 0
 	if endp.submission {
 		endp.authAlwaysRequired = true
 		if len(endp.saslAuth.SASLMechanisms()) == 0 {
@@ -314,22 +313,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	}
 	endp.saslAuth.AuthNormalize = endp.authNormalize
 	endp.saslAuth.AuthMap = endp.authMap
-	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		// The code below lacks handling to set AuthPassword. Don't
-		// override sasl.Plain handler so Login() will be called as usual.
-		if mech == sasl.Plain {
-			continue
-		}
-
-		mech := mech
-
-		endp.serv.EnableAuth(mech, func(c *smtp.Conn) sasl.Server {
-			return endp.saslAuth.CreateSASL(mech, c.Conn().RemoteAddr(), func(id string) error {
-				c.Session().(*Session).connState.AuthUser = id
-				return nil
-			})
-		})
-	}
 
 	if ioDebug {
 		endp.serv.Debug = endp.Log.DebugWriter()

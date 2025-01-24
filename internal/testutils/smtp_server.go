@@ -21,6 +21,7 @@ package testutils
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"net"
 	"reflect"
@@ -29,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/exterrors"
 )
@@ -107,21 +109,30 @@ type session struct {
 	msg      *SMTPMessage
 }
 
+func (s *session) AuthMechanisms() []string {
+	return []string{sasl.Plain}
+}
+
+func (s *session) Auth(mech string) (sasl.Server, error) {
+	if mech != sasl.Plain {
+		return nil, fmt.Errorf("mechanisms other than plain are unsupported")
+	}
+	return sasl.NewPlainServer(func(identity, username, password string) error {
+		if s.backend.AuthErr != nil {
+			return s.backend.AuthErr
+		}
+		s.user = username
+		s.password = password
+		return nil
+	}), nil
+}
+
 func (s *session) Reset() {
 	s.msg = &SMTPMessage{}
 }
 
 func (s *session) Logout() error {
 	s.backend.ActiveSessionsCounter.Add(-1)
-	return nil
-}
-
-func (s *session) AuthPlain(username, password string) error {
-	if s.backend.AuthErr != nil {
-		return s.backend.AuthErr
-	}
-	s.user = username
-	s.password = password
 	return nil
 }
 
@@ -187,10 +198,6 @@ func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
 }
 
 type SMTPServerConfigureFunc func(*smtp.Server)
-
-var AuthDisabled = func(s *smtp.Server) {
-	s.AuthDisabled = true
-}
 
 func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTPBackend, *smtp.Server) {
 	t.Helper()

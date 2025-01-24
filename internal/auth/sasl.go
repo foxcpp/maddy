@@ -29,6 +29,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/internal/auth/sasllogin"
 	"github.com/foxcpp/maddy/internal/authz"
 )
 
@@ -48,6 +49,7 @@ var (
 type SASLAuth struct {
 	Log         log.Logger
 	OnlyFirstID bool
+	EnableLogin bool
 
 	AuthMap       module.Table
 	AuthNormalize authz.NormalizeFunc
@@ -59,7 +61,10 @@ func (s *SASLAuth) SASLMechanisms() []string {
 	var mechs []string
 
 	if len(s.Plain) != 0 {
-		mechs = append(mechs, sasl.Plain, sasl.Login)
+		mechs = append(mechs, sasl.Plain)
+		if s.OnlyFirstID {
+			mechs = append(mechs, sasl.Login)
+		}
 	}
 
 	return mechs
@@ -114,8 +119,16 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 	return fmt.Errorf("no auth. provider accepted creds, last err: %w", lastErr)
 }
 
+type ContextData struct {
+	// Authentication username. May be different from identity.
+	Username string
+
+	// Password used for password-based mechanisms.
+	Password string
+}
+
 // CreateSASL creates the sasl.Server instance for the corresponding mechanism.
-func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(identity string) error) sasl.Server {
+func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(identity string, data ContextData) error) sasl.Server {
 	switch mech {
 	case sasl.Plain:
 		return sasl.NewPlainServer(func(identity, username, password string) error {
@@ -132,17 +145,27 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 				return ErrInvalidAuthCred
 			}
 
-			return successCb(identity)
+			return successCb(identity, ContextData{
+				Username: username,
+				Password: password,
+			})
 		})
 	case sasl.Login:
-		return sasl.NewLoginServer(func(username, password string) error {
+		if !s.EnableLogin {
+			return FailingSASLServ{Err: ErrUnsupportedMech}
+		}
+
+		return sasllogin.NewLoginServer(func(username, password string) error {
 			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
 				return ErrInvalidAuthCred
 			}
 
-			return successCb(username)
+			return successCb(username, ContextData{
+				Username: username,
+				Password: password,
+			})
 		})
 	}
 	return FailingSASLServ{Err: ErrUnsupportedMech}

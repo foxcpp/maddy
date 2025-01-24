@@ -21,7 +21,6 @@ package remote
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net"
 	"runtime/trace"
@@ -72,19 +71,8 @@ func (c *mxConn) Close() error {
 }
 
 func isVerifyError(err error) bool {
-	if errors.As(err, &x509.UnknownAuthorityError{}) {
-		return true
-	}
-	if errors.As(err, &x509.HostnameError{}) {
-		return true
-	}
-	if errors.As(err, &x509.ConstraintViolationError{}) {
-		return true
-	}
-	if errors.As(err, &x509.CertificateInvalidError{}) {
-		return true
-	}
-	return false
+	var e *tls.CertificateVerificationError
+	return errors.As(err, &e)
 }
 
 // connect attempts to connect to the MX, first trying STARTTLS with X.509
@@ -117,6 +105,16 @@ retry:
 	starttlsOk, _ := conn.Client().Extension("STARTTLS")
 	if starttlsOk && tlsCfg != nil {
 		if err := conn.Client().StartTLS(tlsCfg); err != nil {
+			// Here we just issue STARTTLS command. If it fails for some
+			// reason - this is either a connection problem or server actively
+			// rejecting STARTTLS (despite advertising STARTTLS).
+			// We err on the caution side here and do not perform any fallbacks.
+			conn.DirectClose()
+			return module.TLSNone, nil, err
+		}
+
+		// TLS handshake is deferred to here, this is where we check errors and allow fallback.
+		if err := conn.Client().Hello(rd.rt.hostname); err != nil {
 			tlsErr = err
 
 			// Attempt TLS without authentication. It is still better than

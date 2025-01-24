@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine AS build-env
+FROM golang:1.23-alpine AS build-env
 
 ARG ADDITIONAL_BUILD_TAGS=""
 
@@ -16,7 +16,7 @@ RUN mkdir -p /pkg/data && \
     cp maddy.conf.docker /pkg/data/maddy.conf && \
     ./build.sh --builddir /tmp --destdir /pkg/ --tags "docker ${ADDITIONAL_BUILD_TAGS}" build install
 
-FROM alpine:3.18.4
+FROM alpine:3.21.2
 LABEL maintainer="fox.cpp@disroot.org"
 LABEL org.opencontainers.image.source=https://github.com/foxcpp/maddy
 

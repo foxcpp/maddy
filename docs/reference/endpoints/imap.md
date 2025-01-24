@@ -18,6 +18,7 @@ imap tcp://0.0.0.0:143 tls://0.0.0.0:993 {
     io_debug no
     debug no
     insecure_auth no
+    sasl_login no
     auth pam
     storage &local_mailboxes
     auth_map identity
@@ -87,6 +88,16 @@ Enable verbose logging.
 
 ### insecure_auth _boolean_
 Default: `no` (`yes` if TLS is disabled)
+
+Allow plain-text authentication over unencrypted connections.
+
+---
+
+### sasl_login _boolean_
+Default: `no`
+
+Enable support for SASL LOGIN authentication mechanism used by
+some outdated clients.
 
 ---
 

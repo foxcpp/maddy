@@ -48,7 +48,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 		agreed         bool
 		challenge      string
 		overrideDomain string
-		provider       certmagic.ACMEDNSProvider
+		provider       certmagic.DNSProvider
 	)
 	cfg.Bool("debug", true, false, &l.log.Debug)
 	cfg.String("hostname", true, true, "", &hostname)
@@ -69,7 +69,7 @@ func (l *Loader) Init(cfg *config.Map) error {
 	cfg.Custom("dns", false, false, func() (interface{}, error) {
 		return nil, nil
 	}, func(m *config.Map, node config.Node) (interface{}, error) {
-		var p certmagic.ACMEDNSProvider
+		var p certmagic.DNSProvider
 		err := modconfig.ModuleFromNode("libdns", node.Args, node, m.Globals, &p)
 		return p, err
 	}, &provider)
@@ -108,8 +108,10 @@ func (l *Loader) Init(cfg *config.Map) error {
 			return fmt.Errorf("tls.loader.acme: dns-01 challenge requires a configured DNS provider")
 		}
 		issuer.DNS01Solver = &certmagic.DNS01Solver{
-			DNSProvider:    provider,
-			OverrideDomain: overrideDomain,
+			DNSManager: certmagic.DNSManager{
+				DNSProvider:    provider,
+				OverrideDomain: overrideDomain,
+			},
 		}
 	default:
 		return fmt.Errorf("tls.loader.acme: challenge not supported")

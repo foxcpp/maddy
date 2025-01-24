@@ -11,6 +11,7 @@ smtp tcp://0.0.0.0:25 {
     io_debug no
     debug no
     insecure_auth no
+    sasl_login no
     read_timeout 10m
     write_timeout 1m
     max_message_size 32M
@@ -99,6 +100,14 @@ Enable verbose logging.
 Default: `no` (`yes` if TLS is disabled)
 
 Allow plain-text authentication over unencrypted connections. Not recommended!
+
+---
+
+### sasl_login _boolean_
+Default: `no`
+
+Enable support for SASL LOGIN authentication mechanism used by
+some outdated clients.
 
 ---
 

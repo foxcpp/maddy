@@ -90,6 +90,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
+	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
 	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
 	cfg.Custom("proxy_protocol", false, false, nil, proxy_protocol.ProxyProtocolDirective, &endp.proxyProtocol)
@@ -144,7 +145,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		mech := mech
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
-			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string) error {
+			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string, data auth.ContextData) error {
 				return endp.openAccount(c, identity)
 			})
 		})

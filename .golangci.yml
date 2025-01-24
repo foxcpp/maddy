@@ -1,12 +1,9 @@
 linters:
   enable:
   - gosimple
-  - structcheck
-  - varcheck
   - errcheck
   - staticcheck
   - ineffassign
-  - deadcode
   - typecheck
   - govet
   - unused
@@ -17,4 +14,4 @@ linters:
   - whitespace
   - nakedret
   - dogsled
-  - exportloopref
+  - copyloopvar

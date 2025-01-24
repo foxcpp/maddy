@@ -281,6 +281,18 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 		return false, nil, nil, TLSError{err}
 	}
 
+	// Re-do HELO using our hostname instead of localhost.
+	if err := cl.Hello(c.Hostname); err != nil {
+		cl.Close()
+
+		var tlsErr *tls.CertificateVerificationError
+		if errors.As(err, &tlsErr) {
+			return false, nil, nil, TLSError{Err: tlsErr}
+		}
+
+		return false, nil, nil, err
+	}
+
 	return true, cl, conn, nil
 }
 
