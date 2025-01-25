@@ -31,13 +31,19 @@ func expandEnvironment(nodes []Node) []Node {
 		return nil
 	}
 
-	replacer := buildEnvReplacer()
+	envMap := buildEnvMap()
+	replacer := buildEnvReplacerFromMap(envMap)
 	newNodes := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
 		node.Name = removeUnexpandedEnvvars(replacer.Replace(node.Name))
 		newArgs := make([]string, 0, len(node.Args))
 		for _, arg := range node.Args {
-			newArgs = append(newArgs, removeUnexpandedEnvvars(replacer.Replace(arg)))
+			expArg := replacer.Replace(arg)
+			if splitArgs, ok := handleEnvSplitWithMap(expArg, envMap); ok {
+				newArgs = append(newArgs, splitArgs...)
+			} else {
+				newArgs = append(newArgs, removeUnexpandedEnvvars(expArg))
+			}
 		}
 		node.Args = newArgs
 		node.Children = expandEnvironment(node.Children)
@@ -47,21 +53,42 @@ func expandEnvironment(nodes []Node) []Node {
 }
 
 var unixEnvvarRe = regexp.MustCompile(`{env:([^\$]+)}`)
+var unixEnvSplitRe = regexp.MustCompile(`{env_split:([^\$]+)}`)
 
 func removeUnexpandedEnvvars(s string) string {
 	s = unixEnvvarRe.ReplaceAllString(s, "")
 	return s
 }
 
-func buildEnvReplacer() *strings.Replacer {
+func buildEnvMap() map[string]string {
 	env := os.Environ()
-	pairs := make([]string, 0, len(env)*4)
+	envMap := make(map[string]string, len(env))
 	for _, entry := range env {
 		parts := strings.SplitN(entry, "=", 2)
-		key := parts[0]
-		value := parts[1]
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+	return envMap
+}
 
+func buildEnvReplacerFromMap(envMap map[string]string) *strings.Replacer {
+	pairs := make([]string, 0, len(envMap)*4)
+	for key, value := range envMap {
 		pairs = append(pairs, "{env:"+key+"}", value)
 	}
 	return strings.NewReplacer(pairs...)
+}
+
+func handleEnvSplitWithMap(arg string, envMap map[string]string) ([]string, bool) {
+	matches := unixEnvSplitRe.FindStringSubmatch(arg)
+	if len(matches) == 2 {
+		value, exists := envMap[matches[1]]
+		if !exists {
+			return nil, false
+		}
+		splitValues := strings.Split(value, ",")
+		return splitValues, true
+	}
+	return nil, false
 }

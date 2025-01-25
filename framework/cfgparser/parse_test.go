@@ -343,6 +343,47 @@ var cases = []struct {
 		false,
 	},
 	{
+		"environment variable split at comma expansion",
+		`a {env_split:TESTING_VARIABLE_SPLIT}`,
+		[]Node{
+			{
+				Name:     "a",
+				Args:     []string{"value1", "value2", "value3"},
+				Children: nil,
+				File:     "test",
+				Line:     1,
+			},
+		},
+		false,
+	},
+	{
+		"environment variable mixed usage",
+		`mixed {env:TESTING_VARIABLE} {env_split:TESTING_VARIABLE_SPLIT}`,
+		[]Node{
+			{
+				Name:     "mixed",
+				Args:     []string{"ABCDEF", "value1", "value2", "value3"},
+				Children: nil,
+				File:     "test",
+				Line:     1,
+			},
+		},
+		false,
+	},
+	{
+		"environment variable not split on comma",
+		`not_split {env:TESTING_VARIABLE_SPLIT}`,
+		[]Node{
+			{
+				Name: "not_split",
+				Args: []string{"value1,value2,value3"},
+				File: "test",
+				Line: 1,
+			},
+		},
+		false,
+	},
+	{
 		"snippet expansion",
 		`(foo) { a }
 		 import foo`,
@@ -581,6 +622,7 @@ func printTree(t *testing.T, root Node, indent int) {
 func TestRead(t *testing.T) {
 	os.Setenv("TESTING_VARIABLE", "ABCDEF")
 	os.Setenv("TESTING_VARIABLE2", "ABC2 DEF2")
+	os.Setenv("TESTING_VARIABLE_SPLIT", "value1,value2,value3")
 
 	for _, case_ := range cases {
 		case_ := case_
