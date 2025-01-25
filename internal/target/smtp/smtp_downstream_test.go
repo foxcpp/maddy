@@ -207,7 +207,7 @@ func TestDownstreamDelivery_MAILErr(t *testing.T) {
 	testutils.CheckSMTPErr(t, err, 550, exterrors.EnhancedCode{5, 1, 2}, "Hey")
 }
 
-func TestDownstreamDelivery_AttemptTLS(t *testing.T) {
+func TestDownstreamDelivery_StartTLS(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+testPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
@@ -221,9 +221,9 @@ func TestDownstreamDelivery_AttemptTLS(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		tlsConfig:       *clientCfg.Clone(),
-		attemptStartTLS: true,
-		log:             testutils.Logger(t, "target.smtp"),
+		tlsConfig: *clientCfg.Clone(),
+		starttls:  true,
+		log:       testutils.Logger(t, "target.smtp"),
 	}
 
 	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
@@ -235,85 +235,7 @@ func TestDownstreamDelivery_AttemptTLS(t *testing.T) {
 	}
 }
 
-func TestDownstreamDelivery_AttemptTLS_Fallback(t *testing.T) {
-	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
-
-	mod := &Downstream{
-		hostname: "mx.example.invalid",
-		endpoints: []config.Endpoint{
-			{
-				Scheme: "tcp",
-				Host:   "127.0.0.1",
-				Port:   testPort,
-			},
-		},
-		attemptStartTLS: true,
-		log:             testutils.Logger(t, "target.smtp"),
-	}
-
-	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
-	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-}
-
-func TestDownstreamDelivery_RequireTLS(t *testing.T) {
-	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
-
-	mod := &Downstream{
-		hostname: "mx.example.invalid",
-		endpoints: []config.Endpoint{
-			{
-				Scheme: "tcp",
-				Host:   "127.0.0.1",
-				Port:   testPort,
-			},
-		},
-		tlsConfig:       *clientCfg.Clone(),
-		attemptStartTLS: true,
-		requireTLS:      true,
-		log:             testutils.Logger(t, "target.smtp"),
-	}
-
-	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
-	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
-	if !ok || !tlsState.HandshakeComplete {
-		t.Fatal("Message was not delivered over TLS")
-	}
-}
-
-func TestDownstreamDelivery_RequireTLS_Implicit(t *testing.T) {
-	clientCfg, be, srv := testutils.SMTPServerTLS(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
-	defer testutils.CheckSMTPConnLeak(t, srv)
-
-	mod := &Downstream{
-		hostname: "mx.example.invalid",
-		endpoints: []config.Endpoint{
-			{
-				Scheme: "tls",
-				Host:   "127.0.0.1",
-				Port:   testPort,
-			},
-		},
-		tlsConfig:       *clientCfg.Clone(),
-		attemptStartTLS: true,
-		requireTLS:      true,
-		log:             testutils.Logger(t, "target.smtp"),
-	}
-
-	testutils.DoTestDelivery(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
-	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
-	tlsState, ok := be.Messages[0].Conn.TLSConnectionState()
-	if !ok || !tlsState.HandshakeComplete {
-		t.Fatal("Message was not delivered over TLS")
-	}
-}
-
-func TestDownstreamDelivery_RequireTLS_Fail(t *testing.T) {
+func TestDownstreamDelivery_StartTLS_NoFallback(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
 	defer srv.Close()
 	defer testutils.CheckSMTPConnLeak(t, srv)
@@ -327,9 +249,8 @@ func TestDownstreamDelivery_RequireTLS_Fail(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		attemptStartTLS: true,
-		requireTLS:      true,
-		log:             testutils.Logger(t, "target.smtp"),
+		starttls: true,
+		log:      testutils.Logger(t, "target.smtp"),
 	}
 
 	_, err := testutils.DoTestDeliveryErr(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})

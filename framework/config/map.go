@@ -20,6 +20,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -305,6 +306,16 @@ func (m *Map) DataSize(name string, inheritGlobal, required bool, defaultVal int
 	}, store)
 }
 
+func ParseBool(s string) (bool, error) {
+	switch strings.ToLower(s) {
+	case "1", "true", "on", "yes":
+		return true, nil
+	case "0", "false", "off", "no":
+		return false, nil
+	}
+	return false, fmt.Errorf("bool argument should be 'yes' or 'no'")
+}
+
 // Bool maps presence of some configuration directive to a boolean variable.
 // Additionally, 'name yes' and 'name no' are mapped to true and false
 // correspondingly.
@@ -327,13 +338,11 @@ func (m *Map) Bool(name string, inheritGlobal, defaultVal bool, store *bool) {
 			return nil, NodeErr(node, "expected exactly 1 argument")
 		}
 
-		switch strings.ToLower(node.Args[0]) {
-		case "1", "true", "on", "yes":
-			return true, nil
-		case "0", "false", "off", "no":
-			return false, nil
+		b, err := ParseBool(node.Args[0])
+		if err != nil {
+			return nil, NodeErr(node, "bool argument should be 'yes' or 'no'")
 		}
-		return nil, NodeErr(node, "bool argument should be 'yes' or 'no'")
+		return b, nil
 	}, store)
 }
 

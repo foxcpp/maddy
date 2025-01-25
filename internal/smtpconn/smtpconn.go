@@ -259,12 +259,15 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 		return false, nil, nil, err
 	}
 
-	if endp.IsTLS() || !starttls {
-		return endp.IsTLS(), cl, conn, nil
+	if !starttls {
+		return false, cl, conn, nil
 	}
 
 	if ok, _ := cl.Extension("STARTTLS"); !ok {
-		return false, cl, conn, nil
+		if err := cl.Quit(); err != nil {
+			cl.Close()
+		}
+		return false, nil, nil, fmt.Errorf("TLS required but unsupported by downstream")
 	}
 
 	cfg := tlsConfig.Clone()

@@ -29,7 +29,6 @@ package smtp_downstream
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"runtime/trace"
@@ -54,12 +53,11 @@ type Downstream struct {
 	lmtp       bool
 	targetsArg []string
 
-	requireTLS      bool
-	attemptStartTLS bool
-	hostname        string
-	endpoints       []config.Endpoint
-	saslFactory     saslClientFactory
-	tlsConfig       tls.Config
+	starttls    bool
+	hostname    string
+	endpoints   []config.Endpoint
+	saslFactory saslClientFactory
+	tlsConfig   tls.Config
 
 	connectTimeout    time.Duration
 	commandTimeout    time.Duration
@@ -89,10 +87,34 @@ func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Mod
 }
 
 func (u *Downstream) Init(cfg *config.Map) error {
+	var attemptTLS *bool
+
 	var targetsArg []string
 	cfg.Bool("debug", true, false, &u.log.Debug)
-	cfg.Bool("require_tls", false, false, &u.requireTLS)
-	cfg.Bool("attempt_starttls", false, !u.lmtp, &u.attemptStartTLS)
+	cfg.Callback("require_tls", func(m *config.Map, node config.Node) error {
+		u.log.Msg("require_tls directive is deprecated and ignored")
+		return nil
+	})
+	cfg.Callback("attempt_starttls", func(m *config.Map, node config.Node) error {
+		u.log.Msg("attempt_starttls directive is deprecated and equivalent to starttls")
+
+		if len(node.Args) == 0 {
+			trueVal := true
+			attemptTLS = &trueVal
+			return nil
+		}
+		if len(node.Args) != 1 {
+			return config.NodeErr(node, "expected exactly 1 argument")
+		}
+
+		b, err := config.ParseBool(node.Args[0])
+		if err != nil {
+			return err
+		}
+		attemptTLS = &b
+		return nil
+	})
+	cfg.Bool("starttls", false, !u.lmtp, &u.starttls)
 	cfg.String("hostname", true, true, "", &u.hostname)
 	cfg.StringList("targets", false, false, nil, &targetsArg)
 	cfg.Custom("auth", false, false, func() (interface{}, error) {
@@ -107,6 +129,10 @@ func (u *Downstream) Init(cfg *config.Map) error {
 
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if attemptTLS != nil {
+		u.starttls = *attemptTLS
 	}
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.7.1.
@@ -201,14 +227,11 @@ func (d *delivery) connect(ctx context.Context) error {
 	}
 
 	for _, endp := range d.u.endpoints {
-		var (
-			didTLS bool
-			err    error
-		)
+		var err error
 		if d.u.lmtp {
-			didTLS, err = conn.ConnectLMTP(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
+			_, err = conn.ConnectLMTP(ctx, endp, d.u.starttls, &d.u.tlsConfig)
 		} else {
-			didTLS, err = conn.Connect(ctx, endp, d.u.attemptStartTLS, &d.u.tlsConfig)
+			_, err = conn.Connect(ctx, endp, d.u.starttls, &d.u.tlsConfig)
 		}
 		if err != nil {
 			if len(d.u.endpoints) != 1 {
@@ -219,12 +242,6 @@ func (d *delivery) connect(ctx context.Context) error {
 		}
 
 		d.log.DebugMsg("connected", "downstream_server", conn.ServerName())
-
-		if !didTLS && d.u.requireTLS {
-			conn.Close()
-			lastErr = errors.New("TLS is required, but unsupported by downstream")
-			continue
-		}
 
 		lastErr = nil
 		break

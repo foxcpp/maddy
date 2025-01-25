@@ -40,6 +40,10 @@ func TestDownstreamDelivery_EHLO_ALabel(t *testing.T) {
 				Name: "hostname",
 				Args: []string{"тест.invalid"},
 			},
+			{
+				Name: "starttls",
+				Args: []string{"no"},
+			},
 		},
 	})); err != nil {
 		t.Fatal(err)
