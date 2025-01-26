@@ -1,6 +1,8 @@
 module github.com/foxcpp/maddy
 
-go 1.23
+go 1.23.1
+
+toolchain go1.23.5
 
 require (
 	blitiri.com.ar/go/spf v1.5.1
@@ -34,6 +36,7 @@ require (
 	github.com/libdns/cloudflare v0.1.1
 	github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea
 	github.com/libdns/gandi v1.0.3
+	github.com/libdns/gcore v0.0.0-20250127070537-4a9d185c9d20
 	github.com/libdns/googleclouddns v1.1.0
 	github.com/libdns/hetzner v0.0.1
 	github.com/libdns/leaseweb v0.4.0
@@ -64,6 +67,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/G-Core/gcore-dns-sdk-go v0.2.9 // indirect
 	github.com/aws/aws-sdk-go v1.44.40 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.33.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.29.1 // indirect
