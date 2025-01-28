@@ -42,8 +42,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/foxcpp/maddy"
-	"github.com/urfave/cli/v2"
+	_ "github.com/foxcpp/maddy"                  // To register run command
+	_ "github.com/foxcpp/maddy/internal/cli/ctl" // To register other CLI commands.
+
+	maddycli "github.com/foxcpp/maddy/internal/cli"
 )
 
 func TestMain(m *testing.M) {
@@ -56,16 +58,14 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	// Skip flag parsing and make flag.Parse no-op so when
+	// m.Run calls it it will not error out on maddy flags.
+	args := os.Args
+	os.Args = []string{"command"}
 	flag.Parse()
+	os.Args = args
 
-	app := cli.NewApp()
-	// maddycli wrapper registers all necessary flags with flag.CommandLine by default
-	ctx := cli.NewContext(app, flag.CommandLine, nil)
-	err = maddy.Run(ctx)
-	code := 0
-	if ec, ok := err.(cli.ExitCoder); ok {
-		code = ec.ExitCode()
-	}
+	code := maddycli.RunWithoutExit()
 
 	if err := os.Chdir(wd); err != nil {
 		panic(err)

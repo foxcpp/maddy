@@ -1,7 +1,6 @@
 package maddycli
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -30,10 +29,6 @@ databases used by it (all other subcommands).
 	}
 	app.ExitErrHandler = func(c *cli.Context, err error) {
 		cli.HandleExitCoder(err)
-		if err != nil {
-			log.Println(err)
-			cli.OsExiter(1)
-		}
 	}
 	app.EnableBashCompletion = true
 	app.Commands = []*cli.Command{
@@ -66,9 +61,6 @@ databases used by it (all other subcommands).
 
 func AddGlobalFlag(f cli.Flag) {
 	app.Flags = append(app.Flags, f)
-	if err := f.Apply(flag.CommandLine); err != nil {
-		log.Println("GlobalFlag", f, "could not be mapped to stdlib flag:", err)
-	}
 }
 
 func AddSubcommand(cmd *cli.Command) {
@@ -83,15 +75,27 @@ func AddSubcommand(cmd *cli.Command) {
 			return cmd.Action(c)
 		}
 		app.Flags = append(app.Flags, cmd.Flags...)
-		for _, f := range cmd.Flags {
-			if err := f.Apply(flag.CommandLine); err != nil {
-				log.Println("GlobalFlag", f, "could not be mapped to stdlib flag:", err)
-			}
-		}
 	}
 }
 
+// RunWithoutExit is like Run but returns exit code instead of calling os.Exit
+// To be used in maddy.cover.
+func RunWithoutExit() int {
+	code := 0
+
+	cli.OsExiter = func(c int) { code = c }
+	defer func() {
+		cli.OsExiter = os.Exit
+	}()
+
+	Run()
+
+	return code
+}
+
 func Run() {
+	mapStdlibFlags(app)
+
 	// Actual entry point is registered in maddy.go.
 
 	// Print help when called via maddyctl executable. To be removed
