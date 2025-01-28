@@ -81,6 +81,11 @@ creates a set of default folder (mailboxes) with special-use attribute set.`,
 							EnvVars: []string{"MADDY_CFGBLOCK"},
 							Value:   "local_mailboxes",
 						},
+						&cli.BoolFlag{
+							Name:  "no-specialuse",
+							Usage: "Do not create special-use folders",
+							Value: false,
+						},
 						&cli.StringFlag{
 							Name:  "sent-name",
 							Usage: "Name of special mailbox for sent messages, use empty string to not create any",
@@ -233,6 +238,10 @@ func imapAcctCreate(be module.Storage, ctx *cli.Context) error {
 	suu, ok := act.(SpecialUseUser)
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Note: Storage backend does not support SPECIAL-USE IMAP extension")
+	}
+
+	if ctx.Bool("no-specialuse") {
+		return nil
 	}
 
 	createMbox := func(name, specialUseAttr string) error {
