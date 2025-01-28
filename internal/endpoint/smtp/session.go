@@ -103,11 +103,6 @@ func (s *Session) AuthMechanisms() []string {
 }
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
-	// Executed before authentication and session initialization.
-	if err := s.endp.pipeline.RunEarlyChecks(s.sessionCtx, &s.connState); err != nil {
-		return nil, s.endp.wrapErr("", true, "AUTH", err)
-	}
-
 	return s.endp.saslAuth.CreateSASL(mech, s.connState.RemoteAddr, func(identity string, data auth.ContextData) error {
 		s.connState.AuthUser = identity
 		s.connState.AuthPassword = data.Password
