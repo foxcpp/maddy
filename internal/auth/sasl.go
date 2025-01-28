@@ -139,7 +139,12 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 				return ErrInvalidAuthCred
 			}
 
-			err := s.AuthPlain(username, password)
+			username, err := s.usernameForAuth(context.Background(), username)
+			if err != nil {
+				return err
+			}
+
+			err = s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
 				return ErrInvalidAuthCred
@@ -156,6 +161,11 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 		}
 
 		return sasllogin.NewLoginServer(func(username, password string) error {
+			username, err := s.usernameForAuth(context.Background(), username)
+			if err != nil {
+				return err
+			}
+
 			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
