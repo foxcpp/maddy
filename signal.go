@@ -36,9 +36,10 @@ import (
 // (SIGTERM, SIGHUP, SIGINT) will cause this function to return.
 //
 // SIGUSR1 will call reinitLogging without returning.
-func handleSignals() os.Signal {
+func handleSignals() (reload bool) {
 	sig := make(chan os.Signal, 5)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1, syscall.SIGUSR2)
+	defer signal.Stop(sig)
 
 	for {
 		switch s := <-sig; s {
@@ -48,10 +49,8 @@ func handleSignals() os.Signal {
 			hooks.RunHooks(hooks.EventLogRotate)
 			systemdStatus(SDReady, "Listening for incoming connections...")
 		case syscall.SIGUSR2:
-			log.Printf("signal received (%s), reloading state", s.String())
-			systemdStatus(SDReloading, "Reloading state...")
-			hooks.RunHooks(hooks.EventReload)
-			systemdStatus(SDReady, "Listening for incoming connections...")
+			log.Printf("signal received (%s), reloading configuration", s.String())
+			return true
 		default:
 			go func() {
 				s := handleSignals()
@@ -60,7 +59,7 @@ func handleSignals() os.Signal {
 			}()
 
 			log.Printf("signal received (%v), next signal will force immediate shutdown.", s)
-			return s
+			return false
 		}
 	}
 }

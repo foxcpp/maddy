@@ -376,6 +376,12 @@ func moduleStop(c *container.C) {
 func moduleMain(configPath string) error {
 	log.DefaultLogger.Msg("loading configuration...")
 
+	// Make path absolute to make sure we can still read it if current directory changes (in moduleConfigure).
+	configPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return err
+	}
+
 	c, err := moduleConfigure(configPath)
 	if err != nil {
 		return err
@@ -389,7 +395,12 @@ func moduleMain(configPath string) error {
 	c.DefaultLogger.Msg("server started", "version", Version)
 
 	systemdStatus(SDReady, "Listening for incoming connections...")
-	handleSignals()
+	for handleSignals() {
+		systemdStatus(SDReloading, "Reloading state...")
+		hooks.RunHooks(hooks.EventReload)
+
+		c = moduleReload(c, configPath)
+	}
 
 	c.DefaultLogger.Msg("server stopping...")
 	systemdStatus(SDStopping, "Waiting for running transactions to complete...")
@@ -397,6 +408,33 @@ func moduleMain(configPath string) error {
 	moduleStop(c)
 	c.DefaultLogger.Msg("server stopped")
 	return nil
+}
+
+func moduleReload(oldContainer *container.C, configPath string) *container.C {
+	oldContainer.DefaultLogger.Msg("reloading server...")
+
+	oldContainer.DefaultLogger.Msg("loading new configuration...")
+	newContainer, err := moduleConfigure(configPath)
+	if err != nil {
+		oldContainer.DefaultLogger.Error("failed to load new configuration", err)
+		return oldContainer
+	}
+
+	oldContainer.DefaultLogger.Msg("configuration loaded")
+
+	oldContainer.DefaultLogger.Msg("starting new server")
+	if err := moduleStart(newContainer); err != nil {
+		oldContainer.DefaultLogger.Error("failed to start new server", err)
+		container.Global = oldContainer
+		return oldContainer
+	}
+
+	newContainer.DefaultLogger.Msg("server started", "version", Version)
+	oldContainer.DefaultLogger.Msg("stopping server")
+	moduleStop(oldContainer)
+	oldContainer.DefaultLogger.Msg("server stopped")
+
+	return newContainer
 }
 
 func RegisterModules(c *container.C, globals map[string]interface{}, nodes []config.Node) (err error) {
