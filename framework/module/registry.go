@@ -35,14 +35,14 @@ type registryEntry struct {
 }
 
 type Registry struct {
-	logger      log.Logger
+	logger      *log.Logger
 	instances   map[string]registryEntry
 	initialized map[string]struct{}
 	started     map[string]struct{}
 	aliases     map[string]string
 }
 
-func NewRegistry(log log.Logger) *Registry {
+func NewRegistry(log *log.Logger) *Registry {
 	return &Registry{
 		logger:      log,
 		instances:   make(map[string]registryEntry),

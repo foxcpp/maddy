@@ -42,6 +42,7 @@ import (
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/proxy_protocol"
@@ -126,7 +127,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	if ioErrors {
 		endp.serv.ErrorLog = &endp.Log
 	} else {
-		endp.serv.ErrorLog = log.Logger{Out: log.NopOutput{}}
+		endp.serv.ErrorLog = &log.Logger{Out: log.NopOutput{}}
 	}
 	if ioDebug {
 		endp.serv.Debug = endp.Log.DebugWriter()
@@ -174,7 +175,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error
-		l, err = net.Listen(addr.Network(), addr.Address())
+		l, err = netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("imap: %v", err)
 		}

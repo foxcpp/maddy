@@ -21,13 +21,13 @@ package openmetrics
 import (
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -83,7 +83,7 @@ func (e *Endpoint) InstanceName() string {
 
 func (e *Endpoint) Start() error {
 	for _, endp := range e.endpoints {
-		l, err := net.Listen(endp.Network(), endp.Address())
+		l, err := netresource.Listen(endp.Network(), endp.Address())
 		if err != nil {
 			e.Stop()
 			return fmt.Errorf("%s: %v", modName, err)

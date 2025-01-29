@@ -42,7 +42,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return fmt.Errorf("%s: inline arguments are not used", modName)
 	}
 
-	l := hclog.New(&hclog.LoggerOptions{Output: a.log})
+	l := hclog.New(&hclog.LoggerOptions{Output: &a.log})
 	n, err := netauth.NewWithLog(l)
 	if err != nil {
 		return err

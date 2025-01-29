@@ -27,6 +27,7 @@ import (
 
 	mess "github.com/foxcpp/go-imap-mess"
 	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 )
 
 // UnixSockPipe implements the UpdatePipe interface by serializating updates
@@ -74,7 +75,7 @@ func (usp *UnixSockPipe) readUpdates(conn net.Conn, updCh chan<- mess.Update) {
 }
 
 func (usp *UnixSockPipe) Listen(upd chan<- mess.Update) error {
-	l, err := net.Listen("unix", usp.SockPath)
+	l, err := netresource.Listen("unix", usp.SockPath)
 	if err != nil {
 		return err
 	}

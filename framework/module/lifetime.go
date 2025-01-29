@@ -38,7 +38,7 @@ type ReloadModule interface {
 }
 
 type LifetimeTracker struct {
-	logger    log.Logger
+	logger    *log.Logger
 	instances []*struct {
 		mod     LifetimeModule
 		started bool
@@ -114,7 +114,7 @@ func (lt *LifetimeTracker) StopAll() error {
 	return nil
 }
 
-func NewLifetime(log log.Logger) *LifetimeTracker {
+func NewLifetime(log *log.Logger) *LifetimeTracker {
 	return &LifetimeTracker{
 		logger: log,
 	}

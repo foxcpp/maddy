@@ -36,6 +36,7 @@ import (
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/authz"
 	maddycli "github.com/foxcpp/maddy/internal/cli"
 	"github.com/urfave/cli/v2"
@@ -422,12 +423,14 @@ func moduleReload(oldContainer *container.C, configPath string) *container.C {
 
 	oldContainer.DefaultLogger.Msg("configuration loaded")
 
+	netresource.ResetListenersUsage()
 	oldContainer.DefaultLogger.Msg("starting new server")
 	if err := moduleStart(newContainer); err != nil {
 		oldContainer.DefaultLogger.Error("failed to start new server", err)
 		container.Global = oldContainer
 		return oldContainer
 	}
+	netresource.CloseUnusedListeners()
 
 	newContainer.DefaultLogger.Msg("server started", "version", Version)
 	oldContainer.DefaultLogger.Msg("stopping server")

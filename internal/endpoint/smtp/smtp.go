@@ -41,6 +41,7 @@ import (
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/limits"
@@ -107,7 +108,7 @@ func New(modName string, addrs []string) (module.LifetimeModule, error) {
 
 func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
-	endp.serv.ErrorLog = endp.Log
+	endp.serv.ErrorLog = &endp.Log
 	endp.serv.LMTP = endp.lmtp
 	endp.serv.EnableSMTPUTF8 = true
 	endp.serv.EnableREQUIRETLS = true
@@ -328,7 +329,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error
-		l, err = net.Listen(addr.Network(), addr.Address())
+		l, err = netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("%s: %w", endp.name, err)
 		}

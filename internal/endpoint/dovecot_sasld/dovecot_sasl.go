@@ -31,6 +31,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 )
@@ -79,7 +80,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	}
 
 	endp.srv = dovecotsasl.NewServer()
-	endp.srv.Log = stdlog.New(endp.log, "", 0)
+	endp.srv.Log = stdlog.New(&endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
@@ -106,7 +107,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 
 func (endp *Endpoint) Start() error {
 	for _, addr := range endp.endpoints {
-		l, err := net.Listen(addr.Network(), addr.Address())
+		l, err := netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("%s: %v", modName, err)
 		}

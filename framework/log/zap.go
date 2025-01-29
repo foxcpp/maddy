@@ -7,7 +7,7 @@ import (
 // TODO: Migrate to using actual zapcore to improve logging performance
 
 type zapLogger struct {
-	L Logger
+	L *Logger
 }
 
 func (l zapLogger) Enabled(level zapcore.Level) bool {
