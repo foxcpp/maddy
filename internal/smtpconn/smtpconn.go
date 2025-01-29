@@ -376,7 +376,7 @@ func (c *C) Rcpt(ctx context.Context, to string, opts smtp.RcptOptions) error {
 		// TODO: DSN support
 	}
 
-	// If necessary, the extension flag is enabled in Start.
+	// If necessary, the extension flag is enabled in StartDelivery.
 	if ok, _ := c.cl.Extension("SMTPUTF8"); !address.IsASCII(to) && !ok {
 		var err error
 		to, err = address.ToASCII(to)

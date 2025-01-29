@@ -52,7 +52,7 @@ type (
 	}
 )
 
-func NewMTASTSPolicy(_, instName string, _, _ []string) (module.Module, error) {
+func NewMTASTSPolicy(_, instName string) (module.Module, error) {
 	return &mtastsPolicy{
 		instName: instName,
 		log:      log.Logger{Name: "mx_auth.mtasts", Debug: log.DefaultLogger.Debug},
@@ -71,7 +71,7 @@ func (c *mtastsPolicy) Weight() int {
 	return 10
 }
 
-func (c *mtastsPolicy) Init(cfg *config.Map) error {
+func (c *mtastsPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		storeType string
 		storeDir  string
@@ -99,6 +99,11 @@ func (c *mtastsPolicy) Init(cfg *config.Map) error {
 	return nil
 }
 
+func (c *mtastsPolicy) Start() error {
+	c.StartUpdater()
+	return nil
+}
+
 // StartUpdater starts a goroutine to update MTA-STS cache periodically until
 // Close is called.
 //
@@ -106,6 +111,15 @@ func (c *mtastsPolicy) Init(cfg *config.Map) error {
 func (c *mtastsPolicy) StartUpdater() {
 	c.updaterStop = make(chan struct{})
 	go c.updater()
+}
+
+func (c *mtastsPolicy) Stop() error {
+	if c.updaterStop != nil {
+		c.updaterStop <- struct{}{}
+		<-c.updaterStop
+		c.updaterStop = nil
+	}
+	return nil
 }
 
 func (c *mtastsPolicy) updater() {
@@ -142,20 +156,11 @@ func (c *mtastsPolicy) updater() {
 	}
 }
 
-func (c *mtastsPolicy) Start(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
+func (c *mtastsPolicy) StartDelivery(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &mtastsDelivery{
 		c:   c,
 		log: target.DeliveryLogger(c.log, msgMeta),
 	}
-}
-
-func (c *mtastsPolicy) Close() error {
-	if c.updaterStop != nil {
-		c.updaterStop <- struct{}{}
-		<-c.updaterStop
-		c.updaterStop = nil
-	}
-	return nil
 }
 
 func (c *mtastsDelivery) PrepareDomain(ctx context.Context, domain string) {
@@ -237,7 +242,7 @@ type stsPreloadPolicy struct {
 	instName string
 }
 
-func NewSTSPreload(_, instName string, _, _ []string) (module.Module, error) {
+func NewSTSPreload(_, instName string) (module.Module, error) {
 	return &stsPreloadPolicy{
 		instName: instName,
 		log:      log.Logger{Name: "mx_auth.sts_preload", Debug: log.DefaultLogger.Debug},
@@ -256,7 +261,7 @@ func (c *stsPreloadPolicy) Weight() int {
 	return 30 // after MTA-STS
 }
 
-func (c *stsPreloadPolicy) Init(cfg *config.Map) error {
+func (c *stsPreloadPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	c.log.Println("sts_preload module is deprecated and is no-op as the list is expired and unmaintained")
 
 	var (
@@ -276,7 +281,7 @@ type preloadDelivery struct {
 	*stsPreloadPolicy
 }
 
-func (p *stsPreloadPolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
+func (p *stsPreloadPolicy) StartDelivery(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &preloadDelivery{stsPreloadPolicy: p}
 }
 
@@ -291,15 +296,11 @@ func (p *preloadDelivery) CheckConn(ctx context.Context, mxLevel module.MXLevel,
 	return tlsLevel, nil
 }
 
-func (p *stsPreloadPolicy) Close() error {
-	return nil
-}
-
 type dnssecPolicy struct {
 	instName string
 }
 
-func NewDNSSECPolicy(_, instName string, _, _ []string) (module.Module, error) {
+func NewDNSSECPolicy(_, instName string) (module.Module, error) {
 	return &dnssecPolicy{
 		instName: instName,
 	}, nil
@@ -317,17 +318,13 @@ func (c *dnssecPolicy) Weight() int {
 	return 1
 }
 
-func (c *dnssecPolicy) Init(cfg *config.Map) error {
+func (c *dnssecPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	_, err := cfg.Process() // will fail if there is any directive
 	return err
 }
 
-func (dnssecPolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
+func (dnssecPolicy) StartDelivery(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return dnssecPolicy{}
-}
-
-func (dnssecPolicy) Close() error {
-	return nil
 }
 
 func (dnssecPolicy) Reset(*module.MsgMetadata)                        {}
@@ -357,7 +354,7 @@ type (
 	}
 )
 
-func NewDANEPolicy(_, instName string, _, _ []string) (module.Module, error) {
+func NewDANEPolicy(_, instName string) (module.Module, error) {
 	return &danePolicy{
 		instName: instName,
 		log:      log.Logger{Name: "remote/dane", Debug: log.DefaultLogger.Debug},
@@ -376,7 +373,7 @@ func (c *danePolicy) Weight() int {
 	return 10
 }
 
-func (c *danePolicy) Init(cfg *config.Map) error {
+func (c *danePolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	var err error
 	c.extResolver, err = dns.NewExtResolver()
 	if err != nil {
@@ -389,12 +386,8 @@ func (c *danePolicy) Init(cfg *config.Map) error {
 	return err
 }
 
-func (c *danePolicy) Start(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
+func (c *danePolicy) StartDelivery(*module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return &daneDelivery{c: c}
-}
-
-func (c *danePolicy) Close() error {
-	return nil
 }
 
 func (c *daneDelivery) PrepareDomain(ctx context.Context, domain string) {}
@@ -536,7 +529,7 @@ type (
 	}
 )
 
-func NewLocalPolicy(_, instName string, _, _ []string) (module.Module, error) {
+func NewLocalPolicy(_, instName string) (module.Module, error) {
 	return &localPolicy{
 		instName: instName,
 	}, nil
@@ -554,7 +547,7 @@ func (c *localPolicy) Weight() int {
 	return 1000
 }
 
-func (c *localPolicy) Init(cfg *config.Map) error {
+func (c *localPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		minTLSLevel string
 		minMXLevel  string
@@ -589,19 +582,15 @@ func (c *localPolicy) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (l localPolicy) Start(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
+func (l *localPolicy) StartDelivery(msgMeta *module.MsgMetadata) module.DeliveryMXAuthPolicy {
 	return l
 }
 
-func (l localPolicy) Close() error {
-	return nil
-}
+func (l *localPolicy) Reset(*module.MsgMetadata)                        {}
+func (l *localPolicy) PrepareDomain(ctx context.Context, domain string) {}
+func (l *localPolicy) PrepareConn(ctx context.Context, mx string)       {}
 
-func (l localPolicy) Reset(*module.MsgMetadata)                        {}
-func (l localPolicy) PrepareDomain(ctx context.Context, domain string) {}
-func (l localPolicy) PrepareConn(ctx context.Context, mx string)       {}
-
-func (l localPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
+func (l *localPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain, mx string, dnssec bool) (module.MXLevel, error) {
 	if mxLevel < l.minMXLevel {
 		return module.MXNone, &exterrors.SMTPError{
 			// Err on the side of caution if policy evaluation was messed up by
@@ -618,7 +607,7 @@ func (l localPolicy) CheckMX(ctx context.Context, mxLevel module.MXLevel, domain
 	return module.MXNone, nil
 }
 
-func (l localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
+func (l *localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLevel module.TLSLevel, domain, mx string, tlsState tls.ConnectionState) (module.TLSLevel, error) {
 	if tlsLevel < l.minTLSLevel {
 		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,

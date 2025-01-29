@@ -89,7 +89,7 @@ func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt mo
 		})
 	}
 
-	err = endp.Init(config.NewMap(nil, config.Node{
+	err = endp.Configure(nil, config.NewMap(nil, config.Node{
 		Children: cfg,
 	}))
 	if err != nil {
@@ -106,6 +106,10 @@ func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt mo
 	endp.pipeline.Resolver = endp.resolver
 	endp.pipeline.FirstPipeline = true
 	endp.pipeline.Log = testutils.Logger(t, "smtp/pipeline")
+
+	if err := endp.Start(); err != nil {
+		t.Fatal(err)
+	}
 
 	return endp
 }
@@ -142,7 +146,7 @@ func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, o
 func TestSMTPDelivery(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -180,7 +184,7 @@ func TestSMTPDelivery(t *testing.T) {
 func TestSMTPDelivery_rDNSError(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
 		Err: &net.DNSError{
@@ -224,7 +228,7 @@ func TestSMTPDelivery_EarlyCheck_Fail(t *testing.T) {
 			},
 		},
 	}, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -264,7 +268,7 @@ func TestSMTPDeliver_CheckError(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -303,7 +307,7 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = true
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -342,7 +346,7 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 func TestSMTPDelivery_Multi(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -380,7 +384,7 @@ func TestSMTPDelivery_Multi(t *testing.T) {
 func TestSMTPDelivery_AbortData(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -418,7 +422,7 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -457,7 +461,7 @@ func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -488,7 +492,7 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 func TestSMTPDelivery_Reset(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -523,7 +527,7 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
@@ -539,7 +543,7 @@ func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {

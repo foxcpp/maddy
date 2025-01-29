@@ -31,24 +31,22 @@ import (
 )
 
 type Auth struct {
-	modName    string
-	instName   string
-	inlineArgs []string
+	modName  string
+	instName string
 
 	table module.Table
 }
 
-func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string) (module.Module, error) {
 	return &Auth{
-		modName:    modName,
-		instName:   instName,
-		inlineArgs: inlineArgs,
+		modName:  modName,
+		instName: instName,
 	}, nil
 }
 
-func (a *Auth) Init(cfg *config.Map) error {
-	if len(a.inlineArgs) != 0 {
-		return modconfig.ModuleFromNode("table", a.inlineArgs, cfg.Block, cfg.Globals, &a.table)
+func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return modconfig.ModuleFromNode("table", inlineArgs, cfg.Block, cfg.Globals, &a.table)
 	}
 
 	cfg.Custom("table", false, true, nil, modconfig.TableDirective, &a.table)

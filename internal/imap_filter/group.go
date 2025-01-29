@@ -37,7 +37,7 @@ type Group struct {
 	log      log.Logger
 }
 
-func NewGroup(_, instName string, _, _ []string) (module.Module, error) {
+func NewGroup(_, instName string) (module.Module, error) {
 	return &Group{
 		instName: instName,
 		log:      log.Logger{Name: "imap_filters", Debug: log.DefaultLogger.Debug},
@@ -66,7 +66,7 @@ func (g *Group) IMAPFilter(accountName string, rcptTo string, meta *module.MsgMe
 	return finalFolder, finalFlags, nil
 }
 
-func (g *Group) Init(cfg *config.Map) error {
+func (g *Group) Configure(inlineArgs []string, cfg *config.Map) error {
 	for _, node := range cfg.Block.Children {
 		mod, err := modconfig.IMAPFilter(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {

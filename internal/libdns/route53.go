@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.route53", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.route53", func(modName, instName string) (module.Module, error) {
 		p := route53.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

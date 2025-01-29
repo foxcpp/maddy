@@ -54,7 +54,7 @@ func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadat
 	return &checkState{msgMeta, c}, nil
 }
 
-func (c *Check) Init(*config.Map) error {
+func (c *Check) Configure([]string, *config.Map) error {
 	return nil
 }
 
@@ -104,8 +104,7 @@ func (cs *checkState) Close() error {
 }
 
 func init() {
-	module.Register("test_check", func(_, _ string, _, _ []string) (module.Module, error) {
+	module.Register("test_check", func(_, _ string) (module.Module, error) {
 		return &Check{}, nil
 	})
-	module.RegisterInstance(&Check{}, nil)
 }

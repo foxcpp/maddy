@@ -46,18 +46,12 @@ type Check struct {
 	log       log.Logger
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
 		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
 	}
-	switch len(inlineArgs) {
-	case 1:
-		c.milterUrl = inlineArgs[0]
-	case 0:
-	default:
-		return nil, fmt.Errorf("%s: unexpected amount of arguments, want 1 or 0", modName)
-	}
+
 	return c, nil
 }
 
@@ -69,7 +63,15 @@ func (c *Check) InstanceName() string {
 	return c.instName
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
+	switch len(inlineArgs) {
+	case 1:
+		c.milterUrl = inlineArgs[0]
+	case 0:
+	default:
+		return fmt.Errorf("%s: unexpected amount of arguments, want 1 or 0", modName)
+	}
+
 	cfg.String("endpoint", false, false, c.milterUrl, &c.milterUrl)
 	cfg.Bool("fail_open", false, false, &c.failOpen)
 	if _, err := cfg.Process(); err != nil {

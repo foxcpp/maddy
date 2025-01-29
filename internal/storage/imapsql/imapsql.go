@@ -28,6 +28,7 @@ package imapsql
 import (
 	"context"
 	"crypto/sha1"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -61,8 +62,10 @@ type Storage struct {
 
 	junkMbox string
 
-	driver string
-	dsn    []string
+	driver    string
+	dsn       []string
+	blobStore module.BlobStore
+	opts      *imapsql.Opts
 
 	resolver dns.Resolver
 
@@ -86,24 +89,25 @@ func (store *Storage) InstanceName() string {
 	return store.instName
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	store := &Storage{
 		instName: instName,
 		Log:      log.Logger{Name: "imapsql"},
 		resolver: dns.DefaultResolver(),
 	}
+	return store, nil
+}
+
+func (store *Storage) Configure(inlineArgs []string, cfg *config.Map) error {
 	if len(inlineArgs) != 0 {
 		if len(inlineArgs) == 1 {
-			return nil, errors.New("imapsql: expected at least 2 arguments")
+			return errors.New("imapsql: expected at least 2 arguments")
 		}
 
 		store.driver = inlineArgs[0]
 		store.dsn = inlineArgs[1:]
 	}
-	return store, nil
-}
 
-func (store *Storage) Init(cfg *config.Map) error {
 	var (
 		driver            string
 		dsn               []string
@@ -115,7 +119,7 @@ func (store *Storage) Init(cfg *config.Map) error {
 		blobStore module.BlobStore
 	)
 
-	opts := imapsql.Opts{}
+	opts := &imapsql.Opts{}
 	cfg.String("driver", false, false, store.driver, &driver)
 	cfg.StringList("dsn", false, false, store.dsn, &dsn)
 	cfg.Callback("fsstore", func(m *config.Map, node config.Node) error {
@@ -238,9 +242,6 @@ func (store *Storage) Init(cfg *config.Map) error {
 		opts.MaxMsgBytes = new(uint32)
 		*opts.MaxMsgBytes = uint32(appendlimitVal)
 	}
-	var err error
-
-	dsnStr := strings.Join(dsn, " ")
 
 	if len(compression) != 0 {
 		switch compression[0] {
@@ -264,16 +265,33 @@ func (store *Storage) Init(cfg *config.Map) error {
 		}
 	}
 
-	store.Back, err = imapsql.New(driver, dsnStr, ExtBlobStore{Base: blobStore}, opts)
-	if err != nil {
-		return fmt.Errorf("imapsql: %s", err)
+	driverFound := false
+	for _, d := range sql.Drivers() {
+		if d == driver {
+			driverFound = true
+			break
+		}
 	}
-
-	store.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
+	if !driverFound {
+		return fmt.Errorf("imapsql: unknown driver %q", driver)
+	}
 
 	store.driver = driver
 	store.dsn = dsn
+	store.blobStore = blobStore
+	store.opts = opts
+	store.Log.Debugln("go-imap-sql version", imapsql.VersionStr)
 
+	return nil
+}
+
+func (store *Storage) Start() error {
+	dsnStr := strings.Join(store.dsn, " ")
+	var err error
+	store.Back, err = imapsql.New(store.driver, dsnStr, ExtBlobStore{Base: store.blobStore}, *store.opts)
+	if err != nil {
+		return fmt.Errorf("imapsql: %s", err)
+	}
 	return nil
 }
 
@@ -407,7 +425,7 @@ func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, err
 	return "", true, nil
 }
 
-func (store *Storage) Close() error {
+func (store *Storage) Stop() error {
 	// Stop backend from generating new updates.
 	store.Back.Close()
 

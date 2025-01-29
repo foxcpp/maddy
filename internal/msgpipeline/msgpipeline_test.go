@@ -380,14 +380,14 @@ func TestMsgPipeline_PerSourceReject(t *testing.T) {
 
 	testutils.DoTestDelivery(t, &d, "sender1@example.com", []string{"rcpt@example.com"})
 
-	_, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.com")
+	_, err := d.StartDelivery(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.com")
 	if err == nil {
-		t.Error("expected error for delivery.Start, got nil")
+		t.Error("expected error for delivery.StartDelivery, got nil")
 	}
 
-	_, err = d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.org")
+	_, err = d.StartDelivery(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender2@example.org")
 	if err == nil {
-		t.Error("expected error for delivery.Start, got nil")
+		t.Error("expected error for delivery.StartDelivery, got nil")
 	}
 }
 
@@ -413,9 +413,9 @@ func TestMsgPipeline_PerRcptReject(t *testing.T) {
 		Log: testutils.Logger(t, "msgpipeline"),
 	}
 
-	delivery, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender@example.com")
+	delivery, err := d.StartDelivery(context.Background(), &module.MsgMetadata{ID: "testing"}, "sender@example.com")
 	if err != nil {
-		t.Fatalf("unexpected Start err: %v", err)
+		t.Fatalf("unexpected StartDelivery err: %v", err)
 	}
 	defer func() {
 		if err := delivery.Abort(context.Background()); err != nil {
@@ -628,7 +628,7 @@ func TestMsgPipeline_MalformedSource(t *testing.T) {
 
 	// Simple checks for violations that can make msgpipeline misbehave.
 	for _, addr := range []string{"not_postmaster_but_no_at_sign", "@no_mailbox", "no_domain@"} {
-		_, err := d.Start(context.Background(), &module.MsgMetadata{ID: "testing"}, addr)
+		_, err := d.StartDelivery(context.Background(), &module.MsgMetadata{ID: "testing"}, addr)
 		if err == nil {
 			t.Errorf("%s is accepted as valid address", addr)
 		}

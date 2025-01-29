@@ -42,7 +42,7 @@ type Modifier struct {
 	UnclosedStates int
 }
 
-func (m Modifier) Init(*config.Map) error {
+func (m Modifier) Configure([]string, *config.Map) error {
 	return nil
 }
 
@@ -115,8 +115,7 @@ func (ms modifierState) Close() error {
 }
 
 func init() {
-	module.Register("test_modifier", func(_, _ string, _, _ []string) (module.Module, error) {
+	module.Register("test_modifier", func(_, _ string) (module.Module, error) {
 		return &Modifier{}, nil
 	})
-	module.RegisterInstance(&Modifier{}, nil)
 }

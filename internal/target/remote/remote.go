@@ -87,10 +87,7 @@ type Target struct {
 
 var _ module.DeliveryTarget = &Target{}
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("remote: inline arguments are not used")
-	}
+func New(_, instName string) (module.Module, error) {
 	// Keep this synchronized with testTarget.
 	return &Target{
 		name:     instName,
@@ -100,7 +97,11 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	}, nil
 }
 
-func (rt *Target) Init(cfg *config.Map) error {
+func (rt *Target) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return errors.New("remote: inline arguments are not used")
+	}
+
 	var err error
 	rt.extResolver, err = dns.NewExtResolver()
 	if err != nil {
@@ -184,7 +185,11 @@ func (rt *Target) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (rt *Target) Close() error {
+func (rt *Target) Start() error {
+	return nil
+}
+
+func (rt *Target) Stop() error {
 	rt.pool.Close()
 
 	return nil
@@ -210,11 +215,11 @@ type remoteDelivery struct {
 	policies []module.DeliveryMXAuthPolicy
 }
 
-func (rt *Target) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (rt *Target) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	policies := make([]module.DeliveryMXAuthPolicy, 0, len(rt.policies))
 	if !(msgMeta.TLSRequireOverride && rt.allowSecOverride) {
 		for _, p := range rt.policies {
-			policies = append(policies, p.Start(msgMeta))
+			policies = append(policies, p.StartDelivery(msgMeta))
 		}
 	}
 

@@ -152,7 +152,11 @@ func (c *statelessCheck) CheckStateForMsg(ctx context.Context, msgMeta *module.M
 	}, nil
 }
 
-func (c *statelessCheck) Init(cfg *config.Map) error {
+func (c *statelessCheck) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return fmt.Errorf("%s: inline arguments are not used", c.modName)
+	}
+
 	cfg.Bool("debug", true, false, &c.logger.Debug)
 	cfg.Custom("fail_action", false, false,
 		func() (interface{}, error) {
@@ -181,10 +185,7 @@ func (c *statelessCheck) InstanceName() string {
 // code doesn't need to know about it. It should assume that it is always "Reject" and hence it should
 // populate Reason field of the result object with the relevant error description.
 func RegisterStatelessCheck(name string, defaultFailAction modconfig.FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
-	module.Register(name, func(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
-		if len(inlineArgs) != 0 {
-			return nil, fmt.Errorf("%s: inline arguments are not used", modName)
-		}
+	module.Register(name, func(modName, instName string) (module.Module, error) {
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,

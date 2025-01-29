@@ -32,6 +32,7 @@ import (
 type SQL struct {
 	modName  string
 	instName string
+	prepare  func() error
 
 	namedArgs bool
 
@@ -43,7 +44,7 @@ type SQL struct {
 	del    *sql.Stmt
 }
 
-func NewSQL(modName, instName string, _, _ []string) (module.Module, error) {
+func NewSQL(modName, instName string) (module.Module, error) {
 	return &SQL{
 		modName:  modName,
 		instName: instName,
@@ -58,7 +59,7 @@ func (s *SQL) InstanceName() string {
 	return s.instName
 }
 
-func (s *SQL) Init(cfg *config.Map) error {
+func (s *SQL) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		driver      string
 		initQueries []string
@@ -94,46 +95,52 @@ func (s *SQL) Init(cfg *config.Map) error {
 		return config.NodeErr(cfg.Block, "failed to open db: %v", err)
 	}
 	s.db = db
+	s.prepare = func() error {
+		for _, init := range initQueries {
+			if _, err := db.Exec(init); err != nil {
+				return config.NodeErr(cfg.Block, "init query failed: %v", err)
+			}
+		}
 
-	for _, init := range initQueries {
-		if _, err := db.Exec(init); err != nil {
-			return config.NodeErr(cfg.Block, "init query failed: %v", err)
-		}
-	}
-
-	s.lookup, err = db.Prepare(lookupQuery)
-	if err != nil {
-		return config.NodeErr(cfg.Block, "failed to prepare lookup query: %v", err)
-	}
-	if addQuery != "" {
-		s.add, err = db.Prepare(addQuery)
+		s.lookup, err = db.Prepare(lookupQuery)
 		if err != nil {
-			return config.NodeErr(cfg.Block, "failed to prepare add query: %v", err)
+			return fmt.Errorf("failed to prepare lookup query: %v", err)
 		}
-	}
-	if listQuery != "" {
-		s.list, err = db.Prepare(listQuery)
-		if err != nil {
-			return config.NodeErr(cfg.Block, "failed to prepare list query: %v", err)
+		if addQuery != "" {
+			s.add, err = db.Prepare(addQuery)
+			if err != nil {
+				return fmt.Errorf("failed to prepare add query: %v", err)
+			}
 		}
-	}
-	if setQuery != "" {
-		s.set, err = db.Prepare(setQuery)
-		if err != nil {
-			return config.NodeErr(cfg.Block, "failed to prepare set query: %v", err)
+		if listQuery != "" {
+			s.list, err = db.Prepare(listQuery)
+			if err != nil {
+				return config.NodeErr(cfg.Block, "failed to prepare list query: %v", err)
+			}
 		}
-	}
-	if removeQuery != "" {
-		s.del, err = db.Prepare(removeQuery)
-		if err != nil {
-			return config.NodeErr(cfg.Block, "failed to prepare del query: %v", err)
+		if setQuery != "" {
+			s.set, err = db.Prepare(setQuery)
+			if err != nil {
+				return config.NodeErr(cfg.Block, "failed to prepare set query: %v", err)
+			}
 		}
+		if removeQuery != "" {
+			s.del, err = db.Prepare(removeQuery)
+			if err != nil {
+				return config.NodeErr(cfg.Block, "failed to prepare del query: %v", err)
+			}
+		}
+		return nil
 	}
 
 	return nil
 }
 
-func (s *SQL) Close() error {
+func (s *SQL) Start() error {
+	return s.prepare()
+}
+
+func (s *SQL) Stop() error {
 	s.lookup.Close()
 	return s.db.Close()
 }

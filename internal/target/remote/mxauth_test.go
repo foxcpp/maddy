@@ -63,7 +63,7 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -108,7 +108,7 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -148,7 +148,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -189,7 +189,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -230,7 +230,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -280,7 +280,7 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -322,7 +322,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -363,7 +363,7 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	tgt := testTarget(t, zones, extResolver, []module.MXAuthPolicy{
 		&localPolicy{minMXLevel: module.MX_DNSSEC},
 	})
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	_, err = testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -405,7 +405,7 @@ func TestRemoteDelivery_REQUIRETLS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	testutils.DoTestDeliveryMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",
@@ -446,7 +446,7 @@ func TestRemoteDelivery_REQUIRETLS_Fail(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",
@@ -492,7 +492,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed(t *testing.T) {
 	})
 	tgt.relaxedREQUIRETLS = true
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	testutils.DoTestDeliveryMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",
@@ -529,7 +529,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoMXAuth(t *testing.T) {
 	})
 	tgt.relaxedREQUIRETLS = true
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",
@@ -575,7 +575,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_NoTLS(t *testing.T) {
 	})
 	tgt.relaxedREQUIRETLS = true
 	tgt.tlsConfig = nil
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",
@@ -626,7 +626,7 @@ func TestRemoteDelivery_REQUIRETLS_Relaxed_TLSFail(t *testing.T) {
 	srv.TLSConfig.MinVersion = tls.VersionTLS11
 	srv.TLSConfig.MaxVersion = tls.VersionTLS11
 	tgt.tlsConfig = clientCfg
-	defer tgt.Close()
+	defer tgt.Stop()
 
 	if _, err := testutils.DoTestDeliveryErrMeta(t, tgt, "test@example.com", []string{"test@example.invalid"}, &module.MsgMetadata{
 		OriginalFrom: "test@example.com",

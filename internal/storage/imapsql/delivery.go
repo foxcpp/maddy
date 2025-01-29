@@ -155,8 +155,8 @@ func (d *delivery) Commit(ctx context.Context) error {
 	return d.d.Commit()
 }
 
-func (store *Storage) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	defer trace.StartRegion(ctx, "sql/Start").End()
+func (store *Storage) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	defer trace.StartRegion(ctx, "sql/StartDelivery").End()
 
 	return &delivery{
 		store:      store,

@@ -43,7 +43,7 @@ type (
 	}
 )
 
-func (g *Group) Init(cfg *config.Map) error {
+func (g *Group) Configure(inlineArgs []string, cfg *config.Map) error {
 	for _, node := range cfg.Block.Children {
 		mod, err := modconfig.MsgModifier(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {
@@ -64,7 +64,7 @@ func (g *Group) InstanceName() string {
 	return g.instName
 }
 
-func (g Group) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
+func (g *Group) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
 	gs := groupState{}
 	for _, modifier := range g.Modifiers {
 		state, err := modifier.ModStateForMsg(ctx, msgMeta)
@@ -132,7 +132,7 @@ func (gs groupState) Close() error {
 }
 
 func init() {
-	module.Register("modifiers", func(_, instName string, _, _ []string) (module.Module, error) {
+	module.Register("modifiers", func(_, instName string) (module.Module, error) {
 		return &Group{
 			instName: instName,
 		}, nil

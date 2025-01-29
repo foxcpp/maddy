@@ -55,7 +55,7 @@ func doTestDelivery(t *testing.T, tgt module.DeliveryTarget, from string, to []s
 		panic(err)
 	}
 
-	delivery, err := tgt.Start(context.Background(), &ctx, from)
+	delivery, err := tgt.StartDelivery(context.Background(), &ctx, from)
 	if err != nil {
 		return encodedID, err
 	}

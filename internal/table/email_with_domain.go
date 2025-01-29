@@ -35,16 +35,17 @@ type EmailWithDomain struct {
 	log      log.Logger
 }
 
-func NewEmailWithDomain(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewEmailWithDomain(modName, instName string) (module.Module, error) {
 	return &EmailWithDomain{
 		modName:  modName,
 		instName: instName,
-		domains:  inlineArgs,
 		log:      log.Logger{Name: modName},
 	}, nil
 }
 
-func (s *EmailWithDomain) Init(cfg *config.Map) error {
+func (s *EmailWithDomain) Configure(inlineArgs []string, cfg *config.Map) error {
+	s.domains = inlineArgs
+
 	for _, d := range s.domains {
 		if !address.ValidDomain(d) {
 			return fmt.Errorf("%s: invalid domain: %s", s.modName, d)

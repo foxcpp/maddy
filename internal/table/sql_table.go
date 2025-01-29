@@ -34,7 +34,7 @@ type SQLTable struct {
 	wrapped *SQL
 }
 
-func NewSQLTable(modName, instName string, _, _ []string) (module.Module, error) {
+func NewSQLTable(modName, instName string) (module.Module, error) {
 	return &SQLTable{
 		modName:  modName,
 		instName: instName,
@@ -54,7 +54,7 @@ func (s *SQLTable) InstanceName() string {
 	return s.instName
 }
 
-func (s *SQLTable) Init(cfg *config.Map) error {
+func (s *SQLTable) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		driver      string
 		dsnParts    []string
@@ -99,7 +99,7 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 		delQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tableName, keyColumn)
 	}
 
-	return s.wrapped.Init(config.NewMap(cfg.Globals, config.Node{
+	return s.wrapped.Configure(nil, config.NewMap(cfg.Globals, config.Node{
 		Children: []config.Node{
 			{
 				Name: "driver",
@@ -144,8 +144,10 @@ func (s *SQLTable) Init(cfg *config.Map) error {
 	}))
 }
 
-func (s *SQLTable) Close() error {
-	return s.wrapped.Close()
+func (s *SQLTable) Start() error { return s.wrapped.Start() }
+
+func (s *SQLTable) Stop() error {
+	return s.wrapped.Stop()
 }
 
 func (s *SQLTable) Lookup(ctx context.Context, val string) (string, bool, error) {

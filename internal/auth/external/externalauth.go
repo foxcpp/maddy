@@ -41,15 +41,11 @@ type ExternalAuth struct {
 	Log log.Logger
 }
 
-func NewExternalAuth(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewExternalAuth(modName, instName string) (module.Module, error) {
 	ea := &ExternalAuth{
 		modName:  modName,
 		instName: instName,
 		Log:      log.Logger{Name: modName},
-	}
-
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("external: inline arguments are not used")
 	}
 
 	return ea, nil
@@ -63,7 +59,11 @@ func (ea *ExternalAuth) InstanceName() string {
 	return ea.instName
 }
 
-func (ea *ExternalAuth) Init(cfg *config.Map) error {
+func (ea *ExternalAuth) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return errors.New("external: inline arguments are not used")
+	}
+
 	cfg.Bool("debug", false, false, &ea.Log.Debug)
 	cfg.Bool("perdomain", false, false, &ea.perDomain)
 	cfg.StringList("domains", false, false, nil, &ea.domains)

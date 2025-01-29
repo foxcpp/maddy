@@ -52,10 +52,7 @@ type Check struct {
 	resolver dns.Resolver
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, errors.New("check.dkim: inline arguments are not used")
-	}
+func New(_, instName string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: "check.dkim"},
@@ -63,7 +60,11 @@ func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
 	}, nil
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return errors.New("check.dkim: inline arguments are not used")
+	}
+
 	var requiredFields []string
 
 	cfg.Bool("debug", true, false, &c.log.Debug)

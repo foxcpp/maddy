@@ -54,6 +54,7 @@ type Endpoint struct {
 	serv          *smtp.Server
 	name          string
 	addrs         []string
+	endpoints     []config.Endpoint
 	listeners     []net.Listener
 	proxyProtocol *proxy_protocol.ProxyProtocol
 	pipeline      *msgpipeline.MsgPipeline
@@ -88,7 +89,7 @@ func (endp *Endpoint) InstanceName() string {
 	return endp.name
 }
 
-func New(modName string, addrs []string) (module.Module, error) {
+func New(modName string, addrs []string) (module.LifetimeModule, error) {
 	endp := &Endpoint{
 		name:       modName,
 		addrs:      addrs,
@@ -104,7 +105,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *Endpoint) Init(cfg *config.Map) error {
+func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
 	endp.serv.ErrorLog = endp.Log
 	endp.serv.LMTP = endp.lmtp
@@ -123,13 +124,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 		addresses = append(addresses, saddr)
 	}
-
-	if err := endp.setupListeners(addresses); err != nil {
-		for _, l := range endp.listeners {
-			l.Close()
-		}
-		return err
-	}
+	endp.endpoints = addresses
 
 	allLocal := true
 	for _, addr := range addresses {
@@ -321,6 +316,14 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	return nil
 }
 
+func (endp *Endpoint) Start() error {
+	if err := endp.setupListeners(endp.endpoints); err != nil {
+		endp.Stop()
+		return err
+	}
+	return nil
+}
+
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
@@ -419,7 +422,7 @@ func (endp *Endpoint) ConnectionCount() int {
 	return int(endp.sessionCnt.Load())
 }
 
-func (endp *Endpoint) Close() error {
+func (endp *Endpoint) Stop() error {
 	endp.serv.Close()
 	endp.listenersWg.Wait()
 	return nil

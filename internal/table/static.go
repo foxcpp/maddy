@@ -32,7 +32,7 @@ type Static struct {
 	m map[string][]string
 }
 
-func NewStatic(modName, instName string, _, _ []string) (module.Module, error) {
+func NewStatic(modName, instName string) (module.Module, error) {
 	return &Static{
 		modName:  modName,
 		instName: instName,
@@ -40,7 +40,7 @@ func NewStatic(modName, instName string, _, _ []string) (module.Module, error) {
 	}, nil
 }
 
-func (s *Static) Init(cfg *config.Map) error {
+func (s *Static) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Callback("entry", func(_ *config.Map, node config.Node) error {
 		if len(node.Args) < 2 {
 			return config.NodeErr(node, "expected at least one value")

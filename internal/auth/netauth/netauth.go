@@ -31,15 +31,17 @@ type Auth struct {
 }
 
 // New creates a new instance of the NetAuth module.
-func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
 		log:      log.Logger{Name: modName},
 	}, nil
 }
+func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) > 0 {
+		return fmt.Errorf("%s: inline arguments are not used", modName)
+	}
 
-// Init performs deferred initialization actions.
-func (a *Auth) Init(cfg *config.Map) error {
 	l := hclog.New(&hclog.LoggerOptions{Output: a.log})
 	n, err := netauth.NewWithLog(l)
 	if err != nil {
@@ -53,8 +55,6 @@ func (a *Auth) Init(cfg *config.Map) error {
 		return err
 	}
 
-	a.log.Debugln("Debug logging enabled")
-	a.log.Debugf("mustGroups status: %s", a.mustGroup)
 	return nil
 }
 

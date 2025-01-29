@@ -40,14 +40,14 @@ type SelfSignedLoader struct {
 	cert tls.Certificate
 }
 
-func NewSelfSignedLoader(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewSelfSignedLoader(_, instName string) (module.Module, error) {
 	return &SelfSignedLoader{
-		instName:    instName,
-		serverNames: inlineArgs,
+		instName: instName,
 	}, nil
 }
 
-func (f *SelfSignedLoader) Init(cfg *config.Map) error {
+func (f *SelfSignedLoader) Configure(inlineArgs []string, cfg *config.Map) error {
+	f.serverNames = inlineArgs
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}

@@ -54,11 +54,11 @@ func (d *Dummy) InstanceName() string {
 	return d.instName
 }
 
-func (d *Dummy) Init(_ *config.Map) error {
+func (d *Dummy) Configure(_ []string, _ *config.Map) error {
 	return nil
 }
 
-func (d *Dummy) Start(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error) {
+func (d *Dummy) StartDelivery(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error) {
 	return dummyDelivery{}, nil
 }
 
@@ -81,7 +81,7 @@ func (dd dummyDelivery) Commit(ctx context.Context) error {
 }
 
 func init() {
-	Register("dummy", func(_, instName string, _, _ []string) (Module, error) {
+	Register("dummy", func(_, instName string) (Module, error) {
 		return &Dummy{instName: instName}, nil
 	})
 }

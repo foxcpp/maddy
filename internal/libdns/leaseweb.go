@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.leaseweb", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.leaseweb", func(modName, instName string) (module.Module, error) {
 		p := leaseweb.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

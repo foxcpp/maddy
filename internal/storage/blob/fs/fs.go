@@ -17,26 +17,27 @@ type FSStore struct {
 	root     string
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	switch len(inlineArgs) {
-	case 0:
-		return &FSStore{instName: instName}, nil
-	case 1:
-		return &FSStore{instName: instName, root: inlineArgs[0]}, nil
-	default:
-		return nil, fmt.Errorf("storage.blob.fs: 1 or 0 arguments expected")
-	}
+func New(_, instName string) (module.Module, error) {
+	return &FSStore{instName: instName}, nil
 }
 
-func (s FSStore) Name() string {
+func (s *FSStore) Name() string {
 	return "storage.blob.fs"
 }
 
-func (s FSStore) InstanceName() string {
+func (s *FSStore) InstanceName() string {
 	return s.instName
 }
 
-func (s *FSStore) Init(cfg *config.Map) error {
+func (s *FSStore) Configure(inlineArgs []string, cfg *config.Map) error {
+	switch len(inlineArgs) {
+	case 0:
+	case 1:
+		s.root = inlineArgs[0]
+	default:
+		return fmt.Errorf("storage.blob.fs: 1 or 0 arguments expected")
+	}
+
 	cfg.String("root", false, false, s.root, &s.root)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -91,5 +92,5 @@ func (s *FSStore) Delete(_ context.Context, keys []string) error {
 
 func init() {
 	var _ module.BlobStore = &FSStore{}
-	module.Register(FSStore{}.Name(), New)
+	module.Register((&FSStore{}).Name(), New)
 }

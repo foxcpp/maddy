@@ -25,9 +25,7 @@ import (
 	"os"
 
 	"github.com/foxcpp/maddy"
-	parser "github.com/foxcpp/maddy/framework/cfgparser"
-	"github.com/foxcpp/maddy/framework/config"
-	"github.com/foxcpp/maddy/framework/hooks"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 	"github.com/urfave/cli/v2"
@@ -39,71 +37,61 @@ func closeIfNeeded(i interface{}) {
 	}
 }
 
-func getCfgBlockModule(ctx *cli.Context) (map[string]interface{}, *maddy.ModInfo, error) {
+func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	cfgPath := ctx.String("config")
 	if cfgPath == "" {
 		return nil, nil, cli.Exit("Error: config is required", 2)
 	}
-	cfgFile, err := os.Open(cfgPath)
+
+	c := container.New()
+
+	cfg, err := maddy.ReadConfig(cfgPath)
 	if err != nil {
 		return nil, nil, cli.Exit(fmt.Sprintf("Error: failed to open config: %v", err), 2)
 	}
-	defer cfgFile.Close()
-	cfgNodes, err := parser.Read(cfgFile, cfgFile.Name())
-	if err != nil {
-		return nil, nil, cli.Exit(fmt.Sprintf("Error: failed to parse config: %v", err), 2)
-	}
 
-	globals, cfgNodes, err := maddy.ReadGlobals(cfgNodes)
+	globals, cfgNodes, err := maddy.ReadGlobals(c, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := maddy.InitDirs(); err != nil {
+	if err := maddy.InitDirs(c); err != nil {
 		return nil, nil, err
 	}
 
-	module.NoRun = true
-	_, mods, err := maddy.RegisterModules(globals, cfgNodes)
+	err = maddy.RegisterModules(c, globals, cfgNodes)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer hooks.RunHooks(hooks.EventShutdown)
 
 	cfgBlock := ctx.String("cfg-block")
 	if cfgBlock == "" {
 		return nil, nil, cli.Exit("Error: cfg-block is required", 2)
 	}
-	var mod maddy.ModInfo
-	for _, m := range mods {
-		if m.Instance.InstanceName() == cfgBlock {
-			mod = m
-			break
+
+	mod, err := c.Modules.Get(cfgBlock)
+	if err != nil {
+		if errors.Is(err, module.ErrInstanceUnknown) {
+			return nil, nil, cli.Exit(fmt.Sprintf("Error: unknown configuration block: %s", cfgBlock), 2)
 		}
-	}
-	if mod.Instance == nil {
-		return nil, nil, cli.Exit(fmt.Sprintf("Error: unknown configuration block: %s", cfgBlock), 2)
+		return nil, nil, err
 	}
 
-	return globals, &mod, nil
+	return c, mod, nil
 }
 
 func openStorage(ctx *cli.Context) (module.Storage, error) {
-	globals, mod, err := getCfgBlockModule(ctx)
+	_, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	storage, ok := mod.Instance.(module.Storage)
+	storage, ok := mod.(module.Storage)
 	if !ok {
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block")), 2)
 	}
 
-	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
-		return nil, fmt.Errorf("Error: module initialization failed: %w", err)
-	}
-
-	if updStore, ok := mod.Instance.(updatepipe.Backend); ok {
+	if updStore, ok := mod.(updatepipe.Backend); ok {
 		if err := updStore.EnableUpdatePipe(updatepipe.ModePush); err != nil && !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "Failed to initialize update pipe, do not remove messages from mailboxes open by clients: %v\n", err)
 		}
@@ -115,18 +103,14 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 }
 
 func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
-	globals, mod, err := getCfgBlockModule(ctx)
+	_, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	userDB, ok := mod.Instance.(module.PlainUserDB)
+	userDB, ok := mod.(module.PlainUserDB)
 	if !ok {
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block")), 2)
-	}
-
-	if err := mod.Instance.Init(config.NewMap(globals, mod.Cfg)); err != nil {
-		return nil, fmt.Errorf("Error: module initialization failed: %w", err)
 	}
 
 	return userDB, nil

@@ -98,15 +98,18 @@ func TestFileReload(t *testing.T) {
 	}
 	f.Close()
 
-	mod, err := NewFile("", "", nil, []string{f.Name()})
+	mod, err := NewFile("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
+	if err := m.Start(); err != nil {
+		t.Fatal(err)
+	}
 	m.log = testutils.Logger(t, "file_map")
-	defer m.Close()
+	defer m.Stop()
 
-	if err := mod.Init(&config.Map{Block: config.Node{}}); err != nil {
+	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,15 +152,18 @@ func TestFileReload_Broken(t *testing.T) {
 	}
 	f.Close()
 
-	mod, err := NewFile("", "", nil, []string{f.Name()})
+	mod, err := NewFile("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
+	if err := m.Start(); err != nil {
+		t.Fatal(err)
+	}
 	m.log = testutils.Logger(t, FileModName)
-	defer m.Close()
+	defer m.Stop()
 
-	if err := mod.Init(&config.Map{Block: config.Node{}}); err != nil {
+	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -194,15 +200,18 @@ func TestFileReload_Removed(t *testing.T) {
 	}
 	f.Close()
 
-	mod, err := NewFile("", "", nil, []string{f.Name()})
+	mod, err := NewFile("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
+	if err := m.Start(); err != nil {
+		t.Fatal(err)
+	}
 	m.log = testutils.Logger(t, FileModName)
-	defer m.Close()
+	defer m.Stop()
 
-	if err := mod.Init(&config.Map{Block: config.Node{}}); err != nil {
+	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
 	}
 

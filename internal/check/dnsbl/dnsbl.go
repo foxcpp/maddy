@@ -58,7 +58,6 @@ var defaultBL = List{
 type DNSBL struct {
 	instName   string
 	checkEarly bool
-	inlineBls  []string
 	bls        []List
 
 	quarantineThres int
@@ -68,10 +67,9 @@ type DNSBL struct {
 	log      log.Logger
 }
 
-func NewDNSBL(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	return &DNSBL{
-		instName:  instName,
-		inlineBls: inlineArgs,
+		instName: instName,
 
 		resolver: dns.DefaultResolver(),
 		log:      log.Logger{Name: "dnsbl"},
@@ -86,7 +84,7 @@ func (bl *DNSBL) InstanceName() string {
 	return bl.instName
 }
 
-func (bl *DNSBL) Init(cfg *config.Map) error {
+func (bl *DNSBL) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Bool("debug", false, false, &bl.log.Debug)
 	cfg.Bool("check_early", false, false, &bl.checkEarly)
 	cfg.Int("quarantine_threshold", false, false, 1, &bl.quarantineThres)
@@ -97,7 +95,7 @@ func (bl *DNSBL) Init(cfg *config.Map) error {
 		return err
 	}
 
-	for _, inlineBl := range bl.inlineBls {
+	for _, inlineBl := range inlineArgs {
 		cfg := defaultBL
 		cfg.Zone = inlineBl
 		go bl.testList(cfg)
@@ -431,5 +429,5 @@ func (*state) Close() error {
 }
 
 func init() {
-	module.Register("check.dnsbl", NewDNSBL)
+	module.Register("check.dnsbl", New)
 }

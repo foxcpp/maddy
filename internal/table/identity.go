@@ -30,14 +30,14 @@ type Identity struct {
 	instName string
 }
 
-func NewIdentity(modName, instName string, _, _ []string) (module.Module, error) {
+func NewIdentity(modName, instName string) (module.Module, error) {
 	return &Identity{
 		modName:  modName,
 		instName: instName,
 	}, nil
 }
 
-func (s *Identity) Init(cfg *config.Map) error {
+func (s *Identity) Configure(inlineArgs []string, cfg *config.Map) error {
 	return nil
 }
 

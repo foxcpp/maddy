@@ -40,6 +40,6 @@ func handleSignals() os.Signal {
 		os.Exit(1)
 	}()
 
-	log.Printf("signal received (%v), next signal will force immediate shutdown.", s)
+	log.Printf("signal received (%v)", s)
 	return s
 }

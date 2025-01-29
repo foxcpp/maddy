@@ -34,22 +34,23 @@ import (
 const modName = "openmetrics"
 
 type Endpoint struct {
-	addrs  []string
-	logger log.Logger
+	addrs     []string
+	endpoints []config.Endpoint
+	logger    log.Logger
 
 	listenersWg sync.WaitGroup
 	serv        http.Server
 	mux         *http.ServeMux
 }
 
-func New(_ string, args []string) (module.Module, error) {
+func New(_ string, args []string) (module.LifetimeModule, error) {
 	return &Endpoint{
 		addrs:  args,
 		logger: log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
 	}, nil
 }
 
-func (e *Endpoint) Init(cfg *config.Map) error {
+func (e *Endpoint) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Bool("debug", false, false, &e.logger.Debug)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -67,20 +68,6 @@ func (e *Endpoint) Init(cfg *config.Map) error {
 		if endp.IsTLS() {
 			return fmt.Errorf("%s: TLS is not supported yet", modName)
 		}
-		l, err := net.Listen(endp.Network(), endp.Address())
-		if err != nil {
-			return fmt.Errorf("%s: %v", modName, err)
-		}
-
-		e.listenersWg.Add(1)
-		go func() {
-			e.logger.Println("listening on", endp.String())
-			err := e.serv.Serve(l)
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				e.logger.Error("serve failed", err, "endpoint", a)
-			}
-			e.listenersWg.Done()
-		}()
 	}
 
 	return nil
@@ -94,7 +81,28 @@ func (e *Endpoint) InstanceName() string {
 	return ""
 }
 
-func (e *Endpoint) Close() error {
+func (e *Endpoint) Start() error {
+	for _, endp := range e.endpoints {
+		l, err := net.Listen(endp.Network(), endp.Address())
+		if err != nil {
+			e.Stop()
+			return fmt.Errorf("%s: %v", modName, err)
+		}
+
+		e.listenersWg.Add(1)
+		go func() {
+			e.logger.Println("listening on", endp.String())
+			err := e.serv.Serve(l)
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				e.logger.Error("serve failed", err, "endpoint", endp)
+			}
+			e.listenersWg.Done()
+		}()
+	}
+	return nil
+}
+
+func (e *Endpoint) Stop() error {
 	if err := e.serv.Close(); err != nil {
 		return err
 	}

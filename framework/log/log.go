@@ -224,6 +224,17 @@ func (l Logger) log(debug bool, s string) {
 	// Logging is disabled - do nothing.
 }
 
+func (l Logger) Sublogger(name string) Logger {
+	if l.Name != "" {
+		name = l.Name + "/" + name
+	}
+	return Logger{
+		Out:   l.Out,
+		Name:  name,
+		Debug: l.Debug,
+	}
+}
+
 // DefaultLogger is the global Logger object that is used by
 // package-level logging functions.
 //

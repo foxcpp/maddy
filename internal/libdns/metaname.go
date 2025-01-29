@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.metaname", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.metaname", func(modName, instName string) (module.Module, error) {
 		p := metaname.Provider{
 			Endpoint: "https://metaname.net/api/1.1",
 		}

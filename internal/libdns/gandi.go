@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.gandi", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.gandi", func(modName, instName string) (module.Module, error) {
 		p := gandi.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

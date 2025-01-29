@@ -37,7 +37,7 @@ type CheckGroup struct {
 	L        []module.Check
 }
 
-func (cg *CheckGroup) Init(cfg *config.Map) error {
+func (cg *CheckGroup) Configure(inlineArgs []string, cfg *config.Map) error {
 	for _, node := range cfg.Block.Children {
 		chk, err := modconfig.MessageCheck(cfg.Globals, append([]string{node.Name}, node.Args...), node)
 		if err != nil {
@@ -50,16 +50,16 @@ func (cg *CheckGroup) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (CheckGroup) Name() string {
+func (*CheckGroup) Name() string {
 	return "checks"
 }
 
-func (cg CheckGroup) InstanceName() string {
+func (cg *CheckGroup) InstanceName() string {
 	return cg.instName
 }
 
 func init() {
-	module.Register("checks", func(_, instName string, _, _ []string) (module.Module, error) {
+	module.Register("checks", func(_, instName string) (module.Module, error) {
 		return &CheckGroup{
 			instName: instName,
 		}, nil

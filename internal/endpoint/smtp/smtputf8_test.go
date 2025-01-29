@@ -43,7 +43,7 @@ func TestSMTPUTF8_MangleStatusMessage(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -73,7 +73,7 @@ func TestSMTP_RejectNonASCIIFrom(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -100,7 +100,7 @@ func TestSMTPUTF8_NormalizeCaseFoldFrom(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -127,7 +127,7 @@ func TestSMTP_RejectNonASCIIRcpt(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -154,7 +154,7 @@ func TestSMTPUTF8_NormalizeCaseFoldRcpt(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -191,7 +191,7 @@ func TestSMTPUTF8_NoMangleStatusMessage(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -222,7 +222,7 @@ func TestSMTPUTF8_NoMangleStatusMessage(t *testing.T) {
 func TestSMTPUTF8_Received_EHLO_ALabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -256,7 +256,7 @@ func TestSMTPUTF8_Received_EHLO_ALabel(t *testing.T) {
 func TestSMTPUTF8_Received_rDNS_ALabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
@@ -290,7 +290,7 @@ func TestSMTPUTF8_Received_rDNS_ALabel(t *testing.T) {
 func TestSMTPUTF8_Received_rDNS_ULabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
@@ -326,7 +326,7 @@ func TestSMTPUTF8_Received_rDNS_ULabel(t *testing.T) {
 func TestSMTPUTF8_Received_EHLO_ULabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Close()
+	defer endp.Stop()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)

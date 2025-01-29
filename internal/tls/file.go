@@ -27,17 +27,15 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
-	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
 
 type FileLoader struct {
-	instName   string
-	inlineArgs []string
-	certPaths  []string
-	keyPaths   []string
-	log        log.Logger
+	instName  string
+	certPaths []string
+	keyPaths  []string
+	log       log.Logger
 
 	certs     []tls.Certificate
 	certsLock sync.RWMutex
@@ -46,16 +44,15 @@ type FileLoader struct {
 	stopTick   chan struct{}
 }
 
-func NewFileLoader(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewFileLoader(_, instName string) (module.Module, error) {
 	return &FileLoader{
-		instName:   instName,
-		inlineArgs: inlineArgs,
-		log:        log.Logger{Name: "tls.loader.file", Debug: log.DefaultLogger.Debug},
-		stopTick:   make(chan struct{}),
+		instName: instName,
+		log:      log.Logger{Name: "tls.loader.file", Debug: log.DefaultLogger.Debug},
+		stopTick: make(chan struct{}),
 	}, nil
 }
 
-func (f *FileLoader) Init(cfg *config.Map) error {
+func (f *FileLoader) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.StringList("certs", false, false, nil, &f.certPaths)
 	cfg.StringList("keys", false, false, nil, &f.keyPaths)
 	if _, err := cfg.Process(); err != nil {
@@ -66,12 +63,12 @@ func (f *FileLoader) Init(cfg *config.Map) error {
 		return errors.New("tls.loader.file: mismatch in certs and keys count")
 	}
 
-	if len(f.inlineArgs)%2 != 0 {
+	if len(inlineArgs)%2 != 0 {
 		return errors.New("tls.loader.file: odd amount of arguments")
 	}
-	for i := 0; i < len(f.inlineArgs); i += 2 {
-		f.certPaths = append(f.certPaths, f.inlineArgs[i])
-		f.keyPaths = append(f.keyPaths, f.inlineArgs[i+1])
+	for i := 0; i < len(inlineArgs); i += 2 {
+		f.certPaths = append(f.certPaths, inlineArgs[i])
+		f.keyPaths = append(f.keyPaths, inlineArgs[i+1])
 	}
 
 	for _, certPath := range f.certPaths {
@@ -84,19 +81,21 @@ func (f *FileLoader) Init(cfg *config.Map) error {
 		return err
 	}
 
-	hooks.AddHook(hooks.EventReload, func() {
-		f.log.Println("reloading certificates")
-		if err := f.loadCerts(); err != nil {
-			f.log.Error("reload failed", err)
-		}
-	})
+	return nil
+}
 
+func (f *FileLoader) Start() error {
 	f.reloadTick = time.NewTicker(time.Minute)
 	go f.reloadTicker()
 	return nil
 }
 
-func (f *FileLoader) Close() error {
+func (f *FileLoader) Reload() error {
+	f.log.Println("reloading certificates")
+	return f.loadCerts()
+}
+
+func (f *FileLoader) Stop() error {
 	f.reloadTick.Stop()
 	f.stopTick <- struct{}{}
 	return nil

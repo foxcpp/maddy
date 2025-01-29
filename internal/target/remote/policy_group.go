@@ -39,7 +39,7 @@ type PolicyGroup struct {
 	pols     map[string]module.MXAuthPolicy
 }
 
-func (pg *PolicyGroup) Init(cfg *config.Map) error {
+func (pg *PolicyGroup) Configure(inlineArgs []string, cfg *config.Map) error {
 	var debugLog bool
 	cfg.Bool("debug", true, false, &debugLog)
 	cfg.AllowUnknown()
@@ -87,16 +87,16 @@ func (pg *PolicyGroup) Init(cfg *config.Map) error {
 	return nil
 }
 
-func (PolicyGroup) Name() string {
+func (*PolicyGroup) Name() string {
 	return "mx_auth"
 }
 
-func (pg PolicyGroup) InstanceName() string {
+func (pg *PolicyGroup) InstanceName() string {
 	return pg.instName
 }
 
 func init() {
-	module.Register("mx_auth", func(_, instName string, _, _ []string) (module.Module, error) {
+	module.Register("mx_auth", func(_, instName string) (module.Module, error) {
 		return &PolicyGroup{
 			instName: instName,
 			pols:     map[string]module.MXAuthPolicy{},

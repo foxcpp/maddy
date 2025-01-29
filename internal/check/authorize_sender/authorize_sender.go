@@ -20,6 +20,7 @@ package authorize_sender
 
 import (
 	"context"
+	"fmt"
 	"net/mail"
 
 	"github.com/emersion/go-message/textproto"
@@ -52,7 +53,7 @@ type Check struct {
 	authNorm authz.NormalizeFunc
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 	}, nil
@@ -66,7 +67,11 @@ func (c *Check) InstanceName() string {
 	return c.instName
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return fmt.Errorf("%s: inline arguments are not used", modName)
+	}
+
 	cfg.Bool("debug", true, false, &c.log.Debug)
 
 	cfg.Bool("check_header", false, true, &c.checkHeader)

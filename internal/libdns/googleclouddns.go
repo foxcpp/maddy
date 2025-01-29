@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.googleclouddns", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.googleclouddns", func(modName, instName string) (module.Module, error) {
 		p := googleclouddns.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

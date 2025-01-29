@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.rfc2136", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.rfc2136", func(modName, instName string) (module.Module, error) {
 		p := rfc2136.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,
