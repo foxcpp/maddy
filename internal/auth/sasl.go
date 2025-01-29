@@ -166,7 +166,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 				return err
 			}
 
-			err := s.AuthPlain(username, password)
+			err = s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
 				return ErrInvalidAuthCred
