@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"sync"
 
 	"github.com/caddyserver/certmagic"
 	parser "github.com/foxcpp/maddy/framework/cfgparser"
@@ -205,6 +206,8 @@ func Run(c *cli.Context) error {
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
 	defer log.DefaultLogger.Out.Close()
 	defer hooks.RunHooks(hooks.EventShutdown)
+
+	hooks.AddHook(hooks.EventShutdown, netresource.CloseAllListeners)
 
 	if err := moduleMain(c.Path("config")); err != nil {
 		systemdStatusErr(err)
@@ -395,24 +398,29 @@ func moduleMain(configPath string) error {
 	}
 	c.DefaultLogger.Msg("server started", "version", Version)
 
-	systemdStatus(SDReady, "Listening for incoming connections...")
+	systemdStatus(SDReady, "Configuration running.")
+	asyncStopWg := sync.WaitGroup{} // Some containers might still be waiting on moduleStop
 	for handleSignals() {
-		systemdStatus(SDReloading, "Reloading state...")
 		hooks.RunHooks(hooks.EventReload)
 
-		c = moduleReload(c, configPath)
+		c = moduleReload(c, configPath, &asyncStopWg)
 	}
 
 	c.DefaultLogger.Msg("server stopping...")
-	systemdStatus(SDStopping, "Waiting for running transactions to complete...")
 
+	systemdStatus(SDStopping, "Waiting for old configuration to stop...")
+	asyncStopWg.Wait()
+
+	systemdStatus(SDStopping, "Waiting for current configuration to stop...")
 	moduleStop(c)
 	c.DefaultLogger.Msg("server stopped")
+
 	return nil
 }
 
-func moduleReload(oldContainer *container.C, configPath string) *container.C {
+func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *sync.WaitGroup) *container.C {
 	oldContainer.DefaultLogger.Msg("reloading server...")
+	systemdStatus(SDReloading, "Reloading server...")
 
 	oldContainer.DefaultLogger.Msg("loading new configuration...")
 	newContainer, err := moduleConfigure(configPath)
@@ -430,12 +438,22 @@ func moduleReload(oldContainer *container.C, configPath string) *container.C {
 		container.Global = oldContainer
 		return oldContainer
 	}
-	netresource.CloseUnusedListeners()
 
 	newContainer.DefaultLogger.Msg("server started", "version", Version)
-	oldContainer.DefaultLogger.Msg("stopping server")
-	moduleStop(oldContainer)
-	oldContainer.DefaultLogger.Msg("server stopped")
+
+	systemdStatus(SDReloading, "New configuration running. Waiting for old connections and transactions to finish...")
+
+	asyncStopWg.Add(1)
+	go func() {
+		defer asyncStopWg.Done()
+		defer netresource.CloseUnusedListeners()
+
+		oldContainer.DefaultLogger.Msg("stopping old server")
+		moduleStop(oldContainer)
+		oldContainer.DefaultLogger.Msg("old server stopped")
+
+		systemdStatus(SDReloading, "Configuration running.")
+	}()
 
 	return newContainer
 }

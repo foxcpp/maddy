@@ -42,6 +42,10 @@ func (t *Tracker[T]) CloseUnused(isUsed func(key string) bool) error {
 
 	return t.C.CloseUnused(func(key string) bool {
 		used := t.used[key]
-		return used && isUsed(key)
+		used = used && isUsed(key)
+		if !used {
+			delete(t.used, key)
+		}
+		return used
 	})
 }

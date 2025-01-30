@@ -67,12 +67,8 @@ func (lt *ListenerTracker) ResetUsage() {
 }
 
 func (lt *ListenerTracker) CloseUnused() error {
-	lt.tcp.CloseUnused(func(key string) bool {
-		return false
-	})
-	lt.unix.CloseUnused(func(key string) bool {
-		return false
-	})
+	lt.tcp.CloseUnused(func(key string) bool { return true })
+	lt.unix.CloseUnused(func(key string) bool { return true })
 	return nil
 }
 
@@ -83,9 +79,11 @@ func (lt *ListenerTracker) Close() error {
 }
 
 func NewListenerTracker(log *log.Logger) *ListenerTracker {
-	return &ListenerTracker{
+	lt := &ListenerTracker{
 		logger: log,
-		tcp:    resource.NewTracker[*net.TCPListener](resource.NewSingleton[*net.TCPListener]()),
-		unix:   resource.NewTracker[*net.UnixListener](resource.NewSingleton[*net.UnixListener]()),
+		tcp:    resource.NewTracker[*net.TCPListener](resource.NewSingleton[*net.TCPListener](log.Sublogger("tcp"))),
+		unix:   resource.NewTracker[*net.UnixListener](resource.NewSingleton[*net.UnixListener](log.Sublogger("unix"))),
 	}
+
+	return lt
 }

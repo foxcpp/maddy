@@ -13,7 +13,11 @@ var (
 )
 
 func CloseUnusedListeners() error {
-	return tracker.Close()
+	return tracker.CloseUnused()
+}
+
+func CloseAllListeners() {
+	tracker.Close()
 }
 
 func ResetListenersUsage() {

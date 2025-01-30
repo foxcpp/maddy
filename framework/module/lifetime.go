@@ -96,7 +96,9 @@ func (lt *LifetimeTracker) ReloadAll() error {
 
 // StopAll calls Stop for all registered LifetimeModule instances.
 func (lt *LifetimeTracker) StopAll() error {
-	for _, entry := range lt.instances {
+	for i := len(lt.instances) - 1; i >= 0; i-- {
+		entry := lt.instances[i]
+
 		if !entry.started {
 			continue
 		}

@@ -72,7 +72,8 @@ type Endpoint struct {
 	maxReceived         int
 	maxHeaderBytes      int64
 
-	sessionCnt atomic.Int32
+	sessionCnt      atomic.Int32
+	shutdownTimeout time.Duration
 
 	authNormalize authz.NormalizeFunc
 	authMap       module.Table
@@ -251,6 +252,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.saslAuth.AuthMap)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
+	cfg.Duration("shutdown_timeout", false, false, 3*time.Minute, &endp.shutdownTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.DataSize("max_header_size", false, false, 1*1024*1024, &endp.maxHeaderBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
@@ -424,8 +426,13 @@ func (endp *Endpoint) ConnectionCount() int {
 }
 
 func (endp *Endpoint) Stop() error {
-	endp.serv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), endp.shutdownTimeout)
+	defer cancel()
+
+	endp.serv.Shutdown(ctx)
+
 	endp.listenersWg.Wait()
+
 	return nil
 }
 
