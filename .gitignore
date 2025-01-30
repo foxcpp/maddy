@@ -16,6 +16,8 @@ _testmain.go
 *.exe~
 *.test
 *.prof
+**/.envrc
+**/.DS_Store
 
 # Tests coverage
 *.out
