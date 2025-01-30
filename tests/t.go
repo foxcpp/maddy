@@ -242,7 +242,8 @@ func (t *T) MustRunCLIGroup(args ...[]string) {
 
 			_, err := t.RunCLI(arg...)
 			if err != nil {
-				t.Fatalf("maddy %v: %v", arg, err)
+				t.Printf("maddy %v: %v", arg, err)
+				t.Fail()
 			}
 		}()
 	}
