@@ -133,11 +133,11 @@ func (s *SQL) Configure(inlineArgs []string, cfg *config.Map) error {
 		return nil
 	}
 
-	return nil
+	return s.prepare()
 }
 
 func (s *SQL) Start() error {
-	return s.prepare()
+	return nil
 }
 
 func (s *SQL) Stop() error {

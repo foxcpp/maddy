@@ -44,6 +44,7 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	}
 
 	c := container.New()
+	container.Global = c
 
 	cfg, err := maddy.ReadConfig(cfgPath)
 	if err != nil {
