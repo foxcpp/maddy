@@ -289,6 +289,8 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 		return err
 	}
 
+	endp.saslAuth.Log.Debug = endp.Log.Debug
+
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
 	endp.serv.Domain, err = idna.ToASCII(hostname)
 	if err != nil {
@@ -310,8 +312,6 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 			return fmt.Errorf("%s: auth. provider must be set for submission endpoint", endp.name)
 		}
 	}
-	endp.saslAuth.AuthNormalize = endp.authNormalize
-	endp.saslAuth.AuthMap = endp.authMap
 
 	if ioDebug {
 		endp.serv.Debug = endp.Log.DebugWriter()
