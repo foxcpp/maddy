@@ -112,6 +112,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		}
 	}
 
+	endp.saslAuth.Log.Debug = endp.Log.Debug
+
 	addresses := make([]config.Endpoint, 0, len(endp.addrs))
 	for _, addr := range endp.addrs {
 		saddr, err := config.ParseEndpoint(addr)

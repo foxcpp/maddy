@@ -110,15 +110,15 @@ func init() {
 			Value:   filepath.Join(ConfigDirectory, "maddy.conf"),
 		},
 	)
+	maddycli.AddGlobalFlag(&cli.BoolFlag{
+		Name:        "debug",
+		Usage:       "enable debug logging early",
+		Destination: &log.DefaultLogger.Debug,
+	})
 	maddycli.AddSubcommand(&cli.Command{
 		Name:  "run",
 		Usage: "Start the server",
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "debug",
-				Usage:       "enable debug logging early",
-				Destination: &log.DefaultLogger.Debug,
-			},
 			&cli.StringFlag{
 				Name:        "libexec",
 				Value:       DefaultLibexecDirectory,

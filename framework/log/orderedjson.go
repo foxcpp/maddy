@@ -31,6 +31,11 @@ import (
 // human-readable when values from multiple messages are lined up to each
 // other.
 
+type module interface {
+	Name() string
+	InstanceName() string
+}
+
 func marshalOrderedJSON(output *strings.Builder, m map[string]interface{}) error {
 	order := make([]string, 0, len(m))
 	for k := range m {
@@ -62,6 +67,8 @@ func marshalOrderedJSON(output *strings.Builder, m map[string]interface{}) error
 			val = casted.FormatLog()
 		case fmt.Stringer:
 			val = casted.String()
+		case module:
+			val = casted.Name() + "/" + casted.InstanceName()
 		case error:
 			val = casted.Error()
 		}

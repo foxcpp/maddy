@@ -105,12 +105,16 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 
 	var lastErr error
 	for _, p := range s.Plain {
-		username, err := s.usernameForAuth(context.TODO(), username)
+		mappedUsername, err := s.usernameForAuth(context.TODO(), username)
 		if err != nil {
 			return err
 		}
 
-		lastErr = p.AuthPlain(username, password)
+		s.Log.DebugMsg("attempting authentication",
+			"mapped_username", mappedUsername, "original_username", username,
+			"module", p)
+
+		lastErr = p.AuthPlain(mappedUsername, password)
 		if lastErr == nil {
 			return nil
 		}
@@ -139,12 +143,7 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 				return ErrInvalidAuthCred
 			}
 
-			username, err := s.usernameForAuth(context.Background(), username)
-			if err != nil {
-				return err
-			}
-
-			err = s.AuthPlain(username, password)
+			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
 				return ErrInvalidAuthCred
