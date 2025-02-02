@@ -72,9 +72,6 @@ type Endpoint struct {
 
 	sessionCnt atomic.Int32
 
-	authNormalize authz.NormalizeFunc
-	authMap       module.Table
-
 	listenersWg sync.WaitGroup
 
 	Log log.Logger

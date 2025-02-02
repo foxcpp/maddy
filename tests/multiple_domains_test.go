@@ -107,7 +107,7 @@ func TestMultipleDomains_SeparateNamespace(tt *testing.T) {
 	user3SMTP := t.Conn("submission")
 	defer user3SMTP.Close()
 	user3SMTP.SMTPNegotation("localhost", []string{"AUTH PLAIN"}, nil)
-	user3SMTP.SMTPPlainAuth("user3@test2.maddy.email", "user3", true)
+	user3SMTP.SMTPPlainAuth("user1@test2.maddy.email", "user3", true)
 
 	user1.Writeln(`. LIST "" "*"`)
 	user1.Expect(`* LIST (\HasNoChildren) "." INBOX`)
