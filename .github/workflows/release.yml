@@ -11,8 +11,8 @@ permissions:
   packages: write
 
 jobs:
-  artifact-builder:
-    name: "Prepare release artifacts"
+  artifact-builder-x86:
+    name: "Prepare release artifacts (x86)"
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     container:
@@ -55,6 +55,49 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: '~/maddy-x86_64-linux-musl.tar.zst'
+  artifact-builder-arm:
+    name: "Prepare release artifacts (aarch64)"
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      # Building in a Docker container is a workaround for the issue of
+      # JavaScript-based GitHub Actions not being supported in Alpine
+      # containers on the Arm64 platform. Otherwise, we could completely reuse
+      # artifact-builder-x86 as a matrix job by running it on an Arm runner.
+      - name: Build in Docker container
+        run: |
+          # Create Dockerfile for the build
+          cat > Dockerfile << 'EOF'
+          FROM alpine:edge
+          RUN apk add --no-cache gcc go zstd musl-dev scdoc
+          WORKDIR /build
+          COPY . .
+          RUN ./build.sh --builddir /package-output/ --static build && \
+              ver=$(cat .version) && \
+              if [ "v$ver" != "${{github.ref_name}}" ]; then echo ".version does not match the Git tag"; exit 1; fi && \
+              mv /package-output/ /maddy-$ver-aarch64-linux-musl && \
+              cd / && \
+              tar c ./maddy-$ver-aarch64-linux-musl | zstd > /maddy-aarch64-linux-musl.tar.zst
+          EOF
+          # Build the image, create a temporary container and copy the artifact.
+          docker build -t maddy-builder .
+          container_id=$(docker create maddy-builder)
+          docker cp $container_id:/maddy-aarch64-linux-musl.tar.zst .
+          docker rm $container_id
+      - name: Upload binary tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: maddy-binary-aarch64.tar.zst
+          path: maddy-aarch64-linux-musl.tar.zst
+          if-no-files-found: error
+      - name: "Generate artifact attestation"
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'maddy-aarch64-linux-musl.tar.zst'
   docker-builder:
     name: "Build & push Docker image"
     if: github.ref_type == 'tag'
