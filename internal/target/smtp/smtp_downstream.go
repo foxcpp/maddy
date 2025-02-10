@@ -57,7 +57,7 @@ type Downstream struct {
 	hostname    string
 	endpoints   []config.Endpoint
 	saslFactory saslClientFactory
-	tlsConfig   tls.Config
+	tlsConfig   *tls.Config
 
 	connectTimeout    time.Duration
 	commandTimeout    time.Duration
@@ -229,9 +229,9 @@ func (d *delivery) connect(ctx context.Context) error {
 	for _, endp := range d.u.endpoints {
 		var err error
 		if d.u.lmtp {
-			_, err = conn.ConnectLMTP(ctx, endp, d.u.starttls, &d.u.tlsConfig)
+			_, err = conn.ConnectLMTP(ctx, endp, d.u.starttls, d.u.tlsConfig)
 		} else {
-			_, err = conn.Connect(ctx, endp, d.u.starttls, &d.u.tlsConfig)
+			_, err = conn.Connect(ctx, endp, d.u.starttls, d.u.tlsConfig)
 		}
 		if err != nil {
 			if len(d.u.endpoints) != 1 {
