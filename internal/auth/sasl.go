@@ -62,7 +62,7 @@ func (s *SASLAuth) SASLMechanisms() []string {
 
 	if len(s.Plain) != 0 {
 		mechs = append(mechs, sasl.Plain)
-		if s.OnlyFirstID {
+		if s.EnableLogin {
 			mechs = append(mechs, sasl.Login)
 		}
 	}
