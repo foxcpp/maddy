@@ -16,6 +16,7 @@ target.remote {
 ```
 
 ### hostname _domain_
+
 Default: global directive value
 
 Hostname to use client greeting (EHLO/HELO command). Some servers require it to
@@ -25,6 +26,7 @@ address, so it is better to set it to a domain that resolves to the server IP.
 ---
 
 ### limits { ... }
+
 Default: no limits
 
 See ['limits' directive for SMTP endpoint](/reference/endpoints/smtp/#rate-concurrency-limiting).
@@ -33,14 +35,16 @@ per-source/per-destination are as observed when message exits the server.
 
 ---
 
-### local_ip _ip-address_
+### local*ip \_ip-address*
+
 Default: empty
 
 Choose the local IP to bind for outbound SMTP connections.
 
 ---
 
-### force_ipv4 _boolean_
+### force*ipv4 \_boolean*
+
 Default: `false`
 
 Force resolving outbound SMTP domains to IPv4 addresses. Some server providers
@@ -53,7 +57,17 @@ Warning: this may break sending outgoing mail to IPv6-only SMTP servers.
 
 ---
 
-### connect_timeout _duration_
+### smtp_ports `string1 [ string2 [... stringN ]]`
+
+Default: `25`
+
+List of ports to try for outgoing SMTP connections, in the order to be
+attempted.
+
+---
+
+### connect*timeout \_duration*
+
 Default: `5m`
 
 Timeout for TCP connection establishment.
@@ -66,7 +80,8 @@ configures the former. The latter is not configurable and is hardcoded to be
 
 ---
 
-### command_timeout _duration_
+### command*timeout \_duration*
+
 Default: `5m`
 
 Timeout for any SMTP command (EHLO, MAIL, RCPT, DATA, etc).
@@ -78,7 +93,8 @@ DATA.
 
 ---
 
-### submission_timeout _duration_
+### submission*timeout \_duration*
+
 Default: `12m`
 
 Time to wait after the entire message is sent (after "final dot").
@@ -88,13 +104,15 @@ RFC 5321 recommends 10 minutes.
 ---
 
 ### debug _boolean_
+
 Default: global directive value
 
 Enable verbose logging.
 
 ---
 
-### requiretls_override _boolean_
+### requiretls*override \_boolean*
+
 Default: `true`
 
 Allow local security policy to be disabled using 'TLS-Required' header field in
@@ -104,7 +122,8 @@ to take effect (e.g. message should be queued using 'queue' module).
 
 ---
 
-### relaxed_requiretls _boolean_
+### relaxed*requiretls \_boolean*
+
 Default: `true`
 
 This option disables strict conformance with REQUIRETLS specification and
@@ -116,7 +135,8 @@ there is only need to secure communication towards it and not beyond.
 
 ---
 
-### conn_reuse_limit _integer_
+### conn*reuse_limit \_integer*
+
 Default: `10`
 
 Amount of times the same SMTP connection can be used.
@@ -124,14 +144,16 @@ Connections are never reused if the previous DATA command failed.
 
 ---
 
-### conn_max_idle_count _integer_
+### conn*max_idle_count \_integer*
+
 Default: `10`
 
 Max. amount of idle connections per recipient domains to keep in cache.
 
 ---
 
-### conn_max_idle_time _integer_
+### conn*max_idle_time \_integer*
+
 Default: `150` (2.5 min)
 
 Amount of time the idle connection is still considered potentially usable.
@@ -141,6 +163,7 @@ Amount of time the idle connection is still considered potentially usable.
 ## Security policies
 
 ### mx_auth { ... }
+
 Default: no policies
 
 'remote' module implements a number of of schemes and protocols necessary to
@@ -215,6 +238,7 @@ mtasts {
 ```
 
 ### cache `fs` | `ram`
+
 Default: `fs`
 
 Storage to use for MTA-STS cache. 'fs' is to use a filesystem directory, 'ram'
@@ -224,7 +248,8 @@ It is recommended to use 'fs' since that will not discard the cache (and thus
 cause MTA-STS security to disappear) on server restart. However, using the RAM
 cache can make sense for high-load configurations with good uptime.
 
-### fs_dir _directory_
+### fs*dir \_directory*
+
 Default: `StateDirectory/mtasts_cache`
 
 Filesystem directory to use for policies caching if 'cache' is set to 'fs'.
@@ -280,6 +305,7 @@ local_policy {
 Using `local_policy off` is equivalent to setting both directives to `none`.
 
 ### min_tls_level `none` | `encrypted` | `authenticated`
+
 Default: `encrypted`
 
 Set the minimal TLS security level required for all outbound messages.
@@ -287,9 +313,9 @@ Set the minimal TLS security level required for all outbound messages.
 See [Security levels](/seclevels) page for details.
 
 ### min_mx_level `none` | `mtasts` | `dnssec`
+
 Default: `none`
 
 Set the minimal MX security level required for all outbound messages.
 
 See [Security levels](/seclevels) page for details.
-

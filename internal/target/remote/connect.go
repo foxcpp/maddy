@@ -83,6 +83,17 @@ func isVerifyError(err error) bool {
 // - tlsLevel    TLS security level that was estabilished.
 // - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
 func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr, err error) {
+	return rd.connectPort(ctx, conn, host, smtpPort, tlsCfg)
+}
+
+// connectPort attempts to connect to the MX, first trying STARTTLS with X.509
+// verification but falling back to unauthenticated TLS or plaintext as
+// necessary.
+//
+// Return values:
+// - tlsLevel    TLS security level that was estabilished.
+// - tlsErr      Error that prevented TLS from working if tlsLevel != TLSAuthenticated
+func (rd *remoteDelivery) connectPort(ctx context.Context, conn mxConn, host string, port string, tlsCfg *tls.Config) (tlsLevel module.TLSLevel, tlsErr, err error) {
 	tlsLevel = module.TLSAuthenticated
 	if rd.rt.tlsConfig != nil {
 		tlsCfg = rd.rt.tlsConfig.Clone()
@@ -96,7 +107,7 @@ retry:
 	// TLS errors separately hence starttls=false.
 	_, err = conn.Connect(ctx, config.Endpoint{
 		Host: host,
-		Port: smtpPort,
+		Port: port,
 	}, false, nil)
 	if err != nil {
 		return module.TLSNone, nil, err
@@ -151,6 +162,10 @@ retry:
 }
 
 func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *net.MX) error {
+	return rd.attemptMXWithPort(ctx, conn, record, smtpPort)
+}
+
+func (rd *remoteDelivery) attemptMXWithPort(ctx context.Context, conn *mxConn, record *net.MX, port string) error {
 	mxLevel := module.MXNone
 
 	connCtx, cancel := context.WithCancel(ctx)
@@ -169,7 +184,7 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *n
 		p.PrepareConn(ctx, record.Host)
 	}
 
-	tlsLevel, tlsErr, err := rd.connect(connCtx, *conn, record.Host, rd.rt.tlsConfig)
+	tlsLevel, tlsErr, err := rd.connectPort(connCtx, *conn, record.Host, port, rd.rt.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -316,7 +331,12 @@ func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, 
 	conn.dnssecOk = dnssecOk
 
 	var lastErr error
+	ports := rd.rt.smtpPorts
+	if len(ports) == 0 {
+		ports = []string{smtpPort}
+	}
 	region = trace.StartRegion(ctx, "remote/Connect+TLS")
+recordsLoop:
 	for _, record := range records {
 		if record.Host == "." {
 			return nil, &exterrors.SMTPError{
@@ -326,14 +346,16 @@ func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, 
 			}
 		}
 
-		if err := rd.attemptMX(ctx, &conn, record); err != nil {
-			if len(records) != 0 {
-				rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
+		for _, port := range ports {
+			if err := rd.attemptMXWithPort(ctx, &conn, record, port); err != nil {
+				if len(records) != 0 {
+					rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "remote_port", port, "domain", domain)
+				}
+				lastErr = err
+				continue
 			}
-			lastErr = err
-			continue
+			break recordsLoop
 		}
-		break
 	}
 	region.End()
 
