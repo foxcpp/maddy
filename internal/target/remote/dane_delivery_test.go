@@ -32,7 +32,8 @@ import (
 )
 
 func targetWithExtResolver(t *testing.T, zones map[string]mockdns.Zone) (*mockdns.Server, *Target) {
-	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"), false)
+	l := testutils.Logger(t, "mockdns")
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, &l, false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -303,7 +303,8 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 		},
 	}
 
-	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"), false)
+	l := testutils.Logger(t, "mockdns")
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, &l, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +343,8 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 		},
 	}
 
-	dnsSrv, err := mockdns.NewServerWithLogger(zones, testutils.Logger(t, "mockdns"), false)
+	l := testutils.Logger(t, "mockdns")
+	dnsSrv, err := mockdns.NewServerWithLogger(zones, &l, false)
 	if err != nil {
 		t.Fatal(err)
 	}
