@@ -66,6 +66,8 @@ type Target struct {
 	ipv4      bool
 	tlsConfig *tls.Config
 
+	smtpPorts []string
+
 	resolver    dns.Resolver
 	dialer      func(ctx context.Context, network, addr string) (net.Conn, error)
 	extResolver *dns.ExtResolver
@@ -112,6 +114,7 @@ func (rt *Target) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.String("local_ip", false, false, "", &rt.localIP)
 	cfg.Bool("force_ipv4", false, false, &rt.ipv4)
 	cfg.Bool("debug", true, false, &rt.Log.Debug)
+	cfg.StringList("smtp_ports", false, false, []string{smtpPort}, &rt.smtpPorts)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
 		return &tls.Config{}, nil
 	}, tls2.TLSClientBlock, &rt.tlsConfig)

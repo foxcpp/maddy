@@ -198,6 +198,7 @@ syn keyword maddyModDir
 	\ sig_expiry
 	\ sign_fields
 	\ sign_subdomains
+	\ smtp_ports
 	\ softfail_action
 	\ SOME_action
 	\ source
