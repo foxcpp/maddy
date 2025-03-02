@@ -87,6 +87,16 @@ directive0 {env:VAR}
 Parse is forgiving and incomplete variable placeholder (e.g. '{env:VAR') will
 be left as-is. Variables are expanded inside quotes too.
 
+Environment values that are comma separated can optionally be split to space separated strings using {env_split:COMMA_SEPARATED_VARIABLE_NAME}
+
+```
+# SEP_VAR=foo,bar,baz
+
+directive1 {env_split:SEP_VAR}
+```
+
+In this usage the value of `directive1` would be `foo bar baz` (and `{env:SEP_VAR}` would be `foo,bar,baz`)
+
 ## Snippets & imports
 
 You can reuse blocks of configuration by defining them as "snippets". Snippet
@@ -196,5 +206,3 @@ No-op module. It doesn't need to be configured explicitly and can be referenced
 using "dummy" name. It can act as a delivery target or auth.
 provider. In the latter case, it will accept any credentials, allowing any
 client to authenticate using any username and password (use with care!).
-
-
