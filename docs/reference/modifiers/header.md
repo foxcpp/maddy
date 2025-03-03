@@ -4,9 +4,7 @@
 
 `add_header` module modifies the message by adding an header.
 
-Note: the header must be present in the message prior to the execution of the modifier. 
-If the header already exist it will result in an error.
-
+Note: Adding a header with an existing key will create multiple entries for that key in the message.
 
 Definition:
 

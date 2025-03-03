@@ -32,7 +32,7 @@ import (
 )
 
 func TestAddHeader(t *testing.T) {
-	test := func(headerName string, headerValue string, duplicateHeader bool) {
+	test := func(headerName string, headerValue string, expectedValues []string) {
 		t.Helper()
 
 		mod, err := NewAddHeader("modify.add_header", "")
@@ -60,15 +60,8 @@ func TestAddHeader(t *testing.T) {
 
 		err = state.RewriteBody(context.Background(), &testHdr, buffer.MemoryBuffer{Slice: body})
 		if err != nil {
-			if duplicateHeader && strings.Contains(err.Error(), "already present") {
-				return
-			}
 			t.Fatal(err)
 		}
-		if duplicateHeader && err == nil {
-			t.Fatalf("expected error on duplicate header")
-		}
-
 		var fullBody bytes.Buffer
 		if err := textproto.WriteHeader(&fullBody, testHdr); err != nil {
 			t.Fatal(err)
@@ -77,14 +70,16 @@ func TestAddHeader(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !strings.Contains(fmt.Sprintf("%s", &fullBody), fmt.Sprintf("%s: %s", headerName, headerValue)) {
-			t.Fatalf("new header not found in message")
+		for _, wantedValue := range expectedValues {
+			if !strings.Contains(fullBody.String(), fmt.Sprintf("%s: %s", headerName, wantedValue)) {
+				t.Fatalf("new header not found in message")
+			}
 		}
+
 	}
 
-	test("Something", "Somevalue", false)
-	test("X-Testing", "Somevalue", false)
-	// Test setting a header that is already present
-	test("To", "Somevalue", true)
-	test("To", "Somevalue", true)
+	test("Something", "Somevalue", []string{"Somevalue"})
+	test("X-Testing", "Somevalue", []string{"Somevalue"})
+	// Test setting a header that is already present should result two entries
+	test("To", "Somevalue", []string{"<heya@heya>", "Somevalue"})
 }

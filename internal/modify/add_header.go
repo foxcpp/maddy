@@ -21,7 +21,6 @@ package modify
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
@@ -77,11 +76,7 @@ func (r addHeader) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, er
 }
 
 func (r addHeader) RewriteBody(ctx context.Context, h *textproto.Header, body buffer.Buffer) error {
-	if h.Has(r.headerName) {
-		return fmt.Errorf("cannot add header `%s` as it is already present", r.headerName)
-	}
-
-	h.Set(r.headerName, r.headerValue)
+	h.Add(r.headerName, r.headerValue)
 	return nil
 }
 
