@@ -444,23 +444,6 @@ func (endp *Endpoint) Unlock(user pop3backend.User) error {
 	return backendUser.Logout()
 }
 
-func (endp *Endpoint) I18NLevel() int {
-	be, ok := endp.Store.(i18nlevel.Backend)
-	if !ok {
-		return 0
-	}
-	return be.I18NLevel()
-}
-
-func (endp *Endpoint) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
-	be, ok := endp.Store.(sortthread.ThreadBackend)
-	if !ok {
-		return nil
-	}
-
-	return be.SupportedThreadAlgorithms()
-}
-
 func init() {
 	module.RegisterEndpoint("pop3", New)
 }
