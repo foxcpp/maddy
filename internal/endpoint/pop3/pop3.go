@@ -104,12 +104,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
-		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
-			endp.Log.Error("failed to initialize updates pipe", err)
-		}
-	}
-
 	endp.saslAuth.Log.Debug = endp.Log.Debug
 
 	addresses := make([]config.Endpoint, 0, len(endp.addrs))
