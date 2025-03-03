@@ -55,9 +55,6 @@ func TestAddHeader(t *testing.T) {
 		testHdr.Add("To", "<heya@heya>")
 		body := []byte("hello there\r\n")
 
-		// modify.dkim expects RewriteSender to be called to get envelope sender
-		//  (see module.Modifier docs)
-
 		err = state.RewriteBody(context.Background(), &testHdr, buffer.MemoryBuffer{Slice: body})
 		if err != nil {
 			t.Fatal(err)
