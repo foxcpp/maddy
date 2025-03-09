@@ -221,7 +221,7 @@ func TestDownstreamDelivery_StartTLS(t *testing.T) {
 				Port:   testPort,
 			},
 		},
-		tlsConfig: *clientCfg.Clone(),
+		tlsConfig: clientCfg.Clone(),
 		starttls:  true,
 		log:       testutils.Logger(t, "target.smtp"),
 	}
