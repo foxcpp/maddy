@@ -121,7 +121,7 @@ func (u *Downstream) Init(cfg *config.Map) error {
 		return nil, nil
 	}, saslAuthDirective, &u.saslFactory)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
-		return tls.Config{}, nil
+		return &tls.Config{}, nil
 	}, tls2.TLSClientBlock, &u.tlsConfig)
 	cfg.Duration("connect_timeout", false, false, 5*time.Minute, &u.connectTimeout)
 	cfg.Duration("command_timeout", false, false, 5*time.Minute, &u.commandTimeout)
