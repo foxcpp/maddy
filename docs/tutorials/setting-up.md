@@ -79,6 +79,13 @@ Linux mail servers, maddy never runs as root.
 useradd -mrU -s /sbin/nologin -d /var/lib/maddy -c "maddy mail server" maddy
 ```
 
+You might need to grant some permissions too:
+
+```
+chown -R maddy:maddy /var/lib/maddy /run/maddy
+setcap 'cap_net_bind_service=+ep' /usr/local/bin/maddy
+```
+
 ## Host name + domain
 
 Open /etc/maddy/maddy.conf with vim^W your favorite editor and change
