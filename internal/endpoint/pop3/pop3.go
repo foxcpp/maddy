@@ -24,17 +24,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
-	"strconv"
 
-	"github.com/kiwiz/popgun"
-	pop3backend "github.com/kiwiz/popgun/backends"
 	"github.com/emersion/go-imap"
-	sortthread "github.com/emersion/go-imap-sortthread"
 	imapbackend "github.com/emersion/go-imap/backend"
 	_ "github.com/emersion/go-message/charset"
-	i18nlevel "github.com/foxcpp/go-imap-i18nlevel"
 	"github.com/foxcpp/go-imap-mess"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
@@ -44,8 +40,15 @@ import (
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/proxy_protocol"
-	"github.com/foxcpp/maddy/internal/updatepipe"
+	"github.com/kiwiz/popgun"
+	pop3backend "github.com/kiwiz/popgun/backends"
 )
+
+type Session struct {
+	imapbackend.User
+	Mailbox      imapbackend.Mailbox
+	deletedItems *imap.SeqSet
+}
 
 type Endpoint struct {
 	addrs         []string
@@ -54,8 +57,10 @@ type Endpoint struct {
 	proxyProtocol *proxy_protocol.ProxyProtocol
 	Store         module.Storage
 
-	tlsConfig   *tls.Config
-	listenersWg sync.WaitGroup
+	tlsConfig      *tls.Config
+	listenersWg    sync.WaitGroup
+	lockMutex      sync.Mutex
+	activeUsersMap map[string]bool
 
 	saslAuth auth.SASLAuth
 
@@ -72,6 +77,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 		saslAuth: auth.SASLAuth{
 			Log: log.Logger{Name: modName + "/sasl"},
 		},
+		activeUsersMap: make(map[string]bool),
 	}
 
 	return endp, nil
@@ -182,16 +188,13 @@ func (endp *Endpoint) Close() error {
 	return nil
 }
 
-func (endp *Endpoint) getMailbox(user pop3backend.User) (imapbackend.Mailbox, error) {
-	backendUser, ok := user.(imapbackend.User)
+func (endp *Endpoint) getSession(user pop3backend.User) (*Session, error) {
+	sess, ok := user.(*Session)
 	if !ok {
 		return nil, fmt.Errorf("internal server error")
 	}
-	_, mailbox, err := backendUser.GetMailbox(imap.InboxName, true, nil)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get maildrop")
-	}
-	return mailbox, nil
+
+	return sess, nil
 }
 
 func (endp *Endpoint) usernameForStorage(ctx context.Context, saslUsername string) (string, error) {
@@ -237,27 +240,47 @@ func (endp *Endpoint) Authorize(conn net.Conn, user, pass string) (pop3backend.U
 		return nil, fmt.Errorf("internal server error")
 	}
 
-	return endp.Store.GetOrCreateIMAPAcct(storageUsername)
+	imapUser, err := endp.Store.GetOrCreateIMAPAcct(storageUsername)
+	if err != nil {
+		return nil, err
+	}
+
+	_, mailbox, err := imapUser.GetMailbox(imap.InboxName, true, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get maildrop")
+	}
+
+	return &Session{
+		imapUser,
+		mailbox,
+		&imap.SeqSet{},
+	}, nil
 }
 
 // interface implementation for popgun.Backend
 func (endp *Endpoint) Stat(user pop3backend.User) (messages, octets int, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(false, nil, []imap.FetchItem{imap.FetchRFC822Size}, c)
-	if err != nil && err != mess.ErrNoMessages {
-		return 0, 0, err
-	}
+	msgChan := make(chan *imap.Message)
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(true, nil, []imap.FetchItem{imap.FetchRFC822Size}, msgChan)
+	}()
 
 	count := 0
 	size := 0
-	for msg := range(c) {
+	for msg := range msgChan {
 		count += 1
 		size += int(msg.Size)
+	}
+
+	err = <-errChan
+	if err != nil && err != mess.ErrNoMessages {
+		return 0, 0, err
 	}
 
 	return count, size, nil
@@ -265,20 +288,28 @@ func (endp *Endpoint) Stat(user pop3backend.User) (messages, octets int, err err
 
 // List of sizes of all messages in bytes (octets)
 func (endp *Endpoint) List(user pop3backend.User) (octets []int, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return nil, err
 	}
 
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(false, nil, []imap.FetchItem{imap.FetchRFC822Size}, c)
-	if err != nil && err != mess.ErrNoMessages {
-		return nil, err
-	}
+	msgChan := make(chan *imap.Message)
+	errChan := make(chan error, 1)
+
+	seqset := imap.SeqSet{}
+	seqset.AddNum(0)
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(true, &seqset, []imap.FetchItem{imap.FetchRFC822Size}, msgChan)
+	}()
 
 	items := make([]int, 0)
-	for msg := range(c) {
+	for msg := range msgChan {
 		items = append(items, int(msg.Size))
+	}
+
+	err = <-errChan
+	if err != nil && err != mess.ErrNoMessages {
+		return nil, err
 	}
 
 	return items, nil
@@ -286,21 +317,29 @@ func (endp *Endpoint) List(user pop3backend.User) (octets []int, err error) {
 
 // Returns whether message exists and if yes, then return size of the message in bytes (octets)
 func (endp *Endpoint) ListMessage(user pop3backend.User, msgId int) (exists bool, octets int, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return false, 0, err
 	}
 
+	msgChan := make(chan *imap.Message, 1)
+	errChan := make(chan error, 1)
+
 	seqset := imap.SeqSet{}
 	seqset.AddNum(uint32(msgId))
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(true, &seqset, []imap.FetchItem{imap.FetchRFC822Size}, c)
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(true, &seqset, []imap.FetchItem{imap.FetchRFC822Size}, msgChan)
+	}()
+
+	var msg *imap.Message
+	msg = <-msgChan
+
+	err = <-errChan
 	if err != nil && err != mess.ErrNoMessages {
 		return false, 0, err
 	}
 
-	msg, ok := <- c
-	if !ok {
+	if msg == nil {
 		return false, 0, nil
 	}
 
@@ -311,22 +350,30 @@ func (endp *Endpoint) ListMessage(user pop3backend.User, msgId int) (exists bool
 // by List() function, so be sure to keep that order unchanged while client is connected
 // See Lock() function for more details
 func (endp *Endpoint) Retr(user pop3backend.User, msgId int) (message string, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return "", err
 	}
 
+	msgChan := make(chan *imap.Message)
+	errChan := make(chan error, 1)
+
 	seqset := imap.SeqSet{}
 	seqset.AddNum(uint32(msgId))
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(true, &seqset, []imap.FetchItem{imap.FetchRFC822Size}, c)
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(true, &seqset, []imap.FetchItem{imap.FetchRFC822Size}, msgChan)
+	}()
+
+	var msg *imap.Message
+	msg = <-msgChan
+
+	err = <-errChan
 	if err != nil && err != mess.ErrNoMessages {
 		return "", err
 	}
 
-	msg, ok := <- c
-	if !ok {
-		return "", fmt.Errorf("internal server error")
+	if msg == nil {
+		return "", fmt.Errorf("not found")
 	}
 
 	return strconv.FormatUint(uint64(msg.Uid), 10), nil
@@ -336,39 +383,62 @@ func (endp *Endpoint) Retr(user pop3backend.User, msgId int) (message string, er
 // Update() is called. Be aware that after Dele() is called, functions like List() etc.
 // should ignore all these messages even if Update() hasn't been called yet
 func (endp *Endpoint) Dele(user pop3backend.User, msgId int) error {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return err
 	}
 
 	seqset := imap.SeqSet{}
 	seqset.AddNum(uint32(msgId))
-	return mailbox.UpdateMessagesFlags(true, &seqset, imap.SetFlags, false, []string{imap.DeletedFlag})
+	err = sess.Mailbox.UpdateMessagesFlags(true, &seqset, imap.SetFlags, false, []string{imap.DeletedFlag})
+	if err != nil {
+		return err
+	}
+
+	sess.deletedItems.AddNum(uint32(msgId))
+	return nil
 }
 
 // Undelete all messages marked as deleted in single connection
 func (endp *Endpoint) Rset(user pop3backend.User) error {
-	return fmt.Errorf("pop3: unimplemented")
+	sess, err := endp.getSession(user)
+	if err != nil {
+		return err
+	}
+
+	err = sess.Mailbox.UpdateMessagesFlags(true, sess.deletedItems, imap.RemoveFlags, false, []string{imap.DeletedFlag})
+	if err != nil {
+		return fmt.Errorf("pop3: internal server error")
+	}
+
+	sess.deletedItems = &imap.SeqSet{}
+	return nil
 }
 
 // List of unique IDs of all message, similar to List(), but instead of size there
 // is a unique ID which persists the same across all connections. Uid (unique id) is
 // used to allow client to be able to keep messages on the server.
 func (endp *Endpoint) Uidl(user pop3backend.User) (uids []string, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return nil, err
 	}
 
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(false, nil, nil, c)
-	if err != nil && err != mess.ErrNoMessages {
-		return nil, err
-	}
+	msgChan := make(chan *imap.Message)
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(false, nil, nil, msgChan)
+	}()
 
 	items := make([]string, 0)
-	for msg := range(c) {
+	for msg := range msgChan {
 		items = append(items, strconv.FormatUint(uint64(msg.Uid), 10))
+	}
+
+	err = <-errChan
+	if err != nil && err != mess.ErrNoMessages {
+		return nil, err
 	}
 
 	return items, nil
@@ -376,21 +446,30 @@ func (endp *Endpoint) Uidl(user pop3backend.User) (uids []string, err error) {
 
 // Similar to ListMessage, but returns unique ID by message ID instead of size.
 func (endp *Endpoint) UidlMessage(user pop3backend.User, msgId int) (exists bool, uid string, err error) {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return false, "", err
 	}
 
+	msgChan := make(chan *imap.Message, 1)
+	errChan := make(chan error, 1)
+
 	seqset := imap.SeqSet{}
 	seqset.AddNum(uint32(msgId))
-	c := make(chan *imap.Message)
-	err = mailbox.ListMessages(true, &seqset, nil, c)
+
+	go func() {
+		errChan <- sess.Mailbox.ListMessages(true, &seqset, nil, msgChan)
+	}()
+
+	var msg *imap.Message
+	msg = <-msgChan
+
+	err = <-errChan
 	if err != nil && err != mess.ErrNoMessages {
 		return false, "", err
 	}
 
-	msg, ok := <- c
-	if !ok {
+	if msg == nil {
 		return false, "", nil
 	}
 
@@ -399,12 +478,12 @@ func (endp *Endpoint) UidlMessage(user pop3backend.User, msgId int) (exists bool
 
 // Write all changes to persistent storage, i.e. delete all messages marked as deleted.
 func (endp *Endpoint) Update(user pop3backend.User) error {
-	mailbox, err := endp.getMailbox(user)
+	sess, err := endp.getSession(user)
 	if err != nil {
 		return err
 	}
 
-	return mailbox.Expunge()
+	return sess.Mailbox.Expunge()
 }
 
 // If the POP3 server issues a positive response, then the
@@ -425,17 +504,55 @@ func (endp *Endpoint) Top(user pop3backend.User, msgId int, n int) (lines []stri
 // is to read all the messages into cache after client is connected. If another user
 // tries to lock the storage, you should return an error to avoid data race.
 func (endp *Endpoint) Lock(user pop3backend.User) error {
-	return nil // FIXME: NOT IMPLEMENTED
+	endp.lockMutex.Lock()
+	defer endp.lockMutex.Unlock()
+
+	backendUser, ok := user.(imapbackend.User)
+	if !ok {
+		return fmt.Errorf("pop3: internal server error")
+	}
+	username := backendUser.Username()
+
+	// Only one simultaneous connection is supported
+	if endp.activeUsersMap[username] {
+		return fmt.Errorf("pop3: internal server error")
+	}
+
+	endp.activeUsersMap[username] = true
+
+	return nil
 }
 
 // Release lock on storage, Unlock() is called after client is disconnected.
 func (endp *Endpoint) Unlock(user pop3backend.User) error {
+	endp.lockMutex.Lock()
+	defer endp.lockMutex.Unlock()
+
 	backendUser, ok := user.(imapbackend.User)
 	if !ok {
-		return fmt.Errorf("internal server error")
+		return fmt.Errorf("pop3: internal server error")
 	}
 
-	return backendUser.Logout()
+	username := backendUser.Username()
+
+	// Not locked
+	if !endp.activeUsersMap[username] {
+		return fmt.Errorf("pop3: internal server error")
+	}
+
+	err := endp.Rset(user)
+	if err != nil {
+		return err
+	}
+
+	err = backendUser.Logout()
+	if err != nil {
+		return err
+	}
+
+	endp.activeUsersMap[username] = false
+
+	return nil
 }
 
 func init() {
