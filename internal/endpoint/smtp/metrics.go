@@ -26,7 +26,7 @@ var (
 			Namespace: "maddy",
 			Subsystem: "smtp",
 			Name:      "started_transactions",
-			Help:      "Amount of SMTP trasanactions started",
+			Help:      "Amount of SMTP transactions started",
 		},
 		[]string{"module"},
 	)
@@ -35,7 +35,7 @@ var (
 			Namespace: "maddy",
 			Subsystem: "smtp",
 			Name:      "smtp_completed_transactions",
-			Help:      "Amount of SMTP trasanactions successfully completed",
+			Help:      "Amount of SMTP transactions successfully completed",
 		},
 		[]string{"module"},
 	)
@@ -44,7 +44,7 @@ var (
 			Namespace: "maddy",
 			Subsystem: "smtp",
 			Name:      "aborted_transactions",
-			Help:      "Amount of SMTP trasanactions aborted",
+			Help:      "Amount of SMTP transactions aborted",
 		},
 		[]string{"module"},
 	)
