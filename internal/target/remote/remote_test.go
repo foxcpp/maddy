@@ -64,7 +64,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 			MaxKeys:             5000,
 			MaxConnsPerKey:      5,      // basically, max. amount of idle connections in cache
 			MaxConnLifetimeSec:  150,    // 2.5 mins, half of recommended idle time from RFC 5321
-			StaleKeyLifetimeSec: 60 * 5, // should be bigger than MaxConnLifetimeSec
+			StaleKeyLifetimeSec: 60 * 4, // make sure that cleanup runs before recommended idle time from RFC 5321
 		}),
 	}
 
