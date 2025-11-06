@@ -6,7 +6,7 @@ package libdns
 import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/libdns/hetzner"
+	"github.com/libdns/hetzner/v2"
 )
 
 func init() {
@@ -16,7 +16,7 @@ func init() {
 			RecordDeleter:  &p,
 			RecordAppender: &p,
 			setConfig: func(c *config.Map) {
-				c.String("api_token", false, false, "", &p.AuthAPIToken)
+				c.String("api_token", false, false, "", &p.APIToken)
 			},
 			instName: instName,
 			modName:  modName,

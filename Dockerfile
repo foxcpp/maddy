@@ -1,6 +1,6 @@
-FROM golang:1.23-alpine AS build-env
+FROM golang:1.24-alpine AS build-env
 
-ARG ADDITIONAL_BUILD_TAGS=""
+ARG ADDITIONAL_BUILD_TAGS="libdns_hetzner libdns_separate"
 
 RUN set -ex && \
     apk upgrade --no-cache --available && \
@@ -16,7 +16,7 @@ RUN mkdir -p /pkg/data && \
     cp maddy.conf.docker /pkg/data/maddy.conf && \
     ./build.sh --builddir /tmp --destdir /pkg/ --tags "docker ${ADDITIONAL_BUILD_TAGS}" build install
 
-FROM alpine:3.21.2
+FROM alpine:3.22.2
 LABEL maintainer="fox.cpp@disroot.org"
 LABEL org.opencontainers.image.source=https://github.com/foxcpp/maddy
 

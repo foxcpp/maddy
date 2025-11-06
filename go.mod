@@ -1,14 +1,14 @@
 module github.com/foxcpp/maddy
 
-go 1.23.1
+go 1.24.0
 
-toolchain go1.23.5
+toolchain go1.24.10
 
 require (
 	blitiri.com.ar/go/spf v1.5.1
 	github.com/GehirnInc/crypt v0.0.0-20230320061759-8cc1b52080c5
 	github.com/c0va23/go-proxyprotocol v0.9.1
-	github.com/caddyserver/certmagic v0.21.7
+	github.com/caddyserver/certmagic v0.25.0
 	github.com/emersion/go-imap v1.2.2-0.20220928192137-6fac715be9cf
 	github.com/emersion/go-imap-compress v0.0.0-20201103190257-14809af1d1b9
 	github.com/emersion/go-imap-sortthread v1.2.0
@@ -33,14 +33,14 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/libdns/acmedns v0.2.0
 	github.com/libdns/alidns v1.0.3
-	github.com/libdns/cloudflare v0.1.1
-	github.com/libdns/digitalocean v0.0.0-20230728223659-4f9064657aea
+	github.com/libdns/cloudflare v0.2.2
+	github.com/libdns/digitalocean v0.0.0-20250606071607-dfa7af5c2e31
 	github.com/libdns/gandi v1.0.3
 	github.com/libdns/gcore v0.0.0-20250127070537-4a9d185c9d20
 	github.com/libdns/googleclouddns v1.1.0
-	github.com/libdns/hetzner v0.0.1
+	github.com/libdns/hetzner/v2 v2.0.0-20251106093917-c72348f26139
 	github.com/libdns/leaseweb v0.4.0
-	github.com/libdns/libdns v0.2.2
+	github.com/libdns/libdns v1.1.1
 	github.com/libdns/metaname v0.3.0
 	github.com/libdns/namecheap v0.0.0-20211109042440-fc7440785c8e
 	github.com/libdns/namedotcom v0.3.3
@@ -48,16 +48,16 @@ require (
 	github.com/libdns/route53 v1.5.1
 	github.com/libdns/vultr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/miekg/dns v1.1.63
+	github.com/miekg/dns v1.1.68
 	github.com/minio/minio-go/v7 v7.0.84
 	github.com/netauth/netauth v0.6.2
-	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_golang v1.23.2
 	github.com/urfave/cli/v2 v2.27.5
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.32.0
-	golang.org/x/net v0.34.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/text v0.21.0
+	golang.org/x/crypto v0.42.0
+	golang.org/x/net v0.44.0
+	golang.org/x/sync v0.17.0
+	golang.org/x/text v0.29.0
 	modernc.org/sqlite v1.34.5
 )
 
@@ -87,7 +87,7 @@ require (
 	github.com/caddyserver/zerossl v0.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
-	github.com/digitalocean/godo v1.134.0 // indirect
+	github.com/digitalocean/godo v1.148.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
@@ -105,15 +105,16 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/hetznercloud/hcloud-go/v2 v2.27.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mholt/acmez/v3 v3.0.1 // indirect
+	github.com/mholt/acmez/v3 v3.1.3 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -122,9 +123,9 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -148,16 +149,17 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/api v0.218.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
-	google.golang.org/protobuf v1.36.4 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
