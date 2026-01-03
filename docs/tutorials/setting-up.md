@@ -105,7 +105,7 @@ $(local_domains) = $(primary_domain) example.com other.example.com
 
 ## TLS certificates
 
-One thing that can't be automagically configured is TLS certs. If you already
+One thing that can't be automatically configured is TLS certs. If you already
 have them somewhere - use them, open /etc/maddy/maddy.conf and put the right
 paths in. You need to make sure maddy can read them while running as
 unprivileged user (maddy never runs as root, even during start-up), one way to
