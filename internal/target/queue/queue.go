@@ -89,7 +89,6 @@ import (
 
 // partialError describes state of partially successful message delivery.
 type partialError struct {
-
 	// Underlying error objects for each recipient.
 	Errs map[string]error
 
@@ -129,7 +128,6 @@ type Queue struct {
 
 	// Retry delay is calculated using the following formula:
 	// initialRetryTime * retryTimeScale ^ (TriesCount - 1)
-
 	initialRetryTime time.Duration
 	retryTimeScale   float64
 	maxTries         int
@@ -635,6 +633,9 @@ func (q *Queue) removeFromDisk(msgMeta *module.MsgMetadata) {
 	if err := os.Remove(metaPath); err != nil {
 		dl.Error("failed to remove meta-data from disk", err)
 	}
+
+	queuedMsgs.WithLabelValues(q.name, q.location).Dec()
+
 	dl.Debugf("removed message from disk")
 }
 
@@ -704,6 +705,8 @@ func (q *Queue) readDiskQueue() error {
 			ID: id,
 		})
 		loadedCount++
+
+		queuedMsgs.WithLabelValues(q.name, q.location).Inc()
 	}
 
 	if loadedCount != 0 {
@@ -761,6 +764,8 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	if err := bodyFile.Sync(); err != nil {
 		return nil, err
 	}
+
+	queuedMsgs.WithLabelValues(q.name, q.location).Inc()
 
 	return buffer.FileBuffer{Path: bodyPath, LenHint: body.Len()}, nil
 }
