@@ -25,7 +25,7 @@ smtp tcp://0.0.0.0:25 {
         endpoint concurrency 500
     }
 
-    # Example pipeline ocnfiguration.
+    # Example pipeline configuration.
     destination example.org {
         deliver_to &local_mailboxes
     }
