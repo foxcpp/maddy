@@ -29,6 +29,30 @@ check.dnsbl {
         mailfrom yes
         score 1
     }
+    
+    # Example with per-response-code scoring (new in 0.8)
+    zen.spamhaus.org {
+        client_ipv4 yes
+        client_ipv6 yes
+        
+        # SBL - Spamhaus Block List (known spam sources)
+        response 127.0.0.2 127.0.0.3 {
+            score 10
+            message "Listed in Spamhaus SBL. See https://check.spamhaus.org/"
+        }
+        
+        # XBL - Exploits Block List (compromised hosts)
+        response 127.0.0.4 127.0.0.5 127.0.0.6 127.0.0.7 {
+            score 10
+            message "Listed in Spamhaus XBL. See https://check.spamhaus.org/"
+        }
+        
+        # PBL - Policy Block List (dynamic IPs)
+        response 127.0.0.10 127.0.0.11 {
+            score 5
+            message "Listed in Spamhaus PBL. See https://check.spamhaus.org/"
+        }
+    }
 }
 ```
 
@@ -171,3 +195,55 @@ will be rejected.
 
 It is possible to specify a negative value to make list act like a whitelist
 and override results of other blocklists.
+
+**Note:** When using `response` blocks (see below), the score from matching response
+rules is used instead of this flat score value.
+
+---
+
+### response _ip..._
+
+**New in 0.8**
+
+Defines per-response-code rules for scoring and custom messages. This is useful
+for combined DNSBLs like Spamhaus ZEN that return different codes for different
+listing types.
+
+Each `response` block takes one or more IP addresses or CIDR ranges as arguments
+and contains the following directives:
+
+#### score _integer_
+**Required**
+
+Score to add when this response code is returned. If multiple response codes
+are returned by the DNSBL, scores are summed together.
+
+#### message _string_
+**Optional**
+
+Custom rejection or quarantine message to include when this response code
+matches. This message is shown to the client or logged when the threshold
+is reached.
+
+**Example:**
+
+```
+zen.spamhaus.org {
+    client_ipv4 yes
+    
+    # High severity - known spam sources
+    response 127.0.0.2 127.0.0.3 {
+        score 10
+        message "Listed in Spamhaus SBL"
+    }
+    
+    # Lower severity - dynamic IPs
+    response 127.0.0.10 127.0.0.11 {
+        score 5
+        message "Listed in Spamhaus PBL"
+    }
+}
+```
+
+**Backwards compatibility:** When `response` blocks are not used, the legacy
+`responses` and `score` directives work as before.
