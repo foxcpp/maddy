@@ -32,9 +32,15 @@ type ListedErr struct {
 	Identity string
 	List     string
 	Reason   string
+	Score    int
+	Message  string
 }
 
 func (le ListedErr) Fields() map[string]interface{} {
+	msg := "Client identity listed in the used DNSBL"
+	if le.Message != "" {
+		msg = le.Message
+	}
 	return map[string]interface{}{
 		"check":           "dnsbl",
 		"list":            le.List,
@@ -42,7 +48,7 @@ func (le ListedErr) Fields() map[string]interface{} {
 		"reason":          le.Reason,
 		"smtp_code":       554,
 		"smtp_enchcode":   exterrors.EnhancedCode{5, 7, 0},
-		"smtp_msg":        "Client identity listed in the used DNSBL",
+		"smtp_msg":        msg,
 	}
 }
 
@@ -113,6 +119,56 @@ func checkIP(ctx context.Context, resolver dns.Resolver, cfg List, ip net.IP) er
 		return err
 	}
 
+	// If ResponseRules is configured, use new behavior
+	if len(cfg.ResponseRules) > 0 {
+		totalScore := 0
+		var matchedMessages []string
+		var matchedReasons []string
+
+		for _, addr := range addrs {
+			for _, rule := range cfg.ResponseRules {
+				for _, respNet := range rule.Networks {
+					if respNet.Contains(addr.IP) {
+						totalScore += rule.Score
+						if rule.Message != "" {
+							matchedMessages = append(matchedMessages, rule.Message)
+						}
+						matchedReasons = append(matchedReasons, addr.IP.String())
+						break // Only match once per rule
+					}
+				}
+			}
+		}
+
+		if totalScore == 0 {
+			return nil
+		}
+
+		// Attempt to extract explanation string from TXT records
+		txts, err := resolver.LookupTXT(ctx, query)
+		var reason string
+		if err == nil && len(txts) > 0 {
+			reason = strings.Join(txts, "; ")
+		} else {
+			reason = strings.Join(matchedReasons, "; ")
+		}
+
+		// Use first matched message if available
+		message := ""
+		if len(matchedMessages) > 0 {
+			message = matchedMessages[0]
+		}
+
+		return ListedErr{
+			Identity: ip.String(),
+			List:     cfg.Zone,
+			Reason:   reason,
+			Score:    totalScore,
+			Message:  message,
+		}
+	}
+
+	// Legacy behavior: use flat Responses filter
 	filteredAddrs := make([]net.IPAddr, 0, len(addrs))
 addrsLoop:
 	for _, addr := range addrs {
