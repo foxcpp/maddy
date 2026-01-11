@@ -216,7 +216,9 @@ and contains the following directives:
 **Required**
 
 Score to add when this response code is returned. If multiple response codes
-are returned by the DNSBL, scores are summed together.
+are returned by the DNSBL, and they match different rules, the scores from
+all matched rules are summed together. Each rule is counted only once, even
+if multiple returned IPs match networks within that rule.
 
 #### message _string_
 **Optional**
@@ -244,6 +246,12 @@ zen.spamhaus.org {
     }
 }
 ```
+
+**Scoring behavior:**
+- If DNSBL returns `127.0.0.2` only → Score: 10 (matches first rule)
+- If DNSBL returns `127.0.0.11` only → Score: 5 (matches second rule)
+- If DNSBL returns both `127.0.0.2` and `127.0.0.11` → Score: 15 (both rules match, scores sum)
+- If DNSBL returns both `127.0.0.2` and `127.0.0.3` → Score: 10 (same rule matches, counted once)
 
 **Backwards compatibility:** When `response` blocks are not used, the legacy
 `responses` and `score` directives work as before.
