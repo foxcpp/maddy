@@ -134,6 +134,14 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 	cfg.Bool("mailfrom", false, defaultBL.EHLO, &listCfg.MAILFROM)
 	cfg.Int("score", false, false, 1, &listCfg.ScoreAdj)
 	cfg.StringList("responses", false, false, []string{"127.0.0.1/24"}, &responseNets)
+	cfg.Callback("response", func(_ *config.Map, node config.Node) error {
+		rule, err := parseResponseRule(node)
+		if err != nil {
+			return err
+		}
+		listCfg.ResponseRules = append(listCfg.ResponseRules, rule)
+		return nil
+	})
 	if _, err := cfg.Process(); err != nil {
 		return err
 	}
@@ -152,17 +160,9 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 		listCfg.Responses = append(listCfg.Responses, *ipNet)
 	}
 
-	// Parse response blocks from node children
-	for _, child := range node.Children {
-		if child.Name == "response" {
-			rule, err := parseResponseRule(child)
-			if err != nil {
-				return err
-			}
-			listCfg.ResponseRules = append(listCfg.ResponseRules, rule)
-		} else {
-			return config.NodeErr(child, "unknown directive: %s", child.Name)
-		}
+	// Warn if both response and responses are configured
+	if len(listCfg.ResponseRules) > 0 && len(responseNets) > 0 {
+		bl.log.Msg("both 'response' blocks and 'responses' directive are specified, 'response' blocks take precedence", "list", node.Name)
 	}
 
 	for _, zone := range append([]string{node.Name}, node.Args...) {

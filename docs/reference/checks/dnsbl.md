@@ -203,8 +203,6 @@ rules is used instead of this flat score value.
 
 ### response _ip..._
 
-**New in 0.8**
-
 Defines per-response-code rules for scoring and custom messages. This is useful
 for combined DNSBLs like Spamhaus ZEN that return different codes for different
 listing types.
