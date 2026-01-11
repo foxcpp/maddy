@@ -134,9 +134,7 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 	cfg.Bool("mailfrom", false, defaultBL.EHLO, &listCfg.MAILFROM)
 	cfg.Int("score", false, false, 1, &listCfg.ScoreAdj)
 	cfg.StringList("responses", false, false, []string{"127.0.0.1/24"}, &responseNets)
-	cfg.AllowUnknown()
-	unknown, err := cfg.Process()
-	if err != nil {
+	if _, err := cfg.Process(); err != nil {
 		return err
 	}
 
@@ -154,8 +152,8 @@ func (bl *DNSBL) readListCfg(node config.Node) error {
 		listCfg.Responses = append(listCfg.Responses, *ipNet)
 	}
 
-	// Parse response blocks
-	for _, child := range unknown {
+	// Parse response blocks from node children
+	for _, child := range node.Children {
 		if child.Name == "response" {
 			rule, err := parseResponseRule(child)
 			if err != nil {
