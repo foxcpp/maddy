@@ -125,8 +125,16 @@ func checkIP(ctx context.Context, resolver dns.Resolver, cfg List, ip net.IP) er
 		var matchedMessages []string
 		var matchedReasons []string
 
+		// Track which rules have been matched to avoid counting the same rule multiple times
+		matchedRules := make(map[int]bool)
+
 		for _, addr := range addrs {
-			for _, rule := range cfg.ResponseRules {
+			for ruleIdx, rule := range cfg.ResponseRules {
+				// Skip if this rule has already been matched
+				if matchedRules[ruleIdx] {
+					continue
+				}
+				
 				for _, respNet := range rule.Networks {
 					if respNet.Contains(addr.IP) {
 						totalScore += rule.Score
@@ -134,7 +142,8 @@ func checkIP(ctx context.Context, resolver dns.Resolver, cfg List, ip net.IP) er
 							matchedMessages = append(matchedMessages, rule.Message)
 						}
 						matchedReasons = append(matchedReasons, addr.IP.String())
-						break // Only match once per rule
+						matchedRules[ruleIdx] = true
+						break // Move to next rule
 					}
 				}
 			}
