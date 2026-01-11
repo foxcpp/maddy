@@ -207,6 +207,9 @@ Defines per-response-code rules for scoring and custom messages. This is useful
 for combined DNSBLs like Spamhaus ZEN that return different codes for different
 listing types.
 
+This works for both IP-based lookups (client_ipv4, client_ipv6) and domain-based
+lookups (ehlo, mailfrom).
+
 Each `response` block takes one or more IP addresses or CIDR ranges as arguments
 and contains the following directives:
 

@@ -72,25 +72,54 @@ func checkDomain(ctx context.Context, resolver dns.Resolver, cfg List, domain st
 		return nil
 	}
 
-	// Attempt to extract explanation string.
-	txts, err := resolver.LookupTXT(context.Background(), query)
-	if err != nil || len(txts) == 0 {
-		// Not significant, include addresses as reason. Usually they are
-		// mapped to some predefined 'reasons' by BL.
-		return ListedErr{
-			Identity: domain,
-			List:     cfg.Zone,
-			Reason:   strings.Join(addrs, "; "),
+	var score int
+	var customMessage string
+	var filteredAddrs []string
+
+	// If ResponseRules is configured, use new behavior
+	if len(cfg.ResponseRules) > 0 {
+		// Convert string addresses to IPAddr for matching
+		ipAddrs := make([]net.IPAddr, 0, len(addrs))
+		for _, addr := range addrs {
+			if ip := net.ParseIP(addr); ip != nil {
+				ipAddrs = append(ipAddrs, net.IPAddr{IP: ip})
+			}
 		}
+
+		matchedScore, matchedMessages, matchedReasons, matched := matchResponseRules(ipAddrs, cfg.ResponseRules)
+		if !matched {
+			return nil
+		}
+		score = matchedScore
+
+		// Use first matched message if available
+		if len(matchedMessages) > 0 {
+			customMessage = matchedMessages[0]
+		}
+
+		filteredAddrs = matchedReasons
+	} else {
+		// Legacy behavior: accept all addresses
+		filteredAddrs = addrs
 	}
 
-	// Some BLs provide multiple reasons (meta-BLs such as Spamhaus Zen) so
-	// don't mangle them by joining with "", instead join with "; ".
+	// Attempt to extract explanation string from TXT records (shared by both paths)
+	txts, err := resolver.LookupTXT(ctx, query)
+	var reason string
+	if err == nil && len(txts) > 0 {
+		reason = strings.Join(txts, "; ")
+	} else {
+		// Not significant, include addresses as reason. Usually they are
+		// mapped to some predefined 'reasons' by BL.
+		reason = strings.Join(filteredAddrs, "; ")
+	}
 
 	return ListedErr{
 		Identity: domain,
 		List:     cfg.Zone,
-		Reason:   strings.Join(txts, "; "),
+		Reason:   reason,
+		Score:    score,
+		Message:  customMessage,
 	}
 }
 
