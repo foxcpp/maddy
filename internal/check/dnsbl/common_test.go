@@ -236,3 +236,104 @@ func TestCheckIP(t *testing.T) {
 		Reason:   "127.0.0.1",
 	})
 }
+
+func TestCheckDomainWithResponseRules(t *testing.T) {
+	test := func(zones map[string]mockdns.Zone, cfg List, domain string, expectedErr error) {
+		t.Helper()
+		resolver := mockdns.Resolver{Zones: zones}
+		err := checkDomain(context.Background(), &resolver, cfg, domain)
+		if expectedErr == nil {
+			if err != nil {
+				t.Errorf("expected no error, got '%#v'", err)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("expected err to be '%#v', got nil", expectedErr)
+			} else {
+				expectedLE, okExpected := expectedErr.(ListedErr)
+				actualLE, okActual := err.(ListedErr)
+				if !okExpected || !okActual {
+					t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
+				} else {
+					if expectedLE.Identity != actualLE.Identity ||
+						expectedLE.List != actualLE.List ||
+						expectedLE.Score != actualLE.Score ||
+						expectedLE.Message != actualLE.Message {
+						t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
+					}
+				}
+			}
+		}
+	}
+
+	// Test domain with single response code and custom message
+	test(map[string]mockdns.Zone{
+		"spam.example.com.dnsbl.example.org.": {
+			A: []string{"127.0.0.2"},
+		},
+	}, List{
+		Zone: "dnsbl.example.org",
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Domain listed as spam source",
+			},
+		},
+	}, "spam.example.com", ListedErr{
+		Identity: "spam.example.com",
+		List:     "dnsbl.example.org",
+		Score:    10,
+		Message:  "Domain listed as spam source",
+	})
+
+	// Test domain with multiple response codes - scores should sum
+	test(map[string]mockdns.Zone{
+		"multi.example.com.dnsbl.example.org.": {
+			A: []string{"127.0.0.2", "127.0.0.11"},
+		},
+	}, List{
+		Zone: "dnsbl.example.org",
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "High severity",
+			},
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 11), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   5,
+				Message: "Low severity",
+			},
+		},
+	}, "multi.example.com", ListedErr{
+		Identity: "multi.example.com",
+		List:     "dnsbl.example.org",
+		Score:    15, // 10 + 5
+		Message:  "High severity",
+	})
+
+	// Test domain with no matching response codes
+	test(map[string]mockdns.Zone{
+		"unknown.example.com.dnsbl.example.org.": {
+			A: []string{"127.0.0.99"},
+		},
+	}, List{
+		Zone: "dnsbl.example.org",
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed",
+			},
+		},
+	}, "unknown.example.com", nil)
+}

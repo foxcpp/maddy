@@ -211,3 +211,282 @@ func TestCheckLists(t *testing.T) {
 		true, false,
 	)
 }
+
+func TestCheckIPWithResponseRules(t *testing.T) {
+	test := func(zones map[string]mockdns.Zone, cfg List, ip net.IP, expectedErr error) {
+		t.Helper()
+		resolver := mockdns.Resolver{Zones: zones}
+		err := checkIP(context.Background(), &resolver, cfg, ip)
+		if expectedErr == nil {
+			if err != nil {
+				t.Errorf("expected no error, got '%#v'", err)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("expected err to be '%#v', got nil", expectedErr)
+			} else {
+				expectedLE, okExpected := expectedErr.(ListedErr)
+				actualLE, okActual := err.(ListedErr)
+				if !okExpected || !okActual {
+					t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
+				} else {
+					if expectedLE.Identity != actualLE.Identity ||
+						expectedLE.List != actualLE.List ||
+						expectedLE.Score != actualLE.Score ||
+						expectedLE.Message != actualLE.Message {
+						t.Errorf("expected err to be '%#v', got '%#v'", expectedErr, err)
+					}
+				}
+			}
+		}
+	}
+
+	// Test single response code with score and message
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.2"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed in SBL",
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), ListedErr{
+		Identity: "1.2.3.4",
+		List:     "example.org",
+		Score:    10,
+		Message:  "Listed in SBL",
+	})
+
+	// Test multiple response codes with different scores - scores should sum
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.2", "127.0.0.11"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					{IP: net.IPv4(127, 0, 0, 3), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed in SBL",
+			},
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 10), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					{IP: net.IPv4(127, 0, 0, 11), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   5,
+				Message: "Listed in PBL",
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), ListedErr{
+		Identity: "1.2.3.4",
+		List:     "example.org",
+		Score:    15, // 10 + 5
+		Message:  "Listed in SBL",
+	})
+
+	// Test response code that doesn't match any rule - should return nil
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.99"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed in SBL",
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), nil)
+
+	// Test low severity only - should get score 5
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.10"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed in SBL",
+			},
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 10), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   5,
+				Message: "Listed in PBL",
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), ListedErr{
+		Identity: "1.2.3.4",
+		List:     "example.org",
+		Score:    5,
+		Message:  "Listed in PBL",
+	})
+
+	// Test high severity - should get score 10
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.2"},
+		},
+	}, List{
+		Zone:       "example.org",
+		ClientIPv4: true,
+		ResponseRules: []ResponseRule{
+			{
+				Networks: []net.IPNet{
+					{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+				},
+				Score:   10,
+				Message: "Listed in SBL",
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), ListedErr{
+		Identity: "1.2.3.4",
+		List:     "example.org",
+		Score:    10,
+		Message:  "Listed in SBL",
+	})
+}
+
+func TestCheckListsWithResponseRules(t *testing.T) {
+	test := func(zones map[string]mockdns.Zone, bls []List, ip net.IP, ehlo, mailFrom string, reject, quarantine bool) {
+		mod := &DNSBL{
+			bls:             bls,
+			resolver:        &mockdns.Resolver{Zones: zones},
+			log:             testutils.Logger(t, "dnsbl"),
+			quarantineThres: 5,
+			rejectThres:     10,
+		}
+		result := mod.checkLists(context.Background(), ip, ehlo, mailFrom)
+
+		if result.Reject && !reject {
+			t.Errorf("Expected message to not be rejected")
+		}
+		if !result.Reject && reject {
+			t.Errorf("Expected message to be rejected")
+		}
+		if result.Quarantine && !quarantine {
+			t.Errorf("Expected message to not be quarantined")
+		}
+		if !result.Quarantine && quarantine {
+			t.Errorf("Expected message to be quarantined")
+		}
+	}
+
+	// Test: Only low-severity code returned -> quarantine but not reject
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.zen.example.org.": {
+			A: []string{"127.0.0.11"},
+		},
+	}, []List{
+		{
+			Zone:       "zen.example.org",
+			ClientIPv4: true,
+			ResponseRules: []ResponseRule{
+				{
+					Networks: []net.IPNet{
+						{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					},
+					Score:   10,
+					Message: "Listed in SBL",
+				},
+				{
+					Networks: []net.IPNet{
+						{IP: net.IPv4(127, 0, 0, 10), Mask: net.IPv4Mask(255, 255, 255, 255)},
+						{IP: net.IPv4(127, 0, 0, 11), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					},
+					Score:   5,
+					Message: "Listed in PBL",
+				},
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), "mx.example.com", "foo@example.com", false, true)
+
+	// Test: High-severity code returned -> reject
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.zen.example.org.": {
+			A: []string{"127.0.0.2"},
+		},
+	}, []List{
+		{
+			Zone:       "zen.example.org",
+			ClientIPv4: true,
+			ResponseRules: []ResponseRule{
+				{
+					Networks: []net.IPNet{
+						{IP: net.IPv4(127, 0, 0, 2), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					},
+					Score:   10,
+					Message: "Listed in SBL",
+				},
+			},
+		},
+	}, net.IPv4(1, 2, 3, 4), "mx.example.com", "foo@example.com", true, false)
+
+	// Test: Legacy configuration without response blocks -> existing behavior preserved
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.example.org.": {
+			A: []string{"127.0.0.1"},
+		},
+	}, []List{
+		{
+			Zone:       "example.org",
+			ClientIPv4: true,
+			ScoreAdj:   10,
+		},
+	}, net.IPv4(1, 2, 3, 4), "mx.example.com", "foo@example.com", true, false)
+
+	// Test: Mixed configuration (some lists with response blocks, some without) -> both work correctly
+	test(map[string]mockdns.Zone{
+		"4.3.2.1.zen.example.org.": {
+			A: []string{"127.0.0.11"},
+		},
+		"4.3.2.1.legacy.example.org.": {
+			A: []string{"127.0.0.1"},
+		},
+	}, []List{
+		{
+			Zone:       "zen.example.org",
+			ClientIPv4: true,
+			ResponseRules: []ResponseRule{
+				{
+					Networks: []net.IPNet{
+						{IP: net.IPv4(127, 0, 0, 11), Mask: net.IPv4Mask(255, 255, 255, 255)},
+					},
+					Score:   5,
+					Message: "Listed in PBL",
+				},
+			},
+		},
+		{
+			Zone:       "legacy.example.org",
+			ClientIPv4: true,
+			ScoreAdj:   3,
+		},
+	}, net.IPv4(1, 2, 3, 4), "mx.example.com", "foo@example.com", false, true) // 5 + 3 = 8, quarantine but not reject
+}
