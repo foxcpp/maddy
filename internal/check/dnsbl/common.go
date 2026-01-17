@@ -133,7 +133,7 @@ func matchResponseRules(addrs []net.IPAddr, rules []ResponseRule) (score int, me
 			if matchedRules[ruleIdx] {
 				continue
 			}
-			
+
 			for _, respNet := range rule.Networks {
 				if respNet.Contains(addr.IP) {
 					score += rule.Score
@@ -187,12 +187,12 @@ func checkIP(ctx context.Context, resolver dns.Resolver, cfg List, ip net.IP) er
 			return nil
 		}
 		score = matchedScore
-		
+
 		// Use first matched message if available
 		if len(matchedMessages) > 0 {
 			customMessage = matchedMessages[0]
 		}
-		
+
 		// Build filteredAddrs from matched reasons for TXT lookup fallback
 		for _, reason := range matchedReasons {
 			filteredAddrs = append(filteredAddrs, net.IPAddr{IP: net.ParseIP(reason)})

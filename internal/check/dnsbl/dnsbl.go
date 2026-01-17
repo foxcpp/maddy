@@ -373,14 +373,14 @@ func (bl *DNSBL) checkLists(ctx context.Context, ip net.IP, ehlo, mailFrom strin
 				defer lck.Unlock()
 				listedOn = append(listedOn, listErr.List)
 				reasons = append(reasons, listErr.Reason)
-				
+
 				// Use score from ListedErr if set (new behavior), otherwise use legacy ScoreAdj
 				if listErr.Score != 0 {
 					score += listErr.Score
 				} else {
 					score += list.ScoreAdj
 				}
-				
+
 				// Collect custom messages if available
 				if listErr.Message != "" {
 					messages = append(messages, listErr.Message)

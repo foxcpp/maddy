@@ -490,4 +490,3 @@ func TestCheckListsWithResponseRules(t *testing.T) {
 		},
 	}, net.IPv4(1, 2, 3, 4), "mx.example.com", "foo@example.com", false, true) // 5 + 3 = 8, quarantine but not reject
 }
-
