@@ -40,15 +40,16 @@ type Auth struct {
 	log log.Logger
 }
 
-func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
 		log:      log.Logger{Name: modName},
-		urls:     inlineArgs,
 	}, nil
 }
 
-func (a *Auth) Init(cfg *config.Map) error {
+func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
+	a.urls = inlineArgs
+
 	a.dialer = &net.Dialer{}
 
 	cfg.Bool("debug", true, false, &a.log.Debug)
@@ -87,15 +88,6 @@ func (a *Auth) Init(cfg *config.Map) error {
 		}
 	}
 
-	if module.NoRun {
-		return nil
-	}
-
-	var err error
-	a.conn, err = a.newConn()
-	if err != nil {
-		return fmt.Errorf("auth.ldap: %w", err)
-	}
 	return nil
 }
 
@@ -278,6 +270,22 @@ func (a *Auth) AuthPlain(username, password string) error {
 		return module.ErrUnknownCredentials
 	}
 
+	return nil
+}
+
+func (a *Auth) Start() error {
+	var err error
+	a.conn, err = a.newConn()
+	if err != nil {
+		return fmt.Errorf("auth.ldap: %w", err)
+	}
+	return nil
+}
+
+func (a *Auth) Stop() error {
+	a.connLock.Lock()
+	defer a.connLock.Unlock()
+	a.conn.Close()
 	return nil
 }
 

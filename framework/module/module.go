@@ -38,22 +38,8 @@ import (
 )
 
 // Module is the interface implemented by all maddy module instances.
-//
-// It defines basic methods used to identify instances.
-//
-// Additionally, module can implement io.Closer if it needs to perform clean-up
-// on shutdown. If module starts long-lived goroutines - they should be stopped
-// *before* Close method returns to ensure graceful shutdown.
 type Module interface {
-	// Init performs actual initialization of the module.
-	//
-	// It is not done in FuncNewModule so all module instances are
-	// registered at time of initialization, thus initialization does not
-	// depends on ordering of configuration blocks and modules can reference
-	// each other without any problems.
-	//
-	// Module can use passed config.Map to read its configuration variables.
-	Init(*config.Map) error
+	Configure(inlineArgs []string, config *config.Map) error
 
 	// Name method reports module name.
 	//
@@ -68,12 +54,10 @@ type Module interface {
 // FuncNewModule is function that creates new instance of module with specified name.
 //
 // Module.InstanceName() of the returned module object should return instName.
-// aliases slice contains other names that can be used to reference created
-// module instance.
+// If module is defined inline, instName will be empty.
 //
-// If module is defined inline, instName will be empty and all values
-// specified after module name in configuration will be in inlineArgs.
-type FuncNewModule func(modName, instName string, aliases, inlineArgs []string) (Module, error)
+// Returned Module may additionally implement LifetimeModule.
+type FuncNewModule func(modName, instName string) (Module, error)
 
 // FuncNewEndpoint is a function that creates new instance of endpoint
 // module.
@@ -87,4 +71,4 @@ type FuncNewModule func(modName, instName string, aliases, inlineArgs []string) 
 //
 // As a consequence of having no per-instance name, InstanceName of the module
 // object always returns the same value as Name.
-type FuncNewEndpoint func(modName string, addrs []string) (Module, error)
+type FuncNewEndpoint func(modName string, addrs []string) (LifetimeModule, error)

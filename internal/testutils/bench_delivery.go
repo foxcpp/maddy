@@ -117,7 +117,7 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		delivery, err := target.Start(benchCtx, &meta, sender)
+		delivery, err := target.StartDelivery(benchCtx, &meta, sender)
 		if err != nil {
 			b.Fatal(err)
 		}

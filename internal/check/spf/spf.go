@@ -60,7 +60,7 @@ type Check struct {
 	resolver dns.Resolver
 }
 
-func New(_, instName string, _, _ []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	return &Check{
 		instName: instName,
 		log:      log.Logger{Name: modName},
@@ -76,7 +76,7 @@ func (c *Check) InstanceName() string {
 	return c.instName
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &c.log.Debug)
 	cfg.Bool("enforce_early", true, false, &c.enforceEarly)
 	cfg.Custom("none_action", false, false,

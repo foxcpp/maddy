@@ -30,7 +30,7 @@ All scheduled deliveries are attempted to the configured DeliveryTarget.
 All metadata is preserved on disk.
 
 Failure status is determined on per-recipient basis:
-  - Delivery.Start fail handled as a failure for all recipients.
+  - Delivery.StartDelivery fail handled as a failure for all recipients.
   - Delivery.AddRcpt fail handled as a failure for the corresponding recipient.
   - Delivery.Body fail handled as a failure for all recipients.
   - If Delivery implements PartialDelivery, then
@@ -131,6 +131,7 @@ type Queue struct {
 	initialRetryTime time.Duration
 	retryTimeScale   float64
 	maxTries         int
+	maxParallelism   int
 
 	// If any delivery is scheduled in less than postInitDelay
 	// after Init, its delay will be increased by postInitDelay.
@@ -186,7 +187,7 @@ type queueSlot struct {
 	Body buffer.Buffer
 }
 
-func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewQueue(_, instName string) (module.Module, error) {
 	q := &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,
@@ -194,22 +195,22 @@ func NewQueue(_, instName string, _, inlineArgs []string) (module.Module, error)
 		postInitDelay:    10 * time.Second,
 		Log:              log.Logger{Name: "queue"},
 	}
+	return q, nil
+}
+
+func (q *Queue) Configure(inlineArgs []string, cfg *config.Map) error {
 	switch len(inlineArgs) {
 	case 0:
 		// Not inline definition.
 	case 1:
 		q.location = inlineArgs[0]
 	default:
-		return nil, errors.New("queue: wrong amount of inline arguments")
+		return errors.New("queue: wrong amount of inline arguments")
 	}
-	return q, nil
-}
 
-func (q *Queue) Init(cfg *config.Map) error {
-	var maxParallelism int
 	cfg.Bool("debug", true, false, &q.Log.Debug)
 	cfg.Int("max_tries", false, false, 20, &q.maxTries)
-	cfg.Int("max_parallelism", false, false, 16, &maxParallelism)
+	cfg.Int("max_parallelism", false, false, 16, &q.maxParallelism)
 	cfg.String("location", false, false, q.location, &q.location)
 	cfg.Custom("target", false, true, nil, modconfig.DeliveryDirective, &q.Target)
 	cfg.String("hostname", true, true, "", &q.hostname)
@@ -240,8 +241,11 @@ func (q *Queue) Init(cfg *config.Map) error {
 	if err := os.MkdirAll(q.location, os.ModePerm); err != nil {
 		return err
 	}
+	return nil
+}
 
-	return q.start(maxParallelism)
+func (q *Queue) Start() error {
+	return q.start(q.maxParallelism)
 }
 
 func (q *Queue) start(maxParallelism int) error {
@@ -257,7 +261,7 @@ func (q *Queue) start(maxParallelism int) error {
 	return nil
 }
 
-func (q *Queue) Close() error {
+func (q *Queue) Stop() error {
 	q.wheel.Close()
 	q.deliveryWg.Wait()
 
@@ -471,16 +475,16 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	defer msgTask.End()
 
 	mailCtx, mailTask := trace.NewTask(msgCtx, "MAIL FROM")
-	delivery, err := q.Target.Start(mailCtx, msgMeta, meta.From)
+	delivery, err := q.Target.StartDelivery(mailCtx, msgMeta, meta.From)
 	mailTask.End()
 	if err != nil {
-		dl.Debugf("target.Start failed: %v", err)
+		dl.Debugf("target.StartDelivery failed: %v", err)
 		for _, rcpt := range meta.To {
 			perr.Errs[rcpt] = err
 		}
 		return perr
 	}
-	dl.Debugf("target.Start OK")
+	dl.Debugf("target.StartDelivery OK")
 
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
@@ -603,7 +607,7 @@ func (qd *queueDelivery) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (q *Queue) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (q *Queue) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	meta := &QueueMetadata{
 		MsgMeta:      msgMeta,
 		From:         mailFrom,
@@ -963,7 +967,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	defer msgTask.End()
 
 	mailCtx, mailTask := trace.NewTask(msgCtx, "MAIL FROM")
-	dsnDelivery, err := q.dsnPipeline.Start(mailCtx, dsnMeta, "")
+	dsnDelivery, err := q.dsnPipeline.StartDelivery(mailCtx, dsnMeta, "")
 	mailTask.End()
 	if err != nil {
 		dl.Error("failed to enqueue DSN", err, "dsn_id", dsnID)

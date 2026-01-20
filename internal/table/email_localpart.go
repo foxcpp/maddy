@@ -32,7 +32,7 @@ type EmailLocalpart struct {
 	allowNonEmail bool
 }
 
-func NewEmailLocalpart(modName, instName string, _, _ []string) (module.Module, error) {
+func NewEmailLocalpart(modName, instName string) (module.Module, error) {
 	return &EmailLocalpart{
 		modName:       modName,
 		instName:      instName,
@@ -40,7 +40,7 @@ func NewEmailLocalpart(modName, instName string, _, _ []string) (module.Module, 
 	}, nil
 }
 
-func (s *EmailLocalpart) Init(cfg *config.Map) error {
+func (s *EmailLocalpart) Configure(inlineArgs []string, cfg *config.Map) error {
 	return nil
 }
 

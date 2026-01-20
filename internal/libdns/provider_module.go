@@ -15,7 +15,7 @@ type ProviderModule struct {
 	modName  string
 }
 
-func (p *ProviderModule) Init(cfg *config.Map) error {
+func (p *ProviderModule) Configure(inlineArgs []string, cfg *config.Map) error {
 	p.setConfig(cfg)
 	_, err := cfg.Process()
 	if p.afterConfig != nil {

@@ -34,14 +34,14 @@ type Chain struct {
 	optional []bool
 }
 
-func NewChain(modName, instName string, _, _ []string) (module.Module, error) {
+func NewChain(modName, instName string) (module.Module, error) {
 	return &Chain{
 		modName:  modName,
 		instName: instName,
 	}, nil
 }
 
-func (s *Chain) Init(cfg *config.Map) error {
+func (s *Chain) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Callback("step", func(m *config.Map, node config.Node) error {
 		var tbl module.Table
 		err := modconfig.ModuleFromNode("table", node.Args, node, m.Globals, &tbl)

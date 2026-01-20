@@ -56,7 +56,7 @@ func TestSubmissionPrepare(t *testing.T) {
 			cl, _ := smtp.Dial("127.0.0.1:" + testPort)
 			cl.Close()
 
-			endp.Close()
+			endp.Stop()
 		}()
 
 		session, err := endp.NewSession(nil)

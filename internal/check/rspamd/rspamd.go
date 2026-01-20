@@ -61,20 +61,11 @@ type Check struct {
 	client *http.Client
 }
 
-func New(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
 		client:   http.DefaultClient,
 		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
-	}
-
-	switch len(inlineArgs) {
-	case 1:
-		c.apiPath = inlineArgs[0]
-	case 0:
-		c.apiPath = "http://127.0.0.1:11333"
-	default:
-		return nil, fmt.Errorf("%s: unexpected amount of inline arguments", modName)
 	}
 
 	return c, nil
@@ -88,7 +79,16 @@ func (c *Check) InstanceName() string {
 	return c.instName
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
+	switch len(inlineArgs) {
+	case 1:
+		c.apiPath = inlineArgs[0]
+	case 0:
+		c.apiPath = "http://127.0.0.1:11333"
+	default:
+		return fmt.Errorf("%s: unexpected amount of inline arguments", modName)
+	}
+
 	var (
 		tlsConfig tls.Config
 		flags     []string

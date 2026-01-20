@@ -269,7 +269,7 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	mailCtx, mailTask := trace.NewTask(s.msgCtx, "MAIL FROM")
 	defer mailTask.End()
 
-	delivery, err := s.endp.pipeline.Start(mailCtx, msgMeta, cleanFrom)
+	delivery, err := s.endp.pipeline.StartDelivery(mailCtx, msgMeta, cleanFrom)
 	if err != nil {
 		s.msgCtx = nil
 		s.msgTask.End()

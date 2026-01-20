@@ -30,14 +30,14 @@ type Module struct {
 	*MsgPipeline
 }
 
-func NewModule(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
+func NewModule(modName, instName string) (module.Module, error) {
 	return &Module{
 		log:      log.Logger{Name: "msgpipeline"},
 		instName: instName,
 	}, nil
 }
 
-func (m *Module) Init(cfg *config.Map) error {
+func (m *Module) Configure(inlineArgs []string, cfg *config.Map) error {
 	var hostname string
 	cfg.String("hostname", true, true, "", &hostname)
 	cfg.Bool("debug", true, false, &m.log.Debug)

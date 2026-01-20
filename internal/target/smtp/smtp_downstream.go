@@ -48,10 +48,9 @@ import (
 )
 
 type Downstream struct {
-	modName    string
-	instName   string
-	lmtp       bool
-	targetsArg []string
+	modName  string
+	instName string
+	lmtp     bool
 
 	starttls    bool
 	hostname    string
@@ -76,17 +75,16 @@ func (u *Downstream) moduleError(err error) error {
 	})
 }
 
-func NewDownstream(modName, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewDownstream(modName, instName string) (module.Module, error) {
 	return &Downstream{
-		modName:    modName,
-		instName:   instName,
-		lmtp:       modName == "target.lmtp" || modName == "lmtp_downstream", /* compatibility with 0.3 configs */
-		targetsArg: inlineArgs,
-		log:        log.Logger{Name: modName},
+		modName:  modName,
+		instName: instName,
+		lmtp:     modName == "target.lmtp" || modName == "lmtp_downstream", /* compatibility with 0.3 configs */
+		log:      log.Logger{Name: modName},
 	}, nil
 }
 
-func (u *Downstream) Init(cfg *config.Map) error {
+func (u *Downstream) Configure(inlineArgs []string, cfg *config.Map) error {
 	var attemptTLS *bool
 
 	var targetsArg []string
@@ -142,8 +140,8 @@ func (u *Downstream) Init(cfg *config.Map) error {
 		return fmt.Errorf("%s: cannot represent the hostname as an A-label name: %w", u.modName, err)
 	}
 
-	u.targetsArg = append(u.targetsArg, targetsArg...)
-	for _, tgt := range u.targetsArg {
+	targetsArg = append(targetsArg, inlineArgs...)
+	for _, tgt := range targetsArg {
 		endp, err := config.ParseEndpoint(tgt)
 		if err != nil {
 			return err
@@ -183,8 +181,8 @@ type lmtpDelivery struct {
 	*delivery
 }
 
-func (u *Downstream) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
-	defer trace.StartRegion(ctx, "target.smtp/Start").End()
+func (u *Downstream) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+	defer trace.StartRegion(ctx, "target.smtp/StartDelivery").End()
 
 	d := &delivery{
 		u:        u,

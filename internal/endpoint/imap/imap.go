@@ -42,6 +42,7 @@ import (
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/proxy_protocol"
@@ -51,11 +52,12 @@ import (
 type Endpoint struct {
 	addrs         []string
 	serv          *imapserver.Server
-	listeners     []net.Listener
 	proxyProtocol *proxy_protocol.ProxyProtocol
 	Store         module.Storage
+	tlsConfig     *tls.Config
 
-	tlsConfig   *tls.Config
+	endpoints   []config.Endpoint
+	listeners   []net.Listener
 	listenersWg sync.WaitGroup
 
 	saslAuth auth.SASLAuth
@@ -66,7 +68,7 @@ type Endpoint struct {
 	Log log.Logger
 }
 
-func New(modName string, addrs []string) (module.Module, error) {
+func New(modName string, addrs []string) (module.LifetimeModule, error) {
 	endp := &Endpoint{
 		addrs: addrs,
 		Log:   log.Logger{Name: modName},
@@ -78,7 +80,7 @@ func New(modName string, addrs []string) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *Endpoint) Init(cfg *config.Map) error {
+func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	var (
 		insecureAuth bool
 		ioDebug      bool
@@ -106,12 +108,6 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		return err
 	}
 
-	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
-		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
-			endp.Log.Error("failed to initialize updates pipe", err)
-		}
-	}
-
 	endp.saslAuth.Log.Debug = endp.Log.Debug
 
 	addresses := make([]config.Endpoint, 0, len(endp.addrs))
@@ -120,8 +116,12 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		if err != nil {
 			return fmt.Errorf("imap: invalid address: %s", addr)
 		}
+		if saddr.IsTLS() && endp.tlsConfig == nil {
+			return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
+		}
 		addresses = append(addresses, saddr)
 	}
+	endp.endpoints = addresses
 
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
@@ -129,7 +129,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	if ioErrors {
 		endp.serv.ErrorLog = &endp.Log
 	} else {
-		endp.serv.ErrorLog = log.Logger{Out: log.NopOutput{}}
+		endp.serv.ErrorLog = &log.Logger{Out: log.NopOutput{}}
 	}
 	if ioDebug {
 		endp.serv.Debug = endp.Log.DebugWriter()
@@ -148,14 +148,36 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 		})
 	}
 
-	return endp.setupListeners(addresses)
+	if endp.serv.AllowInsecureAuth {
+		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
+	}
+	if endp.serv.TLSConfig == nil {
+		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
+		endp.serv.AllowInsecureAuth = true
+	}
+
+	return nil
+}
+
+func (endp *Endpoint) Start() error {
+	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
+		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
+			endp.Log.Error("failed to initialize updates pipe", err)
+		}
+	}
+
+	if err := endp.setupListeners(endp.endpoints); err != nil {
+		endp.Stop()
+		return err
+	}
+	return nil
 }
 
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error
-		l, err = net.Listen(addr.Network(), addr.Address())
+		l, err = netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("imap: %v", err)
 		}
@@ -173,22 +195,13 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		}
 
 		endp.listeners = append(endp.listeners, l)
-
 		endp.listenersWg.Add(1)
 		go func() {
+			defer endp.listenersWg.Done()
 			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 				endp.Log.Printf("imap: failed to serve %s: %s", addr, err)
 			}
-			endp.listenersWg.Done()
 		}()
-	}
-
-	if endp.serv.AllowInsecureAuth {
-		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
-	}
-	if endp.serv.TLSConfig == nil {
-		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
-		endp.serv.AllowInsecureAuth = true
 	}
 
 	return nil
@@ -202,7 +215,7 @@ func (endp *Endpoint) InstanceName() string {
 	return "imap"
 }
 
-func (endp *Endpoint) Close() error {
+func (endp *Endpoint) Stop() error {
 	for _, l := range endp.listeners {
 		l.Close()
 	}

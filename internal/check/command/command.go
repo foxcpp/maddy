@@ -66,7 +66,7 @@ type Check struct {
 	cmdArgs []string
 }
 
-func New(modName, instName string, aliases, inlineArgs []string) (module.Module, error) {
+func New(modName, instName string) (module.Module, error) {
 	c := &Check{
 		instName: instName,
 		actions: map[int]modconfig.FailAction{
@@ -79,13 +79,6 @@ func New(modName, instName string, aliases, inlineArgs []string) (module.Module,
 		},
 	}
 
-	if len(inlineArgs) == 0 {
-		return nil, errors.New("command: at least one argument is required (command name)")
-	}
-
-	c.cmd = inlineArgs[0]
-	c.cmdArgs = inlineArgs[1:]
-
 	return c, nil
 }
 
@@ -97,7 +90,14 @@ func (c *Check) InstanceName() string {
 	return c.instName
 }
 
-func (c *Check) Init(cfg *config.Map) error {
+func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) == 0 {
+		return errors.New("command: at least one argument is required (command name)")
+	}
+
+	c.cmd = inlineArgs[0]
+	c.cmdArgs = inlineArgs[1:]
+
 	// Check whether the inline argument command is usable.
 	if _, err := exec.LookPath(c.cmd); err != nil {
 		return fmt.Errorf("command: %w", err)

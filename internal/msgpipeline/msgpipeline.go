@@ -111,13 +111,13 @@ func (d *MsgPipeline) RunEarlyChecks(ctx context.Context, state *module.ConnStat
 	return eg.Wait()
 }
 
-// Start starts new message delivery, runs connection and sender checks, sender modifiers
+// StartDelivery starts new message delivery, runs connection and sender checks, sender modifiers
 // and selects source block from config to use for handling.
 //
 // Returned module.Delivery implements PartialDelivery. If underlying target doesn't
 // support it, msgpipeline will copy the returned error for all recipients handled
 // by target.
-func (d *MsgPipeline) Start(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
+func (d *MsgPipeline) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	dd := msgpipelineDelivery{
 		d:                  d,
 		rcptModifiersState: make(map[*rcptBlock]module.ModifierState),
@@ -622,14 +622,14 @@ func (dd *msgpipelineDelivery) getDelivery(ctx context.Context, tgt module.Deliv
 		return delivery_, nil
 	}
 
-	deliveryObj, err := tgt.Start(ctx, dd.msgMeta, dd.sourceAddr)
+	deliveryObj, err := tgt.StartDelivery(ctx, dd.msgMeta, dd.sourceAddr)
 	if err != nil {
-		dd.log.Debugf("tgt.Start(%s) failure, target = %s: %v", dd.sourceAddr, objectName(tgt), err)
+		dd.log.Debugf("tgt.StartDelivery(%s) failure, target = %s: %v", dd.sourceAddr, objectName(tgt), err)
 		return nil, err
 	}
 	delivery_ = &delivery{Delivery: deliveryObj}
 
-	dd.log.Debugf("tgt.Start(%s) ok, target = %s", dd.sourceAddr, objectName(tgt))
+	dd.log.Debugf("tgt.StartDelivery(%s) ok, target = %s", dd.sourceAddr, objectName(tgt))
 
 	dd.deliveries[tgt] = delivery_
 	return delivery_, nil

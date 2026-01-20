@@ -44,18 +44,10 @@ type Auth struct {
 
 const modName = "dovecot_sasl"
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	a := &Auth{
 		instName: instName,
 		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
-	}
-
-	switch len(inlineArgs) {
-	case 0:
-	case 1:
-		a.serverEndpoint = inlineArgs[0]
-	default:
-		return nil, fmt.Errorf("%s: one or none arguments needed", modName)
 	}
 
 	return a, nil
@@ -88,7 +80,15 @@ func (a *Auth) returnConn(cl *dovecotsasl.Client) {
 	cl.Close()
 }
 
-func (a *Auth) Init(cfg *config.Map) error {
+func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
+	switch len(inlineArgs) {
+	case 0:
+	case 1:
+		a.serverEndpoint = inlineArgs[0]
+	default:
+		return fmt.Errorf("%s: one or none arguments needed", modName)
+	}
+
 	cfg.String("endpoint", false, false, a.serverEndpoint, &a.serverEndpoint)
 	if _, err := cfg.Process(); err != nil {
 		return err

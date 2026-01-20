@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
-	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
@@ -50,21 +49,13 @@ type File struct {
 	log log.Logger
 }
 
-func NewFile(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func NewFile(_, instName string) (module.Module, error) {
 	m := &File{
 		instName:     instName,
 		m:            make(map[string][]string),
 		stopReloader: make(chan struct{}),
 		forceReload:  make(chan struct{}),
 		log:          log.Logger{Name: FileModName},
-	}
-
-	switch len(inlineArgs) {
-	case 1:
-		m.file = inlineArgs[0]
-	case 0:
-	default:
-		return nil, fmt.Errorf("%s: cannot use multiple files with single %s, use %s multiple times to do so", FileModName, FileModName, FileModName)
 	}
 
 	return m, nil
@@ -78,7 +69,15 @@ func (f *File) InstanceName() string {
 	return f.instName
 }
 
-func (f *File) Init(cfg *config.Map) error {
+func (f *File) Configure(inlineArgs []string, cfg *config.Map) error {
+	switch len(inlineArgs) {
+	case 1:
+		f.file = inlineArgs[0]
+	case 0:
+	default:
+		return fmt.Errorf("%s: cannot use multiple files with single %s, use %s multiple times to do so", FileModName, FileModName, FileModName)
+	}
+
 	var file string
 	cfg.Bool("debug", true, false, &f.log.Debug)
 	cfg.String("file", false, false, "", &file)
@@ -100,11 +99,22 @@ func (f *File) Init(cfg *config.Map) error {
 		f.log.Printf("ignoring non-existent file: %s", f.file)
 	}
 
-	go f.reloader()
-	hooks.AddHook(hooks.EventReload, func() {
-		f.forceReload <- struct{}{}
-	})
+	return nil
+}
 
+func (f *File) Start() error {
+	go f.reloader()
+	return nil
+}
+
+func (f *File) Reload() error {
+	f.forceReload <- struct{}{}
+	return nil
+}
+
+func (f *File) Stop() error {
+	f.stopReloader <- struct{}{}
+	<-f.stopReloader
 	return nil
 }
 
@@ -179,12 +189,6 @@ func (f *File) reload() {
 	f.m = newm
 	f.mStamp = info.ModTime()
 	f.mLck.Unlock()
-}
-
-func (f *File) Close() error {
-	f.stopReloader <- struct{}{}
-	<-f.stopReloader
-	return nil
 }
 
 func readFile(path string, out map[string][]string) error {

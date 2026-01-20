@@ -45,7 +45,7 @@ type StatusCollector interface {
 }
 
 // PartialDelivery is an optional interface that may be implemented
-// by the object returned by DeliveryTarget.Start. See PartialDelivery.BodyNonAtomic
+// by the object returned by DeliveryTarget.StartDelivery. See PartialDelivery.BodyNonAtomic
 // documentation for details.
 type PartialDelivery interface {
 	// BodyNonAtomic is similar to Body method of the regular Delivery interface

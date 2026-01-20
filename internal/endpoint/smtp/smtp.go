@@ -41,6 +41,7 @@ import (
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/limits"
@@ -54,6 +55,7 @@ type Endpoint struct {
 	serv          *smtp.Server
 	name          string
 	addrs         []string
+	endpoints     []config.Endpoint
 	listeners     []net.Listener
 	proxyProtocol *proxy_protocol.ProxyProtocol
 	pipeline      *msgpipeline.MsgPipeline
@@ -70,7 +72,8 @@ type Endpoint struct {
 	maxReceived         int
 	maxHeaderBytes      int64
 
-	sessionCnt atomic.Int32
+	sessionCnt      atomic.Int32
+	shutdownTimeout time.Duration
 
 	listenersWg sync.WaitGroup
 
@@ -85,7 +88,7 @@ func (endp *Endpoint) InstanceName() string {
 	return endp.name
 }
 
-func New(modName string, addrs []string) (module.Module, error) {
+func New(modName string, addrs []string) (module.LifetimeModule, error) {
 	endp := &Endpoint{
 		name:       modName,
 		addrs:      addrs,
@@ -101,9 +104,9 @@ func New(modName string, addrs []string) (module.Module, error) {
 	return endp, nil
 }
 
-func (endp *Endpoint) Init(cfg *config.Map) error {
+func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.serv = smtp.NewServer(endp)
-	endp.serv.ErrorLog = endp.Log
+	endp.serv.ErrorLog = &endp.Log
 	endp.serv.LMTP = endp.lmtp
 	endp.serv.EnableSMTPUTF8 = true
 	endp.serv.EnableREQUIRETLS = true
@@ -120,13 +123,7 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 
 		addresses = append(addresses, saddr)
 	}
-
-	if err := endp.setupListeners(addresses); err != nil {
-		for _, l := range endp.listeners {
-			l.Close()
-		}
-		return err
-	}
+	endp.endpoints = addresses
 
 	allLocal := true
 	for _, addr := range addresses {
@@ -252,6 +249,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	modconfig.Table(cfg, "auth_map", true, false, nil, &endp.saslAuth.AuthMap)
 	cfg.Duration("write_timeout", false, false, 1*time.Minute, &endp.serv.WriteTimeout)
 	cfg.Duration("read_timeout", false, false, 10*time.Minute, &endp.serv.ReadTimeout)
+	cfg.Duration("shutdown_timeout", false, false, 3*time.Minute, &endp.shutdownTimeout)
 	cfg.DataSize("max_message_size", false, false, 32*1024*1024, &endp.serv.MaxMessageBytes)
 	cfg.DataSize("max_header_size", false, false, 1*1024*1024, &endp.maxHeaderBytes)
 	cfg.Int("max_recipients", false, false, 20000, &endp.serv.MaxRecipients)
@@ -318,11 +316,19 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	return nil
 }
 
+func (endp *Endpoint) Start() error {
+	if err := endp.setupListeners(endp.endpoints); err != nil {
+		endp.Stop()
+		return err
+	}
+	return nil
+}
+
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 	for _, addr := range addresses {
 		var l net.Listener
 		var err error
-		l, err = net.Listen(addr.Network(), addr.Address())
+		l, err = netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("%s: %w", endp.name, err)
 		}
@@ -416,9 +422,14 @@ func (endp *Endpoint) ConnectionCount() int {
 	return int(endp.sessionCnt.Load())
 }
 
-func (endp *Endpoint) Close() error {
-	endp.serv.Close()
+func (endp *Endpoint) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), endp.shutdownTimeout)
+	defer cancel()
+
+	endp.serv.Shutdown(ctx)
+
 	endp.listenersWg.Wait()
+
 	return nil
 }
 

@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.hetzner", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.hetzner", func(modName, instName string) (module.Module, error) {
 		p := hetzner.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

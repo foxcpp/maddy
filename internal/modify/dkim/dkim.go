@@ -111,22 +111,12 @@ type Modifier struct {
 	log log.Logger
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	m := &Modifier{
 		instName: instName,
 		signers:  map[string]crypto.Signer{},
 		log:      log.Logger{Name: "modify.dkim"},
 	}
-
-	if len(inlineArgs) == 0 {
-		return m, nil
-	}
-	if len(inlineArgs) == 1 {
-		return nil, errors.New("modify.dkim: at least two arguments required")
-	}
-
-	m.domains = inlineArgs[0 : len(inlineArgs)-1]
-	m.selector = inlineArgs[len(inlineArgs)-1]
 
 	return m, nil
 }
@@ -139,7 +129,16 @@ func (m *Modifier) InstanceName() string {
 	return m.instName
 }
 
-func (m *Modifier) Init(cfg *config.Map) error {
+func (m *Modifier) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		if len(inlineArgs) == 1 {
+			return errors.New("modify.dkim: at least two arguments required")
+		}
+
+		m.domains = inlineArgs[0 : len(inlineArgs)-1]
+		m.selector = inlineArgs[len(inlineArgs)-1]
+	}
+
 	var (
 		hashName        string
 		keyPathTemplate string

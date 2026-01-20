@@ -75,7 +75,6 @@ RestartPreventExitStatus=2
 
 ExecStart=/usr/local/bin/maddy run
 
-ExecReload=/bin/kill -USR1 $MAINPID
 ExecReload=/bin/kill -USR2 $MAINPID
 
 [Install]

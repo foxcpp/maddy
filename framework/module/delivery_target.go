@@ -33,12 +33,12 @@ import (
 // Modules implementing this interface should be registered with "target."
 // prefix in name.
 type DeliveryTarget interface {
-	// Start starts the delivery of a new message.
+	// StartDelivery starts the delivery of a new message.
 	//
 	// The domain part of the MAIL FROM address is assumed to be U-labels with
 	// NFC normalization and case-folding applied. The message source should
 	// ensure that by calling address.CleanDomain if necessary.
-	Start(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
+	StartDelivery(ctx context.Context, msgMeta *MsgMetadata, mailFrom string) (Delivery, error)
 }
 
 type Delivery interface {
@@ -54,7 +54,7 @@ type Delivery interface {
 	// however. They should be silently ignored.
 	//
 	// Implementation should do as much checks as possible here and reject
-	// recipients that can't be used.  Note: MsgMetadata object passed to Start
+	// recipients that can't be used.  Note: MsgMetadata object passed to StartDelivery
 	// contains BodyLength field. If it is non-zero, it can be used to check
 	// storage quota for the user before Body.
 	AddRcpt(ctx context.Context, rcptTo string, opts smtp.RcptOptions) error

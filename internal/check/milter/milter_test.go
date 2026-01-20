@@ -38,7 +38,7 @@ func TestAcceptValidEndpoints(t *testing.T) {
 	} {
 		c := &Check{milterUrl: endpoint}
 
-		err := c.Init(&config.Map{})
+		err := c.Configure(nil, &config.Map{})
 		if err != nil {
 			t.Errorf("Unexpected failure for %s: %v", endpoint, err)
 			return
@@ -52,7 +52,7 @@ func TestRejectInvalidEndpoints(t *testing.T) {
 		"tls:0.0.0.0:10025",
 	} {
 		c := &Check{milterUrl: endpoint}
-		err := c.Init(&config.Map{})
+		err := c.Configure(nil, &config.Map{})
 		if err == nil {
 			t.Errorf("Accepted invalid endpoint: %s", endpoint)
 			return

@@ -46,13 +46,13 @@ type Group struct {
 	dest   *limiters.BucketSet // BucketSet of MultiLimit
 }
 
-func New(_, instName string, _, _ []string) (module.Module, error) {
+func New(_, instName string) (module.Module, error) {
 	return &Group{
 		instName: instName,
 	}, nil
 }
 
-func (g *Group) Init(cfg *config.Map) error {
+func (g *Group) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		globalL []limiters.L
 		ipL     []func() limiters.L

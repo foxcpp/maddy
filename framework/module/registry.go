@@ -19,85 +19,129 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package module
 
 import (
-	"sync"
+	"errors"
 
 	"github.com/foxcpp/maddy/framework/log"
 )
 
 var (
-	// NoRun makes sure modules do not start any bacground tests.
-	//
-	// If it set - modules should not perform any actual work and should stop
-	// once the configuration is read and verified to be correct.
-	// TODO: Replace it with separation of Init and Run at interface level.
-	NoRun = false
-
-	modules     = make(map[string]FuncNewModule)
-	endpoints   = make(map[string]FuncNewEndpoint)
-	modulesLock sync.RWMutex
+	ErrInstanceNameDuplicate = errors.New("instance name already registered")
+	ErrInstanceUnknown       = errors.New("no such instance registered")
 )
 
-// Register adds module factory function to global registry.
-//
-// name must be unique. Register will panic if module with specified name
-// already exists in registry.
-//
-// You probably want to call this function from func init() of module package.
-func Register(name string, factory FuncNewModule) {
-	modulesLock.Lock()
-	defer modulesLock.Unlock()
+type registryEntry struct {
+	Mod      Module
+	LazyInit func() error
+}
 
-	if _, ok := modules[name]; ok {
-		panic("Register: module with specified name is already registered: " + name)
+type Registry struct {
+	logger      *log.Logger
+	instances   map[string]registryEntry
+	initialized map[string]struct{}
+	started     map[string]struct{}
+	aliases     map[string]string
+}
+
+func NewRegistry(log *log.Logger) *Registry {
+	return &Registry{
+		logger:      log,
+		instances:   make(map[string]registryEntry),
+		initialized: make(map[string]struct{}),
+		started:     make(map[string]struct{}),
+		aliases:     make(map[string]string),
+	}
+}
+
+// Register adds not-initialized (configured) module into registry.
+//
+// lazyInit function will be called on first request to get the module from
+// registry.
+func (r *Registry) Register(mod Module, lazyInit func() error) error {
+	instName := mod.InstanceName()
+	if instName == "" {
+		panic("module with empty instance name cannot be added to the registry")
 	}
 
-	modules[name] = factory
-}
-
-// RegisterDeprecated adds module factory function to global registry.
-//
-// It prints warning to the log about name being deprecated and suggests using
-// a new name.
-func RegisterDeprecated(name, newName string, factory FuncNewModule) {
-	Register(name, func(modName, instName string, aliases, inlineArgs []string) (Module, error) {
-		log.Printf("module initialized via deprecated name %s, %s should be used instead; deprecated name may be removed in the next version", name, newName)
-		return factory(modName, instName, aliases, inlineArgs)
-	})
-}
-
-// Get returns module from global registry.
-//
-// This function does not return endpoint-type modules, use GetEndpoint for
-// that.
-// Nil is returned if no module with specified name is registered.
-func Get(name string) FuncNewModule {
-	modulesLock.RLock()
-	defer modulesLock.RUnlock()
-
-	return modules[name]
-}
-
-// GetEndpoints returns an endpoint module from global registry.
-//
-// Nil is returned if no module with specified name is registered.
-func GetEndpoint(name string) FuncNewEndpoint {
-	modulesLock.RLock()
-	defer modulesLock.RUnlock()
-
-	return endpoints[name]
-}
-
-// RegisterEndpoint registers an endpoint module.
-//
-// See FuncNewEndpoint for information about
-// differences of endpoint modules from regular modules.
-func RegisterEndpoint(name string, factory FuncNewEndpoint) {
-	modulesLock.Lock()
-	defer modulesLock.Unlock()
-
-	if _, ok := endpoints[name]; ok {
-		panic("Register: module with specified name is already registered: " + name)
+	_, ok := r.instances[instName]
+	if ok {
+		return ErrInstanceNameDuplicate
 	}
 
-	endpoints[name] = factory
+	r.instances[instName] = registryEntry{
+		Mod:      mod,
+		LazyInit: lazyInit,
+	}
+	return nil
+}
+
+func (r *Registry) AddAlias(instanceName string, alias string) error {
+	if instanceName == "" {
+		panic("cannot add an alias for empty instance name")
+	}
+	if alias == "" {
+		panic("cannot add an empty alias")
+	}
+	_, ok := r.aliases[alias]
+	if ok {
+		return ErrInstanceNameDuplicate
+	}
+	_, ok = r.instances[instanceName]
+	if ok {
+		return ErrInstanceNameDuplicate
+	}
+
+	r.aliases[alias] = instanceName
+	return nil
+}
+
+func (r *Registry) ensureInitialized(name string, entry *registryEntry) error {
+	_, ok := r.initialized[name]
+	if ok {
+		return nil
+	}
+	if entry.LazyInit == nil {
+		return nil
+	}
+
+	r.logger.DebugMsg("module configure",
+		"mod_name", entry.Mod.Name(), "inst_name", entry.Mod.InstanceName())
+	err := entry.LazyInit()
+	if err != nil {
+		return err
+	}
+	r.initialized[name] = struct{}{}
+
+	return nil
+}
+
+func (r *Registry) Get(name string) (Module, error) {
+	if name == "" {
+		panic("cannot get module with empty name")
+	}
+	aliasedName := r.aliases[name]
+	if aliasedName != "" {
+		name = aliasedName
+	}
+
+	mod, ok := r.instances[name]
+	if !ok {
+		return nil, ErrInstanceUnknown
+	}
+
+	if err := r.ensureInitialized(name, &mod); err != nil {
+		return nil, err
+	}
+
+	return mod.Mod, nil
+}
+
+func (r *Registry) NotInitialized() []Module {
+	notinit := make([]Module, 0, len(r.instances)-len(r.initialized))
+	for name, mod := range r.instances {
+		if _, ok := r.initialized[name]; ok {
+			continue
+		}
+		notinit = append(notinit, mod.Mod)
+	}
+	return notinit
 }

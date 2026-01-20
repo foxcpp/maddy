@@ -34,18 +34,18 @@ type Store struct {
 	objectPrefix string
 }
 
-func New(_, instName string, _, inlineArgs []string) (module.Module, error) {
-	if len(inlineArgs) != 0 {
-		return nil, fmt.Errorf("%s: expected 0 arguments", modName)
-	}
-
+func New(_, instName string) (module.Module, error) {
 	return &Store{
 		instName: instName,
 		log:      log.Logger{Name: modName},
 	}, nil
 }
 
-func (s *Store) Init(cfg *config.Map) error {
+func (s *Store) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return fmt.Errorf("%s: expected 0 arguments", modName)
+	}
+
 	var (
 		secure          bool
 		accessKeyID     string

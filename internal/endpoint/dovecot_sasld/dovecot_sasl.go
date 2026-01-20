@@ -31,6 +31,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
 )
@@ -42,12 +43,13 @@ type Endpoint struct {
 	log      log.Logger
 	saslAuth auth.SASLAuth
 
+	endpoints   []config.Endpoint
 	listenersWg sync.WaitGroup
 
 	srv *dovecotsasl.Server
 }
 
-func New(_ string, addrs []string) (module.Module, error) {
+func New(_ string, addrs []string) (module.LifetimeModule, error) {
 	return &Endpoint{
 		addrs: addrs,
 		saslAuth: auth.SASLAuth{
@@ -65,7 +67,7 @@ func (endp *Endpoint) InstanceName() string {
 	return modName
 }
 
-func (endp *Endpoint) Init(cfg *config.Map) error {
+func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
@@ -78,8 +80,8 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 	}
 
 	endp.srv = dovecotsasl.NewServer()
-	endp.srv.Log = stdlog.New(endp.log, "", 0)
 	endp.saslAuth.Log.Debug = endp.log.Debug
+	endp.srv.Log = stdlog.New(&endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
@@ -98,12 +100,20 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 			return fmt.Errorf("%s: %v", modName, err)
 		}
 
-		l, err := net.Listen(parsed.Network(), parsed.Address())
+		endp.endpoints = append(endp.endpoints, parsed)
+	}
+
+	return nil
+}
+
+func (endp *Endpoint) Start() error {
+	for _, addr := range endp.endpoints {
+		l, err := netresource.Listen(addr.Network(), addr.Address())
 		if err != nil {
 			return fmt.Errorf("%s: %v", modName, err)
 		}
-		endp.log.Printf("listening on %v", l.Addr())
 
+		endp.log.Printf("listening on %v", l.Addr())
 		endp.listenersWg.Add(1)
 		go func() {
 			defer endp.listenersWg.Done()
@@ -114,12 +124,13 @@ func (endp *Endpoint) Init(cfg *config.Map) error {
 			}
 		}()
 	}
-
 	return nil
 }
 
-func (endp *Endpoint) Close() error {
-	return endp.srv.Close()
+func (endp *Endpoint) Stop() error {
+	endp.srv.Close()
+	endp.listenersWg.Wait()
+	return nil
 }
 
 func init() {

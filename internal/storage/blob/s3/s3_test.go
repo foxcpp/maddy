@@ -28,7 +28,7 @@ func TestFS(t *testing.T) {
 		}
 
 		st := &Store{instName: "test"}
-		err := st.Init(config.NewMap(map[string]interface{}{}, config.Node{
+		err := st.Configure(nil, config.NewMap(map[string]interface{}{}, config.Node{
 			Children: []config.Node{
 				{
 					Name: "endpoint",

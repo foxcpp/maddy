@@ -41,16 +41,12 @@ type Auth struct {
 	Log log.Logger
 }
 
-func NewAuth(modName, instName string, _, inlinargs []string) (module.Module, error) {
+func NewAuth(modName, instName string) (module.Module, error) {
 	a := &Auth{
 		modName:     modName,
 		instName:    instName,
 		onlyFirstID: false,
 		Log:         log.Logger{Name: modName},
-	}
-
-	if len(inlinargs) != 0 {
-		return nil, errors.New("plain_separate: inline arguments are not used")
 	}
 
 	return a, nil
@@ -64,7 +60,11 @@ func (a *Auth) InstanceName() string {
 	return a.instName
 }
 
-func (a *Auth) Init(cfg *config.Map) error {
+func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
+	if len(inlineArgs) != 0 {
+		return errors.New("plain_separate: inline arguments are not used")
+	}
+
 	cfg.Bool("debug", false, false, &a.Log.Debug)
 	cfg.Callback("user", func(m *config.Map, node config.Node) error {
 		var tbl module.Table

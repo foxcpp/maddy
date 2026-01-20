@@ -96,7 +96,7 @@ type (
 	// Modules implementing this interface should be registered with "mx_auth."
 	// prefix in name.
 	MXAuthPolicy interface {
-		Start(*MsgMetadata) DeliveryMXAuthPolicy
+		StartDelivery(*MsgMetadata) DeliveryMXAuthPolicy
 
 		// Weight is an integer in range 0-1000 that represents relative
 		// ordering of policy application.

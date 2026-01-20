@@ -63,7 +63,7 @@ func marshalOrderedJSON(output *strings.Builder, m map[string]interface{}) error
 			val = casted.Format("2006-01-02T15:04:05.000")
 		case time.Duration:
 			val = casted.String()
-		case LogFormatter:
+		case Formatter:
 			val = casted.FormatLog()
 		case fmt.Stringer:
 			val = casted.String()
