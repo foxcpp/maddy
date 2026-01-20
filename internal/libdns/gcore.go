@@ -1,5 +1,4 @@
 //go:build libdns_gcore || !libdns_separate
-// +build libdns_gcore !libdns_separate
 
 package libdns
 
@@ -12,7 +11,7 @@ import (
 )
 
 func init() {
-	module.Register("libdns.gcore", func(modName, instName string, _, _ []string) (module.Module, error) {
+	module.Register("libdns.gcore", func(modName, instName string) (module.Module, error) {
 		p := gcore.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,
