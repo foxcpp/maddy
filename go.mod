@@ -107,6 +107,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/kiwiz/popgun v0.0.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
@@ -171,3 +172,5 @@ replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0
 replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v1.21.4-0.20250124171104-c8519ae4fb23 // v1.21.3+maddy.1
 
 replace github.com/libdns/gandi => github.com/foxcpp/libdns-gandi v1.0.4-0.20240127130558-4782f9d5ce3e // v1.0.3+maddy.1
+
+replace github.com/kiwiz/popgun v0.0.0 => ../popgun
