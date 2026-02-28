@@ -78,17 +78,26 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 		return nil, nil, err
 	}
 
+	// Start all lifetime modules so that backends (e.g. storage.imapsql)
+	// are fully initialized before the CLI attempts to use them.
+	// Without this, fields like imapsql.Back remain nil and calls such
+	// as EnableUpdatePipe dereference a nil pointer.
+	if err := c.Lifetime.StartAll(); err != nil {
+		return nil, nil, err
+	}
+
 	return c, mod, nil
 }
 
 func openStorage(ctx *cli.Context) (module.Storage, error) {
-	_, mod, err := getCfgBlockModule(ctx)
+	c, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	storage, ok := mod.(module.Storage)
 	if !ok {
+		c.Lifetime.StopAll()
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block")), 2)
 	}
 
@@ -104,13 +113,14 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 }
 
 func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
-	_, mod, err := getCfgBlockModule(ctx)
+	c, mod, err := getCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	userDB, ok := mod.(module.PlainUserDB)
 	if !ok {
+		c.Lifetime.StopAll()
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block")), 2)
 	}
 
