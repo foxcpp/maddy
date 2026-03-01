@@ -37,6 +37,36 @@ func closeIfNeeded(i interface{}) {
 	}
 }
 
+type managedStorage struct {
+	module.ManageableStorage
+	started bool
+}
+
+func (m *managedStorage) Close() error {
+	if !m.started {
+		return nil
+	}
+	if lm, ok := m.ManageableStorage.(module.LifetimeModule); ok {
+		return lm.Stop()
+	}
+	return nil
+}
+
+type managedUserDB struct {
+	module.PlainUserDB
+	started bool
+}
+
+func (m *managedUserDB) Close() error {
+	if !m.started {
+		return nil
+	}
+	if lm, ok := m.PlainUserDB.(module.LifetimeModule); ok {
+		return lm.Stop()
+	}
+	return nil
+}
+
 func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	cfgPath := ctx.String("config")
 	if cfgPath == "" {
@@ -92,6 +122,14 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not an IMAP storage", ctx.String("cfg-block")), 2)
 	}
 
+	started := false
+	if lt, ok := storage.(module.LifetimeModule); ok {
+		if err := lt.Start(); err != nil {
+			return nil, err
+		}
+		started = true
+	}
+
 	if updStore, ok := mod.(updatepipe.Backend); ok {
 		if err := updStore.EnableUpdatePipe(updatepipe.ModePush); err != nil && !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "Failed to initialize update pipe, do not remove messages from mailboxes open by clients: %v\n", err)
@@ -100,6 +138,11 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 		fmt.Fprintf(os.Stderr, "No update pipe support, do not remove messages from mailboxes open by clients\n")
 	}
 
+	if started {
+		if ms, ok := storage.(module.ManageableStorage); ok {
+			return &managedStorage{ManageableStorage: ms, started: started}, nil
+		}
+	}
 	return storage, nil
 }
 
@@ -114,5 +157,16 @@ func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
 		return nil, cli.Exit(fmt.Sprintf("Error: configuration block %s is not a local credentials store", ctx.String("cfg-block")), 2)
 	}
 
+	started := false
+	if lt, ok := userDB.(module.LifetimeModule); ok {
+		if err := lt.Start(); err != nil {
+			return nil, err
+		}
+		started = true
+	}
+
+	if started {
+		return &managedUserDB{PlainUserDB: userDB, started: started}, nil
+	}
 	return userDB, nil
 }
