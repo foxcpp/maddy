@@ -38,6 +38,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/dns"
+	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
@@ -285,6 +286,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	}
 
 	endp.saslAuth.Log.Debug = endp.Log.Debug
+	endp.saslAuth.ErrorMap = endp.authErrorMap
 
 	// INTERNATIONALIZATION: See RFC 6531 Section 3.3.
 	endp.serv.Domain, err = idna.ToASCII(hostname)
@@ -324,6 +326,22 @@ func (endp *Endpoint) Start() error {
 		return err
 	}
 	return nil
+}
+
+func (endp *Endpoint) authErrorMap(err error) error {
+	if exterrors.IsTemporary(err) {
+		return &smtp.SMTPError{
+			Code:         454,
+			EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+			Message:      "Temporary authentication failure",
+		}
+	}
+
+	return &smtp.SMTPError{
+		Code:         535,
+		EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+		Message:      "Invalid credentials",
+	}
 }
 
 func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {

@@ -1,10 +1,8 @@
 //go:build integration && (darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris)
-// +build integration
-// +build darwin dragonfly freebsd linux netbsd openbsd solaris
 
 /*
 Maddy Mail Server - Composable all-in-one email server.
-Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+Copyright © 2019-2026 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,9 +24,9 @@ package tests_test
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"flag"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -47,7 +45,8 @@ func init() {
 	flag.StringVar(&DovecotExecutable, "integration.dovecot", "dovecot", "path to dovecot executable for interop tests")
 }
 
-const dovecotConf = `base_dir = $ROOT/run/
+const dovecotConf = `
+base_dir = $ROOT/run/
 state_dir = $ROOT/lib/
 log_path = /dev/stderr
 ssl = no
@@ -56,12 +55,14 @@ default_internal_user = $USER
 default_internal_group = $GROUP
 default_login_user = $USER
 
+auth_failure_delay = 0
+
 passdb {
 	driver = passwd-file
 	args = $ROOT/passwd
 }
 
-userdb {
+userdb file {
 	driver = passwd-file
 	args = $ROOT/passwd
 }
@@ -78,7 +79,7 @@ protocols = imap
 service imap-login {
 	chroot =
 	inet_listener imap {
-		address = 127.0.0.1
+		listen = 127.0.0.1
 		port = 0
 	}
 }
@@ -95,7 +96,63 @@ auth_verbose_passwords = yes
 mail_debug = yes
 `
 
+const dovecotConf24 = `dovecot_config_version = 2.4.0
+dovecot_storage_version = 2.4.0
+
+base_dir = $ROOT/run/
+state_dir = $ROOT/lib/
+mail_plugin_dir = $ROOT/lib/
+login_plugin_dir = $ROOT/lib/
+log_path = /dev/stderr
+ssl = no
+
+default_internal_user = $USER
+default_internal_group = $GROUP
+default_login_user = $USER
+
+auth_failure_delay = 0
+
+passdb file {
+	driver = passwd-file
+	passwd_file_path = $ROOT/passwd
+}
+
+userdb file {
+	driver = passwd-file
+	passwd_file_path = $ROOT/passwd
+}
+
+service auth {
+	unix_listener auth {
+		mode = 0666
+	}
+}
+
+# Turn on debugging information, to help troubleshooting issues.
+auth_verbose = yes
+auth_debug = yes
+auth_debug_passwords = yes
+auth_verbose_passwords = yes
+mail_debug = yes
+`
+
 const dovecotPasswd = `tester:{plain}123456:1000:1000::/home/user`
+
+func isDovecot24(t *testing.T, dovecotExec string) bool {
+	cmd := exec.Command(dovecotExec, "--version")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	version, _, _ := strings.Cut(stdout.String(), "-")
+	t.Log("Dovecot version:", stdout.String())
+
+	parts := strings.SplitN(version, ".", 3)
+
+	return len(parts) >= 2 && parts[0] == "2" && parts[1] >= "4"
+}
 
 func runDovecot(t *testing.T) (string, *exec.Cmd) {
 	dovecotExec, err := exec.LookPath(DovecotExecutable)
@@ -117,15 +174,20 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 		t.Fatal(err)
 	}
 
+	dovecotConfTemplate := dovecotConf
+	if isDovecot24(t, dovecotExec) {
+		dovecotConfTemplate = dovecotConf24
+	}
+
 	dovecotConf := strings.NewReplacer(
 		"$ROOT", tempDir,
 		"$USER", curUser.Username,
-		"$GROUP", curGroup.Name).Replace(dovecotConf)
-	err = ioutil.WriteFile(filepath.Join(tempDir, "dovecot.conf"), []byte(dovecotConf), os.ModePerm)
+		"$GROUP", curGroup.Name).Replace(dovecotConfTemplate)
+	err = os.WriteFile(filepath.Join(tempDir, "dovecot.conf"), []byte(dovecotConf), os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ioutil.WriteFile(filepath.Join(tempDir, "passwd"), []byte(dovecotPasswd), os.ModePerm)
+	err = os.WriteFile(filepath.Join(tempDir, "passwd"), []byte(dovecotPasswd), os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,9 +209,14 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 		for scnr.Scan() {
 			line := scnr.Text()
 
-			// One of messages printed near completing initialization.
+			// One of messages printed near completing initialization (Dovecot 2.3 or older)
 			if strings.Contains(line, "starting up for imap") {
-				time.Sleep(500*time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
+				ready <- struct{}{}
+			}
+			// Dovecot 2.4+
+			if strings.Contains(line, "starting up without any protocols") {
+				time.Sleep(500 * time.Millisecond)
 				ready <- struct{}{}
 			}
 

@@ -171,19 +171,7 @@ func (s *Session) AuthPlain(username, password string) error {
 
 		failedLogins.WithLabelValues(s.endp.name).Inc()
 
-		if exterrors.IsTemporary(err) {
-			return &smtp.SMTPError{
-				Code:         454,
-				EnhancedCode: smtp.EnhancedCode{4, 7, 0},
-				Message:      "Temporary authentication failure",
-			}
-		}
-
-		return &smtp.SMTPError{
-			Code:         535,
-			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
-			Message:      "Invalid credentials",
-		}
+		return s.endp.authErrorMap(err)
 	}
 
 	s.connState.AuthUser = username

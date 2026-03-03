@@ -54,6 +54,8 @@ type SASLAuth struct {
 	AuthMap       module.Table
 	AuthNormalize authz.NormalizeFunc
 
+	ErrorMap func(err error) error
+
 	Plain []module.PlainAuth
 }
 
@@ -132,7 +134,10 @@ type ContextData struct {
 }
 
 // CreateSASL creates the sasl.Server instance for the corresponding mechanism.
-func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(identity string, data ContextData) error) sasl.Server {
+func (s *SASLAuth) CreateSASL(
+	mech string, remoteAddr net.Addr,
+	successCb func(identity string, data ContextData) error,
+) sasl.Server {
 	switch mech {
 	case sasl.Plain:
 		return sasl.NewPlainServer(func(identity, username, password string) error {
@@ -140,12 +145,18 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 				identity = username
 			}
 			if identity != username {
+				if s.ErrorMap != nil {
+					return s.ErrorMap(ErrInvalidAuthCred)
+				}
 				return ErrInvalidAuthCred
 			}
 
 			err := s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
+				if s.ErrorMap != nil {
+					return s.ErrorMap(ErrInvalidAuthCred)
+				}
 				return ErrInvalidAuthCred
 			}
 
@@ -162,12 +173,18 @@ func (s *SASLAuth) CreateSASL(mech string, remoteAddr net.Addr, successCb func(i
 		return sasllogin.NewLoginServer(func(username, password string) error {
 			username, err := s.usernameForAuth(context.Background(), username)
 			if err != nil {
+				if s.ErrorMap != nil {
+					return s.ErrorMap(ErrInvalidAuthCred)
+				}
 				return err
 			}
 
 			err = s.AuthPlain(username, password)
 			if err != nil {
 				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
+				if s.ErrorMap != nil {
+					return s.ErrorMap(ErrInvalidAuthCred)
+				}
 				return ErrInvalidAuthCred
 			}
 
