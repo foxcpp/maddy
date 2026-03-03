@@ -39,6 +39,7 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 // newTestQueue returns properly initialized Queue object usable for testing.
@@ -269,7 +270,7 @@ func TestQueueDelivery_PermanentFail_NonPartial(t *testing.T) {
 
 	// Queue will abort a delivery if it fails for all recipients.
 	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
-	q.Stop()
+	assert.NoError(t, q.Stop())
 
 	// Delivery is failed permanently, hence no retry should be rescheduled.
 	checkQueueDir(t, q, []string{})
@@ -296,7 +297,7 @@ func TestQueueDelivery_PermanentFail_Partial(t *testing.T) {
 	// Here delivery fails for recipients too, but this is reported using PartialDelivery.
 
 	readMsgChanTimeout(t, dt.aborted, 5*time.Second)
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	checkQueueDir(t, q, []string{})
 }
 

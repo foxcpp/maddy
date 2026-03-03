@@ -37,6 +37,7 @@ import (
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 var testPort string
@@ -146,7 +147,9 @@ func submitMsgOpts(t *testing.T, cl *smtp.Client, from string, rcpts []string, o
 func TestSMTPDelivery(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {

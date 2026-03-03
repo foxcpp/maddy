@@ -26,6 +26,7 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestReadFile(t *testing.T) {
@@ -107,7 +108,9 @@ func TestFileReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.log = testutils.Logger(t, "file_map")
-	defer m.Stop()
+	defer func() {
+		assert.NoError(t, m.Stop())
+	}()
 
 	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
@@ -147,10 +150,10 @@ func TestFileReload_Broken(t *testing.T) {
 	}
 	defer os.Remove(f.Name())
 	if _, err := f.WriteString(file); err != nil {
-		f.Close()
+		assert.NoError(t, f.Close())
 		t.Fatal(err)
 	}
-	f.Close()
+	assert.NoError(t, f.Close())
 
 	mod, err := NewFile("", "")
 	if err != nil {

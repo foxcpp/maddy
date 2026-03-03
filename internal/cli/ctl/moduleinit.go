@@ -21,19 +21,21 @@ package ctl
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/foxcpp/maddy"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 	"github.com/urfave/cli/v2"
 )
 
-func closeIfNeeded(i interface{}) {
-	if c, ok := i.(io.Closer); ok {
-		c.Close()
+func closeIfNeeded(i any) {
+	if c, ok := i.(module.LifetimeModule); ok {
+		if err := c.Stop(); err != nil {
+			log.DefaultLogger.Error("failed to stop module", err)
+		}
 	}
 }
 

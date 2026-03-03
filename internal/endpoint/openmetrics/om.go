@@ -85,7 +85,9 @@ func (e *Endpoint) Start() error {
 	for _, endp := range e.endpoints {
 		l, err := netresource.Listen(endp.Network(), endp.Address())
 		if err != nil {
-			e.Stop()
+			if err := e.Stop(); err != nil {
+
+			}
 			return fmt.Errorf("%s: %v", modName, err)
 		}
 

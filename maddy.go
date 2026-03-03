@@ -207,7 +207,11 @@ func Run(c *cli.Context) error {
 	defer log.DefaultLogger.Out.Close()
 	defer hooks.RunHooks(hooks.EventShutdown)
 
-	hooks.AddHook(hooks.EventShutdown, netresource.CloseAllListeners)
+	defer func() {
+		if err := netresource.CloseAllListeners(); err != nil {
+			log.DefaultLogger.Error("CloseAllListeners failed", err)
+		}
+	}()
 
 	if err := moduleMain(c.Path("config")); err != nil {
 		systemdStatusErr(err)
@@ -373,8 +377,8 @@ func moduleStart(c *container.C) error {
 	return c.Lifetime.StartAll()
 }
 
-func moduleStop(c *container.C) {
-	c.Lifetime.StopAll()
+func moduleStop(c *container.C) error {
+	return c.Lifetime.StopAll()
 }
 
 func moduleMain(configPath string) error {
@@ -412,7 +416,9 @@ func moduleMain(configPath string) error {
 	asyncStopWg.Wait()
 
 	systemdStatus(SDStopping, "Waiting for current configuration to stop...")
-	moduleStop(c)
+	if err := moduleStop(c); err != nil {
+		c.DefaultLogger.Msg("moduleStop failed", err)
+	}
 	c.DefaultLogger.Msg("server stopped")
 
 	return nil
@@ -446,10 +452,16 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 	asyncStopWg.Add(1)
 	go func() {
 		defer asyncStopWg.Done()
-		defer netresource.CloseUnusedListeners()
+		defer func() {
+			if err := netresource.CloseUnusedListeners(); err != nil {
+				oldContainer.DefaultLogger.Error("CloseUnusedListeners failed", err)
+			}
+		}()
 
 		oldContainer.DefaultLogger.Msg("stopping old server")
-		moduleStop(oldContainer)
+		if err := moduleStop(oldContainer); err != nil {
+			oldContainer.DefaultLogger.Error("moduleStop failed", err)
+		}
 		oldContainer.DefaultLogger.Msg("old server stopped")
 
 		systemdStatus(SDReloading, "Configuration running.")

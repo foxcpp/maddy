@@ -32,6 +32,7 @@ import (
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
@@ -63,7 +64,9 @@ func TestRemoteDelivery_AuthMX_MTASTS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -108,7 +111,9 @@ func TestRemoteDelivery_MTASTS_SkipNonMatching(t *testing.T) {
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -148,7 +153,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_Fail(t *testing.T) {
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {

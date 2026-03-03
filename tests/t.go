@@ -101,12 +101,25 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 		t.dnsServ.Close()
 	}
 
-	dnsServ, err := mockdns.NewServer(zones, false)
+	dnsServ, err := mockdns.NewServerWithLogger(zones, t, false)
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
 	dnsServ.Log = t
 	t.dnsServ = dnsServ
+
+	t.Cleanup(func() {
+		if t.dnsServ == nil {
+			return
+		}
+
+		// Shutdown the DNS server after maddy to make sure it will not spend time
+		// timing out queries.
+		if err := t.dnsServ.Close(); err != nil {
+			t.Log("Unable to stop the DNS server:", err)
+		}
+		t.dnsServ = nil
+	})
 }
 
 // Port allocates the random TCP port for use by test. It will made accessible
@@ -141,15 +154,6 @@ func (t *T) ensureCanRun() {
 		// any DNS queries to the real world.
 		t.Log("NOTE: Explicit DNS(nil) is recommended.")
 		t.DNS(nil)
-
-		t.Cleanup(func() {
-			// Shutdown the DNS server after maddy to make sure it will not spend time
-			// timing out queries.
-			if err := t.dnsServ.Close(); err != nil {
-				t.Log("Unable to stop the DNS server:", err)
-			}
-			t.dnsServ = nil
-		})
 	}
 
 	// Setup file system, create statedir, runtimedir, write out config.

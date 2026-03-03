@@ -67,14 +67,22 @@ func (lt *ListenerTracker) ResetUsage() {
 }
 
 func (lt *ListenerTracker) CloseUnused() error {
-	lt.tcp.CloseUnused(func(key string) bool { return true })
-	lt.unix.CloseUnused(func(key string) bool { return true })
+	if err := lt.tcp.CloseUnused(func(key string) bool { return true }); err != nil {
+		lt.logger.Error("CloseUnused for TCP failed", err)
+	}
+	if err := lt.unix.CloseUnused(func(key string) bool { return true }); err != nil {
+		lt.logger.Error("CloseUnused for Unix failed", err)
+	}
 	return nil
 }
 
 func (lt *ListenerTracker) Close() error {
-	lt.tcp.Close()
-	lt.unix.Close()
+	if err := lt.tcp.Close(); err != nil {
+		lt.logger.Error("Close for TCP failed", err)
+	}
+	if err := lt.unix.Close(); err != nil {
+		lt.logger.Error("Close for Unix failed", err)
+	}
 	return nil
 }
 

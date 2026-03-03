@@ -167,7 +167,9 @@ func (endp *Endpoint) Start() error {
 	}
 
 	if err := endp.setupListeners(endp.endpoints); err != nil {
-		endp.Stop()
+		if err := endp.Stop(); err != nil {
+			endp.Log.Error("failed to stop after setupListeners error", err)
+		}
 		return err
 	}
 	return nil

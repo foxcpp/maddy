@@ -318,7 +318,9 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 
 func (endp *Endpoint) Start() error {
 	if err := endp.setupListeners(endp.endpoints); err != nil {
-		endp.Stop()
+		if err := endp.Stop(); err != nil {
+			endp.Log.Error("failed to Stop after setupListeners fail", err)
+		}
 		return err
 	}
 	return nil
@@ -426,7 +428,9 @@ func (endp *Endpoint) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), endp.shutdownTimeout)
 	defer cancel()
 
-	endp.serv.Shutdown(ctx)
+	if err := endp.serv.Shutdown(ctx); err != nil {
+		return err
+	}
 
 	endp.listenersWg.Wait()
 

@@ -60,7 +60,9 @@ func (lt *LifetimeTracker) StartAll() error {
 		}
 
 		if err := entry.mod.Start(); err != nil {
-			lt.StopAll()
+			if err := lt.StopAll(); err != nil {
+				lt.logger.Error("StopAll failed after Start fail", err)
+			}
 			return fmt.Errorf("failed to start module %v: %w",
 				entry.mod.InstanceName(), err)
 		}
