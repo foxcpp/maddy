@@ -48,6 +48,7 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/authz"
+	sqliteprovider "github.com/foxcpp/maddy/internal/sqlite"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 	"github.com/foxcpp/maddy/internal/updatepipe/pubsub"
 
@@ -172,16 +173,16 @@ func (store *Storage) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("imapsql: driver is required")
 	}
 
-	if driver == "sqlite3" {
-		if sqliteImpl == "modernc" {
-			store.Log.Println("using transpiled SQLite (modernc.org/sqlite), this is experimental")
-			driver = "sqlite"
-		} else if sqliteImpl == "cgo" {
+	if sqliteprovider.IsSqliteDriver(driver) {
+		if sqliteprovider.IsTranspiled {
+			store.Log.Println("using transpiled SQLite (modernc.org/sqlite)")
+		} else if sqliteprovider.IsAvailable {
 			store.Log.Debugln("using cgo SQLite")
-		} else if sqliteImpl == "missing" {
+		} else {
 			return errors.New("imapsql: SQLite is not supported, recompile without no_sqlite3 tag set")
 		}
 	}
+	driver = sqliteprovider.MapDriverName(driver)
 
 	deliveryNormFunc, ok := authz.NormalizeFuncs[deliveryNormalize]
 	if !ok {
@@ -301,7 +302,7 @@ func (store *Storage) EnableUpdatePipe(mode updatepipe.BackendMode) error {
 	}
 
 	switch store.driver {
-	case "sqlite3":
+	case "sqlite3", "sqlite":
 		dbId := sha1.Sum([]byte(strings.Join(store.dsn, " ")))
 		sockPath := filepath.Join(
 			config.RuntimeDirectory,

@@ -21,11 +21,13 @@ package table
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
+	sqliteprovider "github.com/foxcpp/maddy/internal/sqlite"
 	_ "github.com/lib/pq"
 )
 
@@ -89,6 +91,7 @@ func (s *SQL) Configure(inlineArgs []string, cfg *config.Map) error {
 	if driver == "postgres" && s.namedArgs {
 		return config.NodeErr(cfg.Block, "PostgreSQL driver does not support named_args")
 	}
+	driver = sqliteprovider.MapDriverName(driver)
 
 	db, err := sql.Open(driver, strings.Join(dsnParts, " "))
 	if err != nil {
@@ -156,7 +159,7 @@ func (s *SQL) Lookup(ctx context.Context, val string) (string, bool, error) {
 		row = s.lookup.QueryRowContext(ctx, val)
 	}
 	if err := row.Scan(&repl); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", false, nil
 		}
 		return "", false, fmt.Errorf("%s: lookup %s: %w", s.modName, val, err)

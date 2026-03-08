@@ -1,9 +1,6 @@
-//go:build !nosqlite3 && cgo
-// +build !nosqlite3,cgo
-
 /*
 Maddy Mail Server - Composable all-in-one email server.
-Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
+Copyright © 2019-2026 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package table
+package sqliteprovider
 
-import _ "github.com/mattn/go-sqlite3"
+func IsSqliteDriver(name string) bool {
+	return name == "sqlite" || name == "sqlite3"
+}
