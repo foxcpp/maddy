@@ -27,6 +27,7 @@ import (
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSMTPUTF8_MangleStatusMessage(t *testing.T) {
@@ -43,14 +44,18 @@ func TestSMTPUTF8_MangleStatusMessage(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = cl.Mail("sender@example.org", nil)
 	if err == nil {
@@ -73,7 +78,9 @@ func TestSMTP_RejectNonASCIIFrom(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
@@ -100,14 +107,18 @@ func TestSMTPUTF8_NormalizeCaseFoldFrom(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsgOpts(t, cl, "foo@E\u0301.example.org", []string{"rcpt@example.com"}, &smtp.MailOptions{
 		UTF8: true,
@@ -127,14 +138,18 @@ func TestSMTP_RejectNonASCIIRcpt(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "x@example.org", []string{"ѣ@example.org"}, testMsg)
 
@@ -154,14 +169,18 @@ func TestSMTPUTF8_NormalizeCaseFoldRcpt(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsgOpts(t, cl, "x@example.org", []string{"foo@E\u0301.example.org"}, &smtp.MailOptions{
 		UTF8: true,
@@ -191,14 +210,18 @@ func TestSMTPUTF8_NoMangleStatusMessage(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = cl.Mail("sender@example.org", &smtp.MailOptions{
 		UTF8: true,
@@ -222,14 +245,18 @@ func TestSMTPUTF8_NoMangleStatusMessage(t *testing.T) {
 func TestSMTPUTF8_Received_EHLO_ALabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Hello("凱凱.invalid"); err != nil {
 		t.Fatal(err)
@@ -256,7 +283,9 @@ func TestSMTPUTF8_Received_EHLO_ALabel(t *testing.T) {
 func TestSMTPUTF8_Received_rDNS_ALabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
@@ -267,7 +296,9 @@ func TestSMTPUTF8_Received_rDNS_ALabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, testMsg)
 	if err != nil {
@@ -290,7 +321,9 @@ func TestSMTPUTF8_Received_rDNS_ALabel(t *testing.T) {
 func TestSMTPUTF8_Received_rDNS_ULabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
@@ -301,7 +334,9 @@ func TestSMTPUTF8_Received_rDNS_ULabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsgOpts(t, cl, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, &smtp.MailOptions{
 		UTF8: true,
@@ -326,14 +361,18 @@ func TestSMTPUTF8_Received_rDNS_ULabel(t *testing.T) {
 func TestSMTPUTF8_Received_EHLO_ULabel(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 	defer testutils.WaitForConnsClose(t, endp.serv)
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Hello("凱凱.invalid"); err != nil {
 		t.Fatal(err)

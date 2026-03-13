@@ -32,7 +32,7 @@ var overrideServ string
 //
 // The server argument is in form of "IP:PORT". It is expected that the server
 // will be available both using TCP and UDP on the same port.
-func override(server string) {
+func override(server string) { // nolint: unused // used in debugflags.go
 	net.DefaultResolver.PreferGo = true
 	net.DefaultResolver.Dial = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		dialer := net.Dialer{

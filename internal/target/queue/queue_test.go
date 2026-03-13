@@ -323,7 +323,7 @@ func TestQueueDelivery_TemporaryFail(t *testing.T) {
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries scheduled, queue storage is clear.
 	defer checkQueueDir(t, q, []string{})
 }

@@ -40,6 +40,7 @@ import (
 	"github.com/foxcpp/maddy/internal/limits"
 	"github.com/foxcpp/maddy/internal/smtpconn/pool"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 // .invalid TLD is used here to make sure if there is something wrong about
@@ -129,7 +130,9 @@ func TestRemoteDelivery(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -146,7 +149,9 @@ func TestRemoteDelivery_NoMXFallback(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -176,7 +181,9 @@ func TestRemoteDelivery_EmptySender(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 	testutils.DoTestDelivery(t, tgt, "", []string{"test@example.invalid"})
 
 	be.CheckMsg(t, 0, "", []string{"test@example.invalid"})
@@ -202,7 +209,9 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@[127.0.0.1]"})
 
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@[127.0.0.1]"})
@@ -219,7 +228,9 @@ func TestRemoteDelivery_FallbackMX(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -239,7 +250,9 @@ func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	c := multipleErrs{
 		errs: map[string]error{},
@@ -267,7 +280,9 @@ func TestRemoteDelivery_Abort(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -297,7 +312,9 @@ func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -334,7 +351,9 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -360,7 +379,9 @@ func TestRemoteDelivery_NoMX(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -390,7 +411,9 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -419,7 +442,9 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	meta := module.MsgMetadata{ID: "test..."}
 
@@ -467,7 +492,9 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -507,7 +534,9 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -558,7 +587,9 @@ func TestRemoteDelivery_DownMX(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -581,7 +612,9 @@ func TestRemoteDelivery_AllMXDown(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -612,7 +645,9 @@ func TestRemoteDelivery_Split(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid", "test@example2.invalid"})
 
@@ -651,7 +686,9 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -704,7 +741,9 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -758,7 +797,9 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -814,7 +855,9 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	}
 
 	tgt := testTarget(t, zones, nil, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{ID: "test..."}, "test@example.com")
 	if err != nil {
@@ -874,7 +917,9 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -896,7 +941,9 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -921,7 +968,9 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -950,7 +999,9 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -975,7 +1026,9 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
 		&localPolicy{minTLSLevel: module.TLSEncrypted},
 	})
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -1008,7 +1061,9 @@ func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.tlsConfig = clientCfg
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
@@ -1041,7 +1096,9 @@ func TestRemoteDelivery_ConnReuse(t *testing.T) {
 
 	tgt := testTarget(t, zones, nil, nil)
 	tgt.connReuseLimit = 5
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 
