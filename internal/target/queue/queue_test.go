@@ -246,7 +246,7 @@ func TestQueueDelivery(t *testing.T) {
 
 	// Wait for the delivery to complete and stop processing.
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
-	q.Stop()
+	assert.NoError(t, q.Stop())
 
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
@@ -356,7 +356,7 @@ func TestQueueDelivery_TemporaryFail_Partial(t *testing.T) {
 	msg = readMsgChanTimeout(t, dt.committed, 5000*time.Second)
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries scheduled, queue storage is clear.
 	checkQueueDir(t, q, []string{})
 }
@@ -396,7 +396,7 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries should be scheduled.
 	checkQueueDir(t, q, []string{})
 }
@@ -421,7 +421,7 @@ func TestQueueDelivery_PermanentRcptReject(t *testing.T) {
 	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	testutils.CheckMsgID(t, msg, "tester@example.org", []string{"tester2@example.org"}, "")
 
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries should be scheduled.
 	checkQueueDir(t, q, []string{})
 }
@@ -455,7 +455,7 @@ func TestQueueDelivery_TemporaryRcptReject(t *testing.T) {
 	msg = readMsgChanTimeout(t, dt.committed, 5*time.Second)
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, "")
 
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries should be scheduled.
 	checkQueueDir(t, q, []string{})
 }
@@ -489,7 +489,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
 	// Then stop it.
-	q.Stop()
+	assert.NoError(t, q.Stop())
 
 	// Make sure it is saved.
 	checkQueueDir(t, q, []string{deliveryID})
@@ -502,7 +502,7 @@ func TestQueueDelivery_SerializationRoundtrip(t *testing.T) {
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org"}, "")
 
 	// Close it again.
-	q.Stop()
+	assert.NoError(t, q.Stop())
 	// No more retries should be scheduled.
 	checkQueueDir(t, q, []string{})
 }
@@ -536,7 +536,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 		msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
 		testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester2@example.org"}, "")
 
-		q.Stop()
+		assert.NoError(t, q.Stop())
 
 		if err := os.Remove(filepath.Join(q.location, deliveryID+fileSuffix)); err != nil {
 			t.Fatal(err)
@@ -544,7 +544,7 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 
 		// Dangling files should be removed during load.
 		q = newTestQueueDir(t, &dt, q.location)
-		q.Stop()
+		assert.NoError(t, q.Stop())
 
 		// Nothing should be left.
 		checkQueueDir(t, q, []string{})

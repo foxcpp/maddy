@@ -86,7 +86,7 @@ func (e *Endpoint) Start() error {
 		l, err := netresource.Listen(endp.Network(), endp.Address())
 		if err != nil {
 			if err := e.Stop(); err != nil {
-
+				e.logger.Error("failed to stop after failed listen", err)
 			}
 			return fmt.Errorf("%s: %v", modName, err)
 		}

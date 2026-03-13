@@ -155,7 +155,9 @@ func TestSMTPDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, testMsg)
 	if err != nil {
@@ -187,7 +189,9 @@ func TestSMTPDelivery(t *testing.T) {
 func TestSMTPDelivery_rDNSError(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	endp.resolver.(*mockdns.Resolver).Zones["1.0.0.127.in-addr.arpa."] = mockdns.Zone{
 		Err: &net.DNSError{
@@ -202,7 +206,9 @@ func TestSMTPDelivery_rDNSError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, testMsg)
 	if err != nil {
@@ -231,13 +237,17 @@ func TestSMTPDelivery_EarlyCheck_Fail(t *testing.T) {
 			},
 		},
 	}, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = cl.Mail("sender@example.org", nil)
 	if err == nil {
@@ -271,13 +281,17 @@ func TestSMTPDeliver_CheckError(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = false
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = cl.Mail("sender@example.org", nil)
 	if err == nil {
@@ -310,13 +324,17 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 		},
 	}, nil)
 	endp.deferServerReject = true
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = cl.Mail("sender@example.org", nil)
 	if err != nil {
@@ -349,13 +367,17 @@ func TestSMTPDeliver_CheckError_Deferred(t *testing.T) {
 func TestSMTPDelivery_Multi(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "sender1@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, testMsg)
 	if err != nil {
@@ -387,13 +409,17 @@ func TestSMTPDelivery_Multi(t *testing.T) {
 func TestSMTPDelivery_AbortData(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		_ = cl.Close()
+	}()
 
 	if err := cl.Hello("mx.example.org"); err != nil {
 		t.Fatal(err)
@@ -413,7 +439,7 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	}
 
 	// Then.. Suddenly, close the connection without sending the final dot.
-	cl.Close()
+	assert.NoError(t, cl.Close())
 
 	time.Sleep(250 * time.Millisecond)
 
@@ -425,13 +451,17 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Hello("mx.example.org"); err != nil {
 		t.Fatal(err)
@@ -464,13 +494,17 @@ func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		_ = cl.Close()
+	}()
 
 	if err := cl.Hello("mx.example.org"); err != nil {
 		t.Fatal(err)
@@ -483,7 +517,7 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	}
 
 	// Then.. Suddenly, close the connection.
-	cl.Close()
+	assert.NoError(t, cl.Close())
 
 	time.Sleep(250 * time.Millisecond)
 
@@ -495,13 +529,17 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 func TestSMTPDelivery_Reset(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Mail("from-garbage@example.org", nil); err != nil {
 		t.Fatal(err)
@@ -530,13 +568,17 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Mail("from-garbage@example.org", nil); err == nil {
 		t.Fatal("Expected an error, got none")
@@ -546,13 +588,17 @@ func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
-	defer endp.Stop()
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
 
 	cl, err := smtp.Dial("127.0.0.1:" + testPort)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
 
 	if err := cl.Auth(sasl.NewPlainClient("", "user", "password")); err != nil {
 		t.Fatal(err)

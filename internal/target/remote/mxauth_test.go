@@ -196,7 +196,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoTLS(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -237,7 +239,12 @@ func TestRemoteDelivery_AuthMX_MTASTS_RequirePKIX(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Stop()
+	defer func(tgt *Target) {
+		err := tgt.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}(tgt)
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -287,7 +294,9 @@ func TestRemoteDelivery_AuthMX_MTASTS_NoPolicy(t *testing.T) {
 		testSTSPolicy(t, zones, mtastsGet),
 		&localPolicy{minMXLevel: module.MX_MTASTS},
 	})
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	_, err := testutils.DoTestDeliveryErr(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	if err == nil {
@@ -330,7 +339,9 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
-	defer tgt.Stop()
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
 
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
