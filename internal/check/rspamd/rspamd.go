@@ -57,6 +57,8 @@ type Check struct {
 	errorRespAction   modconfig.FailAction
 	addHdrAction      modconfig.FailAction
 	rewriteSubjAction modconfig.FailAction
+	rejectAction      modconfig.FailAction
+	softRejectAction  modconfig.FailAction
 
 	client *http.Client
 }
@@ -117,6 +119,15 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 		func() (interface{}, error) {
 			return modconfig.FailAction{Quarantine: true}, nil
 		}, modconfig.FailActionDirective, &c.rewriteSubjAction)
+	cfg.Custom("reject_action", false, false,
+		func() (interface{}, error) {
+			return modconfig.FailAction{Reject: true}, nil
+		}, modconfig.FailActionDirective, &c.rejectAction)
+	cfg.Custom("soft_reject_action", false, false,
+		func() (interface{}, error) {
+			return modconfig.FailAction{Reject: true}, nil
+		}, modconfig.FailActionDirective, &c.softRejectAction)
+
 	cfg.StringList("flags", false, false, []string{"pass_all"}, &flags)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -320,7 +331,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 			Header: hdrAdd,
 		})
 	case "soft reject":
-		return module.CheckResult{
+		return s.c.softRejectAction.Apply(module.CheckResult{
 			Reject: true,
 			Reason: &exterrors.SMTPError{
 				Code:         450,
@@ -329,9 +340,9 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 				CheckName:    modName,
 				Misc:         map[string]interface{}{"action": "soft reject"},
 			},
-		}
+		})
 	case "reject":
-		return module.CheckResult{
+		return s.c.rejectAction.Apply(module.CheckResult{
 			Reject: true,
 			Reason: &exterrors.SMTPError{
 				Code:         550,
@@ -340,7 +351,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 				CheckName:    modName,
 				Misc:         map[string]interface{}{"action": "reject"},
 			},
-		}
+		})
 	}
 
 	s.log.Msg("unhandled action", "action", respData.Action)

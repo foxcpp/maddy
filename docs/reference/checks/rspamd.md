@@ -14,6 +14,8 @@ check.rspamd {
 	error_resp_action ignore
 	add_header_action quarantine
 	rewrite_subj_action quarantine
+	reject_action reject
+	soft_reject_action reject
 	flags pass_all
 }
 
@@ -87,6 +89,20 @@ Default: `quarantine`
 Action to take when rspamd requests to "rewrite subject".
 
 X-Spam-Flag and X-Spam-Score are added to the header irregardless of value.
+
+---
+
+### reject_action _action_
+Default: `reject`
+
+Action to take when rspamd requests to "reject".
+
+---
+
+### soft_reject_action _action_
+Default: `reject`
+
+Action to take when rspamd requests to "soft reject".
 
 ---
 
