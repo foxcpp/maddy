@@ -32,5 +32,12 @@ func init() {
 		Usage:       "replace the DNS resolver address",
 		Value:       "system-default",
 		Destination: &overrideServ,
+		Action: func(context *cli.Context, s string) error {
+			if s != "" && s != "system-default" {
+				override(s)
+			}
+			overrideServ = s
+			return nil
+		},
 	})
 }

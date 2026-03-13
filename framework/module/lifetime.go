@@ -37,18 +37,27 @@ type ReloadModule interface {
 	Reload() error
 }
 
+// EarlyStopModule is a LifetimeModule that needs to do some bookkeeping
+// before new server instance starts during reload.
+type EarlyStopModule interface {
+	LifetimeModule
+	EarlyStop() error
+}
+
 type LifetimeTracker struct {
 	logger    *log.Logger
 	instances []*struct {
-		mod     LifetimeModule
-		started bool
+		mod          LifetimeModule
+		started      bool
+		earlyStopped bool
 	}
 }
 
 func (lt *LifetimeTracker) Add(mod LifetimeModule) {
 	lt.instances = append(lt.instances, &struct {
-		mod     LifetimeModule
-		started bool
+		mod          LifetimeModule
+		started      bool
+		earlyStopped bool
 	}{mod: mod, started: false})
 }
 
@@ -58,6 +67,9 @@ func (lt *LifetimeTracker) StartAll() error {
 		if entry.started {
 			continue
 		}
+
+		lt.logger.DebugMsg("starting module",
+			"mod_name", entry.mod.Name(), "inst_name", entry.mod.InstanceName())
 
 		if err := entry.mod.Start(); err != nil {
 			if err := lt.StopAll(); err != nil {
@@ -92,6 +104,32 @@ func (lt *LifetimeTracker) ReloadAll() error {
 
 		lt.logger.DebugMsg("module reloaded",
 			"mod_name", entry.mod.Name(), "inst_name", entry.mod.InstanceName())
+	}
+	return nil
+}
+
+func (lt *LifetimeTracker) EarlyStopAll() error {
+	for i := len(lt.instances) - 1; i >= 0; i-- {
+		entry := lt.instances[i]
+
+		if !entry.started {
+			continue
+		}
+
+		rsm, ok := entry.mod.(EarlyStopModule)
+		if !ok {
+			continue
+		}
+
+		if err := rsm.EarlyStop(); err != nil {
+			lt.logger.Error("module early stop failed", err,
+				"mod_name", entry.mod.Name(), "inst_name", entry.mod.InstanceName())
+			continue
+		}
+		lt.logger.DebugMsg("module early stopped",
+			"mod_name", entry.mod.Name(), "inst_name", entry.mod.InstanceName())
+
+		entry.earlyStopped = true
 	}
 	return nil
 }

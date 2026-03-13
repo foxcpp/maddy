@@ -377,7 +377,13 @@ func moduleStart(c *container.C) error {
 	return c.Lifetime.StartAll()
 }
 
-func moduleStop(c *container.C) error {
+func moduleStop(c *container.C, earlyStop bool) error {
+	if earlyStop {
+		if err := c.Lifetime.EarlyStopAll(); err != nil {
+			log.DefaultLogger.Error("early stop failed", err)
+		}
+	}
+
 	return c.Lifetime.StopAll()
 }
 
@@ -416,7 +422,7 @@ func moduleMain(configPath string) error {
 	asyncStopWg.Wait()
 
 	systemdStatus(SDStopping, "Waiting for current configuration to stop...")
-	if err := moduleStop(c); err != nil {
+	if err := moduleStop(c, true); err != nil {
 		c.DefaultLogger.Msg("moduleStop failed", err)
 	}
 	c.DefaultLogger.Msg("server stopped")
@@ -437,6 +443,12 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 
 	oldContainer.DefaultLogger.Msg("configuration loaded")
 
+	if err := oldContainer.Lifetime.EarlyStopAll(); err != nil {
+		oldContainer.DefaultLogger.Error("failed to early-stop old server", err)
+		container.Global = oldContainer
+		return oldContainer
+	}
+
 	netresource.ResetListenersUsage()
 	oldContainer.DefaultLogger.Msg("starting new server")
 	if err := moduleStart(newContainer); err != nil {
@@ -445,7 +457,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 		return oldContainer
 	}
 
-	newContainer.DefaultLogger.Msg("server started", "version", Version)
+	newContainer.DefaultLogger.Msg("new server started", "version", Version)
 
 	systemdStatus(SDReloading, "New configuration running. Waiting for old connections and transactions to finish...")
 
@@ -459,7 +471,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 		}()
 
 		oldContainer.DefaultLogger.Msg("stopping old server")
-		if err := moduleStop(oldContainer); err != nil {
+		if err := moduleStop(oldContainer, false); err != nil {
 			oldContainer.DefaultLogger.Error("moduleStop failed", err)
 		}
 		oldContainer.DefaultLogger.Msg("old server stopped")

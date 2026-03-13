@@ -60,13 +60,16 @@ type T struct {
 	portsRev map[uint16]string
 
 	servProc *exec.Cmd
+
+	reloadedChan chan struct{}
 }
 
 func NewT(t *testing.T) *T {
 	return &T{
-		T:        t,
-		ports:    map[string]uint16{},
-		portsRev: map[uint16]string{},
+		T:            t,
+		ports:        map[string]uint16{},
+		portsRev:     map[uint16]string{},
+		reloadedChan: make(chan struct{}, 1),
 	}
 }
 
@@ -75,11 +78,21 @@ func NewT(t *testing.T) *T {
 func (t *T) Config(cfg string) {
 	t.Helper()
 
-	if t.servProc != nil {
-		panic("tests: Config called after Run")
-	}
-
 	t.cfg = cfg
+
+	if t.servProc != nil {
+		t.Log("Reloading configuration for running server...")
+
+		configPreable := "state_dir " + filepath.Join(t.testDir, "statedir") + "\n" +
+			"runtime_dir " + filepath.Join(t.testDir, "runtimedir") + "\n\n"
+
+		err := os.WriteFile(filepath.Join(t.testDir, "maddy.conf"), []byte(configPreable+t.cfg), os.ModePerm)
+		if err != nil {
+			t.Fatal("Test configuration failed:", err)
+		}
+
+		t.reloadConfig()
+	}
 }
 
 // DNS sets the DNS zones to emulate for the tested server instance.
@@ -303,33 +316,38 @@ func (t *T) Run(waitListeners int) {
 		t.Fatal("Test configuration failed:", err)
 	}
 
-	// Log scanning goroutine checks for the "listening" messages and sends 'true'
-	// on the channel each time.
-	listeningMsg := make(chan bool)
+	serverStarted := make(chan bool)
 
 	go func() {
 		defer logOut.Close()
-		defer close(listeningMsg)
+		defer close(serverStarted)
 		scnr := bufio.NewScanner(logOut)
 		for scnr.Scan() {
 			line := scnr.Text()
 
-			if strings.Contains(line, "listening on") {
-				listeningMsg <- true
-				line += " (test runner>listener wait trigger<)"
+			t.Log("maddy:", line)
+
+			if strings.HasPrefix(line, "server started") {
+				serverStarted <- true
 			}
 
-			t.Log("maddy:", line)
+			if strings.HasPrefix(line, "new server started") {
+				select {
+				case t.reloadedChan <- struct{}{}:
+					t.Log("server reload confirmed, continuing test")
+				default:
+					t.Log("unexpected reloads detected")
+					t.Fail()
+				}
+			}
 		}
 		if err := scnr.Err(); err != nil {
 			t.Log("stderr I/O error:", err)
 		}
 	}()
 
-	for i := 0; i < waitListeners; i++ {
-		if !<-listeningMsg {
-			t.Fatal("Log ended before all expected listeners are up. Start-up error?")
-		}
+	if !<-serverStarted {
+		t.Fatal("Log ended before all expected listeners are up. Start-up error?")
 	}
 
 	t.servProc = cmd

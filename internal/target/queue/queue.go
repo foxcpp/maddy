@@ -122,7 +122,7 @@ type Queue struct {
 	location         string
 	hostname         string
 	autogenMsgDomain string
-	wheel            *TimeWheel
+	wheel            *TimeWheel[queueSlot]
 
 	dsnPipeline module.DeliveryTarget
 
@@ -211,6 +211,9 @@ func (q *Queue) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Bool("debug", true, false, &q.Log.Debug)
 	cfg.Int("max_tries", false, false, 20, &q.maxTries)
 	cfg.Int("max_parallelism", false, false, 16, &q.maxParallelism)
+	cfg.Duration("post_init_delay", false, false, q.postInitDelay, &q.postInitDelay)
+	cfg.Duration("initial_retry_time", false, false, q.initialRetryTime, &q.initialRetryTime)
+	cfg.Float("retry_time_scale", false, false, q.retryTimeScale, &q.retryTimeScale)
 	cfg.String("location", false, false, q.location, &q.location)
 	cfg.Custom("target", false, true, nil, modconfig.DeliveryDirective, &q.Target)
 	cfg.String("hostname", true, true, "", &q.hostname)
@@ -249,7 +252,7 @@ func (q *Queue) Start() error {
 }
 
 func (q *Queue) start(maxParallelism int) error {
-	q.wheel = NewTimeWheel(q.dispatch)
+	q.wheel = NewTimeWheel[queueSlot](q.dispatch)
 	q.deliverySemaphore = make(chan struct{}, maxParallelism)
 
 	if err := q.readDiskQueue(); err != nil {
@@ -261,11 +264,16 @@ func (q *Queue) start(maxParallelism int) error {
 	return nil
 }
 
-func (q *Queue) Stop() error {
+func (q *Queue) EarlyStop() error {
+	// We must ensure queue state is consistent on disk before we proceed
+	// with configuration reload.
 	q.wheel.Close()
 	q.deliveryWg.Wait()
-
 	return nil
+}
+
+func (q *Queue) Stop() error {
+	return q.EarlyStop()
 }
 
 // discardBroken changes the name of metadata file to have .meta_broken
@@ -283,8 +291,8 @@ func (q *Queue) discardBroken(id string) {
 	}
 }
 
-func (q *Queue) dispatch(value TimeSlot) {
-	slot := value.Value.(queueSlot)
+func (q *Queue) dispatch(ctx context.Context, value TimeSlot[queueSlot]) {
+	slot := value.Value
 
 	q.Log.Debugln("starting delivery for", slot.ID)
 
@@ -329,7 +337,7 @@ func (q *Queue) dispatch(value TimeSlot) {
 			body = slot.Body
 		}
 
-		q.tryDelivery(meta, hdr, body)
+		q.tryDelivery(ctx, meta, hdr, body)
 	}()
 }
 
@@ -373,10 +381,10 @@ func toSMTPErr(err error) *smtp.SMTPError {
 	return res
 }
 
-func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
+func (q *Queue) tryDelivery(ctx context.Context, meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
 
-	partialErr := q.deliver(meta, header, body)
+	partialErr := q.deliver(ctx, meta, header, body)
 	dl.Debugf("errors: %v", partialErr.Errs)
 
 	// While iterating the list of recipients we also pick the smallest tries count
@@ -460,7 +468,7 @@ func (q *Queue) tryDelivery(meta *QueueMetadata, header textproto.Header, body b
 	})
 }
 
-func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
+func (q *Queue) deliver(ctx context.Context, meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
 	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
 	perr := partialError{
 		Errs:       map[string]error{},
@@ -471,7 +479,7 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	msgMeta.ID = msgMeta.ID + "-" + strconv.FormatInt(time.Now().Unix(), 16)
 	dl.Debugf("using message ID = %s", msgMeta.ID)
 
-	msgCtx, msgTask := trace.NewTask(context.Background(), "Queue delivery")
+	msgCtx, msgTask := trace.NewTask(ctx, "Queue delivery")
 	defer msgTask.End()
 
 	mailCtx, mailTask := trace.NewTask(msgCtx, "MAIL FROM")
@@ -486,6 +494,15 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 	}
 	dl.Debugf("target.StartDelivery OK")
 
+	// Check in case delivery implementation is actually
+	// context-unaware.
+	if err := mailCtx.Err(); err != nil {
+		for _, rcpt := range meta.To {
+			perr.Errs[rcpt] = err
+		}
+		return perr
+	}
+
 	var acceptedRcpts []string
 	for _, rcpt := range meta.To {
 		rcptCtx, rcptTask := trace.NewTask(msgCtx, "RCPT TO")
@@ -497,6 +514,15 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 			acceptedRcpts = append(acceptedRcpts, rcpt)
 		}
 		rcptTask.End()
+
+		// Check in case delivery implementation is actually
+		// context-unaware.
+		if err := mailCtx.Err(); err != nil {
+			for _, rcpt := range meta.To {
+				perr.Errs[rcpt] = err
+			}
+			return perr
+		}
 	}
 
 	if len(acceptedRcpts) == 0 {
@@ -512,6 +538,10 @@ func (q *Queue) deliver(meta *QueueMetadata, header textproto.Header, body buffe
 			perr.Errs[rcpt] = err
 		}
 	}
+
+	// At this point, it is too late to abort delivery. We should complete
+	// it or fail it consistently.
+	msgCtx = context.WithoutCancel(msgCtx)
 
 	bodyCtx, bodyTask := trace.NewTask(msgCtx, "DATA")
 	defer bodyTask.End()

@@ -20,17 +20,18 @@ package queue
 
 import (
 	"container/list"
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-type TimeSlot struct {
+type TimeSlot[Value any] struct {
 	Time  time.Time
-	Value interface{}
+	Value Value
 }
 
-type TimeWheel struct {
+type TimeWheel[Value any] struct {
 	stopped uint32
 
 	slots     *list.List
@@ -38,45 +39,49 @@ type TimeWheel struct {
 
 	updateNotify chan time.Time
 	stopNotify   chan struct{}
+	tickerCtx    context.Context
+	tickerCancel context.CancelFunc
 
-	dispatch func(TimeSlot)
+	dispatch func(context.Context, TimeSlot[Value])
 }
 
-func NewTimeWheel(dispatch func(TimeSlot)) *TimeWheel {
-	tw := &TimeWheel{
+func NewTimeWheel[Value any](dispatch func(context.Context, TimeSlot[Value])) *TimeWheel[Value] {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	tw := &TimeWheel[Value]{
 		slots:        list.New(),
 		stopNotify:   make(chan struct{}),
+		tickerCtx:    ctx,
+		tickerCancel: cancel,
 		updateNotify: make(chan time.Time),
 		dispatch:     dispatch,
 	}
-	go tw.tick()
+	go tw.tick(context.Background())
 	return tw
 }
 
-func (tw *TimeWheel) Add(target time.Time, value interface{}) {
+func (tw *TimeWheel[Value]) Add(target time.Time, value Value) {
 	if atomic.LoadUint32(&tw.stopped) == 1 {
 		// Already stopped, ignore.
 		return
 	}
 
-	if value == nil {
-		panic("can't insert nil objects into TimeWheel queue")
-	}
-
 	tw.slotsLock.Lock()
-	tw.slots.PushBack(TimeSlot{Time: target, Value: value})
+	tw.slots.PushBack(TimeSlot[Value]{Time: target, Value: value})
 	tw.slotsLock.Unlock()
 
 	tw.updateNotify <- target
 }
 
-func (tw *TimeWheel) Close() {
+func (tw *TimeWheel[Value]) Close() {
 	atomic.StoreUint32(&tw.stopped, 1)
 
 	// Idempotent Close is convenient sometimes.
 	if tw.stopNotify == nil {
 		return
 	}
+
+	tw.tickerCancel()
 
 	tw.stopNotify <- struct{}{}
 	<-tw.stopNotify
@@ -86,16 +91,16 @@ func (tw *TimeWheel) Close() {
 	close(tw.updateNotify)
 }
 
-func (tw *TimeWheel) tick() {
+func (tw *TimeWheel[Value]) tick(ctx context.Context) {
 	for {
 		now := time.Now()
 		// Look for list element closest to now.
 		tw.slotsLock.Lock()
-		var closestSlot TimeSlot
+		var closestSlot TimeSlot[Value]
 		var closestEl *list.Element
 		for e := tw.slots.Front(); e != nil; e = e.Next() {
-			slot := e.Value.(TimeSlot)
-			if slot.Time.Sub(now) < closestSlot.Time.Sub(now) || closestSlot.Value == nil {
+			slot := e.Value.(TimeSlot[Value])
+			if slot.Time.Sub(now) < closestSlot.Time.Sub(now) || closestEl == nil {
 				closestSlot = slot
 				closestEl = e
 			}
@@ -124,7 +129,7 @@ func (tw *TimeWheel) tick() {
 				tw.slots.Remove(closestEl)
 				tw.slotsLock.Unlock()
 
-				tw.dispatch(closestSlot)
+				tw.dispatch(ctx, closestSlot)
 
 				break selectloop
 			case newTarget := <-tw.updateNotify:

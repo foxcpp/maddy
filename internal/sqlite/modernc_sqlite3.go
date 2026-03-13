@@ -1,4 +1,4 @@
-//go:build !nosqlite3 && !cgo
+//go:build (!nosqlite3 && !cgo) || modernc
 
 /*
 Maddy Mail Server - Composable all-in-one email server.

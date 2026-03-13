@@ -1,4 +1,4 @@
-//go:build !nosqlite3 && cgo && !modernc
+//go:build !unix
 
 /*
 Maddy Mail Server - Composable all-in-one email server.
@@ -18,18 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package sqliteprovider
+package tests
 
-import _ "github.com/mattn/go-sqlite3"
-
-const (
-	IsAvailable  = true
-	IsTranspiled = false
-)
-
-func MapDriverName(n string) string {
-	if n == "sqlite" {
-		return "sqlite3"
-	}
-	return n
+func (t *T) reloadConfig() {
+	t.Skip("Tests for config reload are not available")
 }

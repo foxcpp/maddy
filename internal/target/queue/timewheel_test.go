@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package queue
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -26,9 +27,9 @@ import (
 func TestTimeWheelAdd(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan TimeSlot)
+	called := make(chan TimeSlot[int])
 
-	w := NewTimeWheel(func(slot TimeSlot) {
+	w := NewTimeWheel[int](func(ctx context.Context, slot TimeSlot[int]) {
 		called <- slot
 	})
 	defer w.Close()
@@ -36,7 +37,7 @@ func TestTimeWheelAdd(t *testing.T) {
 	w.Add(time.Now().Add(1*time.Second), 1)
 
 	slot := <-called
-	if val, _ := slot.Value.(int); val != 1 {
+	if slot.Value != 1 {
 		t.Errorf("Wrong slot value: %v", slot.Value)
 	}
 }
@@ -44,9 +45,9 @@ func TestTimeWheelAdd(t *testing.T) {
 func TestTimeWheelAdd_Ordering(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan TimeSlot)
+	called := make(chan TimeSlot[int])
 
-	w := NewTimeWheel(func(slot TimeSlot) {
+	w := NewTimeWheel[int](func(ctx context.Context, slot TimeSlot[int]) {
 		called <- slot
 	})
 	defer w.Close()
@@ -55,11 +56,11 @@ func TestTimeWheelAdd_Ordering(t *testing.T) {
 	w.Add(time.Now().Add(1250*time.Millisecond), 2)
 
 	slot := <-called
-	if val, _ := slot.Value.(int); val != 1 {
+	if slot.Value != 1 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
 	}
 	slot = <-called
-	if val, _ := slot.Value.(int); val != 2 {
+	if slot.Value != 2 {
 		t.Errorf("Wrong second slot value: %v", slot.Value)
 	}
 }
@@ -67,9 +68,9 @@ func TestTimeWheelAdd_Ordering(t *testing.T) {
 func TestTimeWheelAdd_Restart(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan TimeSlot)
+	called := make(chan TimeSlot[int])
 
-	w := NewTimeWheel(func(slot TimeSlot) {
+	w := NewTimeWheel[int](func(ctx context.Context, slot TimeSlot[int]) {
 		called <- slot
 	})
 	defer w.Close()
@@ -78,11 +79,11 @@ func TestTimeWheelAdd_Restart(t *testing.T) {
 	w.Add(time.Now().Add(500*time.Millisecond), 2)
 
 	slot := <-called
-	if val, _ := slot.Value.(int); val != 2 {
+	if slot.Value != 2 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
 	}
 	slot = <-called
-	if val, _ := slot.Value.(int); val != 1 {
+	if slot.Value != 1 {
 		t.Errorf("Wrong second slot value: %v", slot.Value)
 	}
 }
@@ -90,9 +91,9 @@ func TestTimeWheelAdd_Restart(t *testing.T) {
 func TestTimeWheelAdd_MissingGotoBug(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan TimeSlot)
+	called := make(chan TimeSlot[int])
 
-	w := NewTimeWheel(func(slot TimeSlot) {
+	w := NewTimeWheel[int](func(ctx context.Context, slot TimeSlot[int]) {
 		called <- slot
 	})
 	defer w.Close()
@@ -101,7 +102,7 @@ func TestTimeWheelAdd_MissingGotoBug(t *testing.T) {
 	w.Add(time.Now().Add(500*time.Millisecond), 2) // should correctly restart
 
 	slot := <-called
-	if val, _ := slot.Value.(int); val != 2 {
+	if slot.Value != 2 {
 		t.Errorf("Wrong first slot value: %v", slot.Value)
 	}
 }
@@ -109,9 +110,9 @@ func TestTimeWheelAdd_MissingGotoBug(t *testing.T) {
 func TestTimeWheelAdd_EmptyUpdWait(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan TimeSlot)
+	called := make(chan TimeSlot[int])
 
-	w := NewTimeWheel(func(slot TimeSlot) {
+	w := NewTimeWheel[int](func(ctx context.Context, slot TimeSlot[int]) {
 		called <- slot
 	})
 	defer w.Close()
@@ -121,7 +122,7 @@ func TestTimeWheelAdd_EmptyUpdWait(t *testing.T) {
 	w.Add(time.Now().Add(1*time.Second), 1)
 
 	slot := <-called
-	if val, _ := slot.Value.(int); val != 1 {
+	if slot.Value != 1 {
 		t.Errorf("Wrong slot value: %v", slot.Value)
 	}
 }

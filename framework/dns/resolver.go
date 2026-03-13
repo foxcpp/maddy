@@ -53,9 +53,5 @@ func LookupAddr(ctx context.Context, r Resolver, ip net.IP) (string, error) {
 }
 
 func DefaultResolver() Resolver {
-	if overrideServ != "" && overrideServ != "system-default" {
-		override(overrideServ)
-	}
-
 	return net.DefaultResolver
 }
