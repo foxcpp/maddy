@@ -183,6 +183,7 @@ syn keyword maddyModDir
 	\ quarantine_threshold
 	\ read_timeout
 	\ reject_threshold
+	\ reject_action
 	\ relaxed_requiretls
 	\ required_fields
 	\ require_sender_match
@@ -198,6 +199,7 @@ syn keyword maddyModDir
 	\ sig_expiry
 	\ sign_fields
 	\ sign_subdomains
+	\ soft_reject_action
 	\ softfail_action
 	\ SOME_action
 	\ source
