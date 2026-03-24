@@ -37,14 +37,14 @@ func init() {
 		&cli.Command{
 			Name:  "creds",
 			Usage: "Local credentials management",
-			Description: `These commands manipulate credential databases used by 
+			Description: `These commands manipulate credential databases used by
 maddy mail server.
 
 Corresponding credential database should be defined in maddy.conf as
 a top-level config block. By default the block name should be local_authdb (
 can be changed using --cfg-block argument for subcommands).
 
-Note that it is not enough to create user credentials in order to grant 
+Note that it is not enough to create user credentials in order to grant
 IMAP access - IMAP account should be also created using 'imap-acct create' subcommand.
 `,
 			Subcommands: []*cli.Command{
@@ -74,7 +74,7 @@ IMAP access - IMAP account should be also created using 'imap-acct create' subco
 					Description: `Reads password from stdin.
 
 If configuration block uses auth.pass_table, then hash algorithm can be configured
-using command flags. Otherwise, these options cannot be used. 
+using command flags. Otherwise, these options cannot be used.
 `,
 					ArgsUsage: "USERNAME",
 					Flags: []cli.Flag{
@@ -213,12 +213,12 @@ func usersCreate(be module.PlainUserDB, ctx *cli.Context) error {
 func usersRemove(be module.PlainUserDB, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return errors.New("error: USERNAME is required")
 	}
 
 	if !ctx.Bool("yes") {
 		if !clitools2.Confirmation("Are you sure you want to delete this user account?", false) {
-			return errors.New("Cancelled")
+			return errors.New("cancelled")
 		}
 	}
 
@@ -228,7 +228,7 @@ func usersRemove(be module.PlainUserDB, ctx *cli.Context) error {
 func usersPassword(be module.PlainUserDB, ctx *cli.Context) error {
 	username := ctx.Args().First()
 	if username == "" {
-		return errors.New("Error: USERNAME is required")
+		return errors.New("error: USERNAME is required")
 	}
 
 	var pass string

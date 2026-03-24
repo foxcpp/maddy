@@ -33,6 +33,7 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/stretchr/testify/require"
 )
 
 type SMTPMessage struct {
@@ -227,10 +228,8 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 	// nil Server.listener (Serve sets it to a non-nil value, so it is racy and
 	// happens only sometimes).
 	testConn, err := net.Dial("tcp", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testConn.Close()
+	require.NoError(t, err)
+	require.NoError(t, testConn.Close())
 
 	return be, s
 }
@@ -321,10 +320,8 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 	// nil Server.listener (Serve sets it to a non-nil value, so it is racy and
 	// happens only sometimes).
 	testConn, err := net.Dial("tcp", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testConn.Close()
+	require.NoError(t, err)
+	require.NoError(t, testConn.Close())
 
 	return clientCfg, be, s
 }
@@ -379,7 +376,7 @@ func SMTPServerTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*t
 	if err != nil {
 		t.Fatal(err)
 	}
-	testConn.Close()
+	require.NoError(t, testConn.Close())
 
 	return clientCfg, be, s
 }

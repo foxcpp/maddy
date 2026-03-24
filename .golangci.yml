@@ -1,13 +1,11 @@
+version: "2"
 linters:
   enable:
-  - gosimple
   - errcheck
   - staticcheck
   - ineffassign
-  - typecheck
   - govet
   - unused
-  - goimports
   - prealloc
   - unconvert
   - misspell
@@ -15,3 +13,13 @@ linters:
   - nakedret
   - dogsled
   - copyloopvar
+  - sqlclosecheck
+  - testifylint
+  - rowserrcheck
+  - recvcheck
+  settings:
+    errcheck:
+      disable-default-exclusions: false
+formatters:
+  enable:
+  - goimports

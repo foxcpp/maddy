@@ -128,9 +128,8 @@ func (endp *Endpoint) Start() error {
 }
 
 func (endp *Endpoint) Stop() error {
-	endp.srv.Close()
-	endp.listenersWg.Wait()
-	return nil
+	defer endp.listenersWg.Wait()
+	return endp.srv.Close()
 }
 
 func init() {

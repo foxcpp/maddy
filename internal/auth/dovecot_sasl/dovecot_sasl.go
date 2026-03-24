@@ -77,7 +77,9 @@ func (a *Auth) getConn() (*dovecotsasl.Client, error) {
 }
 
 func (a *Auth) returnConn(cl *dovecotsasl.Client) {
-	cl.Close()
+	if err := cl.Close(); err != nil {
+		a.log.Error("connection close failed", err)
+	}
 }
 
 func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
@@ -113,7 +115,11 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return fmt.Errorf("%s: unable to contact server: %v", modName, err)
 	}
 
-	defer cl.Close()
+	defer func() {
+		if err := cl.Close(); err != nil {
+			a.log.Error("connection close failed", err)
+		}
+	}()
 	a.mechanisms = make(map[string]dovecotsasl.Mechanism, len(cl.ConnInfo().Mechs))
 	for name, mech := range cl.ConnInfo().Mechs {
 		if mech.Private {

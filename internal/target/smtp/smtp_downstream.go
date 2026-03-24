@@ -87,7 +87,7 @@ func NewDownstream(modName, instName string) (module.Module, error) {
 func (u *Downstream) Configure(inlineArgs []string, cfg *config.Map) error {
 	var attemptTLS *bool
 
-	var targetsArg []string
+	targetsArg := make([]string, 0, len(inlineArgs))
 	cfg.Bool("debug", true, false, &u.log.Debug)
 	cfg.Callback("require_tls", func(m *config.Map, node config.Node) error {
 		u.log.Msg("require_tls directive is deprecated and ignored")
@@ -195,7 +195,9 @@ func (u *Downstream) StartDelivery(ctx context.Context, msgMeta *module.MsgMetad
 	}
 
 	if err := d.conn.Mail(ctx, mailFrom, msgMeta.SMTPOpts); err != nil {
-		d.conn.Close()
+		if err := d.conn.Close(); err != nil {
+			u.log.Error("failed to close smtp connection", err)
+		}
 		return nil, err
 	}
 
@@ -204,6 +206,12 @@ func (u *Downstream) StartDelivery(ctx context.Context, msgMeta *module.MsgMetad
 	}
 
 	return d, nil
+}
+
+func (d *delivery) closeConn(c *smtpconn.C) {
+	if err := c.Close(); err != nil {
+		d.log.Error("failed to close SMTP connection", err)
+	}
 }
 
 func (d *delivery) connect(ctx context.Context) error {
@@ -251,12 +259,12 @@ func (d *delivery) connect(ctx context.Context) error {
 	if d.u.saslFactory != nil {
 		saslClient, err := d.u.saslFactory(d.msgMeta)
 		if err != nil {
-			conn.Close()
+			d.closeConn(conn)
 			return err
 		}
 
 		if err := conn.Client().Auth(saslClient); err != nil {
-			conn.Close()
+			d.closeConn(conn)
 			return err
 		}
 	}
@@ -282,7 +290,11 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 		return exterrors.WithFields(err, map[string]interface{}{"target": d.u.modName})
 	}
 
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			d.log.Msg("failed to close body buffer", err)
+		}
+	}()
 	return d.u.moduleError(d.conn.Data(ctx, header, r))
 }
 
@@ -294,7 +306,11 @@ func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollec
 			sc.SetStatus(rcpt, modErr)
 		}
 	}
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			d.log.Msg("failed to close body buffer", err)
+		}
+	}()
 
 	rcptIndx := 0
 	err = d.conn.LMTPData(ctx, header, r, func(rcpt string, err *smtp.SMTPError) {
@@ -320,8 +336,7 @@ func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollec
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
-	d.conn.Close()
-	return nil
+	return d.conn.Close()
 }
 
 func (d *delivery) Commit(ctx context.Context) error {

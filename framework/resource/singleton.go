@@ -50,8 +50,10 @@ func (s *Singleton[T]) CloseUnused(isUsed func(key string) bool) error {
 		if isUsed(key) {
 			continue
 		}
+		if err := res.Close(); err != nil {
+			s.log.Error("resource close failed", err, "key", key)
+		}
 		s.log.DebugMsg("resource released", "key", key)
-		res.Close()
 		delete(s.resources, key)
 	}
 
@@ -63,8 +65,10 @@ func (s *Singleton[T]) Close() error {
 	defer s.lock.Unlock()
 
 	for key, res := range s.resources {
+		if err := res.Close(); err != nil {
+			s.log.Error("resource close failed", err, "key", key)
+		}
 		s.log.DebugMsg("resource released", "key", key)
-		res.Close()
 		delete(s.resources, key)
 	}
 

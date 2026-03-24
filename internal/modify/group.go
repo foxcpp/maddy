@@ -25,6 +25,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
 
@@ -71,7 +72,9 @@ func (g *Group) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata)
 		if err != nil {
 			// Free state objects we initialized already.
 			for _, state := range gs.states {
-				state.Close()
+				if err := state.Close(); err != nil {
+					log.DefaultLogger.Error("failed to close modifier state", err)
+				}
 			}
 			return nil, err
 		}

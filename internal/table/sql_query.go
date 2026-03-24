@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	sqliteprovider "github.com/foxcpp/maddy/internal/sqlite"
 	_ "github.com/lib/pq"
@@ -144,7 +145,9 @@ func (s *SQL) Start() error {
 }
 
 func (s *SQL) Stop() error {
-	s.lookup.Close()
+	if err := s.lookup.Close(); err != nil {
+		log.DefaultLogger.Error("lookup query close failed", err)
+	}
 	return s.db.Close()
 }
 
@@ -203,7 +206,9 @@ func (s *SQL) Keys() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: list: %w", s.modName, err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 	var list []string
 	for rows.Next() {
 		var key string
@@ -211,6 +216,9 @@ func (s *SQL) Keys() ([]string, error) {
 			return nil, fmt.Errorf("%s: list: %w", s.modName, err)
 		}
 		list = append(list, key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: list: %w", s.modName, err)
 	}
 	return list, nil
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadFile(t *testing.T) {
@@ -173,10 +174,10 @@ func TestFileReload_Broken(t *testing.T) {
 		}
 	}(f.Name())
 	if _, err := f.WriteString(file); err != nil {
-		assert.NoError(t, f.Close())
+		require.NoError(t, f.Close())
 		t.Fatal(err)
 	}
-	assert.NoError(t, f.Close())
+	require.NoError(t, f.Close())
 
 	mod, err := NewFile("", "")
 	if err != nil {

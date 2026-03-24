@@ -428,7 +428,9 @@ func (store *Storage) Lookup(ctx context.Context, key string) (string, bool, err
 
 func (store *Storage) Stop() error {
 	// Stop backend from generating new updates.
-	store.Back.Close()
+	if err := store.Back.Close(); err != nil {
+		store.Log.Error("close backend failed", err)
+	}
 
 	// Wait for 'updates replicate' goroutine to actually stop so we will send
 	// all updates before shutting down (this is especially important for
@@ -437,7 +439,9 @@ func (store *Storage) Stop() error {
 		close(store.outboundUpds)
 		<-store.updPushStop
 
-		store.updPipe.Close()
+		if err := store.updPipe.Close(); err != nil {
+			store.Log.Error("updatepipe close failed", err)
+		}
 	}
 
 	return nil

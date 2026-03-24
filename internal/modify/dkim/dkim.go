@@ -270,7 +270,7 @@ func (s *state) RewriteSender(ctx context.Context, mailFrom string) (string, err
 	return mailFrom, nil
 }
 
-func (s state) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error) {
+func (s *state) RewriteRcpt(ctx context.Context, rcptTo string) ([]string, error) {
 	return []string{rcptTo}, nil
 }
 
@@ -341,16 +341,16 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	if err := textproto.WriteHeader(signer, *h); err != nil {
-		signer.Close()
+		_ = signer.Close()
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	r, err := body.Open()
 	if err != nil {
-		signer.Close()
+		_ = signer.Close()
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 	if _, err := io.Copy(signer, r); err != nil {
-		signer.Close()
+		_ = signer.Close()
 		return exterrors.WithFields(err, map[string]interface{}{"modifier": "modify.dkim"})
 	}
 
@@ -365,7 +365,7 @@ func (s *state) RewriteBody(ctx context.Context, h *textproto.Header, body buffe
 	return nil
 }
 
-func (s state) Close() error {
+func (s *state) Close() error {
 	return nil
 }
 

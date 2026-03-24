@@ -42,7 +42,11 @@ func (m *Modifier) loadOrGenerateKey(keyPath, newKeyAlgo string) (pkey crypto.Si
 		}
 		return nil, false, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			m.log.Error("failed to close key file", err)
+		}
+	}()
 
 	pemBlob, err := io.ReadAll(f)
 	if err != nil {

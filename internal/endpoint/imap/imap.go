@@ -219,7 +219,9 @@ func (endp *Endpoint) InstanceName() string {
 
 func (endp *Endpoint) Stop() error {
 	for _, l := range endp.listeners {
-		l.Close()
+		if err := l.Close(); err != nil {
+			endp.Log.Error("failed to close listener", err)
+		}
 	}
 	if err := endp.serv.Close(); err != nil {
 		return err

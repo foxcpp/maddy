@@ -52,7 +52,7 @@ func (m *Module) Configure(inlineArgs []string, cfg *config.Map) error {
 		return err
 	}
 	m.MsgPipeline = p
-	m.MsgPipeline.Log = m.log
+	m.Log = m.log
 
 	return nil
 }

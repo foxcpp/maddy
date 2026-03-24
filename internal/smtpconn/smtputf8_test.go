@@ -28,6 +28,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func doTestDelivery(t *testing.T, conn *C, from string, to []string, opts smtp.MailOptions) error {
@@ -65,7 +66,9 @@ func TestSMTPUTF8(t *testing.T) {
 
 		be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
 		srv.EnableSMTPUTF8 = case_.serverUTF8
-		defer srv.Close()
+		defer func() {
+			require.NoError(t, srv.Close())
+		}()
 		defer testutils.CheckSMTPConnLeak(t, srv)
 
 		c := New()
@@ -77,7 +80,9 @@ func TestSMTPUTF8(t *testing.T) {
 		}, false, nil); err != nil {
 			t.Fatal(err)
 		}
-		defer c.Close()
+		defer func() {
+			require.NoError(t, c.Close())
+		}()
 
 		err := doTestDelivery(t, c, case_.clientSender, []string{case_.clientRcpt},
 			smtp.MailOptions{UTF8: true})

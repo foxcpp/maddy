@@ -17,24 +17,23 @@ jobs:
     name: Lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: "Install libpam"
         run: |
           sudo apt-get update
           sudo apt-get install -y libpam-dev
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.60
-          args: "--timeout=30m"
+          version: v2.11
   buildsh:
     name: "Verify build.sh"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: "Install libpam"
@@ -50,8 +49,8 @@ jobs:
     name: "Build and test"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
+    - uses: actions/checkout@v6
+    - uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
     - name: "Install libpam"
@@ -65,11 +64,3 @@ jobs:
       run: |
         cd tests/
         ./run.sh
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./coverage.out
-        flags: unit
-    - uses: codecov/codecov-action@v2
-      with:
-        files: ./tests/coverage.out
-        flags: integration

@@ -169,7 +169,7 @@ func (ctx *parseContext) expandSingleValueMacro(arg string) (string, error) {
 			value = ctx.macros[macroName][0]
 		}
 
-		arg = strings.Replace(arg, "$("+macroName+")", value, -1)
+		arg = strings.ReplaceAll(arg, "$("+macroName+")", value)
 	}
 
 	return arg, nil

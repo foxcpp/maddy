@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	ErrUnsupportedMech = errors.New("Unsupported SASL mechanism")
+	ErrUnsupportedMech = errors.New("unsupported SASL mechanism")
 	ErrInvalidAuthCred = errors.New("auth: invalid credentials")
 )
 

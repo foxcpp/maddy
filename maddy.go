@@ -201,10 +201,18 @@ func Run(c *cli.Context) error {
 
 	initDebug(c)
 
-	os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	err = os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	if err != nil {
+		systemdStatusErr(err)
+		return cli.Exit(err.Error(), 1)
+	}
 
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
-	defer log.DefaultLogger.Out.Close()
+	defer func() {
+		if err := log.DefaultLogger.Out.Close(); err != nil {
+			log.Println("failed to close default logger output:", err)
+		}
+	}()
 	defer hooks.RunHooks(hooks.EventShutdown)
 
 	defer func() {
@@ -222,7 +230,10 @@ func Run(c *cli.Context) error {
 }
 
 func VerifyConfig(c *cli.Context) error {
-	os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	err := os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
 
 	if _, err := moduleConfigure(c.Path("config")); err != nil {
 		return cli.Exit(err.Error(), 2)
@@ -308,7 +319,9 @@ func ensureDirectoryWritable(path string) error {
 	if err != nil {
 		return err
 	}
-	testFile.Close()
+	if err := testFile.Close(); err != nil {
+		log.Println("failed to close writeable-test file:", err)
+	}
 	return os.RemoveAll(testFile.Name())
 }
 
@@ -337,7 +350,11 @@ func ReadConfig(path string) ([]config.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println("failed to close config file:", err)
+		}
+	}()
 
 	return parser.Read(f, path)
 }

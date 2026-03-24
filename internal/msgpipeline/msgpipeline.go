@@ -186,7 +186,9 @@ func (dd *msgpipelineDelivery) initRunGlobalModifiers(ctx context.Context, msgMe
 	}
 	mailFrom, err = globalModifiersState.RewriteSender(ctx, mailFrom)
 	if err != nil {
-		globalModifiersState.Close()
+		if err := globalModifiersState.Close(); err != nil {
+			dd.log.Error("failed to close global modifiers state", err)
+		}
 		return "", err
 	}
 	dd.globalModifiersState = globalModifiersState
@@ -333,7 +335,9 @@ func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string, opts smtp
 
 		newTo, err = rcptModifiersState.RewriteRcpt(ctx, to)
 		if err != nil {
-			rcptModifiersState.Close()
+			if err := rcptModifiersState.Close(); err != nil {
+				dd.log.Error("failed to close rcpt modifiers state", err)
+			}
 			return wrapErr(err)
 		}
 		dd.log.Debugln("per-rcpt modifiers:", to, "=>", newTo)
@@ -501,7 +505,7 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(ctx context.Context, c module.Statu
 	}
 }
 
-func (dd msgpipelineDelivery) Commit(ctx context.Context) error {
+func (dd *msgpipelineDelivery) Commit(ctx context.Context) error {
 	dd.close()
 
 	for _, delivery := range dd.deliveries {
@@ -517,17 +521,23 @@ func (dd *msgpipelineDelivery) close() {
 	dd.checkRunner.close()
 
 	if dd.globalModifiersState != nil {
-		dd.globalModifiersState.Close()
+		if err := dd.globalModifiersState.Close(); err != nil {
+			dd.log.Error("failed to close global modifiers state", err)
+		}
 	}
 	if dd.sourceModifiersState != nil {
-		dd.sourceModifiersState.Close()
+		if err := dd.sourceModifiersState.Close(); err != nil {
+			dd.log.Error("failed to close source modifiers state", err)
+		}
 	}
 	for _, modifiers := range dd.rcptModifiersState {
-		modifiers.Close()
+		if err := modifiers.Close(); err != nil {
+			dd.log.Error("failed to close rcpt modifiers state", err)
+		}
 	}
 }
 
-func (dd msgpipelineDelivery) Abort(ctx context.Context) error {
+func (dd *msgpipelineDelivery) Abort(ctx context.Context) error {
 	dd.close()
 
 	var lastErr error

@@ -109,7 +109,7 @@ func (pe *partialError) SetStatus(rcptTo string, err error) {
 	pe.Errs[rcptTo] = err
 }
 
-func (pe partialError) Error() string {
+func (pe *partialError) Error() string {
 	return fmt.Sprintf("delivery failed for some recipients: %v", pe.Errs)
 }
 
@@ -758,7 +758,11 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	if err != nil {
 		return nil, err
 	}
-	defer headerFile.Close()
+	defer func() {
+		if err := headerFile.Close(); err != nil {
+			q.Log.Error("header file close failed", err)
+		}
+	}()
 
 	if err := textproto.WriteHeader(headerFile, header); err != nil {
 		q.tryRemoveDanglingFile(id + ".header")
@@ -770,14 +774,22 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		q.tryRemoveDanglingFile(id + ".header")
 		return nil, err
 	}
-	defer bodyReader.Close()
+	defer func() {
+		if err := bodyReader.Close(); err != nil {
+			q.Log.Error("bodyReader close failed", err)
+		}
+	}()
 
 	bodyPath := filepath.Join(q.location, id+".body")
 	bodyFile, err := os.Create(bodyPath)
 	if err != nil {
 		return nil, err
 	}
-	defer bodyFile.Close()
+	defer func() {
+		if err := bodyFile.Close(); err != nil {
+			q.Log.Error("body file close failed", err)
+		}
+	}()
 
 	if _, err := io.Copy(bodyFile, bodyReader); err != nil {
 		q.tryRemoveDanglingFile(id + ".body")
@@ -820,7 +832,11 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 			return err
 		}
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			q.Log.Error("metadata file close failed", err)
+		}
+	}()
 
 	metaCopy := *meta
 	metaCopy.MsgMeta = meta.MsgMeta.DeepCopy()
@@ -849,7 +865,11 @@ func (q *Queue) readMessageMeta(id string) (*QueueMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			q.Log.Error("metadata file close failed", err)
+		}
+	}()
 
 	meta := &QueueMetadata{}
 

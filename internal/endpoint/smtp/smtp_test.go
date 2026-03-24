@@ -38,6 +38,7 @@ import (
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testPort string
@@ -439,7 +440,7 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	}
 
 	// Then.. Suddenly, close the connection without sending the final dot.
-	assert.NoError(t, cl.Close())
+	require.NoError(t, cl.Close())
 
 	time.Sleep(250 * time.Millisecond)
 
@@ -517,7 +518,7 @@ func TestSMTPDelivery_AbortLogout(t *testing.T) {
 	}
 
 	// Then.. Suddenly, close the connection.
-	assert.NoError(t, cl.Close())
+	require.NoError(t, cl.Close())
 
 	time.Sleep(250 * time.Millisecond)
 

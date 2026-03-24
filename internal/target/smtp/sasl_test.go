@@ -25,6 +25,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func testSaslFactory(t *testing.T, args ...string) saslClientFactory {
@@ -40,7 +41,9 @@ func testSaslFactory(t *testing.T, args ...string) saslClientFactory {
 
 func TestSASL_Plain(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -68,7 +71,9 @@ func TestSASL_Plain(t *testing.T) {
 
 func TestSASL_Plain_AuthFail(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	be.AuthErr = &smtp.SMTPError{
@@ -98,7 +103,9 @@ func TestSASL_Plain_AuthFail(t *testing.T) {
 
 func TestSASL_Forward(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -131,7 +138,9 @@ func TestSASL_Forward(t *testing.T) {
 
 func TestSASL_Forward_NoCreds(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{

@@ -11,6 +11,7 @@ import (
 
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/miekg/dns"
+	"github.com/stretchr/testify/require"
 )
 
 type TestSrvAction int
@@ -55,8 +56,8 @@ func (s *IPAddrTestServer) Run() {
 	go s.udpServ.ActivateAndServe() //nolint:errcheck
 }
 
-func (s *IPAddrTestServer) Close() {
-	s.udpServ.PacketConn.Close()
+func (s *IPAddrTestServer) Close() error {
+	return s.udpServ.PacketConn.Close()
 }
 
 func (s *IPAddrTestServer) Addr() *net.UDPAddr {
@@ -141,7 +142,9 @@ func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
 			s.aAD = aAD
 			s.aaaaAD = aaaaAD
 			s.Run()
-			defer s.Close()
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
 			res := ExtResolver{
 				cl: new(dns.Client),
 				Cfg: &dns.ClientConfig{

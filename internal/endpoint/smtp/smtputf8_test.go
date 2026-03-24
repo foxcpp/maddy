@@ -28,6 +28,7 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSMTPUTF8_MangleStatusMessage(t *testing.T) {
@@ -87,7 +88,9 @@ func TestSMTP_RejectNonASCIIFrom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cl.Close()
+	defer func() {
+		require.NoError(t, cl.Close())
+	}()
 
 	err = submitMsg(t, cl, "ѣ@example.org", []string{"rcpt@example.com"}, testMsg)
 

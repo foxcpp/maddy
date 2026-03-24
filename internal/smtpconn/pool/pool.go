@@ -22,6 +22,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/foxcpp/maddy/framework/log"
 )
 
 type Conn interface {
@@ -96,9 +98,15 @@ func (p *P) CleanUp(ctx context.Context) {
 
 		close(v.c)
 		for conn := range v.c {
-			go conn.Close()
+			go p.close(conn)
 		}
 		delete(p.keys, k)
+	}
+}
+
+func (p *P) close(c Conn) {
+	if err := c.Close(); err != nil {
+		log.DefaultLogger.Error("failed to close pooled connection", err)
 	}
 }
 
@@ -120,7 +128,7 @@ func (p *P) Get(ctx context.Context, key string) (Conn, error) {
 		p.keysLock.Unlock()
 
 		for conn := range bucket.c {
-			conn.Close()
+			p.close(conn)
 		}
 
 		return p.cfg.New(ctx, key)
@@ -141,11 +149,15 @@ func (p *P) Get(ctx context.Context, key string) (Conn, error) {
 
 		if !conn.Usable() {
 			// Close might take some time, run in parallel.
-			go conn.Close()
+			go p.close(conn)
 			continue
 		}
 		if conn.LastUseAt().Add(time.Duration(p.cfg.MaxConnLifetimeSec) * time.Second).Before(time.Now()) {
-			go conn.Close()
+			go func() {
+				if err := conn.Close(); err != nil {
+					log.DefaultLogger.Error("failed to close pooled connection", err)
+				}
+			}()
 			continue
 		}
 
@@ -173,7 +185,7 @@ func (p *P) Return(key string, c Conn) {
 				close(v.c)
 
 				for conn := range v.c {
-					conn.Close()
+					p.close(conn)
 				}
 			}
 		}
@@ -190,7 +202,7 @@ func (p *P) Return(key string, c Conn) {
 		bucket.lastUse = time.Now().Unix()
 	default:
 		// Let it go, let it go...
-		go c.Close()
+		go p.close(c)
 	}
 }
 
@@ -203,7 +215,7 @@ func (p *P) Close() {
 	for k, v := range p.keys {
 		close(v.c)
 		for conn := range v.c {
-			conn.Close()
+			p.close(conn)
 		}
 		delete(p.keys, k)
 	}

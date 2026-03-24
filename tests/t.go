@@ -40,6 +40,8 @@ import (
 	"time"
 
 	"github.com/foxcpp/go-mockdns"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -111,7 +113,7 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 
 	if t.dnsServ != nil {
 		t.Log("NOTE: Multiple DNS calls, replacing the server instance...")
-		t.dnsServ.Close()
+		require.NoError(t, t.dnsServ.Close())
 	}
 
 	dnsServ, err := mockdns.NewServerWithLogger(zones, t, false)
@@ -191,7 +193,7 @@ func (t *T) ensureCanRun() {
 			}
 
 			t.Log("removing", t.testDir)
-			os.RemoveAll(t.testDir)
+			assert.NoError(t, os.RemoveAll(t.testDir))
 			t.testDir = ""
 		})
 	}
@@ -319,7 +321,9 @@ func (t *T) Run(waitListeners int) {
 	serverStarted := make(chan bool)
 
 	go func() {
-		defer logOut.Close()
+		defer func() {
+			assert.NoError(t, logOut.Close())
+		}()
 		defer close(serverStarted)
 		scnr := bufio.NewScanner(logOut)
 		for scnr.Scan() {
@@ -366,7 +370,7 @@ func (t *T) RuntimeDir() string {
 func (t *T) killServer() {
 	if err := t.servProc.Process.Signal(os.Interrupt); err != nil {
 		t.Log("Unable to kill the server process:", err)
-		os.RemoveAll(t.testDir)
+		assert.NoError(t, os.RemoveAll(t.testDir))
 		return // Return, as now it is pointless to wait for it.
 	}
 

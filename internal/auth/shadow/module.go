@@ -80,7 +80,9 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 			}
 			return fmt.Errorf("shadow: can't read /etc/shadow: %v", err)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			a.Log.Error("can't close /etc/shadow file", err)
+		}
 	}
 
 	return nil

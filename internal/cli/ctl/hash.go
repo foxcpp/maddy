@@ -79,7 +79,7 @@ func hashCommand(ctx *cli.Context) error {
 
 	hashCompute := pass_table.HashCompute[hashFunc]
 	if hashCompute == nil {
-		var funcs []string
+		funcs := make([]string, 0, len(pass_table.HashCompute))
 		for k := range pass_table.HashCompute {
 			funcs = append(funcs, k)
 		}

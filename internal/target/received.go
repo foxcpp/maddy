@@ -31,7 +31,7 @@ import (
 )
 
 func SanitizeForHeader(raw string) string {
-	return strings.Replace(raw, "\n", "", -1)
+	return strings.ReplaceAll(raw, "\n", "")
 }
 
 func GenerateReceived(ctx context.Context, msgMeta *module.MsgMetadata, ourHostname, mailFrom string) (string, error) {

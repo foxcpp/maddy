@@ -50,8 +50,12 @@ func NewPQ(dsn string) (*PqPubSub, error) {
 }
 
 func (l *PqPubSub) Close() error {
-	l.sender.Close()
-	l.L.Close()
+	if err := l.sender.Close(); err != nil {
+		l.Log.Error("failed to close sender socket", err)
+	}
+	if err := l.L.Close(); err != nil {
+		l.Log.Error("failed to close listener", err)
+	}
 	return nil
 }
 

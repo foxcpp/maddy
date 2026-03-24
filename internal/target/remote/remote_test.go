@@ -41,6 +41,7 @@ import (
 	"github.com/foxcpp/maddy/internal/smtpconn/pool"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // .invalid TLD is used here to make sure if there is something wrong about
@@ -118,7 +119,9 @@ func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
 
 func TestRemoteDelivery(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -140,7 +143,9 @@ func TestRemoteDelivery(t *testing.T) {
 
 func TestRemoteDelivery_NoMXFallback(t *testing.T) {
 	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
-	defer tarpit.Close()
+	defer func() {
+		assert.NoError(t, tarpit.Close())
+	}()
 
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -169,7 +174,9 @@ func TestRemoteDelivery_NoMXFallback(t *testing.T) {
 
 func TestRemoteDelivery_EmptySender(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -193,7 +200,9 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 	t.Skip("Support disabled")
 
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	zones := map[string]mockdns.Zone{
@@ -219,7 +228,9 @@ func TestRemoteDelivery_IPLiteral(t *testing.T) {
 
 func TestRemoteDelivery_FallbackMX(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -238,7 +249,9 @@ func TestRemoteDelivery_FallbackMX(t *testing.T) {
 
 func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -268,7 +281,9 @@ func TestRemoteDelivery_BodyNonAtomic(t *testing.T) {
 
 func TestRemoteDelivery_Abort(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -300,7 +315,9 @@ func TestRemoteDelivery_Abort(t *testing.T) {
 
 func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -333,7 +350,9 @@ func TestRemoteDelivery_CommitWithoutBody(t *testing.T) {
 
 func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -370,7 +389,9 @@ func TestRemoteDelivery_MAILFROMErr(t *testing.T) {
 
 func TestRemoteDelivery_NoMX(t *testing.T) {
 	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
-	defer tarpit.Close()
+	defer func() {
+		require.NoError(t, tarpit.Close())
+	}()
 
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -402,7 +423,9 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 	// deliver the message. Use of testutils.SMTPServer here
 	// causes weird race conditions.
 	tarpit := testutils.FailOnConn(t, "127.0.0.1:"+smtpPort)
-	defer tarpit.Close()
+	defer func() {
+		require.NoError(t, tarpit.Close())
+	}()
 
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -430,7 +453,9 @@ func TestRemoteDelivery_NullMX(t *testing.T) {
 
 func TestRemoteDelivery_Quarantined(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -474,7 +499,9 @@ func TestRemoteDelivery_Quarantined(t *testing.T) {
 
 func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -514,7 +541,9 @@ func TestRemoteDelivery_MAILFROMErr_Repeated(t *testing.T) {
 
 func TestRemoteDelivery_RcptErr(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -569,7 +598,9 @@ func TestRemoteDelivery_RcptErr(t *testing.T) {
 
 func TestRemoteDelivery_DownMX(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -624,10 +655,14 @@ func TestRemoteDelivery_AllMXDown(t *testing.T) {
 
 func TestRemoteDelivery_Split(t *testing.T) {
 	be1, srv1 := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv1.Close()
+	defer func() {
+		assert.NoError(t, srv1.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv1)
 	be2, srv2 := testutils.SMTPServer(t, "127.0.0.2:"+smtpPort)
-	defer srv2.Close()
+	defer func() {
+		assert.NoError(t, srv2.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv2)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -657,10 +692,14 @@ func TestRemoteDelivery_Split(t *testing.T) {
 
 func TestRemoteDelivery_Split_Fail(t *testing.T) {
 	be1, srv1 := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv1.Close()
+	defer func() {
+		require.NoError(t, srv1.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv1)
 	be2, srv2 := testutils.SMTPServer(t, "127.0.0.2:"+smtpPort)
-	defer srv2.Close()
+	defer func() {
+		require.NoError(t, srv2.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv2)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -723,7 +762,9 @@ func TestRemoteDelivery_Split_Fail(t *testing.T) {
 
 func TestRemoteDelivery_BodyErr(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -770,10 +811,14 @@ func TestRemoteDelivery_BodyErr(t *testing.T) {
 
 func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 	be1, srv1 := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv1.Close()
+	defer func() {
+		require.NoError(t, srv1.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv1)
 	_, srv2 := testutils.SMTPServer(t, "127.0.0.2:"+smtpPort)
-	defer srv2.Close()
+	defer func() {
+		require.NoError(t, srv2.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv2)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -828,10 +873,14 @@ func TestRemoteDelivery_Split_BodyErr(t *testing.T) {
 
 func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 	be1, srv1 := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv1.Close()
+	defer func() {
+		require.NoError(t, srv1.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv1)
 	_, srv2 := testutils.SMTPServer(t, "127.0.0.2:"+smtpPort)
-	defer srv2.Close()
+	defer func() {
+		require.NoError(t, srv2.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv2)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -898,7 +947,9 @@ func TestRemoteDelivery_Split_BodyErr_NonAtomic(t *testing.T) {
 
 func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -927,7 +978,9 @@ func TestRemoteDelivery_TLSErrFallback(t *testing.T) {
 
 func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -953,7 +1006,9 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 
 func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -978,7 +1033,9 @@ func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 
 func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 	clientCfg, _, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -1011,7 +1068,9 @@ func TestRemoteDelivery_RequireTLS_NoErrFallback(t *testing.T) {
 
 func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 	_, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -1042,7 +1101,9 @@ func TestRemoteDelivery_TLS_FallbackNoVerify(t *testing.T) {
 
 func TestRemoteDelivery_TLS_FallbackPlaintext(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {
@@ -1083,7 +1144,9 @@ func TestMain(m *testing.M) {
 
 func TestRemoteDelivery_ConnReuse(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 	zones := map[string]mockdns.Zone{
 		"example.invalid.": {

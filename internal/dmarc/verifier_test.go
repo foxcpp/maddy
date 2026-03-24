@@ -29,13 +29,16 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-msgauth/authres"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDMARC(t *testing.T) {
 	test := func(zones map[string]mockdns.Zone, hdr string, authres []authres.Result, policyApplied Policy, dmarcRes authres.ResultValue) {
 		t.Helper()
 		v := NewVerifier(&mockdns.Resolver{Zones: zones})
-		defer v.Close()
+		defer func() {
+			require.NoError(t, v.Close())
+		}()
 
 		hdrParsed, err := textproto.ReadHeader(bufio.NewReader(strings.NewReader(hdr)))
 		if err != nil {

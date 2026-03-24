@@ -62,18 +62,18 @@ type Target struct {
 module.Module is implemented with dummy functions for logging done by MsgPipeline code.
 */
 
-func (dt Target) Configure([]string, *config.Map) error {
+func (dt *Target) Configure([]string, *config.Map) error {
 	return nil
 }
 
-func (dt Target) InstanceName() string {
+func (dt *Target) InstanceName() string {
 	if dt.InstName != "" {
 		return dt.InstName
 	}
 	return "test_instance"
 }
 
-func (dt Target) Name() string {
+func (dt *Target) Name() string {
 	return "test_target"
 }
 
@@ -129,7 +129,11 @@ func (dtd *testTargetDeliveryPartial) BodyNonAtomic(ctx context.Context, c modul
 		}
 		return
 	}
-	defer body.Close()
+	defer func() {
+		if err := body.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	dtd.msg.Body, err = io.ReadAll(body)
 	if err != nil {
@@ -153,7 +157,11 @@ func (dtd *testTargetDelivery) Body(ctx context.Context, header textproto.Header
 	if err != nil {
 		return err
 	}
-	defer body.Close()
+	defer func() {
+		if err := body.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	if dtd.tgt.DiscardMessages {
 		// Don't bother.

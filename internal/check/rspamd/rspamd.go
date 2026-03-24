@@ -277,7 +277,11 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 			},
 		})
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			s.log.Error("failed to close response body", err)
+		}
+	}()
 
 	var respData response
 	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {

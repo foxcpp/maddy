@@ -181,7 +181,9 @@ func (a *Auth) getConn() (*ldap.Conn, error) {
 		a.conn = conn
 	}
 	if a.conn.IsClosing() {
-		a.conn.Close()
+		if err := a.conn.Close(); err != nil {
+			a.log.Error("Connection close failed", err)
+		}
 		conn, err := a.newConn()
 		if err != nil {
 			a.connLock.Unlock()
@@ -196,11 +198,15 @@ func (a *Auth) returnConn(conn *ldap.Conn) {
 	defer a.connLock.Unlock()
 	if err := a.readBind(conn); err != nil {
 		a.log.Error("failed to rebind for reading", err)
-		conn.Close()
+		if err := a.conn.Close(); err != nil {
+			a.log.Error("Connection close failed", err)
+		}
 		a.conn = nil
 	}
 	if a.conn != conn {
-		a.conn.Close()
+		if err := a.conn.Close(); err != nil {
+			a.log.Error("Connection close failed", err)
+		}
 	}
 	a.conn = conn
 }
@@ -285,8 +291,7 @@ func (a *Auth) Start() error {
 func (a *Auth) Stop() error {
 	a.connLock.Lock()
 	defer a.connLock.Unlock()
-	a.conn.Close()
-	return nil
+	return a.conn.Close()
 }
 
 func init() {

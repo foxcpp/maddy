@@ -202,15 +202,16 @@ func GenerateDSN(utf8 bool, envelope Envelope, mtaInfo ReportingMTAInfo, rcptsIn
 	reportHeader.Add("From", envelope.From)
 	reportHeader.Add("Subject", "Undelivered Mail Returned to Sender")
 
-	defer partWriter.Close()
-
 	if err := writeHumanReadablePart(partWriter, mtaInfo, rcptsInfo); err != nil {
 		return textproto.Header{}, err
 	}
 	if err := writeMachineReadablePart(utf8, partWriter, mtaInfo, rcptsInfo); err != nil {
 		return textproto.Header{}, err
 	}
-	return reportHeader, writeHeader(utf8, partWriter, failedHeader)
+	if err := writeHeader(utf8, partWriter, failedHeader); err != nil {
+		return textproto.Header{}, err
+	}
+	return reportHeader, partWriter.Close()
 }
 
 func writeHeader(utf8 bool, w *textproto.MultipartWriter, header textproto.Header) error {

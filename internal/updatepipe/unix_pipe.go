@@ -120,11 +120,17 @@ func (usp *UnixSockPipe) Push(upd mess.Update) error {
 
 func (usp *UnixSockPipe) Close() error {
 	if usp.sender != nil {
-		usp.sender.Close()
+		if err := usp.sender.Close(); err != nil {
+			usp.Log.Error("failed to close sender socket", err)
+		}
 	}
 	if usp.listener != nil {
-		usp.listener.Close()
-		os.Remove(usp.SockPath)
+		if err := usp.listener.Close(); err != nil {
+			usp.Log.Error("failed to close listener", err)
+		}
+		if err := os.Remove(usp.SockPath); err != nil {
+			usp.Log.Error("failed to remove socket", err)
+		}
 	}
 	return nil
 }

@@ -23,6 +23,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var cases = []struct {
@@ -579,8 +581,8 @@ func printTree(t *testing.T, root Node, indent int) {
 }
 
 func TestRead(t *testing.T) {
-	os.Setenv("TESTING_VARIABLE", "ABCDEF")
-	os.Setenv("TESTING_VARIABLE2", "ABC2 DEF2")
+	require.NoError(t, os.Setenv("TESTING_VARIABLE", "ABCDEF"))
+	require.NoError(t, os.Setenv("TESTING_VARIABLE2", "ABC2 DEF2"))
 
 	for _, case_ := range cases {
 		t.Run(case_.name, func(t *testing.T) {

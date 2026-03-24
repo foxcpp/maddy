@@ -123,7 +123,7 @@ func BenchDelivery(b *testing.B, target module.DeliveryTarget, sender string, re
 		}
 
 		for i, rcptTemplate := range recipientTemplates {
-			rcpt := strings.Replace(rcptTemplate, "X", strconv.Itoa(i), -1)
+			rcpt := strings.ReplaceAll(rcptTemplate, "X", strconv.Itoa(i))
 
 			if err := delivery.AddRcpt(benchCtx, rcpt, smtp.RcptOptions{}); err != nil {
 				b.Fatal(err)

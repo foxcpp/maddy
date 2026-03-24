@@ -11,7 +11,11 @@ import (
 
 func ListenFD(fd uint) (net.Listener, error) {
 	file := os.NewFile(uintptr(fd), strconv.FormatUint(uint64(fd), 10))
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	return net.FileListener(file)
 }
 
@@ -42,6 +46,10 @@ func ListenFDName(name string) (net.Listener, error) {
 	}
 
 	file := os.NewFile(3+fd, name)
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	return net.FileListener(file)
 }

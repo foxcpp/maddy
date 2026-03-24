@@ -120,7 +120,9 @@ func (b *s3blob) Sync() error {
 		panic("storage.blob.s3: Sync called twice for a blob object")
 	}
 
-	b.pw.Close()
+	if err := b.pw.Close(); err != nil {
+		return err
+	}
 	b.didSync = true
 	return <-b.errCh
 }

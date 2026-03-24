@@ -1,6 +1,7 @@
 package maddycli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -28,7 +29,22 @@ databases used by it (all other subcommands).
 		},
 	}
 	app.ExitErrHandler = func(c *cli.Context, err error) {
-		cli.HandleExitCoder(err)
+		if err == nil {
+			return
+		}
+
+		var exitErr cli.ExitCoder
+		if errors.As(err, &exitErr) {
+			if err.Error() != "" {
+				if _, ok := exitErr.(cli.ErrorFormatter); ok {
+					_, _ = fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
+				} else {
+					_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
+				}
+			}
+			cli.OsExiter(exitErr.ExitCode())
+			return
+		}
 	}
 	app.EnableBashCompletion = true
 	app.Commands = []*cli.Command{

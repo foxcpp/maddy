@@ -217,7 +217,7 @@ type remoteDelivery struct {
 
 func (rt *Target) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	policies := make([]module.DeliveryMXAuthPolicy, 0, len(rt.policies))
-	if !(msgMeta.TLSRequireOverride && rt.allowSecOverride) {
+	if !msgMeta.TLSRequireOverride || !rt.allowSecOverride {
 		for _, p := range rt.policies {
 			policies = append(policies, p.StartDelivery(msgMeta))
 		}
@@ -422,7 +422,11 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 				}
 				return
 			}
-			defer bodyR.Close()
+			defer func() {
+				if err := bodyR.Close(); err != nil {
+					rd.Log.Error("failed to close message buffer", err)
+				}
+			}()
 
 			err = conn.Data(ctx, header, bodyR)
 			for _, rcpt := range conn.Rcpts() {
@@ -453,8 +457,8 @@ func (rd *remoteDelivery) Close() error {
 
 		if !conn.Usable() {
 			rd.Log.Debugf("disconnected %v from %s (errored=%v,transactions=%v,disconnected before=%v)",
-				conn.LocalAddr(), conn.ServerName(), conn.errored, conn.transactions, conn.C.Client() == nil)
-			conn.Close()
+				conn.LocalAddr(), conn.ServerName(), conn.errored, conn.transactions, conn.Client() == nil)
+			rd.closeConn(conn)
 		} else {
 			rd.Log.Debugf("returning connection %v for %s to pool", conn.LocalAddr(), conn.ServerName())
 			rd.rt.pool.Return(conn.domain, conn)

@@ -306,19 +306,19 @@ func NewDNSSECPolicy(_, instName string) (module.Module, error) {
 	}, nil
 }
 
-func (c *dnssecPolicy) Name() string {
+func (dnssecPolicy) Name() string {
 	return "mx_auth.dnssec"
 }
 
-func (c *dnssecPolicy) InstanceName() string {
+func (c dnssecPolicy) InstanceName() string {
 	return c.instName
 }
 
-func (c *dnssecPolicy) Weight() int {
+func (dnssecPolicy) Weight() int {
 	return 1
 }
 
-func (c *dnssecPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
+func (dnssecPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 	_, err := cfg.Process() // will fail if there is any directive
 	return err
 }

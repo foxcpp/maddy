@@ -30,17 +30,22 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/internal/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 var testPort string
 
 func TestDownstreamDelivery(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	tarpit := testutils.FailOnConn(t, "127.0.0.2:"+testPort)
-	defer tarpit.Close()
+	defer func() {
+		require.NoError(t, tarpit.Close())
+	}()
 
 	mod := &Downstream{
 		hostname: "mx.example.invalid",
@@ -74,7 +79,9 @@ func TestDownstreamDelivery_LMTP(t *testing.T) {
 			Message: "nop",
 		},
 	}
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -125,7 +132,9 @@ func TestDownstreamDelivery_LMTP_ErrorCoerce(t *testing.T) {
 			Message: "nop",
 		},
 	}
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -156,7 +165,9 @@ func (sc *statusCollector) SetStatus(rcptTo string, err error) {
 
 func TestDownstreamDelivery_Fallback(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.2:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -182,7 +193,9 @@ func TestDownstreamDelivery_Fallback(t *testing.T) {
 
 func TestDownstreamDelivery_MAILErr(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	be.MailErr = &smtp.SMTPError{
@@ -209,7 +222,9 @@ func TestDownstreamDelivery_MAILErr(t *testing.T) {
 
 func TestDownstreamDelivery_StartTLS(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{
@@ -237,7 +252,9 @@ func TestDownstreamDelivery_StartTLS(t *testing.T) {
 
 func TestDownstreamDelivery_StartTLS_NoFallback(t *testing.T) {
 	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
-	defer srv.Close()
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
 	mod := &Downstream{

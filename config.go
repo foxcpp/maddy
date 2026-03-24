@@ -114,7 +114,9 @@ func reinitLogging() {
 		return
 	}
 
-	out.Close()
+	if err := out.Close(); err != nil {
+		log.Println("Can't close logger:", err)
+	}
 
 	log.DefaultLogger.Out = newOut
 }

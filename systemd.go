@@ -84,7 +84,11 @@ func systemdStatus(status SDStatus, desc string) {
 		}
 		return
 	}
-	defer sock.Close()
+	defer func() {
+		if err := sock.Close(); err != nil {
+			log.Println("systemd: failed to close systemd socket:", err)
+		}
+	}()
 
 	if err := setScmPassCred(sock); err != nil {
 		log.Println("systemd: failed to set SCM_PASSCRED on the socket:", err)
@@ -111,7 +115,11 @@ func systemdStatusErr(reportedErr error) {
 		}
 		return
 	}
-	defer sock.Close()
+	defer func() {
+		if err := sock.Close(); err != nil {
+			log.Println("systemd: failed to close systemd socket:", err)
+		}
+	}()
 
 	if err := setScmPassCred(sock); err != nil {
 		log.Println("systemd: failed to set SCM_PASSCRED on the socket:", err)
