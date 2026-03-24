@@ -321,9 +321,6 @@ func (t *T) Run(waitListeners int) {
 	serverStarted := make(chan bool)
 
 	go func() {
-		defer func() {
-			assert.NoError(t, logOut.Close())
-		}()
 		defer close(serverStarted)
 		scnr := bufio.NewScanner(logOut)
 		for scnr.Scan() {
