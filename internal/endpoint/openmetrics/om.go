@@ -68,6 +68,7 @@ func (e *Endpoint) Configure(inlineArgs []string, cfg *config.Map) error {
 		if endp.IsTLS() {
 			return fmt.Errorf("%s: TLS is not supported yet", modName)
 		}
+		e.endpoints = append(e.endpoints, endp)
 	}
 
 	return nil
