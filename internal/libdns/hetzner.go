@@ -5,6 +5,7 @@ package libdns
 
 import (
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/libdns/hetzner"
 )
@@ -16,6 +17,7 @@ func init() {
 			RecordDeleter:  &p,
 			RecordAppender: &p,
 			setConfig: func(c *config.Map) {
+				log.DefaultLogger.Println("WARNING: maddy 0.10.0 will require new DNS API, see https://github.com/foxcpp/maddy/issues/807 for details")
 				c.String("api_token", false, false, "", &p.AuthAPIToken)
 			},
 			instName: instName,
