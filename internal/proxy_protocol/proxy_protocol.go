@@ -72,11 +72,12 @@ func NewListener(inner net.Listener, p *ProxyProtocol, logger log.Logger) net.Li
 		return false, nil
 	}
 
-	listener = proxyprotocol.NewDefaultListener(inner).
+	proxyListener := proxyprotocol.NewDefaultListener(inner).
 		WithLogger(proxyprotocol.LoggerFunc(func(format string, v ...interface{}) {
 			logger.Debugf("proxy_protocol: "+format, v...)
 		})).
 		WithSourceChecker(sourceChecker)
+	listener = &proxyListener
 
 	if p.tlsConfig != nil {
 		listener = tls.NewListener(listener, p.tlsConfig)
