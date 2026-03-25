@@ -25,7 +25,7 @@ type Auth struct {
 	urls           []string
 	readBind       func(*ldap.Conn) error
 	startls        bool
-	tlsCfg         tls.Config
+	tlsCfg         *tls.Config
 	dialer         *net.Dialer
 	requestTimeout time.Duration
 
