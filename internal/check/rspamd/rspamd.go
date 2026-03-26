@@ -97,7 +97,7 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	)
 
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
-		return tls.Config{}, nil
+		return &tls.Config{}, nil
 	}, tls2.TLSClientBlock, &tlsConfig)
 	cfg.String("api_path", false, false, c.apiPath, &c.apiPath)
 	cfg.String("settings_id", false, false, "", &c.settingsID)
