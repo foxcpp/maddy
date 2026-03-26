@@ -54,7 +54,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 
 	cfg.Bool("debug", true, false, &a.log.Debug)
 	cfg.Custom("tls_client", true, false, func() (interface{}, error) {
-		return tls.Config{}, nil
+		return &tls.Config{}, nil
 	}, tls2.TLSClientBlock, &a.tlsCfg)
 	cfg.Callback("urls", func(m *config.Map, node config.Node) error {
 		a.urls = append(a.urls, node.Args...)
