@@ -103,6 +103,11 @@ one as "primary". Add all other domains to the `local_domains` line:
 $(local_domains) = $(primary_domain) example.com other.example.com
 ```
 
+Do not forget to set a suitable rDNS (PTR) record for your server's IP address
+to reduce the chances of outgoing mails getting marked as spam or being
+downright rejected. Ideally, the PTR record should match whatever you specified
+in `$(hostname)`.
+
 ## TLS certificates
 
 One thing that can't be automatically configured is TLS certs. If you already
