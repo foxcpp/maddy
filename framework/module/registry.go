@@ -105,11 +105,11 @@ func (r *Registry) ensureInitialized(name string, entry *registryEntry) error {
 
 	r.logger.DebugMsg("module configure",
 		"mod_name", entry.Mod.Name(), "inst_name", entry.Mod.InstanceName())
+	r.initialized[name] = struct{}{}
 	err := entry.LazyInit()
 	if err != nil {
 		return err
 	}
-	r.initialized[name] = struct{}{}
 
 	return nil
 }
