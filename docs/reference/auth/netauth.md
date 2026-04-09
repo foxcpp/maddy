@@ -7,10 +7,12 @@ maddy needs to know the Entity ID to use for authentication.  It must
 match the string the user provides for the Local Atom part of their
 mail address.
 
-Note that storage backends conventionally use email addresses.  Since
-NetAuth recommends *nix compatible usernames, you will need to map the
-email identifiers to NetAuth Entity IDs using `auth_map` (see
-documentation page for used storage backend).
+Note that storage backends conventionally use email addresses.  Since NetAuth
+recommends *nix compatible usernames. You will need to either map email
+identifiers specified by user to NetAuth Entity IDs using `auth_map` in
+endpoint.smtp/imap configuration (recommended) or you would need to use
+`storage_map` in storage backend configuration to map NetAuth Entity ID
+specified by user back to appropriate storage backend account names.
 
 auth.netauth also can be used as a table module.  This way you can
 check whether the account exists.

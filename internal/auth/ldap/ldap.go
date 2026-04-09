@@ -225,7 +225,7 @@ func (a *Auth) Lookup(_ context.Context, username string) (string, bool, error) 
 		req := ldap.NewSearchRequest(
 			a.baseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 			2, 0, false,
-			strings.ReplaceAll(a.filterTemplate, "{username}", username),
+			strings.ReplaceAll(a.filterTemplate, "{username}", ldap.EscapeFilter(username)),
 			[]string{"dn"}, nil)
 		res, err := conn.Search(req)
 		if err != nil {
@@ -252,12 +252,12 @@ func (a *Auth) AuthPlain(username, password string) error {
 
 	var userDN string
 	if a.dnTemplate != "" {
-		userDN = strings.ReplaceAll(a.dnTemplate, "{username}", username)
+		userDN = strings.ReplaceAll(a.dnTemplate, "{username}", ldap.EscapeDN(username))
 	} else {
 		req := ldap.NewSearchRequest(
 			a.baseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 			2, 0, false,
-			strings.ReplaceAll(a.filterTemplate, "{username}", username),
+			strings.ReplaceAll(a.filterTemplate, "{username}", ldap.EscapeFilter(username)),
 			[]string{"dn"}, nil)
 		res, err := conn.Search(req)
 		if err != nil {
