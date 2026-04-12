@@ -211,7 +211,7 @@ func (c *Conn) SMTPPlainAuth(username, password string, expectOk bool) {
 	if expectOk {
 		c.ExpectPattern("235 *")
 	} else {
-		c.ExpectPattern("*")
+		c.ExpectPattern("5*")
 	}
 }
 
@@ -280,6 +280,13 @@ capsloop:
 
 func (c *Conn) Close() error {
 	return c.Conn.Close()
+}
+
+func (c *Conn) MustClose() {
+	c.T.Helper()
+	if err := c.Close(); err != nil {
+		c.fatal("Close: %v", err)
+	}
 }
 
 func (c *Conn) Rebind(subtest *T) *Conn {
