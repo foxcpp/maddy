@@ -22,7 +22,7 @@ require (
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-mess v0.0.0-20230108134257-b7ec3a649613
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
-	github.com/foxcpp/go-imap-sql v0.5.1-0.20250124140007-8da5567429d5
+	github.com/foxcpp/go-imap-sql v0.5.1-0.20260412133145-20097edd35ec
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932
 	github.com/go-ldap/ldap/v3 v3.4.10
