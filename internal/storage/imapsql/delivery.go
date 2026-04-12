@@ -20,6 +20,7 @@ package imapsql
 
 import (
 	"context"
+	"errors"
 	"runtime/trace"
 
 	"github.com/emersion/go-imap"
@@ -78,10 +79,11 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOption
 	userHeader.Add("Delivered-To", accountName)
 
 	if err := d.d.AddRcpt(accountName, userHeader); err != nil {
-		if err == imapsql.ErrUserDoesntExists || err == backend.ErrNoSuchMailbox {
+		if errors.Is(err, imapsql.ErrUserDoesntExists) || errors.Is(err, backend.ErrNoSuchMailbox) {
 			return userDoesNotExist(err)
 		}
-		if _, ok := err.(imapsql.SerializationError); ok {
+		var serializationError imapsql.SerializationError
+		if errors.As(err, &serializationError) {
 			return &exterrors.SMTPError{
 				Code:         453,
 				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
@@ -115,11 +117,12 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(imap.JunkAttr, d.store.junkMbox); err != nil {
-			if _, ok := err.(imapsql.SerializationError); ok {
+			var serializationError imapsql.SerializationError
+			if errors.As(err, &serializationError) {
 				return &exterrors.SMTPError{
 					Code:         453,
 					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-					Message:      "Storage access serialiation problem, try again later",
+					Message:      "Internal server error, try again later",
 					TargetName:   "imapsql",
 					Err:          err,
 				}
@@ -131,11 +134,12 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 	header = header.Copy()
 	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
 	err := d.d.BodyParsed(header, body.Len(), body)
-	if _, ok := err.(imapsql.SerializationError); ok {
+	var serializationError imapsql.SerializationError
+	if errors.As(err, &serializationError) {
 		return &exterrors.SMTPError{
 			Code:         453,
 			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-			Message:      "Storage access serialiation problem, try again later",
+			Message:      "Internal server error, try again later",
 			TargetName:   "imapsql",
 			Err:          err,
 		}
