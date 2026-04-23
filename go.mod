@@ -1,8 +1,6 @@
 module github.com/foxcpp/maddy
 
-go 1.23.1
-
-toolchain go1.23.5
+go 1.24
 
 require (
 	blitiri.com.ar/go/spf v1.5.1
@@ -29,6 +27,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-hclog v1.6.3
+	github.com/jimlambrt/gldap v0.1.14
 	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/lib/pq v1.10.9
 	github.com/libdns/acmedns v0.2.0
@@ -67,7 +66,7 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/G-Core/gcore-dns-sdk-go v0.2.9 // indirect
 	github.com/aws/aws-sdk-go v1.44.40 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.33.0 // indirect
@@ -107,7 +106,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/jimlambrt/gldap v0.1.14 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
