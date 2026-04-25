@@ -118,8 +118,8 @@ func (g *Group) Configure(inlineArgs []string, cfg *config.Map) error {
 	}
 	if len(destL) != 0 {
 		g.dest = limiters.NewBucketSet(func() limiters.L {
-			l := make([]limiters.L, 0, len(sourceL))
-			for _, ctor := range sourceL {
+			l := make([]limiters.L, 0, len(destL))
+			for _, ctor := range destL {
 				l = append(l, ctor())
 			}
 			return &limiters.MultiLimit{Wrapped: l}
