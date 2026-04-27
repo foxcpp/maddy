@@ -29,9 +29,9 @@ import (
 	"sync"
 
 	"github.com/caddyserver/certmagic"
-	parser "github.com/foxcpp/maddy/framework/cfgparser"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/config/parser"
 	"github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/hooks"

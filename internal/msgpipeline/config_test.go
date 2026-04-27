@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	parser "github.com/foxcpp/maddy/framework/cfgparser"
+	"github.com/foxcpp/maddy/framework/config/parser"
 	"github.com/foxcpp/maddy/framework/exterrors"
 )
 
