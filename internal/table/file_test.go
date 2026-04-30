@@ -119,7 +119,7 @@ func TestFileReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mod, err := NewFile(container.New(),"", "")
+	mod, err := NewFile(container.New(), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

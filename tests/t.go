@@ -217,7 +217,7 @@ func (t *T) buildCmd(additionalArgs ...string) *exec.Cmd {
 	args := []string{"-config", filepath.Join(t.testDir, "maddy.conf"),
 		"-debug.smtpport", remoteSmtp,
 		"-debug.dnsoverride", t.dnsServ.LocalAddr().String(),
-		"-log", "/tmp/test.log"}
+	}
 
 	if CoverageOut != "" {
 		args = append(args, "-test.coverprofile", CoverageOut+"."+strconv.FormatInt(time.Now().UnixNano(), 16))

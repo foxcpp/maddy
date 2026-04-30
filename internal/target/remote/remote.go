@@ -208,8 +208,8 @@ func (rt *Target) InstanceName() string {
 type remoteDelivery struct {
 	rt       *Target
 	mailFrom string
-	msgMeta *module.MsgMetadata
-	log     *log.Logger
+	msgMeta  *module.MsgMetadata
+	log      *log.Logger
 
 	recipients  []string
 	connections map[string]*mxConn

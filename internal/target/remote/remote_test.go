@@ -75,7 +75,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 }
 
 func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(context.Context, string) (*mtasts.Policy, error)) *mtastsPolicy {
-	m, err := NewMTASTSPolicy(container.New(),"mx_auth.mtasts", "test")
+	m, err := NewMTASTSPolicy(container.New(), "mx_auth.mtasts", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 }
 
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
-	m, err := NewDANEPolicy(container.New(),"mx_auth.dane", "test")
+	m, err := NewDANEPolicy(container.New(), "mx_auth.dane", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
