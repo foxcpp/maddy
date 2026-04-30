@@ -22,7 +22,9 @@ import (
 	"context"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type Static struct {
@@ -32,7 +34,7 @@ type Static struct {
 	m map[string][]string
 }
 
-func NewStatic(modName, instName string) (module.Module, error) {
+func NewStatic(_ *container.C, modName, instName string) (module.Module, error) {
 	return &Static{
 		modName:  modName,
 		instName: instName,
@@ -73,5 +75,5 @@ func (s *Static) LookupMulti(ctx context.Context, key string) ([]string, error) 
 }
 
 func init() {
-	module.Register("table.static", NewStatic)
+	modules.Register("table.static", NewStatic)
 }

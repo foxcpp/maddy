@@ -61,7 +61,7 @@ type MsgPipeline struct {
 	// exactly in this place.
 	FirstPipeline bool
 
-	Log log.Logger
+	Log *log.Logger
 }
 
 type rcptIn struct {
@@ -269,7 +269,7 @@ type msgpipelineDelivery struct {
 	sourceModifiersState module.ModifierState
 	rcptModifiersState   map[*rcptBlock]module.ModifierState
 
-	log log.Logger
+	log *log.Logger
 
 	sourceAddr  string
 	sourceBlock sourceBlock

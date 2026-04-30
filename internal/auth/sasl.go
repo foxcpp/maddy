@@ -47,7 +47,7 @@ var (
 // It supports reporting of multiple authorization identities so multiple
 // accounts can be associated with a single set of credentials.
 type SASLAuth struct {
-	Log         log.Logger
+	Log         *log.Logger
 	OnlyFirstID bool
 	EnableLogin bool
 

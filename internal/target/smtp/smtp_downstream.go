@@ -39,9 +39,11 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/smtpconn"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
@@ -62,7 +64,7 @@ type Downstream struct {
 	commandTimeout    time.Duration
 	submissionTimeout time.Duration
 
-	log log.Logger
+	log *log.Logger
 }
 
 func (u *Downstream) moduleError(err error) error {
@@ -75,12 +77,12 @@ func (u *Downstream) moduleError(err error) error {
 	})
 }
 
-func NewDownstream(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Downstream{
 		modName:  modName,
 		instName: instName,
-		lmtp:     modName == "target.lmtp" || modName == "lmtp_downstream", /* compatibility with 0.3 configs */
-		log:      log.Logger{Name: modName},
+		lmtp:     modName == "target.lmtp",
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -167,7 +169,7 @@ func (u *Downstream) InstanceName() string {
 
 type delivery struct {
 	u   *Downstream
-	log log.Logger
+	log *log.Logger
 
 	msgMeta  *module.MsgMetadata
 	mailFrom string
@@ -344,6 +346,6 @@ func (d *delivery) Commit(ctx context.Context) error {
 }
 
 func init() {
-	module.Register("target.smtp", NewDownstream)
-	module.Register("target.lmtp", NewDownstream)
+	modules.Register("target.smtp", New)
+	modules.Register("target.lmtp", New)
 }

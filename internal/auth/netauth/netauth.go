@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/hashicorp/go-hclog"
 	"github.com/netauth/netauth/pkg/netauth"
 )
@@ -16,8 +18,8 @@ const modName = "auth.netauth"
 func init() {
 	var _ module.PlainAuth = &Auth{}
 	var _ module.Table = &Auth{}
-	module.Register(modName, New)
-	module.Register("table.netauth", New)
+	modules.Register(modName, New)
+	modules.Register("table.netauth", New)
 }
 
 // Auth binds all methods related to the NetAuth client library.
@@ -27,22 +29,23 @@ type Auth struct {
 
 	nacl *netauth.Client
 
-	log log.Logger
+	log *log.Logger
 }
 
 // New creates a new instance of the NetAuth module.
-func New(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
-		log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
+
 func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 	if len(inlineArgs) > 0 {
 		return fmt.Errorf("%s: inline arguments are not used", modName)
 	}
 
-	l := hclog.New(&hclog.LoggerOptions{Output: &a.log})
+	l := hclog.New(&hclog.LoggerOptions{Output: a.log})
 	n, err := netauth.NewWithLog(l)
 	if err != nil {
 		return err

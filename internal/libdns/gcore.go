@@ -6,12 +6,14 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/gcore"
 )
 
 func init() {
-	module.Register("libdns.gcore", func(modName, instName string) (module.Module, error) {
+	modules.Register("libdns.gcore", func(c *container.C, modName, instName string) (module.Module, error) {
 		p := gcore.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

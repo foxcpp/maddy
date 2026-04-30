@@ -16,13 +16,37 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package module
+package modules
 
 import (
 	"sync"
 
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
+
+// FuncNewModule is function that creates new instance of module with specified name.
+//
+// Module.InstanceName() of the returned module object should return instName.
+// If module is defined inline, instName will be empty.
+//
+// Returned Module may additionally implement LifetimeModule.
+type FuncNewModule func(c *container.C, modName, instName string) (module.Module, error)
+
+// FuncNewEndpoint is a function that creates new instance of endpoint
+// module.
+//
+// Compared to regular modules, endpoint module instances are:
+// - Not registered in the global registry.
+// - Can't be defined inline.
+// - Don't have an unique name
+// - All config arguments are always passed as an 'addrs' slice and not used as
+// names.
+//
+// As a consequence of having no per-instance name, InstanceName of the module
+// object always returns the same value as Name.
+type FuncNewEndpoint func(c *container.C, modName string, addrs []string) (container.LifetimeModule, error)
 
 var (
 	modules     = make(map[string]FuncNewModule)
@@ -52,9 +76,9 @@ func Register(name string, factory FuncNewModule) {
 // It prints warning to the log about name being deprecated and suggests using
 // a new name.
 func RegisterDeprecated(name, newName string, factory FuncNewModule) {
-	Register(name, func(modName, instName string) (Module, error) {
+	Register(name, func(c *container.C, modName, instName string) (module.Module, error) {
 		log.Printf("module initialized via deprecated name %s, %s should be used instead; deprecated name may be removed in the next version", name, newName)
-		return factory(modName, instName)
+		return factory(c, modName, instName)
 	})
 }
 
@@ -93,4 +117,8 @@ func RegisterEndpoint(name string, factory FuncNewEndpoint) {
 	}
 
 	endpoints[name] = factory
+}
+
+func init() {
+	Register("dummy", NewDummy)
 }

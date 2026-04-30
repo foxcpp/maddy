@@ -34,6 +34,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -97,5 +98,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

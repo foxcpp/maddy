@@ -9,9 +9,11 @@ import (
 	"github.com/caddyserver/certmagic"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 const modName = "tls.loader.acme"
@@ -25,13 +27,13 @@ type Loader struct {
 	cfg          *certmagic.Config
 	cancelManage context.CancelFunc
 
-	log log.Logger
+	log *log.Logger
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, _, instName string) (module.Module, error) {
 	return &Loader{
 		instName: instName,
-		log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -163,5 +165,5 @@ func init() {
 
 func init() {
 	var _ module.TLSLoader = &Loader{}
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

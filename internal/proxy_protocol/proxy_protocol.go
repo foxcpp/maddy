@@ -50,7 +50,7 @@ func ProxyProtocolDirective(_ *config.Map, node config.Node) (interface{}, error
 	return &p, nil
 }
 
-func NewListener(inner net.Listener, p *ProxyProtocol, logger log.Logger) net.Listener {
+func NewListener(inner net.Listener, p *ProxyProtocol, logger *log.Logger) net.Listener {
 	var listener net.Listener
 
 	sourceChecker := func(upstream net.Addr) (bool, error) {
@@ -68,14 +68,12 @@ func NewListener(inner net.Listener, p *ProxyProtocol, logger log.Logger) net.Li
 			return true, nil
 		}
 
-		logger.Printf("proxy_protocol: connection from untrusted source %s", upstream)
+		logger.Printf("connection from untrusted source %s", upstream)
 		return false, nil
 	}
 
 	proxyListener := proxyprotocol.NewDefaultListener(inner).
-		WithLogger(proxyprotocol.LoggerFunc(func(format string, v ...interface{}) {
-			logger.Debugf("proxy_protocol: "+format, v...)
-		})).
+		WithLogger(proxyprotocol.LoggerFunc(logger.Debugf)).
 		WithSourceChecker(sourceChecker)
 	listener = &proxyListener
 

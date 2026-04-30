@@ -12,8 +12,10 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/go-ldap/ldap/v3"
 )
 
@@ -37,13 +39,13 @@ type Auth struct {
 	conn     *ldap.Conn
 	connLock sync.Mutex
 
-	log log.Logger
+	log *log.Logger
 }
 
-func New(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
-		log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -297,6 +299,6 @@ func (a *Auth) Stop() error {
 func init() {
 	var _ module.PlainAuth = &Auth{}
 	var _ module.Table = &Auth{}
-	module.Register(modName, New)
-	module.Register("table.ldap", New)
+	modules.Register(modName, New)
+	modules.Register("table.ldap", New)
 }

@@ -30,10 +30,12 @@ import (
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/sync/errgroup"
 )
@@ -72,15 +74,15 @@ type DNSBL struct {
 	rejectThres     int
 
 	resolver dns.Resolver
-	log      log.Logger
+	log      *log.Logger
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &DNSBL{
 		instName: instName,
 
 		resolver: dns.DefaultResolver(),
-		log:      log.Logger{Name: "dnsbl"},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -462,7 +464,7 @@ func (bl *DNSBL) CheckConnection(ctx context.Context, state *module.ConnState) e
 type state struct {
 	bl      *DNSBL
 	msgMeta *module.MsgMetadata
-	log     log.Logger
+	log     *log.Logger
 }
 
 func (bl *DNSBL) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -506,5 +508,5 @@ func (*state) Close() error {
 }
 
 func init() {
-	module.Register("check.dnsbl", New)
+	modules.Register("check.dnsbl", New)
 }

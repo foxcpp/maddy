@@ -20,7 +20,6 @@ package container
 
 import (
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
 )
 
 type GlobalConfig struct {
@@ -53,16 +52,17 @@ type GlobalConfig struct {
 
 type C struct {
 	Config        GlobalConfig
-	DefaultLogger log.Logger
-	Modules       *module.Registry
-	Lifetime      *module.LifetimeTracker
+	DefaultLogger *log.Logger
+	Modules       *Registry
+	Lifetime      *LifetimeTracker
 }
 
 func New() *C {
+	rootLog := log.DefaultLogger.Sublogger("")
 	return &C{
-		DefaultLogger: log.DefaultLogger,
-		Modules:       module.NewRegistry(log.DefaultLogger.Sublogger("registry")),
-		Lifetime:      module.NewLifetime(log.DefaultLogger.Sublogger("lifetime")),
+		DefaultLogger: rootLog,
+		Modules:       NewRegistry(rootLog.Sublogger("registry")),
+		Lifetime:      NewLifetime(rootLog.Sublogger("lifetime")),
 	}
 }
 

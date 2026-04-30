@@ -5,12 +5,14 @@ package libdns
 
 import (
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/metaname"
 )
 
 func init() {
-	module.Register("libdns.metaname", func(modName, instName string) (module.Module, error) {
+	modules.Register("libdns.metaname", func(c *container.C, modName, instName string) (module.Module, error) {
 		p := metaname.Provider{
 			Endpoint: "https://metaname.net/api/1.1",
 		}

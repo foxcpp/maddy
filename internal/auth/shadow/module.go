@@ -28,8 +28,10 @@ import (
 	"path/filepath"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/auth/external"
 )
 
@@ -38,13 +40,13 @@ type Auth struct {
 	useHelper  bool
 	helperPath string
 
-	Log log.Logger
+	log *log.Logger
 }
 
-func New(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
-		Log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -61,7 +63,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("shadow: inline arguments are not used")
 	}
 
-	cfg.Bool("debug", true, false, &a.Log.Debug)
+	cfg.Bool("debug", true, false, &a.log.Debug)
 	cfg.Bool("use_helper", false, false, &a.useHelper)
 	if _, err := cfg.Process(); err != nil {
 		return err
@@ -81,7 +83,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 			return fmt.Errorf("shadow: can't read /etc/shadow: %v", err)
 		}
 		if err := f.Close(); err != nil {
-			a.Log.Error("can't close /etc/shadow file", err)
+			a.log.Error("can't close /etc/shadow file", err)
 		}
 	}
 
@@ -137,5 +139,5 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("auth.shadow", New)
+	modules.Register("auth.shadow", New)
 }

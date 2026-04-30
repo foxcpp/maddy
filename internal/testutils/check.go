@@ -24,7 +24,9 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type Check struct {
@@ -104,7 +106,7 @@ func (cs *checkState) Close() error {
 }
 
 func init() {
-	module.Register("test_check", func(_, _ string) (module.Module, error) {
+	modules.Register("test_check", func(_ *container.C, _, _ string) (module.Module, error) {
 		return &Check{}, nil
 	})
 }

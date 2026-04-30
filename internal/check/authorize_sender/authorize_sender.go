@@ -27,9 +27,11 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/authz"
 	"github.com/foxcpp/maddy/internal/table"
 	"github.com/foxcpp/maddy/internal/target"
@@ -39,7 +41,7 @@ const modName = "check.authorize_sender"
 
 type Check struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	checkHeader  bool
 	emailPrepare module.Table
@@ -53,9 +55,10 @@ type Check struct {
 	authNorm authz.NormalizeFunc
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Check{
 		instName: instName,
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -108,7 +111,7 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 type state struct {
 	c       *Check
 	msgMeta *module.MsgMetadata
-	log     log.Logger
+	log     *log.Logger
 }
 
 func (c *Check) CheckStateForMsg(_ context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -306,5 +309,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

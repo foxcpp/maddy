@@ -5,13 +5,15 @@ package libdns
 
 import (
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/vultr"
 )
 
 func init() {
-	module.Register("libdns.vultr", func(modName, instName string) (module.Module, error) {
+	modules.Register("libdns.vultr", func(c *container.C, modName, instName string) (module.Module, error) {
 		p := vultr.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

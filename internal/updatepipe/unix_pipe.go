@@ -45,7 +45,7 @@ import (
 // is initialized on the first call to Listen or (Init)Push.
 type UnixSockPipe struct {
 	SockPath string
-	Log      log.Logger
+	Log      *log.Logger
 
 	listener net.Listener
 	sender   net.Conn

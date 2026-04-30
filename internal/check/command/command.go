@@ -37,9 +37,11 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -58,7 +60,7 @@ var placeholderRe = regexp.MustCompile(`{[a-zA-Z0-9_]+?}`)
 
 type Check struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	stage   Stage
 	actions map[int]modconfig.FailAction
@@ -66,9 +68,10 @@ type Check struct {
 	cmdArgs []string
 }
 
-func New(modName, instName string) (module.Module, error) {
-	c := &Check{
+func New(c *container.C, modName, instName string) (module.Module, error) {
+	chk := &Check{
 		instName: instName,
+		log:      c.DefaultLogger.Sublogger(modName),
 		actions: map[int]modconfig.FailAction{
 			1: {
 				Reject: true,
@@ -79,7 +82,7 @@ func New(modName, instName string) (module.Module, error) {
 		},
 	}
 
-	return c, nil
+	return chk, nil
 }
 
 func (c *Check) Name() string {
@@ -140,7 +143,7 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 type state struct {
 	c       *Check
 	msgMeta *module.MsgMetadata
-	log     log.Logger
+	log     *log.Logger
 
 	mailFrom string
 	rcpts    []string
@@ -397,5 +400,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

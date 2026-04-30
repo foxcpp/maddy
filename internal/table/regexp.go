@@ -25,7 +25,9 @@ import (
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type Regexp struct {
@@ -38,7 +40,7 @@ type Regexp struct {
 	expandPlaceholders bool
 }
 
-func NewRegexp(modName, instName string) (module.Module, error) {
+func NewRegexp(_ *container.C, modName, instName string) (module.Module, error) {
 	return &Regexp{
 		modName:  modName,
 		instName: instName,
@@ -121,5 +123,5 @@ func (r *Regexp) Lookup(ctx context.Context, key string) (string, bool, error) {
 }
 
 func init() {
-	module.Register("table.regexp", NewRegexp)
+	modules.Register("table.regexp", NewRegexp)
 }

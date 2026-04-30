@@ -26,8 +26,10 @@ import (
 	"strings"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	sqliteprovider "github.com/foxcpp/maddy/internal/sqlite"
 	_ "github.com/lib/pq"
 )
@@ -47,7 +49,7 @@ type SQL struct {
 	del    *sql.Stmt
 }
 
-func NewSQL(modName, instName string) (module.Module, error) {
+func NewSQL(_ *container.C, modName, instName string) (module.Module, error) {
 	return &SQL{
 		modName:  modName,
 		instName: instName,
@@ -265,5 +267,5 @@ func (s *SQL) SetKey(k, v string) error {
 }
 
 func init() {
-	module.Register("table.sql_query", NewSQL)
+	modules.Register("table.sql_query", NewSQL)
 }

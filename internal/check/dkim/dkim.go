@@ -33,16 +33,18 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
 type Check struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	requiredFields  map[string]struct{}
 	brokenSigAction modconfig.FailAction
@@ -52,10 +54,10 @@ type Check struct {
 	resolver dns.Resolver
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Check{
 		instName: instName,
-		log:      log.Logger{Name: "check.dkim"},
+		log:      c.DefaultLogger.Sublogger(modName),
 		resolver: dns.DefaultResolver(),
 	}, nil
 }
@@ -102,7 +104,7 @@ func (c *Check) InstanceName() string {
 type dkimCheckState struct {
 	c       *Check
 	msgMeta *module.MsgMetadata
-	log     log.Logger
+	log     *log.Logger
 }
 
 func (d *dkimCheckState) CheckConnection(ctx context.Context) module.CheckResult {
@@ -269,5 +271,5 @@ func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadat
 }
 
 func init() {
-	module.Register("check.dkim", New)
+	modules.Register("check.dkim", New)
 }

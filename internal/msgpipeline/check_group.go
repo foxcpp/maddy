@@ -21,7 +21,9 @@ package msgpipeline
 import (
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 // CheckGroup is a module container for a group of Check implementations.
@@ -59,7 +61,7 @@ func (cg *CheckGroup) InstanceName() string {
 }
 
 func init() {
-	module.Register("checks", func(_, instName string) (module.Module, error) {
+	modules.Register("checks", func(_ *container.C, _, instName string) (module.Module, error) {
 		return &CheckGroup{
 			instName: instName,
 		}, nil

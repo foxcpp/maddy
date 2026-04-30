@@ -28,7 +28,9 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 // replaceAddr is a simple module that replaces matching sender (or recipient) address
@@ -45,7 +47,7 @@ type replaceAddr struct {
 	table         module.MultiTable
 }
 
-func NewReplaceAddr(modName, instName string) (module.Module, error) {
+func NewReplaceAddr(c *container.C, modName, instName string) (module.Module, error) {
 	r := replaceAddr{
 		modName:       modName,
 		instName:      instName,
@@ -149,6 +151,6 @@ func (r *replaceAddr) rewrite(ctx context.Context, val string) ([]string, error)
 }
 
 func init() {
-	module.Register("modify.replace_sender", NewReplaceAddr)
-	module.Register("modify.replace_rcpt", NewReplaceAddr)
+	modules.Register("modify.replace_sender", NewReplaceAddr)
+	modules.Register("modify.replace_rcpt", NewReplaceAddr)
 }

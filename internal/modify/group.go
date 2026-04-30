@@ -25,8 +25,10 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type (
@@ -135,7 +137,7 @@ func (gs groupState) Close() error {
 }
 
 func init() {
-	module.Register("modifiers", func(_, instName string) (module.Module, error) {
+	modules.Register("modifiers", func(c *container.C, _, instName string) (module.Module, error) {
 		return &Group{
 			instName: instName,
 		}, nil

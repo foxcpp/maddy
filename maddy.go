@@ -36,7 +36,7 @@ import (
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/authz"
 	maddycli "github.com/foxcpp/maddy/internal/cli"
@@ -208,11 +208,11 @@ func Run(c *cli.Context) error {
 	}
 
 	hooks.AddHook(hooks.EventLogRotate, reinitLogging)
-	defer func() {
-		if err := log.DefaultLogger.Out.Close(); err != nil {
+	defer func(out log.Output) {
+		if err := out.Close(); err != nil {
 			log.Println("failed to close default logger output:", err)
 		}
-	}()
+	}(log.DefaultLogger.Out)
 	defer hooks.RunHooks(hooks.EventShutdown)
 
 	defer func() {
@@ -239,7 +239,7 @@ func VerifyConfig(c *cli.Context) error {
 		return cli.Exit(err.Error(), 2)
 	}
 
-	log.DefaultLogger.Msg("No errors detected")
+	_, _ = fmt.Fprintln(os.Stderr, "No errors detected")
 
 	return nil
 }
@@ -337,7 +337,7 @@ func ReadGlobals(c *container.C, cfg []config.Node) (map[string]interface{}, []c
 	globals.Bool("auth_perdomain", false, false, nil)
 	globals.StringList("auth_domains", false, false, nil, nil)
 	globals.Custom("log", false, false, defaultLogOutput, logOutput, &c.DefaultLogger.Out)
-	globals.Bool("debug", false, log.DefaultLogger.Debug, &c.DefaultLogger.Debug)
+	globals.Bool("debug", false, false, &c.DefaultLogger.Debug)
 	config.EnumMapped(globals, "auth_map_normalize", true, false, authz.NormalizeFuncs, authz.NormalizeAuto, nil)
 	modconfig.Table(globals, "auth_map", true, false, nil, nil)
 	globals.AllowUnknown()
@@ -373,6 +373,11 @@ func moduleConfigure(configPath string) (*container.C, error) {
 		return nil, err
 	}
 
+	// ReadGlobals will configure c.DefaultLogger.
+	if c.DefaultLogger.Out != nil {
+		log.DefaultLogger.Out = c.DefaultLogger.Out
+	}
+
 	if err := InitDirs(c); err != nil {
 		return nil, err
 	}
@@ -397,7 +402,7 @@ func moduleStart(c *container.C) error {
 func moduleStop(c *container.C, earlyStop bool) error {
 	if earlyStop {
 		if err := c.Lifetime.EarlyStopAll(); err != nil {
-			log.DefaultLogger.Error("early stop failed", err)
+			c.DefaultLogger.Error("early stop failed", err)
 		}
 	}
 
@@ -444,6 +449,12 @@ func moduleMain(configPath string) error {
 	}
 	c.DefaultLogger.Msg("server stopped")
 
+	if c.DefaultLogger.Out != nil {
+		if err := c.DefaultLogger.Out.Close(); err != nil {
+			log.DefaultLogger.Error("failed to close output logger", err)
+		}
+	}
+
 	return nil
 }
 
@@ -451,26 +462,40 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 	oldContainer.DefaultLogger.Msg("reloading server...")
 	systemdStatus(SDReloading, "Reloading server...")
 
+	rollbackReload := func() {
+		// Restore DefaultLogger config that might be set by moduleConfig
+		log.DefaultLogger.Out = oldContainer.DefaultLogger.Out
+	}
+
 	oldContainer.DefaultLogger.Msg("loading new configuration...")
 	newContainer, err := moduleConfigure(configPath)
 	if err != nil {
+		rollbackReload()
 		oldContainer.DefaultLogger.Error("failed to load new configuration", err)
+
 		return oldContainer
 	}
 
 	oldContainer.DefaultLogger.Msg("configuration loaded")
+	rollbackReload = func() {
+		// Restore DefaultLogger config that might be set by moduleConfig
+		log.DefaultLogger.Out = oldContainer.DefaultLogger.Out
+		container.Global = oldContainer
+	}
 
 	if err := oldContainer.Lifetime.EarlyStopAll(); err != nil {
+		rollbackReload()
 		oldContainer.DefaultLogger.Error("failed to early-stop old server", err)
-		container.Global = oldContainer
+
 		return oldContainer
 	}
 
 	netresource.ResetListenersUsage()
 	oldContainer.DefaultLogger.Msg("starting new server")
 	if err := moduleStart(newContainer); err != nil {
+		rollbackReload()
 		oldContainer.DefaultLogger.Error("failed to start new server", err)
-		container.Global = oldContainer
+
 		return oldContainer
 	}
 
@@ -492,6 +517,9 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 			oldContainer.DefaultLogger.Error("moduleStop failed", err)
 		}
 		oldContainer.DefaultLogger.Msg("old server stopped")
+		if err := oldContainer.DefaultLogger.Out.Close(); err != nil {
+			newContainer.DefaultLogger.Error("failed to close old server log", err)
+		}
 
 		systemdStatus(SDReloading, "Configuration running.")
 	}()
@@ -501,7 +529,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 
 func RegisterModules(c *container.C, globals map[string]interface{}, nodes []config.Node) (err error) {
 	var endpoints []struct {
-		Endpoint module.LifetimeModule
+		Endpoint container.LifetimeModule
 		Cfg      *config.Map
 	}
 
@@ -517,26 +545,26 @@ func RegisterModules(c *container.C, globals map[string]interface{}, nodes []con
 
 		modName := block.Name
 
-		endpFactory := module.GetEndpoint(modName)
+		endpFactory := modules.GetEndpoint(modName)
 		if endpFactory != nil {
-			inst, err := endpFactory(modName, block.Args)
+			inst, err := endpFactory(c, modName, block.Args)
 			if err != nil {
 				return err
 			}
 
 			endpoints = append(endpoints, struct {
-				Endpoint module.LifetimeModule
+				Endpoint container.LifetimeModule
 				Cfg      *config.Map
 			}{Endpoint: inst, Cfg: config.NewMap(globals, block)})
 			continue
 		}
 
-		factory := module.Get(modName)
+		factory := modules.Get(modName)
 		if factory == nil {
 			return config.NodeErr(block, "unknown module or global directive: %s", modName)
 		}
 
-		inst, err := factory(modName, instName)
+		inst, err := factory(c, modName, instName)
 		if err != nil {
 			return err
 		}
@@ -547,13 +575,13 @@ func RegisterModules(c *container.C, globals map[string]interface{}, nodes []con
 				return err
 			}
 
-			if lt, ok := inst.(module.LifetimeModule); ok {
+			if lt, ok := inst.(container.LifetimeModule); ok {
 				c.Lifetime.Add(lt)
 			}
 			return nil
 		})
 		if err != nil {
-			if errors.Is(err, module.ErrInstanceNameDuplicate) {
+			if errors.Is(err, container.ErrInstanceNameDuplicate) {
 				return config.NodeErr(block, "config block named %s already exists", inst.InstanceName())
 			}
 			return err
@@ -561,7 +589,7 @@ func RegisterModules(c *container.C, globals map[string]interface{}, nodes []con
 
 		for _, alias := range modAliases {
 			if err := c.Modules.AddAlias(instName, alias); err != nil {
-				if errors.Is(err, module.ErrInstanceNameDuplicate) {
+				if errors.Is(err, container.ErrInstanceNameDuplicate) {
 					return config.NodeErr(block, "config block named %s already exists", alias)
 				}
 				return err

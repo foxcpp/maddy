@@ -108,7 +108,7 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 		for rcpt, rcptData := range d.addedRcpts {
 			folder, flags, err := d.store.filters.IMAPFilter(rcpt, rcptData.rcptTo, d.msgMeta, header, body)
 			if err != nil {
-				d.store.Log.Error("IMAPFilter failed", err, "rcpt", rcpt)
+				d.store.log.Error("IMAPFilter failed", err, "rcpt", rcpt)
 				continue
 			}
 			d.d.UserMailbox(rcpt, folder, flags)

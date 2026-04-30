@@ -7,8 +7,10 @@ import (
 	"net/http"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -25,7 +27,7 @@ const (
 
 type Store struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	endpoint string
 	cl       *minio.Client
@@ -34,10 +36,10 @@ type Store struct {
 	objectPrefix string
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Store{
 		instName: instName,
-		log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -194,5 +196,5 @@ func (s *Store) Delete(ctx context.Context, keys []string) error {
 
 func init() {
 	var _ module.BlobStore = &Store{}
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

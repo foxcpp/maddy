@@ -25,16 +25,18 @@ import (
 	"github.com/emersion/go-sasl"
 	dovecotsasl "github.com/foxcpp/go-dovecot-sasl"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/auth"
 )
 
 type Auth struct {
 	instName       string
 	serverEndpoint string
-	log            log.Logger
+	log            *log.Logger
 
 	network string
 	addr    string
@@ -44,10 +46,10 @@ type Auth struct {
 
 const modName = "dovecot_sasl"
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, _, instName string) (module.Module, error) {
 	a := &Auth{
 		instName: instName,
-		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
 	return a, nil
@@ -162,5 +164,5 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

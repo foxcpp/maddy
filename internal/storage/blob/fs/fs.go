@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 // FSStore struct represents directory on FS used to store blobs.
@@ -17,7 +19,7 @@ type FSStore struct {
 	root     string
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(_ *container.C, _, instName string) (module.Module, error) {
 	return &FSStore{instName: instName}, nil
 }
 
@@ -92,5 +94,5 @@ func (s *FSStore) Delete(_ context.Context, keys []string) error {
 
 func init() {
 	var _ module.BlobStore = &FSStore{}
-	module.Register((&FSStore{}).Name(), New)
+	modules.Register((&FSStore{}).Name(), New)
 }

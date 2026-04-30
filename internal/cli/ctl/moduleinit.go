@@ -32,7 +32,7 @@ import (
 )
 
 func closeIfNeeded(i any) {
-	if c, ok := i.(module.LifetimeModule); ok {
+	if c, ok := i.(container.LifetimeModule); ok {
 		if err := c.Stop(); err != nil {
 			log.DefaultLogger.Error("failed to stop module", err)
 		}
@@ -48,7 +48,7 @@ func (m *managedStorage) Close() error {
 	if !m.started {
 		return nil
 	}
-	if lm, ok := m.ManageableStorage.(module.LifetimeModule); ok {
+	if lm, ok := m.ManageableStorage.(container.LifetimeModule); ok {
 		return lm.Stop()
 	}
 	return nil
@@ -63,7 +63,7 @@ func (m *managedUserDB) Close() error {
 	if !m.started {
 		return nil
 	}
-	if lm, ok := m.PlainUserDB.(module.LifetimeModule); ok {
+	if lm, ok := m.PlainUserDB.(container.LifetimeModule); ok {
 		return lm.Stop()
 	}
 	return nil
@@ -88,6 +88,11 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 		return nil, nil, err
 	}
 
+	// For CLI management we force-rollback configured logger and consider only
+	// --log so messages relevant to command execution will go where admin would
+	// see them.
+	c.DefaultLogger.Out = log.DefaultLogger.Out
+
 	if err := maddy.InitDirs(c); err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +109,7 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 
 	mod, err := c.Modules.Get(cfgBlock)
 	if err != nil {
-		if errors.Is(err, module.ErrInstanceUnknown) {
+		if errors.Is(err, container.ErrInstanceUnknown) {
 			return nil, nil, cli.Exit(fmt.Sprintf("Error: unknown configuration block: %s", cfgBlock), 2)
 		}
 		return nil, nil, err
@@ -125,7 +130,7 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 	}
 
 	started := false
-	if lt, ok := storage.(module.LifetimeModule); ok {
+	if lt, ok := storage.(container.LifetimeModule); ok {
 		if err := lt.Start(); err != nil {
 			return nil, err
 		}
@@ -160,7 +165,7 @@ func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
 	}
 
 	started := false
-	if lt, ok := userDB.(module.LifetimeModule); ok {
+	if lt, ok := userDB.(container.LifetimeModule); ok {
 		if err := lt.Start(); err != nil {
 			return nil, err
 		}

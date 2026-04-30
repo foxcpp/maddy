@@ -34,10 +34,12 @@ import (
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 	"golang.org/x/net/idna"
 )
@@ -108,14 +110,14 @@ type Modifier struct {
 	multipleFromOk bool
 	signSubdomains bool
 
-	log log.Logger
+	log *log.Logger
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	m := &Modifier{
 		instName: instName,
 		signers:  map[string]crypto.Signer{},
-		log:      log.Logger{Name: "modify.dkim"},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
 	return m, nil
@@ -254,7 +256,7 @@ type state struct {
 	m    *Modifier
 	meta *module.MsgMetadata
 	from string
-	log  log.Logger
+	log  *log.Logger
 }
 
 func (m *Modifier) ModStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.ModifierState, error) {
@@ -370,5 +372,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register("modify.dkim", New)
+	modules.Register("modify.dkim", New)
 }

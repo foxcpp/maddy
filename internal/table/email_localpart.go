@@ -23,7 +23,9 @@ import (
 
 	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type EmailLocalpart struct {
@@ -32,7 +34,7 @@ type EmailLocalpart struct {
 	allowNonEmail bool
 }
 
-func NewEmailLocalpart(modName, instName string) (module.Module, error) {
+func NewEmailLocalpart(_ *container.C, modName, instName string) (module.Module, error) {
 	return &EmailLocalpart{
 		modName:       modName,
 		instName:      instName,
@@ -65,6 +67,6 @@ func (s *EmailLocalpart) Lookup(ctx context.Context, key string) (string, bool, 
 }
 
 func init() {
-	module.Register("table.email_localpart", NewEmailLocalpart)
-	module.Register("table.email_localpart_optional", NewEmailLocalpart)
+	modules.Register("table.email_localpart", NewEmailLocalpart)
+	modules.Register("table.email_localpart_optional", NewEmailLocalpart)
 }

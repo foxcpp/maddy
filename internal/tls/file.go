@@ -27,15 +27,17 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type FileLoader struct {
 	instName  string
 	certPaths []string
 	keyPaths  []string
-	log       log.Logger
+	log       *log.Logger
 
 	certs     []tls.Certificate
 	certsLock sync.RWMutex
@@ -44,10 +46,10 @@ type FileLoader struct {
 	stopTick   chan struct{}
 }
 
-func NewFileLoader(_, instName string) (module.Module, error) {
+func NewFileLoader(c *container.C, modName, instName string) (module.Module, error) {
 	return &FileLoader{
 		instName: instName,
-		log:      log.Logger{Name: "tls.loader.file", Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 		stopTick: make(chan struct{}),
 	}, nil
 }
@@ -163,5 +165,5 @@ func (f *FileLoader) ConfigureTLS(c *tls.Config) error {
 
 func init() {
 	var _ module.TLSLoader = &FileLoader{}
-	module.Register("tls.loader.file", NewFileLoader)
+	modules.Register("tls.loader.file", NewFileLoader)
 }

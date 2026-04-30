@@ -35,6 +35,7 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/buffer"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
@@ -58,7 +59,7 @@ func cleanQueue(t *testing.T, q *Queue) {
 }
 
 func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Queue {
-	mod, _ := NewQueue("", "queue")
+	mod, _ := New(container.New(), "", "queue")
 	q := mod.(*Queue)
 	q.initialRetryTime = 0
 	q.retryTimeScale = 1
@@ -68,9 +69,9 @@ func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Qu
 	q.Target = target
 
 	if testing.Verbose() {
-		q.Log = testutils.Logger(t, "queue")
+		q.log = testutils.Logger(t, "queue")
 	} else {
-		q.Log = log.Logger{Out: log.NopOutput{}}
+		q.log = &log.NopLogger
 	}
 
 	if err := q.start(1); err != nil {

@@ -25,8 +25,10 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type Auth struct {
@@ -38,15 +40,15 @@ type Auth struct {
 
 	onlyFirstID bool
 
-	Log log.Logger
+	log *log.Logger
 }
 
-func NewAuth(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	a := &Auth{
 		modName:     modName,
 		instName:    instName,
 		onlyFirstID: false,
-		Log:         log.Logger{Name: modName},
+		log:         c.DefaultLogger.Sublogger(modName),
 	}
 
 	return a, nil
@@ -65,7 +67,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("plain_separate: inline arguments are not used")
 	}
 
-	cfg.Bool("debug", false, false, &a.Log.Debug)
+	cfg.Bool("debug", false, false, &a.log.Debug)
 	cfg.Callback("user", func(m *config.Map, node config.Node) error {
 		var tbl module.Table
 		err := modconfig.ModuleFromNode("table", node.Args, node, m.Globals, &tbl)
@@ -141,5 +143,5 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("auth.plain_separate", NewAuth)
+	modules.Register("auth.plain_separate", New)
 }

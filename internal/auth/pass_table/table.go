@@ -25,7 +25,9 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/secure/precis"
 )
@@ -37,7 +39,7 @@ type Auth struct {
 	table module.Table
 }
 
-func New(modName, instName string) (module.Module, error) {
+func New(_ *container.C, modName, instName string) (module.Module, error) {
 	return &Auth{
 		modName:  modName,
 		instName: instName,
@@ -192,5 +194,5 @@ func (a *Auth) DeleteUser(username string) error {
 }
 
 func init() {
-	module.Register("auth.pass_table", New)
+	modules.Register("auth.pass_table", New)
 }

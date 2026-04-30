@@ -23,8 +23,10 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 // Group wraps multiple modifiers and runs them serially.
@@ -34,13 +36,13 @@ import (
 type Group struct {
 	instName string
 	Filters  []module.IMAPFilter
-	log      log.Logger
+	log      *log.Logger
 }
 
-func NewGroup(_, instName string) (module.Module, error) {
+func NewGroup(c *container.C, modName, instName string) (module.Module, error) {
 	return &Group{
 		instName: instName,
-		log:      log.Logger{Name: "imap_filters", Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -88,5 +90,5 @@ func (g *Group) InstanceName() string {
 }
 
 func init() {
-	module.Register("imap_filters", NewGroup)
+	modules.Register("imap_filters", NewGroup)
 }

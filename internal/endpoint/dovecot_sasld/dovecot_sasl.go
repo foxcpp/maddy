@@ -29,8 +29,9 @@ import (
 	dovecotsasl "github.com/foxcpp/go-dovecot-sasl"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
@@ -40,7 +41,7 @@ const modName = "dovecot_sasld"
 
 type Endpoint struct {
 	addrs    []string
-	log      log.Logger
+	log      *log.Logger
 	saslAuth auth.SASLAuth
 
 	endpoints   []config.Endpoint
@@ -49,13 +50,14 @@ type Endpoint struct {
 	srv *dovecotsasl.Server
 }
 
-func New(_ string, addrs []string) (module.LifetimeModule, error) {
+func New(c *container.C, _ string, addrs []string) (container.LifetimeModule, error) {
+	logger := c.DefaultLogger.Sublogger(modName)
 	return &Endpoint{
 		addrs: addrs,
 		saslAuth: auth.SASLAuth{
-			Log: log.Logger{Name: modName + "/saslauth"},
+			Log: logger.Sublogger("sasl"),
 		},
-		log: log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		log: logger,
 	}, nil
 }
 
@@ -81,7 +83,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 
 	endp.srv = dovecotsasl.NewServer()
 	endp.saslAuth.Log.Debug = endp.log.Debug
-	endp.srv.Log = stdlog.New(&endp.log, "", 0)
+	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
@@ -133,5 +135,5 @@ func (endp *Endpoint) Stop() error {
 }
 
 func init() {
-	module.RegisterEndpoint(modName, New)
+	modules.RegisterEndpoint(modName, New)
 }

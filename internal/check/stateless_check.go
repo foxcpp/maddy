@@ -27,9 +27,11 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -47,7 +49,7 @@ type (
 		// Logger that should be used by the check for logging, note that it is
 		// already wrapped to append Msg ID to all messages so check code
 		// should not do the same.
-		Logger log.Logger
+		Logger *log.Logger
 	}
 	FuncConnCheck   func(checkContext StatelessCheckContext) module.CheckResult
 	FuncSenderCheck func(checkContext StatelessCheckContext, mailFrom string) module.CheckResult
@@ -59,7 +61,7 @@ type statelessCheck struct {
 	modName  string
 	instName string
 	resolver dns.Resolver
-	logger   log.Logger
+	logger   *log.Logger
 
 	// One used by Init if config option is not passed by a user.
 	defaultFailAction modconfig.FailAction
@@ -185,12 +187,12 @@ func (c *statelessCheck) InstanceName() string {
 // code doesn't need to know about it. It should assume that it is always "Reject" and hence it should
 // populate Reason field of the result object with the relevant error description.
 func RegisterStatelessCheck(name string, defaultFailAction modconfig.FailAction, connCheck FuncConnCheck, senderCheck FuncSenderCheck, rcptCheck FuncRcptCheck, bodyCheck FuncBodyCheck) {
-	module.Register(name, func(modName, instName string) (module.Module, error) {
+	modules.Register(name, func(c *container.C, modName, instName string) (module.Module, error) {
 		return &statelessCheck{
 			modName:  modName,
 			instName: instName,
 			resolver: dns.DefaultResolver(),
-			logger:   log.Logger{Name: modName},
+			logger:   c.DefaultLogger.Sublogger(modName),
 
 			defaultFailAction: defaultFailAction,
 

@@ -23,7 +23,9 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 type Chain struct {
@@ -34,7 +36,7 @@ type Chain struct {
 	optional []bool
 }
 
-func NewChain(modName, instName string) (module.Module, error) {
+func NewChain(_ *container.C, modName, instName string) (module.Module, error) {
 	return &Chain{
 		modName:  modName,
 		instName: instName,
@@ -127,5 +129,5 @@ STEP:
 }
 
 func init() {
-	module.Register("table.chain", NewChain)
+	modules.Register("table.chain", NewChain)
 }
