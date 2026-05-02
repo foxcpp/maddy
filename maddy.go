@@ -63,6 +63,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/endpoint/dovecot_sasld"
 	_ "github.com/foxcpp/maddy/internal/endpoint/imap"
 	_ "github.com/foxcpp/maddy/internal/endpoint/openmetrics"
+	_ "github.com/foxcpp/maddy/internal/endpoint/pop3"
 	_ "github.com/foxcpp/maddy/internal/endpoint/smtp"
 	_ "github.com/foxcpp/maddy/internal/imap_filter"
 	_ "github.com/foxcpp/maddy/internal/imap_filter/command"
