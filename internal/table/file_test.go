@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -118,7 +119,7 @@ func TestFileReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mod, err := NewFile("", "")
+	mod, err := NewFile(container.New(), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +180,7 @@ func TestFileReload_Broken(t *testing.T) {
 	}
 	require.NoError(t, f.Close())
 
-	mod, err := NewFile("", "")
+	mod, err := NewFile(container.New(), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +241,7 @@ func TestFileReload_Removed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mod, err := NewFile("", "")
+	mod, err := NewFile(container.New(), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

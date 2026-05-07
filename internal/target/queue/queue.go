@@ -79,9 +79,11 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/dsn"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/target"
@@ -145,7 +147,7 @@ type Queue struct {
 	// after start-up for whatever reason it will not affect the queue.
 	postInitDelay time.Duration
 
-	Log    log.Logger
+	log    *log.Logger
 	Target module.DeliveryTarget
 
 	deliveryWg sync.WaitGroup
@@ -187,13 +189,13 @@ type queueSlot struct {
 	Body buffer.Buffer
 }
 
-func NewQueue(_, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	q := &Queue{
 		name:             instName,
 		initialRetryTime: 15 * time.Minute,
 		retryTimeScale:   1.25,
 		postInitDelay:    10 * time.Second,
-		Log:              log.Logger{Name: "queue"},
+		log:              c.DefaultLogger.Sublogger(modName),
 	}
 	return q, nil
 }
@@ -208,7 +210,7 @@ func (q *Queue) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("queue: wrong amount of inline arguments")
 	}
 
-	cfg.Bool("debug", true, false, &q.Log.Debug)
+	cfg.Bool("debug", true, false, &q.log.Debug)
 	cfg.Int("max_tries", false, false, 20, &q.maxTries)
 	cfg.Int("max_parallelism", false, false, 16, &q.maxParallelism)
 	cfg.Duration("post_init_delay", false, false, q.postInitDelay, &q.postInitDelay)
@@ -231,7 +233,7 @@ func (q *Queue) Configure(inlineArgs []string, cfg *config.Map) error {
 		}
 
 		q.dsnPipeline.(*msgpipeline.MsgPipeline).Hostname = q.hostname
-		q.dsnPipeline.(*msgpipeline.MsgPipeline).Log = log.Logger{Name: "queue/pipeline", Debug: q.Log.Debug}
+		q.dsnPipeline.(*msgpipeline.MsgPipeline).Log = q.log.Sublogger("pipeline")
 	}
 	if q.location == "" && q.name == "" {
 		return errors.New("queue: need explicit location directive or inline argument if defined inline")
@@ -259,7 +261,7 @@ func (q *Queue) start(maxParallelism int) error {
 		return err
 	}
 
-	q.Log.Debugf("delivery target: %T", q.Target)
+	q.log.Debugf("delivery target: %T", q.Target)
 
 	return nil
 }
@@ -294,11 +296,11 @@ func (q *Queue) discardBroken(id string) {
 func (q *Queue) dispatch(ctx context.Context, value TimeSlot[queueSlot]) {
 	slot := value.Value
 
-	q.Log.Debugln("starting delivery for", slot.ID)
+	q.log.Debugln("starting delivery for", slot.ID)
 
 	q.deliveryWg.Add(1)
 	go func() {
-		q.Log.Debugln("waiting on delivery semaphore for", slot.ID)
+		q.log.Debugln("waiting on delivery semaphore for", slot.ID)
 		q.deliverySemaphore <- struct{}{}
 		defer func() {
 			<-q.deliverySemaphore
@@ -315,7 +317,7 @@ func (q *Queue) dispatch(ctx context.Context, value TimeSlot[queueSlot]) {
 			}
 		}()
 
-		q.Log.Debugln("delivery semaphore acquired for", slot.ID)
+		q.log.Debugln("delivery semaphore acquired for", slot.ID)
 		var (
 			meta *QueueMetadata
 			hdr  textproto.Header
@@ -325,7 +327,7 @@ func (q *Queue) dispatch(ctx context.Context, value TimeSlot[queueSlot]) {
 			var err error
 			meta, hdr, body, err = q.openMessage(slot.ID)
 			if err != nil {
-				q.Log.Error("read message", err, slot.ID)
+				q.log.Error("read message", err, slot.ID)
 				return
 			}
 			if meta == nil {
@@ -382,7 +384,7 @@ func toSMTPErr(err error) *smtp.SMTPError {
 }
 
 func (q *Queue) tryDelivery(ctx context.Context, meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
-	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
+	dl := target.DeliveryLogger(q.log, meta.MsgMeta)
 
 	partialErr := q.deliver(ctx, meta, header, body)
 	dl.Debugf("errors: %v", partialErr.Errs)
@@ -469,7 +471,7 @@ func (q *Queue) tryDelivery(ctx context.Context, meta *QueueMetadata, header tex
 }
 
 func (q *Queue) deliver(ctx context.Context, meta *QueueMetadata, header textproto.Header, body buffer.Buffer) partialError {
-	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
+	dl := target.DeliveryLogger(q.log, meta.MsgMeta)
 	perr := partialError{
 		Errs:       map[string]error{},
 		statusLock: new(sync.Mutex),
@@ -650,7 +652,7 @@ func (q *Queue) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, 
 
 func (q *Queue) removeFromDisk(msgMeta *module.MsgMetadata) {
 	id := msgMeta.ID
-	dl := target.DeliveryLogger(q.Log, msgMeta)
+	dl := target.DeliveryLogger(q.log, msgMeta)
 
 	// Order is important.
 	// If we remove header and body but can't remove meta now - readDiskQueue
@@ -692,18 +694,18 @@ func (q *Queue) readDiskQueue() error {
 
 		meta, err := q.readMessageMeta(id)
 		if err != nil {
-			q.Log.Printf("failed to read meta-data, skipping: %v (msg ID = %s)", err, id)
+			q.log.Printf("failed to read meta-data, skipping: %v (msg ID = %s)", err, id)
 			continue
 		}
 
 		// Check header file existence.
 		if _, err := os.Stat(filepath.Join(q.location, id+".header")); err != nil {
 			if os.IsNotExist(err) {
-				q.Log.Printf("header file doesn't exist for msg ID = %s", id)
+				q.log.Printf("header file doesn't exist for msg ID = %s", id)
 				q.tryRemoveDanglingFile(id + ".meta")
 				q.tryRemoveDanglingFile(id + ".body")
 			} else {
-				q.Log.Printf("skipping nonstat'able header file: %v (msg ID = %s)", err, id)
+				q.log.Printf("skipping nonstat'able header file: %v (msg ID = %s)", err, id)
 			}
 			continue
 		}
@@ -711,11 +713,11 @@ func (q *Queue) readDiskQueue() error {
 		// Check body file existence.
 		if _, err := os.Stat(filepath.Join(q.location, id+".body")); err != nil {
 			if os.IsNotExist(err) {
-				q.Log.Printf("body file doesn't exist for msg ID = %s", id)
+				q.log.Printf("body file doesn't exist for msg ID = %s", id)
 				q.tryRemoveDanglingFile(id + ".meta")
 				q.tryRemoveDanglingFile(id + ".header")
 			} else {
-				q.Log.Printf("skipping nonstat'able body file: %v (msg ID = %s)", err, id)
+				q.log.Printf("skipping nonstat'able body file: %v (msg ID = %s)", err, id)
 			}
 			continue
 		}
@@ -734,7 +736,7 @@ func (q *Queue) readDiskQueue() error {
 			nextTryTime = time.Now().Add(q.postInitDelay)
 		}
 
-		q.Log.Debugf("will try to deliver (msg ID = %s) in %v (%v)", id, time.Until(nextTryTime), nextTryTime)
+		q.log.Debugf("will try to deliver (msg ID = %s) in %v (%v)", id, time.Until(nextTryTime), nextTryTime)
 		q.wheel.Add(nextTryTime, queueSlot{
 			ID: id,
 		})
@@ -744,7 +746,7 @@ func (q *Queue) readDiskQueue() error {
 	}
 
 	if loadedCount != 0 {
-		q.Log.Printf("loaded %d saved queue entries", loadedCount)
+		q.log.Printf("loaded %d saved queue entries", loadedCount)
 	}
 
 	return nil
@@ -760,7 +762,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	}
 	defer func() {
 		if err := headerFile.Close(); err != nil {
-			q.Log.Error("header file close failed", err)
+			q.log.Error("header file close failed", err)
 		}
 	}()
 
@@ -776,7 +778,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	}
 	defer func() {
 		if err := bodyReader.Close(); err != nil {
-			q.Log.Error("bodyReader close failed", err)
+			q.log.Error("bodyReader close failed", err)
 		}
 	}()
 
@@ -787,7 +789,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 	}
 	defer func() {
 		if err := bodyFile.Close(); err != nil {
-			q.Log.Error("body file close failed", err)
+			q.log.Error("body file close failed", err)
 		}
 	}()
 
@@ -834,7 +836,7 @@ func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			q.Log.Error("metadata file close failed", err)
+			q.log.Error("metadata file close failed", err)
 		}
 	}()
 
@@ -867,7 +869,7 @@ func (q *Queue) readMessageMeta(id string) (*QueueMetadata, error) {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			q.Log.Error("metadata file close failed", err)
+			q.log.Error("metadata file close failed", err)
 		}
 	}()
 
@@ -894,10 +896,10 @@ type BufferedReadCloser struct {
 
 func (q *Queue) tryRemoveDanglingFile(name string) {
 	if err := os.Remove(filepath.Join(q.location, name)); err != nil {
-		q.Log.Error("dangling file remove failed", err)
+		q.log.Error("dangling file remove failed", err)
 		return
 	}
-	q.Log.Printf("removed dangling file %s", name)
+	q.log.Printf("removed dangling file %s", name)
 }
 
 func (q *Queue) openMessage(id string) (*QueueMetadata, textproto.Header, buffer.Buffer, error) {
@@ -956,7 +958,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 
 	dsnID, err := module.GenerateMsgID()
 	if err != nil {
-		q.Log.Error("rand.Rand error", err)
+		q.log.Error("rand.Rand error", err)
 		return
 	}
 
@@ -996,7 +998,7 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 	}
 
 	var dsnBodyBlob bytes.Buffer
-	dl := target.DeliveryLogger(q.Log, meta.MsgMeta)
+	dl := target.DeliveryLogger(q.log, meta.MsgMeta)
 	dsnHeader, err := dsn.GenerateDSN(meta.MsgMeta.SMTPOpts.UTF8, dsnEnvelope, mtaInfo, rcptInfo, header, &dsnBodyBlob)
 	if err != nil {
 		dl.Error("failed to generate fail DSN", err)
@@ -1053,5 +1055,5 @@ func (q *Queue) emitDSN(meta *QueueMetadata, header textproto.Header, failedRcpt
 }
 
 func init() {
-	module.Register("target.queue", NewQueue)
+	modules.Register("target.queue", New)
 }

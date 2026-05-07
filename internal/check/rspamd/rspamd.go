@@ -35,9 +35,11 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -45,7 +47,7 @@ const modName = "check.rspamd"
 
 type Check struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	apiPath    string
 	flags      string
@@ -63,14 +65,14 @@ type Check struct {
 	client *http.Client
 }
 
-func New(modName, instName string) (module.Module, error) {
-	c := &Check{
+func New(c *container.C, modName, instName string) (module.Module, error) {
+	chk := &Check{
 		instName: instName,
 		client:   http.DefaultClient,
-		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
-	return c, nil
+	return chk, nil
 }
 
 func (c *Check) Name() string {
@@ -146,7 +148,7 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 type state struct {
 	c       *Check
 	msgMeta *module.MsgMetadata
-	log     log.Logger
+	log     *log.Logger
 
 	mailFrom string
 	rcpt     []string
@@ -378,5 +380,5 @@ func (s *state) Close() error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

@@ -5,12 +5,14 @@ package libdns
 
 import (
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/route53"
 )
 
 func init() {
-	module.Register("libdns.route53", func(modName, instName string) (module.Module, error) {
+	modules.Register("libdns.route53", func(c *container.C, modName, instName string) (module.Module, error) {
 		p := route53.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

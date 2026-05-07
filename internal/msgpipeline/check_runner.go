@@ -49,14 +49,14 @@ type checkRunner struct {
 	didDMARCFetch bool
 	dmarcVerify   *dmarc.Verifier
 
-	log log.Logger
+	log *log.Logger
 
 	states map[module.Check]module.CheckState
 
 	mergedRes module.CheckResult
 }
 
-func newCheckRunner(msgMeta *module.MsgMetadata, log log.Logger, r dns.Resolver) *checkRunner {
+func newCheckRunner(msgMeta *module.MsgMetadata, log *log.Logger, r dns.Resolver) *checkRunner {
 	return &checkRunner{
 		msgMeta:              msgMeta,
 		checkedRcptsPerCheck: map[module.CheckState]map[string]struct{}{},

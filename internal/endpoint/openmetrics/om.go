@@ -25,8 +25,9 @@ import (
 	"sync"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -36,17 +37,17 @@ const modName = "openmetrics"
 type Endpoint struct {
 	addrs     []string
 	endpoints []config.Endpoint
-	logger    log.Logger
+	logger    *log.Logger
 
 	listenersWg sync.WaitGroup
 	serv        http.Server
 	mux         *http.ServeMux
 }
 
-func New(_ string, args []string) (module.LifetimeModule, error) {
+func New(c *container.C, _ string, args []string) (container.LifetimeModule, error) {
 	return &Endpoint{
 		addrs:  args,
-		logger: log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		logger: c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -114,5 +115,5 @@ func (e *Endpoint) Stop() error {
 }
 
 func init() {
-	module.RegisterEndpoint(modName, New)
+	modules.RegisterEndpoint(modName, New)
 }

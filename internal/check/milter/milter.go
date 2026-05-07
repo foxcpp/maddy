@@ -30,9 +30,11 @@ import (
 	"github.com/emersion/go-milter"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -43,16 +45,16 @@ type Check struct {
 	milterUrl string
 	failOpen  bool
 	instName  string
-	log       log.Logger
+	log       *log.Logger
 }
 
-func New(_, instName string) (module.Module, error) {
-	c := &Check{
+func New(c *container.C, _, instName string) (module.Module, error) {
+	chk := &Check{
 		instName: instName,
-		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
-	return c, nil
+	return chk, nil
 }
 
 func (c *Check) Name() string {
@@ -111,7 +113,7 @@ type state struct {
 	session    *milter.ClientSession
 	msgMeta    *module.MsgMetadata
 	skipChecks bool
-	log        log.Logger
+	log        *log.Logger
 }
 
 func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
@@ -444,5 +446,5 @@ var (
 )
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

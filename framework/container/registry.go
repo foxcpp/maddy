@@ -16,12 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package module
+package container
 
 import (
 	"errors"
 
 	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 )
 
 type registryEntry struct {
-	Mod      Module
+	Mod      module.Module
 	LazyInit func() error
 }
 
@@ -56,7 +57,7 @@ func NewRegistry(log *log.Logger) *Registry {
 //
 // lazyInit function will be called on first request to get the module from
 // registry.
-func (r *Registry) Register(mod Module, lazyInit func() error) error {
+func (r *Registry) Register(mod module.Module, lazyInit func() error) error {
 	instName := mod.InstanceName()
 	if instName == "" {
 		panic("module with empty instance name cannot be added to the registry")
@@ -114,7 +115,7 @@ func (r *Registry) ensureInitialized(name string, entry *registryEntry) error {
 	return nil
 }
 
-func (r *Registry) Get(name string) (Module, error) {
+func (r *Registry) Get(name string) (module.Module, error) {
 	if name == "" {
 		panic("cannot get module with empty name")
 	}
@@ -135,8 +136,8 @@ func (r *Registry) Get(name string) (Module, error) {
 	return mod.Mod, nil
 }
 
-func (r *Registry) NotInitialized() []Module {
-	notinit := make([]Module, 0, len(r.instances)-len(r.initialized))
+func (r *Registry) NotInitialized() []module.Module {
+	notinit := make([]module.Module, 0, len(r.instances)-len(r.initialized))
 	for name, mod := range r.instances {
 		if _, ok := r.initialized[name]; ok {
 			continue

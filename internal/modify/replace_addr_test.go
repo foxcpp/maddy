@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -31,7 +32,7 @@ func testReplaceAddr(t *testing.T, modName string) {
 	test := func(addr string, expectedMulti []string, aliases map[string][]string) {
 		t.Helper()
 
-		mod, err := NewReplaceAddr(modName, "")
+		mod, err := NewReplaceAddr(container.New(), modName, "")
 		if err != nil {
 			t.Fatal(err)
 		}

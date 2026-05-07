@@ -23,7 +23,9 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	_ "github.com/lib/pq"
 )
 
@@ -34,7 +36,7 @@ type SQLTable struct {
 	wrapped *SQL
 }
 
-func NewSQLTable(modName, instName string) (module.Module, error) {
+func NewSQLTable(_ *container.C, modName, instName string) (module.Module, error) {
 	return &SQLTable{
 		modName:  modName,
 		instName: instName,
@@ -171,5 +173,5 @@ func (s *SQLTable) SetKey(k, v string) error {
 }
 
 func init() {
-	module.Register("table.sql_table", NewSQLTable)
+	modules.Register("table.sql_table", NewSQLTable)
 }

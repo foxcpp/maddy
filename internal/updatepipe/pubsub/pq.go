@@ -20,12 +20,12 @@ type PqPubSub struct {
 	L      *pq.Listener
 	sender *sql.DB
 
-	Log log.Logger
+	Log *log.Logger
 }
 
 func NewPQ(dsn string) (*PqPubSub, error) {
 	l := &PqPubSub{
-		Log:    log.Logger{Name: "pgpubsub"},
+		Log:    log.DefaultLogger.Sublogger("pgpubsub"),
 		Notify: make(chan Msg),
 	}
 	l.L = pq.NewListener(dsn, 10*time.Second, time.Minute, l.eventHandler)

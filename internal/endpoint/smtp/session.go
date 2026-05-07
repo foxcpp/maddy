@@ -95,7 +95,7 @@ type Session struct {
 	delivery    module.Delivery
 	deliveryErr error
 
-	log log.Logger
+	log *log.Logger
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -117,7 +117,7 @@ func (s *Session) Reset() {
 	if s.delivery != nil {
 		s.abort(s.msgCtx)
 	}
-	s.endp.Log.DebugMsg("reset")
+	s.endp.log.DebugMsg("reset")
 }
 
 func (s *Session) releaseLimits() {
@@ -139,7 +139,7 @@ func (s *Session) releaseLimits() {
 
 func (s *Session) abort(ctx context.Context) {
 	if err := s.delivery.Abort(ctx); err != nil {
-		s.endp.Log.Error("delivery abort failed", err)
+		s.endp.log.Error("delivery abort failed", err)
 	}
 	s.log.Msg("aborted", "msg_id", s.msgMeta.ID)
 	abortedSMTPTransactions.WithLabelValues(s.endp.name).Inc()
@@ -167,7 +167,7 @@ func (s *Session) AuthPlain(username, password string) error {
 	// saslAuth will handle AuthMap and AuthNormalize.
 	err := s.endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
-		s.endp.Log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)
+		s.endp.log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)
 
 		failedLogins.WithLabelValues(s.endp.name).Inc()
 
@@ -371,7 +371,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 		}
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "RCPT", err)
 	}
-	s.endp.Log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
+	s.endp.log.Msg("RCPT ok", "rcpt", to, "msg_id", s.msgMeta.ID)
 	return nil
 }
 
@@ -610,7 +610,7 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, command string, err
 	}
 
 	if smtpErr, ok := err.(*smtp.SMTPError); ok {
-		endp.Log.Printf("plain SMTP error returned, this is deprecated")
+		endp.log.Printf("plain SMTP error returned, this is deprecated")
 		res.Code = smtpErr.Code
 		res.EnhancedCode = smtpErr.EnhancedCode
 		res.Message = smtpErr.Message

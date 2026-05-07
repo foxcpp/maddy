@@ -13,7 +13,7 @@ import (
 
 type PubSubPipe struct {
 	PubSub pubsub.PubSub
-	Log    log.Logger
+	Log    *log.Logger
 }
 
 func (p *PubSubPipe) Listen(upds chan<- mess.Update) error {

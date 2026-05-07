@@ -33,7 +33,9 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/limits/limiters"
 )
 
@@ -46,7 +48,7 @@ type Group struct {
 	dest   *limiters.BucketSet // BucketSet of MultiLimit
 }
 
-func New(_, instName string) (module.Module, error) {
+func New(c *container.C, _, instName string) (module.Module, error) {
 	return &Group{
 		instName: instName,
 	}, nil
@@ -118,8 +120,8 @@ func (g *Group) Configure(inlineArgs []string, cfg *config.Map) error {
 	}
 	if len(destL) != 0 {
 		g.dest = limiters.NewBucketSet(func() limiters.L {
-			l := make([]limiters.L, 0, len(sourceL))
-			for _, ctor := range sourceL {
+			l := make([]limiters.L, 0, len(destL))
+			for _, ctor := range destL {
 				l = append(l, ctor())
 			}
 			return &limiters.MultiLimit{Wrapped: l}
@@ -230,5 +232,5 @@ func (g *Group) InstanceName() string {
 }
 
 func init() {
-	module.Register("limits", New)
+	modules.Register("limits", New)
 }

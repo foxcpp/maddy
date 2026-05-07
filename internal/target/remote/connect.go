@@ -89,7 +89,7 @@ func (rd *remoteDelivery) connect(ctx context.Context, conn mxConn, host string,
 		tlsCfg.ServerName = host
 	}
 
-	rd.Log.DebugMsg("trying", "remote_server", host, "domain", conn.domain)
+	rd.log.DebugMsg("trying", "remote_server", host, "domain", conn.domain)
 
 retry:
 	// smtpconn.C default TLS behavior is not useful for us, we want to handle
@@ -110,7 +110,7 @@ retry:
 			// rejecting STARTTLS (despite advertising STARTTLS).
 			// We err on the caution side here and do not perform any fallbacks.
 			if err := conn.DirectClose(); err != nil {
-				rd.Log.Error("conn.DirectClose failed", err)
+				rd.log.Error("conn.DirectClose failed", err)
 			}
 			return module.TLSNone, nil, err
 		}
@@ -127,24 +127,24 @@ retry:
 			// error happens with InsecureSkipVerify too (e.g. certificate is
 			// *too* broken).
 			if isVerifyError(err) && tlsLevel == module.TLSAuthenticated {
-				rd.Log.Error("TLS verify error, trying without authentication", err, "remote_server", host, "domain", conn.domain)
+				rd.log.Error("TLS verify error, trying without authentication", err, "remote_server", host, "domain", conn.domain)
 				tlsCfg.InsecureSkipVerify = true
 				tlsLevel = module.TLSEncrypted
 
 				// TODO: Check go-smtp code to make TLS verification errors
 				// non-sticky so we can properly send QUIT in this case.
 				if err := conn.DirectClose(); err != nil {
-					rd.Log.Error("conn.DirectClose failed", err)
+					rd.log.Error("conn.DirectClose failed", err)
 				}
 
 				goto retry
 			}
 
-			rd.Log.Error("TLS error, trying plaintext", err, "remote_server", host, "domain", conn.domain)
+			rd.log.Error("TLS error, trying plaintext", err, "remote_server", host, "domain", conn.domain)
 			tlsCfg = nil
 			tlsLevel = module.TLSNone
 			if err := conn.DirectClose(); err != nil {
-				rd.Log.Error("conn.DirectClose failed", err)
+				rd.log.Error("conn.DirectClose failed", err)
 			}
 
 			goto retry
@@ -208,7 +208,7 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *n
 
 func (rd *remoteDelivery) closeConn(c *mxConn) {
 	if err := c.Close(); err != nil {
-		rd.Log.Error("client connection close failed", err)
+		rd.log.Error("client connection close failed", err)
 	}
 }
 
@@ -228,10 +228,10 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	// connection with weaker security.
 	if pooledConn != nil && !rd.msgMeta.SMTPOpts.RequireTLS {
 		conn = pooledConn.(*mxConn)
-		rd.Log.Msg("reusing cached connection", "domain", domain, "transactions_counter", conn.transactions,
+		rd.log.Msg("reusing cached connection", "domain", domain, "transactions_counter", conn.transactions,
 			"local_addr", conn.LocalAddr(), "remote_addr", conn.RemoteAddr())
 	} else {
-		rd.Log.DebugMsg("opening new connection", "domain", domain, "cache_ignored", pooledConn != nil)
+		rd.log.DebugMsg("opening new connection", "domain", domain, "cache_ignored", pooledConn != nil)
 		conn, err = rd.newConn(ctx, domain)
 		if err != nil {
 			return nil, err
@@ -302,7 +302,7 @@ func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, 
 	}
 
 	conn.Dialer = rd.rt.dialer
-	conn.Log = rd.Log
+	conn.Log = rd.log
 	conn.Hostname = rd.rt.hostname
 	conn.AddrInSMTPMsg = true
 	if rd.rt.connectTimeout != 0 {
@@ -340,7 +340,7 @@ func (rd *remoteDelivery) newConn(ctx context.Context, domain string) (*mxConn, 
 
 		if err := rd.attemptMX(ctx, &conn, record); err != nil {
 			if len(records) != 0 {
-				rd.Log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
+				rd.log.Error("cannot use MX", err, "remote_server", record.Host, "domain", domain)
 			}
 			lastErr = err
 			continue

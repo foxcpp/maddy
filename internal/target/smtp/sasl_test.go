@@ -101,6 +101,23 @@ func TestSASL_Plain_AuthFail(t *testing.T) {
 	}
 }
 
+func TestSASL_Login_Directive(t *testing.T) {
+	factory := testSaslFactory(t, "login", "test", "testpass")
+	client, err := factory(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mech, _, err := client.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if mech != "LOGIN" {
+		t.Fatalf("expected LOGIN mechanism, got %q", mech)
+	}
+}
+
 func TestSASL_Forward(t *testing.T) {
 	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
 	defer func() {

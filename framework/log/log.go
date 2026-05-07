@@ -59,10 +59,7 @@ func (l *Logger) Zap() *zap.Logger {
 }
 
 func (l *Logger) IsDebug() bool {
-	if l.Parent == nil {
-		return l.Debug
-	}
-	return l.Debug || l.Parent.IsDebug()
+	return l.Debug || (l.Parent != nil && l.Parent.IsDebug())
 }
 
 func (l *Logger) Debugf(format string, val ...interface{}) {
@@ -217,19 +214,30 @@ func (l *Logger) DebugWriter() io.Writer {
 	return l2
 }
 
+func (l *Logger) output() Output {
+	if l.Out != nil {
+		return l.Out
+	}
+	if l.Parent != nil {
+		return l.Parent.output()
+	}
+
+	if DefaultLogger.Out == nil {
+		panic("DefaultLogger.Out is not set")
+	}
+	if l.Parent == nil && l != &DefaultLogger {
+		DefaultLogger.Out.Write(time.Now(), true, "logger "+l.Name+" has no parent, this is a bug")
+	}
+	return DefaultLogger.Out
+}
+
 func (l *Logger) log(debug bool, s string) {
 	if l.Name != "" {
 		s = l.Name + ": " + s
 	}
 
-	if l.Out != nil {
-		l.Out.Write(time.Now(), debug, s)
-		return
-	}
-	if DefaultLogger.Out != nil {
-		DefaultLogger.Out.Write(time.Now(), debug, s)
-		return
-	}
+	out := l.output()
+	out.Write(time.Now(), debug, s)
 
 	// Logging is disabled - do nothing.
 }
@@ -240,9 +248,7 @@ func (l *Logger) Sublogger(name string) *Logger {
 	}
 	return &Logger{
 		Parent: l,
-		Out:    l.Out,
 		Name:   name,
-		Debug:  l.Debug,
 	}
 }
 
@@ -252,6 +258,12 @@ func (l *Logger) Sublogger(name string) *Logger {
 // As with all other Loggers, it is not gorountine-safe on its own,
 // however underlying log.Output may provide necessary serialization.
 var DefaultLogger = Logger{Out: WriterOutput(os.Stderr, false)}
+
+// NopLogger is the logger that discards all messages written to it.
+var NopLogger = Logger{
+	Parent: &DefaultLogger,
+	Out:    NopOutput{},
+}
 
 func Debugf(format string, val ...interface{}) { DefaultLogger.Debugf(format, val...) }
 func Debugln(val ...interface{})               { DefaultLogger.Debugln(val...) }

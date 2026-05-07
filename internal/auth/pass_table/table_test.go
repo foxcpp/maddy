@@ -22,13 +22,14 @@ import (
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
 func TestAuth_AuthPlain(t *testing.T) {
 	addSHA256()
 
-	mod, err := New("pass_table", "")
+	mod, err := New(container.New(), "pass_table", "")
 	if err != nil {
 		t.Fatal(err)
 	}

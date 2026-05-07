@@ -34,6 +34,7 @@ import (
 	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
@@ -59,7 +60,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		dialer:      resolver.DialContext,
 		extResolver: extResolver,
 		tlsConfig:   &tls.Config{},
-		Log:         testutils.Logger(t, "remote"),
+		log:         testutils.Logger(t, "remote"),
 		policies:    extraPolicies,
 		limits:      &limits.Group{},
 		pool: pool.New(pool.Config{
@@ -74,7 +75,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 }
 
 func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(context.Context, string) (*mtasts.Policy, error)) *mtastsPolicy {
-	m, err := NewMTASTSPolicy("mx_auth.mtasts", "test")
+	m, err := NewMTASTSPolicy(container.New(), "mx_auth.mtasts", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func testSTSPolicy(t *testing.T, zones map[string]mockdns.Zone, mtastsGet func(c
 }
 
 func testDANEPolicy(t *testing.T, extR *dns.ExtResolver) *danePolicy {
-	m, err := NewDANEPolicy("mx_auth.dane", "test")
+	m, err := NewDANEPolicy(container.New(), "mx_auth.dane", "test")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -32,8 +32,10 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/msgpipeline"
 	"github.com/foxcpp/maddy/internal/testutils"
@@ -51,7 +53,7 @@ const testMsg = "From: <sender@example.org>\r\n" +
 func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt module.DeliveryTarget, checks []module.Check, cfg []config.Node) *Endpoint {
 	t.Helper()
 
-	mod, err := New(modName, []string{"tcp://127.0.0.1:" + testPort})
+	mod, err := New(container.New(), modName, []string{"tcp://127.0.0.1:" + testPort})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +69,7 @@ func testEndpoint(t *testing.T, modName string, authMod module.PlainAuth, tgt mo
 			},
 		},
 	}
-	endp.Log = testutils.Logger(t, "smtp")
+	endp.log = testutils.Logger(t, "smtp")
 
 	cfg = append(cfg,
 		config.Node{
@@ -568,7 +570,7 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 
 func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 	tgt := testutils.Target{}
-	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
+	endp := testEndpoint(t, "submission", &modules.Dummy{}, &tgt, nil, nil)
 	defer func() {
 		assert.NoError(t, endp.Stop())
 	}()
@@ -588,7 +590,7 @@ func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 
 func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	tgt := testutils.Target{}
-	endp := testEndpoint(t, "submission", &module.Dummy{}, &tgt, nil, nil)
+	endp := testEndpoint(t, "submission", &modules.Dummy{}, &tgt, nil, nil)
 	defer func() {
 		assert.NoError(t, endp.Stop())
 	}()

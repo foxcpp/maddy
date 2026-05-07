@@ -129,7 +129,11 @@ func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
 	// AD flag handling for use in DANE algorithms.
 
 	// Silence log messages about disregarded I/O errors.
-	log.DefaultLogger.Out = nil
+	oldLog := log.DefaultLogger
+	log.DefaultLogger = log.NopLogger
+	t.Cleanup(func() {
+		log.DefaultLogger = oldLog
+	})
 
 	test := func(aAct, aaaaAct TestSrvAction, aAD, aaaaAD, ad bool, addrs []net.IP, err bool) {
 		t.Helper()

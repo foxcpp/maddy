@@ -43,7 +43,7 @@ func TestStore(t *testing.T, newStore func() module.BlobStore, cleanStore func(m
 		b, err := imapsql.New("sqlite3", ":memory:",
 			imapsql2.ExtBlobStore{Base: store}, imapsql.Opts{
 				PRNG: prng,
-				Log:  &l,
+				Log:  l,
 			},
 		)
 		if err != nil {

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/urfave/cli/v2"
@@ -81,17 +80,6 @@ func AddGlobalFlag(f cli.Flag) {
 
 func AddSubcommand(cmd *cli.Command) {
 	app.Commands = append(app.Commands, cmd)
-
-	if cmd.Name == "run" {
-		// Backward compatibility hack to start the server as just ./maddy
-		// Needs to be done here so we will register all known flags with
-		// stdlib before Run is called.
-		app.Action = func(c *cli.Context) error {
-			log.Println("WARNING: Starting server not via 'maddy run' is deprecated and will stop working in the next version")
-			return cmd.Action(c)
-		}
-		app.Flags = append(app.Flags, cmd.Flags...)
-	}
 }
 
 // RunWithoutExit is like Run but returns exit code instead of calling os.Exit
@@ -113,15 +101,6 @@ func Run() {
 	mapStdlibFlags(app)
 
 	// Actual entry point is registered in maddy.go.
-
-	// Print help when called via maddyctl executable. To be removed
-	// once backward compatibility hack for 'maddy run' is removed too.
-	if strings.Contains(os.Args[0], "maddyctl") && len(os.Args) == 1 {
-		if err := app.Run([]string{os.Args[0], "help"}); err != nil {
-			log.DefaultLogger.Error("app.Run failed", err)
-		}
-		return
-	}
 
 	if err := app.Run(os.Args); err != nil {
 		log.DefaultLogger.Error("app.Run failed", err)

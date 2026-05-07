@@ -7,13 +7,15 @@ import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/gandi"
 )
 
 func init() {
-	module.Register("libdns.gandi", func(modName, instName string) (module.Module, error) {
+	modules.Register("libdns.gandi", func(c *container.C, modName, instName string) (module.Module, error) {
 		p := gandi.Provider{}
 		return &ProviderModule{
 			RecordDeleter:  &p,

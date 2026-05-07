@@ -25,8 +25,10 @@ import (
 	"path/filepath"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/auth"
 )
 
@@ -38,14 +40,14 @@ type ExternalAuth struct {
 	perDomain bool
 	domains   []string
 
-	Log log.Logger
+	log *log.Logger
 }
 
-func NewExternalAuth(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	ea := &ExternalAuth{
 		modName:  modName,
 		instName: instName,
-		Log:      log.Logger{Name: modName},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
 	return ea, nil
@@ -64,7 +66,7 @@ func (ea *ExternalAuth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("external: inline arguments are not used")
 	}
 
-	cfg.Bool("debug", false, false, &ea.Log.Debug)
+	cfg.Bool("debug", false, false, &ea.log.Debug)
 	cfg.Bool("perdomain", false, false, &ea.perDomain)
 	cfg.StringList("domains", false, false, nil, &ea.domains)
 	cfg.String("helper", false, false, "", &ea.helperPath)
@@ -76,7 +78,7 @@ func (ea *ExternalAuth) Configure(inlineArgs []string, cfg *config.Map) error {
 	}
 
 	if ea.helperPath != "" {
-		ea.Log.Debugln("using helper:", ea.helperPath)
+		ea.log.Debugln("using helper:", ea.helperPath)
 	} else {
 		ea.helperPath = filepath.Join(config.LibexecDirectory, "maddy-auth-helper")
 	}
@@ -84,7 +86,7 @@ func (ea *ExternalAuth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return fmt.Errorf("%s doesn't exist", ea.helperPath)
 	}
 
-	ea.Log.Debugln("using helper:", ea.helperPath)
+	ea.log.Debugln("using helper:", ea.helperPath)
 
 	return nil
 }
@@ -99,5 +101,5 @@ func (ea *ExternalAuth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("auth.external", NewExternalAuth)
+	modules.Register("auth.external", New)
 }

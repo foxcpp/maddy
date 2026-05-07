@@ -21,7 +21,9 @@ package remote
 import (
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 // PolicyGroup is a module container for a group of Policy implementations.
@@ -96,7 +98,7 @@ func (pg *PolicyGroup) InstanceName() string {
 }
 
 func init() {
-	module.Register("mx_auth", func(_, instName string) (module.Module, error) {
+	modules.Register("mx_auth", func(_ *container.C, _, instName string) (module.Module, error) {
 		return &PolicyGroup{
 			instName: instName,
 			pols:     map[string]module.MXAuthPolicy{},

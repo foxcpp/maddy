@@ -16,24 +16,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package module
+package container
 
 import (
 	"fmt"
 
 	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 )
 
 // LifetimeModule is a stateful module that needs to have post-configuration
 // startup and graceful shutdown functionality.
 type LifetimeModule interface {
-	Module
+	module.Module
 	Start() error
 	Stop() error
 }
 
 type ReloadModule interface {
-	Module
+	module.Module
 	Reload() error
 }
 

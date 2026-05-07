@@ -23,7 +23,8 @@ import (
 	"github.com/foxcpp/maddy/framework/module"
 )
 
-func DeliveryLogger(l log.Logger, msgMeta *module.MsgMetadata) log.Logger {
+func DeliveryLogger(parent *log.Logger, msgMeta *module.MsgMetadata) *log.Logger {
+	l := parent.Sublogger("")
 	fields := make(map[string]interface{}, len(l.Fields)+1)
 	for k, v := range l.Fields {
 		fields[k] = v

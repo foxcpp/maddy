@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestDownstreamDelivery_EHLO_ALabel(t *testing.T) {
 	}()
 	defer testutils.CheckSMTPConnLeak(t, srv)
 
-	mod, err := NewDownstream("", "")
+	mod, err := New(container.New(), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

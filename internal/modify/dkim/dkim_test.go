@@ -32,12 +32,13 @@ import (
 	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
 func newTestModifier(t *testing.T, dir, keyAlgo string, domains []string) *Modifier {
-	mod, err := New("", "test")
+	mod, err := New(container.New(), "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}

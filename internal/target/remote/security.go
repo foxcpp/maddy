@@ -28,11 +28,13 @@ import (
 
 	"github.com/foxcpp/go-mtasts"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/target"
 )
 
@@ -41,21 +43,21 @@ type (
 		cache       *mtasts.Cache
 		mtastsGet   func(context.Context, string) (*mtasts.Policy, error)
 		updaterStop chan struct{}
-		log         log.Logger
+		log         *log.Logger
 		instName    string
 	}
 	mtastsDelivery struct {
 		c         *mtastsPolicy
 		domain    string
 		policyFut *future.Future
-		log       log.Logger
+		log       *log.Logger
 	}
 )
 
-func NewMTASTSPolicy(_, instName string) (module.Module, error) {
+func NewMTASTSPolicy(c *container.C, modName, instName string) (module.Module, error) {
 	return &mtastsPolicy{
 		instName: instName,
-		log:      log.Logger{Name: "mx_auth.mtasts", Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -238,14 +240,14 @@ func (c *mtastsDelivery) Reset(msgMeta *module.MsgMetadata) {
 
 // Stub that will be removed in 0.5.
 type stsPreloadPolicy struct {
-	log      log.Logger
+	log      *log.Logger
 	instName string
 }
 
-func NewSTSPreload(_, instName string) (module.Module, error) {
+func NewSTSPreload(c *container.C, modName, instName string) (module.Module, error) {
 	return &stsPreloadPolicy{
 		instName: instName,
-		log:      log.Logger{Name: "mx_auth.sts_preload", Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -300,7 +302,7 @@ type dnssecPolicy struct {
 	instName string
 }
 
-func NewDNSSECPolicy(_, instName string) (module.Module, error) {
+func NewDNSSECPolicy(_ *container.C, _, instName string) (module.Module, error) {
 	return &dnssecPolicy{
 		instName: instName,
 	}, nil
@@ -345,7 +347,7 @@ func (dnssecPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tlsLe
 type (
 	danePolicy struct {
 		extResolver *dns.ExtResolver
-		log         log.Logger
+		log         *log.Logger
 		instName    string
 	}
 	daneDelivery struct {
@@ -354,10 +356,10 @@ type (
 	}
 )
 
-func NewDANEPolicy(_, instName string) (module.Module, error) {
+func NewDANEPolicy(c *container.C, modName, instName string) (module.Module, error) {
 	return &danePolicy{
 		instName: instName,
-		log:      log.Logger{Name: "remote/dane", Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -529,7 +531,7 @@ type (
 	}
 )
 
-func NewLocalPolicy(_, instName string) (module.Module, error) {
+func NewLocalPolicy(_ *container.C, _, instName string) (module.Module, error) {
 	return &localPolicy{
 		instName: instName,
 	}, nil
@@ -623,9 +625,9 @@ func (l *localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tls
 }
 
 func init() {
-	module.Register("mx_auth.mtasts", NewMTASTSPolicy)
-	module.Register("mx_auth.sts_preload", NewSTSPreload)
-	module.Register("mx_auth.dnssec", NewDNSSECPolicy)
-	module.Register("mx_auth.dane", NewDANEPolicy)
-	module.Register("mx_auth.local_policy", NewLocalPolicy)
+	modules.Register("mx_auth.mtasts", NewMTASTSPolicy)
+	modules.Register("mx_auth.sts_preload", NewSTSPreload)
+	modules.Register("mx_auth.dnssec", NewDNSSECPolicy)
+	modules.Register("mx_auth.dane", NewDANEPolicy)
+	modules.Register("mx_auth.local_policy", NewLocalPolicy)
 }

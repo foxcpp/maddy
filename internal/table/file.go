@@ -29,8 +29,10 @@ import (
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 const FileModName = "table.file"
@@ -46,16 +48,16 @@ type File struct {
 	stopReloader chan struct{}
 	forceReload  chan struct{}
 
-	log log.Logger
+	log *log.Logger
 }
 
-func NewFile(_, instName string) (module.Module, error) {
+func NewFile(c *container.C, modName, instName string) (module.Module, error) {
 	m := &File{
 		instName:     instName,
 		m:            make(map[string][]string),
 		stopReloader: make(chan struct{}),
 		forceReload:  make(chan struct{}),
-		log:          log.Logger{Name: FileModName},
+		log:          c.DefaultLogger.Sublogger(modName),
 	}
 
 	return m, nil
@@ -258,5 +260,5 @@ func (f *File) LookupMulti(_ context.Context, val string) ([]string, error) {
 }
 
 func init() {
-	module.Register(FileModName, NewFile)
+	modules.Register(FileModName, NewFile)
 }

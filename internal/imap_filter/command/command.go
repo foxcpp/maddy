@@ -32,8 +32,10 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 const modName = "imap.filter.command"
@@ -42,7 +44,7 @@ var placeholderRe = regexp.MustCompile(`{[a-zA-Z0-9_]+?}`)
 
 type Check struct {
 	instName string
-	log      log.Logger
+	log      *log.Logger
 
 	cmd     string
 	cmdArgs []string
@@ -61,13 +63,13 @@ func (c *Check) IMAPFilter(accountName string, rcptTo string, msgMeta *module.Ms
 	return c.run(cmd, args, io.MultiReader(bytes.NewReader(buf.Bytes()), bR))
 }
 
-func New(_, instName string) (module.Module, error) {
-	c := &Check{
+func New(c *container.C, _, instName string) (module.Module, error) {
+	chk := &Check{
 		instName: instName,
-		log:      log.Logger{Name: modName, Debug: log.DefaultLogger.Debug},
+		log:      c.DefaultLogger.Sublogger(modName),
 	}
 
-	return c, nil
+	return chk, nil
 }
 
 func (c *Check) Name() string {
@@ -203,5 +205,5 @@ func (c *Check) run(cmdName string, args []string, stdin io.Reader) (string, []s
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

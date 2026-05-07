@@ -71,7 +71,7 @@ func LogOutputOption(args []string) (log.Output, error) {
 			}
 			return log.NopOutput{}, nil
 		default:
-			// Log file paths are converted to absolute to make sure
+			// log file paths are converted to absolute to make sure
 			// we will be able to recreate them in right location
 			// after changing working directory to the state dir.
 			absPath, err := filepath.Abs(arg)
@@ -98,7 +98,7 @@ func LogOutputOption(args []string) (log.Output, error) {
 }
 
 func defaultLogOutput() (interface{}, error) {
-	return log.DefaultLogger.Out, nil
+	return nil, nil
 }
 
 func reinitLogging() {
@@ -115,7 +115,7 @@ func reinitLogging() {
 	}
 
 	if err := out.Close(); err != nil {
-		log.Println("Can't close logger:", err)
+		log.Println("Can't close old logger:", err)
 	}
 
 	log.DefaultLogger.Out = newOut

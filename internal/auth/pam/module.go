@@ -25,8 +25,10 @@ import (
 	"path/filepath"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/auth/external"
 )
 
@@ -35,13 +37,13 @@ type Auth struct {
 	useHelper  bool
 	helperPath string
 
-	Log log.Logger
+	Log *log.Logger
 }
 
-func New(modName, instName string) (module.Module, error) {
+func New(c *container.C, modName, instName string) (module.Module, error) {
 	return &Auth{
 		instName: instName,
-		Log:      log.Logger{Name: modName},
+		Log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -91,5 +93,5 @@ func (a *Auth) AuthPlain(username, password string) error {
 }
 
 func init() {
-	module.Register("auth.pam", New)
+	modules.Register("auth.pam", New)
 }

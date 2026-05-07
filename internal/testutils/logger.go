@@ -33,16 +33,18 @@ var (
 	directLog = flag.Bool("test.directlog", false, "(maddy) Log to stderr instead of test log")
 )
 
-func Logger(t *testing.T, name string) log.Logger {
+func Logger(t *testing.T, name string) *log.Logger {
 	if *directLog {
-		return log.Logger{
-			Out:   log.WriterOutput(os.Stderr, true),
-			Name:  name,
-			Debug: *debugLog,
+		return &log.Logger{
+			Parent: &log.DefaultLogger, // silence "no parent" warning
+			Out:    log.WriterOutput(os.Stderr, true),
+			Name:   name,
+			Debug:  *debugLog,
 		}
 	}
 
-	return log.Logger{
+	return &log.Logger{
+		Parent: &log.DefaultLogger,
 		Out: log.FuncOutput(func(_ time.Time, debug bool, str string) {
 			t.Helper()
 			str = strings.TrimSuffix(str, "\n")

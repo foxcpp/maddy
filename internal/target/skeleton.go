@@ -31,6 +31,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 )
 
 const modName = "target.target_name"
@@ -126,5 +127,5 @@ func (d *delivery) Commit(ctx context.Context) error {
 }
 
 func init() {
-	module.Register(modName, New)
+	modules.Register(modName, New)
 }

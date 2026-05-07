@@ -73,7 +73,7 @@ type C struct {
 	TLSConfig *tls.Config
 
 	// Logger to use for debug log and certain errors.
-	Log log.Logger
+	Log *log.Logger
 
 	// Include the remote server address in SMTP status messages in the form
 	// "ADDRESS said: ..."

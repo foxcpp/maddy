@@ -40,8 +40,10 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	tls2 "github.com/foxcpp/maddy/framework/config/tls"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
+	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
@@ -65,15 +67,16 @@ type Endpoint struct {
 	storageNormalize authz.NormalizeFunc
 	storageMap       module.Table
 
-	Log log.Logger
+	log *log.Logger
 }
 
-func New(modName string, addrs []string) (module.LifetimeModule, error) {
+func New(c *container.C, modName string, addrs []string) (container.LifetimeModule, error) {
+	logger := c.DefaultLogger.Sublogger(modName)
 	endp := &Endpoint{
 		addrs: addrs,
-		Log:   log.Logger{Name: modName},
+		log:   logger,
 		saslAuth: auth.SASLAuth{
-			Log: log.Logger{Name: modName + "/sasl"},
+			Log: logger.Sublogger("sasl"),
 		},
 	}
 
@@ -97,7 +100,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)
-	cfg.Bool("debug", true, false, &endp.Log.Debug)
+	cfg.Bool("debug", true, false, &endp.log.Debug)
 	config.EnumMapped(cfg, "storage_map_normalize", false, false, authz.NormalizeFuncs, authz.NormalizeAuto,
 		&endp.storageNormalize)
 	modconfig.Table(cfg, "storage_map", false, false, nil, &endp.storageMap)
@@ -108,7 +111,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 		return err
 	}
 
-	endp.saslAuth.Log.Debug = endp.Log.Debug
+	endp.saslAuth.Log.Debug = endp.log.Debug
 
 	addresses := make([]config.Endpoint, 0, len(endp.addrs))
 	for _, addr := range endp.addrs {
@@ -127,13 +130,13 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.serv.AllowInsecureAuth = insecureAuth
 	endp.serv.TLSConfig = endp.tlsConfig
 	if ioErrors {
-		endp.serv.ErrorLog = &endp.Log
+		endp.serv.ErrorLog = endp.log
 	} else {
-		endp.serv.ErrorLog = &log.Logger{Out: log.NopOutput{}}
+		endp.serv.ErrorLog = &log.NopLogger
 	}
 	if ioDebug {
-		endp.serv.Debug = endp.Log.DebugWriter()
-		endp.Log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
+		endp.serv.Debug = endp.log.DebugWriter()
+		endp.log.Println("I/O debugging is on! It may leak passwords in logs, be careful!")
 	}
 
 	if err := endp.enableExtensions(); err != nil {
@@ -149,10 +152,10 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	}
 
 	if endp.serv.AllowInsecureAuth {
-		endp.Log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
+		endp.log.Println("authentication over unencrypted connections is allowed, this is insecure configuration and should be used only for testing!")
 	}
 	if endp.serv.TLSConfig == nil {
-		endp.Log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
+		endp.log.Println("TLS is disabled, this is insecure configuration and should be used only for testing!")
 		endp.serv.AllowInsecureAuth = true
 	}
 
@@ -162,13 +165,13 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 func (endp *Endpoint) Start() error {
 	if updBe, ok := endp.Store.(updatepipe.Backend); ok {
 		if err := updBe.EnableUpdatePipe(updatepipe.ModeReplicate); err != nil {
-			endp.Log.Error("failed to initialize updates pipe", err)
+			endp.log.Error("failed to initialize updates pipe", err)
 		}
 	}
 
 	if err := endp.setupListeners(endp.endpoints); err != nil {
 		if err := endp.Stop(); err != nil {
-			endp.Log.Error("failed to stop after setupListeners error", err)
+			endp.log.Error("failed to stop after setupListeners error", err)
 		}
 		return err
 	}
@@ -183,7 +186,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		if err != nil {
 			return fmt.Errorf("imap: %v", err)
 		}
-		endp.Log.Printf("listening on %v", addr)
+		endp.log.Printf("listening on %v", addr)
 
 		if addr.IsTLS() {
 			if endp.tlsConfig == nil {
@@ -193,7 +196,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		}
 
 		if endp.proxyProtocol != nil {
-			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.Log)
+			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.log)
 		}
 
 		endp.listeners = append(endp.listeners, l)
@@ -201,7 +204,7 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		go func() {
 			defer endp.listenersWg.Done()
 			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-				endp.Log.Printf("imap: failed to serve %s: %s", addr, err)
+				endp.log.Printf("imap: failed to serve %s: %s", addr, err)
 			}
 		}()
 	}
@@ -220,7 +223,7 @@ func (endp *Endpoint) InstanceName() string {
 func (endp *Endpoint) Stop() error {
 	for _, l := range endp.listeners {
 		if err := l.Close(); err != nil {
-			endp.Log.Error("failed to close listener", err)
+			endp.log.Error("failed to close listener", err)
 		}
 	}
 	if err := endp.serv.Close(); err != nil {
@@ -249,7 +252,7 @@ func (endp *Endpoint) usernameForStorage(ctx context.Context, saslUsername strin
 	}
 
 	if saslUsername != mapped {
-		endp.Log.DebugMsg("using mapped username for storage", "username", saslUsername, "mapped_username", mapped)
+		endp.log.DebugMsg("using mapped username for storage", "username", saslUsername, "mapped_username", mapped)
 	}
 
 	return mapped, nil
@@ -261,7 +264,7 @@ func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
 		if errors.Is(err, imapbackend.ErrInvalidCredentials) {
 			return err
 		}
-		endp.Log.Error("failed to determine storage account name", err, "username", username)
+		endp.log.Error("failed to determine storage account name", err, "username", username)
 		return fmt.Errorf("internal server error")
 	}
 
@@ -279,7 +282,7 @@ func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) 
 	// saslAuth handles AuthMap calling.
 	err := endp.saslAuth.AuthPlain(username, password)
 	if err != nil {
-		endp.Log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
+		endp.log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials
 	}
 
@@ -288,7 +291,7 @@ func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) 
 		if errors.Is(err, imapbackend.ErrInvalidCredentials) {
 			return nil, err
 		}
-		endp.Log.Error("authentication failed due to an internal error", err, "username", username, "src_ip", connInfo.RemoteAddr)
+		endp.log.Error("authentication failed due to an internal error", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, fmt.Errorf("internal server error")
 	}
 
@@ -333,7 +336,7 @@ func (endp *Endpoint) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
 }
 
 func init() {
-	module.RegisterEndpoint("imap", New)
+	modules.RegisterEndpoint("imap", New)
 
 	imap.CharsetReader = message.CharsetReader
 }

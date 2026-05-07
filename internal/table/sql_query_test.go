@@ -28,12 +28,13 @@ import (
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/config"
+	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
 func TestSQL(t *testing.T) {
 	path := testutils.Dir(t)
-	mod, err := NewSQL("sql_table", "")
+	mod, err := NewSQL(container.New(), "sql_table", "")
 	if err != nil {
 		t.Fatal("Module create failed:", err)
 	}
