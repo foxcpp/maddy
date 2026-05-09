@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -58,7 +60,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const modName = "storage.imapsql"
+const modName = "storage.v1.imapsql"
 
 type Storage struct {
 	Back     *imapsql.Backend
@@ -460,6 +462,7 @@ func (store *Storage) SupportedThreadAlgorithms() []sortthread.ThreadAlgorithm {
 }
 
 func init() {
-	modules.Register("storage.imapsql", New)
+	modules.RegisterDeprecated("storage.imapsql", modName, New)
+	modules.Register(modName, New)
 	modules.Register("target.imapsql", New)
 }

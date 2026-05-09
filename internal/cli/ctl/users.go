@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -64,7 +66,7 @@ IMAP access - IMAP account should be also created using 'imap-acct create' subco
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return usersList(be, ctx)
 					},
 				},
@@ -105,7 +107,7 @@ using command flags. Otherwise, these options cannot be used.
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return usersCreate(be, ctx)
 					},
 				},
@@ -131,7 +133,7 @@ using command flags. Otherwise, these options cannot be used.
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return usersRemove(be, ctx)
 					},
 				},
@@ -158,7 +160,7 @@ using command flags. Otherwise, these options cannot be used.
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return usersPassword(be, ctx)
 					},
 				},

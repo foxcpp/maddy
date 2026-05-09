@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 package imapsql
 
 import (

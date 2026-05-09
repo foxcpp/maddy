@@ -39,6 +39,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emersion/go-imap/v2"
+	"github.com/emersion/go-imap/v2/imapclient"
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -490,6 +493,94 @@ func (t *T) Conn(portName string) Conn {
 	}
 
 	return t.ConnUnnamed(port)
+}
+
+func (t *T) NetConn(portName string) net.Conn {
+	port := t.ports[portName]
+	if port == 0 {
+		panic("tests: connection for the unused port name is requested")
+	}
+
+	c := t.ConnUnnamed(port)
+	return c.NetConn()
+}
+
+type UnilateralCollector struct {
+	Expunges              []uint32
+	Mailboxes             []*imapclient.UnilateralDataMailbox
+	Fetches               []*imapclient.FetchMessageData
+	Metadatas             []UnilateralMetadata
+	Lists                 []*imap.ListData
+	Statuses              []*imap.StatusData
+	NotificationOverflows int
+}
+
+type UnilateralMetadata struct {
+	Mailbox string
+	Entries []string
+}
+
+func (uc *UnilateralCollector) Reset() {
+	uc.Expunges = nil
+	uc.Mailboxes = nil
+	uc.Fetches = nil
+	uc.Metadatas = nil
+	uc.Lists = nil
+	uc.Statuses = nil
+	uc.NotificationOverflows = 0
+}
+
+func (uc *UnilateralCollector) OnExpunge(num uint32) {
+	uc.Expunges = append(uc.Expunges, num)
+}
+
+func (uc *UnilateralCollector) OnMailbox(data *imapclient.UnilateralDataMailbox) {
+	uc.Mailboxes = append(uc.Mailboxes, data)
+}
+
+func (uc *UnilateralCollector) OnFetch(msg *imapclient.FetchMessageData) {
+	uc.Fetches = append(uc.Fetches, msg)
+}
+
+func (uc *UnilateralCollector) OnMetadata(mailbox string, entries []string) {
+	uc.Metadatas = append(uc.Metadatas, UnilateralMetadata{
+		Mailbox: mailbox,
+		Entries: entries,
+	})
+}
+
+func (uc *UnilateralCollector) OnList(data *imap.ListData) {
+	uc.Lists = append(uc.Lists, data)
+}
+
+func (uc *UnilateralCollector) OnStatus(data *imap.StatusData) {
+	uc.Statuses = append(uc.Statuses, data)
+}
+
+func (uc *UnilateralCollector) OnNotificationOverflow() {
+	uc.NotificationOverflows++
+}
+
+func (t *T) IMAP(portName string) (*imapclient.Client, *UnilateralCollector) {
+	conn := t.NetConn(portName)
+	uc := &UnilateralCollector{}
+	cl := imapclient.New(conn, &imapclient.Options{
+		UnilateralDataHandler: &imapclient.UnilateralDataHandler{
+			Expunge:              uc.OnExpunge,
+			Mailbox:              uc.OnMailbox,
+			Fetch:                uc.OnFetch,
+			Metadata:             uc.OnMetadata,
+			List:                 uc.OnList,
+			Status:               uc.OnStatus,
+			NotificationOverflow: uc.OnNotificationOverflow,
+		},
+	})
+	return cl, uc
+}
+
+func (t *T) SMTP(portName string) *smtp.Client {
+	conn := t.NetConn(portName)
+	return smtp.NewClient(conn)
 }
 
 func (t *T) Subtest(name string, f func(t *T)) {

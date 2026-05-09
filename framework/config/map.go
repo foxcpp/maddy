@@ -620,6 +620,38 @@ func (m *Map) Custom(name string, inheritGlobal, required bool, defaultVal func(
 	}
 }
 
+func CustomTyped[Value any](m *Map, name string, inheritGlobal, required bool, defaultVal func() (Value, error), mapper func(*Map, Node) (Value, error), store *Value) {
+	if m.entries == nil {
+		m.entries = make(map[string]matcher)
+	}
+	if _, ok := m.entries[name]; ok {
+		panic("Map.Custom: duplicate matcher")
+	}
+
+	var target *reflect.Value
+	ptr := reflect.ValueOf(store)
+	if ptr.IsValid() && !ptr.IsNil() {
+		val := ptr.Elem()
+		if !val.CanSet() {
+			panic("Map.Custom: store argument must be settable (a pointer)")
+		}
+		target = &val
+	}
+
+	m.entries[name] = matcher{
+		name:          name,
+		inheritGlobal: inheritGlobal,
+		required:      required,
+		defaultVal: func() (interface{}, error) {
+			return defaultVal()
+		},
+		mapper: func(m *Map, node Node) (interface{}, error) {
+			return mapper(m, node)
+		},
+		store: target,
+	}
+}
+
 // Callback creates mapping that will call mapper() function for each
 // directive with the specified name. No further processing is done.
 //

@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -20,12 +22,9 @@ package imap
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
-	"sync"
 
 	"github.com/emersion/go-imap"
 	compress "github.com/emersion/go-imap-compress"
@@ -39,29 +38,21 @@ import (
 	namespace "github.com/foxcpp/go-imap-namespace"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
-	tls2 "github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
-	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
 	"github.com/foxcpp/maddy/internal/authz"
-	"github.com/foxcpp/maddy/internal/proxy_protocol"
+	"github.com/foxcpp/maddy/internal/endpoint"
 	"github.com/foxcpp/maddy/internal/updatepipe"
 )
 
 type Endpoint struct {
-	addrs         []string
-	serv          *imapserver.Server
-	proxyProtocol *proxy_protocol.ProxyProtocol
-	Store         module.Storage
-	tlsConfig     *tls.Config
+	ln *endpoint.MetaListener
 
-	endpoints   []config.Endpoint
-	listeners   []net.Listener
-	listenersWg sync.WaitGroup
-
+	serv     *imapserver.Server
+	Store    module.Storage
 	saslAuth auth.SASLAuth
 
 	storageNormalize authz.NormalizeFunc
@@ -73,12 +64,13 @@ type Endpoint struct {
 func New(c *container.C, modName string, addrs []string) (container.LifetimeModule, error) {
 	logger := c.DefaultLogger.Sublogger(modName)
 	endp := &Endpoint{
-		addrs: addrs,
-		log:   logger,
+		log: logger,
 		saslAuth: auth.SASLAuth{
 			Log: logger.Sublogger("sasl"),
 		},
 	}
+
+	endp.ln = endpoint.NewMetaListener(endp.log.Sublogger("listen"), addrs)
 
 	return endp, nil
 }
@@ -90,13 +82,12 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 		ioErrors     bool
 	)
 
+	endp.ln.AddConfig(cfg)
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
 	})
 	cfg.Bool("sasl_login", false, false, &endp.saslAuth.EnableLogin)
 	cfg.Custom("storage", false, true, nil, modconfig.StorageDirective, &endp.Store)
-	cfg.Custom("tls", true, true, nil, tls2.TLSDirective, &endp.tlsConfig)
-	cfg.Custom("proxy_protocol", false, false, nil, proxy_protocol.ProxyProtocolDirective, &endp.proxyProtocol)
 	cfg.Bool("insecure_auth", false, false, &insecureAuth)
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("io_errors", false, false, &ioErrors)
@@ -113,22 +104,13 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 
 	endp.saslAuth.Log.Debug = endp.log.Debug
 
-	addresses := make([]config.Endpoint, 0, len(endp.addrs))
-	for _, addr := range endp.addrs {
-		saddr, err := config.ParseEndpoint(addr)
-		if err != nil {
-			return fmt.Errorf("imap: invalid address: %s", addr)
-		}
-		if saddr.IsTLS() && endp.tlsConfig == nil {
-			return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
-		}
-		addresses = append(addresses, saddr)
+	if err := endp.ln.ParseEndpoints(); err != nil {
+		return err
 	}
-	endp.endpoints = addresses
 
 	endp.serv = imapserver.New(endp)
 	endp.serv.AllowInsecureAuth = insecureAuth
-	endp.serv.TLSConfig = endp.tlsConfig
+	endp.serv.TLSConfig = endp.ln.TLSConfig
 	if ioErrors {
 		endp.serv.ErrorLog = endp.log
 	} else {
@@ -169,44 +151,11 @@ func (endp *Endpoint) Start() error {
 		}
 	}
 
-	if err := endp.setupListeners(endp.endpoints); err != nil {
+	if err := endp.ln.ListenAndServe(endp.serv); err != nil {
 		if err := endp.Stop(); err != nil {
 			endp.log.Error("failed to stop after setupListeners error", err)
 		}
 		return err
-	}
-	return nil
-}
-
-func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
-	for _, addr := range addresses {
-		var l net.Listener
-		var err error
-		l, err = netresource.Listen(addr.Network(), addr.Address())
-		if err != nil {
-			return fmt.Errorf("imap: %v", err)
-		}
-		endp.log.Printf("listening on %v", addr)
-
-		if addr.IsTLS() {
-			if endp.tlsConfig == nil {
-				return errors.New("imap: can't bind on IMAPS endpoint without TLS configuration")
-			}
-			l = tls.NewListener(l, endp.tlsConfig)
-		}
-
-		if endp.proxyProtocol != nil {
-			l = proxy_protocol.NewListener(l, endp.proxyProtocol, endp.log)
-		}
-
-		endp.listeners = append(endp.listeners, l)
-		endp.listenersWg.Add(1)
-		go func() {
-			defer endp.listenersWg.Done()
-			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-				endp.log.Printf("imap: failed to serve %s: %s", addr, err)
-			}
-		}()
 	}
 
 	return nil
@@ -221,16 +170,7 @@ func (endp *Endpoint) InstanceName() string {
 }
 
 func (endp *Endpoint) Stop() error {
-	for _, l := range endp.listeners {
-		if err := l.Close(); err != nil {
-			endp.log.Error("failed to close listener", err)
-		}
-	}
-	if err := endp.serv.Close(); err != nil {
-		return err
-	}
-	endp.listenersWg.Wait()
-	return nil
+	return endp.ln.Close()
 }
 
 func (endp *Endpoint) usernameForStorage(ctx context.Context, saslUsername string) (string, error) {

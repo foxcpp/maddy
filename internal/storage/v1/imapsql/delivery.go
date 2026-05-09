@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors

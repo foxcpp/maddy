@@ -26,12 +26,15 @@ nav:
       - reference/tls.md
       - reference/tls-acme.md
       - Endpoints configuration:
-          - reference/endpoints/imap.md
-          - reference/endpoints/smtp.md
-          - reference/endpoints/openmetrics.md
+          - IMAP4rev1: reference/endpoints/imap.md
+          - IMAP4rev2 (EXPERIMENTAL): reference/endpoints/imap2.md
+          - SMTP: reference/endpoints/smtp.md
+          - OpenMetrics: reference/endpoints/openmetrics.md
       - IMAP storage:
           - reference/storage/imap-filters.md
-          - reference/storage/imapsql.md
+          - imapsql: reference/storage/imapsql.md
+          - imapsql2 (EXPERIMENTAL): reference/storage/imapsql2.md
+          - reference/storage/split.md
           - Blob storage:
             - reference/blob/fs.md
             - reference/blob/s3.md
@@ -62,6 +65,7 @@ nav:
           - reference/table/email_localpart.md
           - reference/table/email_with_domain.md
           - reference/table/auth.md
+          - reference/table/switch.md
       - Authentication providers:
           - reference/auth/pass_table.md
           - reference/auth/pam.md

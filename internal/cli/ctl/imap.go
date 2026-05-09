@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -39,7 +41,7 @@ func init() {
 	maddycli.AddSubcommand(
 		&cli.Command{
 			Name:  "imap-mboxes",
-			Usage: "IMAP mailboxes (folders) management",
+			Usage: "(Deprecated) IMAP mailboxes (folders) management",
 			Subcommands: []*cli.Command{
 				{
 					Name:      "list",
@@ -59,11 +61,11 @@ func init() {
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return mboxesList(be, ctx)
 					},
 				},
@@ -84,11 +86,11 @@ func init() {
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return mboxesCreate(be, ctx)
 					},
 				},
@@ -111,11 +113,11 @@ func init() {
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return mboxesRemove(be, ctx)
 					},
 				},
@@ -133,11 +135,11 @@ func init() {
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return mboxesRename(be, ctx)
 					},
 				},
@@ -145,7 +147,7 @@ func init() {
 		})
 	maddycli.AddSubcommand(&cli.Command{
 		Name:  "imap-msgs",
-		Usage: "IMAP messages management",
+		Usage: "(Deprecated) IMAP messages management",
 		Subcommands: []*cli.Command{
 			{
 				Name:        "add",
@@ -172,11 +174,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsAdd(be, ctx)
 				},
 			},
@@ -199,11 +201,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsFlags(be, ctx)
 				},
 			},
@@ -226,11 +228,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsFlags(be, ctx)
 				},
 			},
@@ -253,11 +255,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsFlags(be, ctx)
 				},
 			},
@@ -284,11 +286,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsRemove(be, ctx)
 				},
 			},
@@ -311,11 +313,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsCopy(be, ctx)
 				},
 			},
@@ -338,11 +340,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsMove(be, ctx)
 				},
 			},
@@ -370,11 +372,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsList(be, ctx)
 				},
 			},
@@ -397,11 +399,11 @@ func init() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					be, err := openStorage(ctx)
+					be, err := openV1Storage(ctx)
 					if err != nil {
 						return err
 					}
-					defer closeIfNeeded(be)
+					defer CloseIfNeeded(be)
 					return msgsDump(be, ctx)
 				},
 			},

@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -31,7 +33,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func closeIfNeeded(i any) {
+func CloseIfNeeded(i any) {
 	if c, ok := i.(container.LifetimeModule); ok {
 		if err := c.Stop(); err != nil {
 			log.DefaultLogger.Error("failed to stop module", err)
@@ -69,7 +71,7 @@ func (m *managedUserDB) Close() error {
 	return nil
 }
 
-func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
+func LoadCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	cfgPath := ctx.String("config")
 	if cfgPath == "" {
 		return nil, nil, cli.Exit("Error: config is required", 2)
@@ -118,8 +120,8 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	return c, mod, nil
 }
 
-func openStorage(ctx *cli.Context) (module.Storage, error) {
-	_, mod, err := getCfgBlockModule(ctx)
+func openV1Storage(ctx *cli.Context) (module.Storage, error) {
+	_, mod, err := LoadCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +156,7 @@ func openStorage(ctx *cli.Context) (module.Storage, error) {
 }
 
 func openUserDB(ctx *cli.Context) (module.PlainUserDB, error) {
-	_, mod, err := getCfgBlockModule(ctx)
+	_, mod, err := LoadCfgBlockModule(ctx)
 	if err != nil {
 		return nil, err
 	}

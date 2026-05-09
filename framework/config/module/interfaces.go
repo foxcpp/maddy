@@ -78,6 +78,26 @@ func StorageDirective(m *config.Map, node config.Node) (interface{}, error) {
 	return backend, nil
 }
 
+func ModuleDirective[Mod any](namespace string, m *config.Map, node config.Node) (Mod, error) {
+	var mod Mod
+	if err := ModuleFromNode(namespace, node.Args, node, m.Globals, &mod); err != nil {
+		return mod, err
+	}
+	return mod, nil
+}
+
+func Module[Mod any](cfg *config.Map, name string, inheritGlobal, required bool, namespace string, defaultVal Mod, store *Mod) {
+	config.CustomTyped[Mod](cfg, name, inheritGlobal, required, func() (Mod, error) {
+		return defaultVal, nil
+	}, func(m *config.Map, node config.Node) (Mod, error) {
+		var mod Mod
+		if err := ModuleFromNode(namespace, node.Args, node, m.Globals, &mod); err != nil {
+			return mod, err
+		}
+		return mod, nil
+	}, store)
+}
+
 // Table is a convenience wrapper for TableDirective.
 //
 //	cfg.Bool(...)

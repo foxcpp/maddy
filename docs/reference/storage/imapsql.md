@@ -1,4 +1,4 @@
-# SQL-indexed storage
+# SQL-indexed storage (version 1)
 
 The imapsql module implements database for IMAP index and message
 metadata using SQL-based relational database.
@@ -7,7 +7,7 @@ Message contents are stored in an "blob store" defined by msg_store
 directive. By default this is a file system directory under /var/lib/maddy.
 
 Supported RDBMS:
-- SQLite 3.25.0
+- SQLite 3.25.0 (both native C and transpiled Go versions)
 - PostgreSQL 9.6 or newer
 - CockroachDB 20.1.5 or newer
 

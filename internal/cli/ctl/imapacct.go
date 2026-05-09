@@ -1,3 +1,5 @@
+//go:build !no_imap1
+
 /*
 Maddy Mail Server - Composable all-in-one email server.
 Copyright © 2019-2020 Max Mazurov <fox.cpp@disroot.org>, Maddy Mail Server contributors
@@ -34,8 +36,11 @@ func init() {
 	maddycli.AddSubcommand(
 		&cli.Command{
 			Name:  "imap-acct",
-			Usage: "IMAP storage accounts management",
-			Description: `These subcommands can be used to list/create/delete IMAP storage
+			Usage: "IMAP storage accounts management (deprecated)",
+			Description: `
+DEPRECATED: Replaced by mostly-equivalent 'storage' subcommands.
+
+These subcommands can be used to list/create/delete IMAP storage
 accounts for any storage backend supported by maddy.
 
 The corresponding storage backend should be configured in maddy.conf and be
@@ -60,11 +65,11 @@ be created using 'creds' subcommand.
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return imapAcctList(be, ctx)
 					},
 				},
@@ -113,11 +118,11 @@ creates a set of default folder (mailboxes) with special-use attribute set.`,
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return imapAcctCreate(be, ctx)
 					},
 				},
@@ -142,11 +147,11 @@ or other buffering takes effect.`,
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return imapAcctRemove(be, ctx)
 					},
 				},
@@ -178,11 +183,11 @@ APPENDLIMIT value (either global or per-account) cannot be larger than
 						},
 					},
 					Action: func(ctx *cli.Context) error {
-						be, err := openStorage(ctx)
+						be, err := openV1Storage(ctx)
 						if err != nil {
 							return err
 						}
-						defer closeIfNeeded(be)
+						defer CloseIfNeeded(be)
 						return imapAcctAppendlimit(be, ctx)
 					},
 				},

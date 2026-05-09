@@ -52,6 +52,60 @@ func (c *Conn) AllowIOErr(ok bool) {
 	c.allowIOErr = ok
 }
 
+type netConnWrapper struct {
+	c *Conn
+}
+
+func (n2 netConnWrapper) Read(b []byte) (n int, err error) {
+	n, err = n2.c.Conn.Read(b)
+
+	if err != nil {
+		n2.c.log('<', "%v (with err %v)", string(b[:n]), err)
+	} else {
+		n2.c.log('<', "%v", string(b[:n]))
+	}
+	return n, err
+}
+
+func (n2 netConnWrapper) Write(b []byte) (n int, err error) {
+	n, err = n2.c.Conn.Write(b)
+
+	if err != nil {
+		n2.c.log('>', "%v (with err %v)", string(b[:n]), err)
+	} else {
+		n2.c.log('>', "%v", string(b[:n]))
+	}
+	return n, err
+}
+
+func (n2 netConnWrapper) Close() error {
+	return n2.c.Conn.Close()
+}
+
+func (n2 netConnWrapper) LocalAddr() net.Addr {
+	return n2.c.Conn.LocalAddr()
+}
+
+func (n2 netConnWrapper) RemoteAddr() net.Addr {
+	return n2.c.Conn.RemoteAddr()
+}
+
+func (n2 netConnWrapper) SetDeadline(t time.Time) error {
+	return n2.c.Conn.SetDeadline(t)
+}
+
+func (n2 netConnWrapper) SetReadDeadline(t time.Time) error {
+	return n2.c.Conn.SetReadDeadline(t)
+}
+
+func (n2 netConnWrapper) SetWriteDeadline(t time.Time) error {
+	return n2.c.Conn.SetWriteDeadline(t)
+}
+
+func (c *Conn) NetConn() net.Conn {
+	return netConnWrapper{c: c}
+}
+
 // Write writes the string to the connection socket.
 func (c *Conn) Write(s string) {
 	c.T.Helper()
@@ -276,6 +330,24 @@ capsloop:
 			c.T.Fatalf("Capability %v is present but not allowed", ext)
 		}
 	}
+}
+
+func (c *Conn) SMTPSimpleMessage(mailFrom, rcptTo string) {
+	c.T.Helper()
+
+	c.Writeln("MAIL FROM:<" + mailFrom + ">")
+	c.ExpectPattern("2*")
+	c.Writeln("RCPT TO:<" + rcptTo + ">")
+	c.ExpectPattern("2*")
+	c.Writeln("DATA")
+	c.ExpectPattern("354 *")
+	c.Writeln("From: <sender.body@maddy.test>")
+	c.Writeln("To: <testusr.body@maddy.test>")
+	c.Writeln("Subject: Hi!")
+	c.Writeln("")
+	c.Writeln("Hi!")
+	c.Writeln(".")
+	c.ExpectPattern("2*")
 }
 
 func (c *Conn) Close() error {
