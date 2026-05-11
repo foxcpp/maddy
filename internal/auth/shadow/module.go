@@ -110,7 +110,7 @@ func (a *Auth) Lookup(username string) (string, bool, error) {
 	return "", true, nil
 }
 
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	if a.useHelper {
 		return external.AuthUsingHelper(a.helperPath, username, password)
 	}

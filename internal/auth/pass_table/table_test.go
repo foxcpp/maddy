@@ -23,6 +23,7 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
 
@@ -51,7 +52,7 @@ func TestAuth_AuthPlain(t *testing.T) {
 	check := func(user, pass string, ok bool) {
 		t.Helper()
 
-		err := a.AuthPlain(user, pass)
+		err := a.AuthPlain(&module.AuthContext{}, user, pass)
 		if (err == nil) != ok {
 			t.Errorf("ok=%v, err: %v", ok, err)
 		}

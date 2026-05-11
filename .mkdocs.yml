@@ -71,6 +71,7 @@ nav:
           - reference/auth/dovecot_sasl.md
           - reference/auth/plain_separate.md
           - reference/auth/netauth.md
+          - reference/auth/tls.md
       - reference/config-syntax.md
   - Integration with software:
       - third-party/dovecot.md

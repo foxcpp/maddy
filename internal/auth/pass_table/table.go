@@ -73,7 +73,7 @@ func (a *Auth) Lookup(ctx context.Context, username string) (string, bool, error
 	return a.table.Lookup(ctx, key)
 }
 
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	key, err := precis.UsernameCaseMapped.CompareKey(username)
 	if err != nil {
 		return err

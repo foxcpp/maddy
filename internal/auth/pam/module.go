@@ -79,7 +79,7 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	if a.useHelper {
 		if err := external.AuthUsingHelper(a.helperPath, username, password); err != nil {
 			return err

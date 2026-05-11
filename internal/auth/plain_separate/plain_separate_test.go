@@ -35,7 +35,7 @@ func (mockAuth) SASLMechanisms() []string {
 	return []string{sasl.Plain, sasl.Login}
 }
 
-func (m mockAuth) AuthPlain(username, _ string) error {
+func (m mockAuth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	ok := m.db[username]
 	if !ok {
 		return errors.New("invalid creds")
@@ -63,7 +63,7 @@ func TestPlainSplit_NoUser(t *testing.T) {
 		},
 	}
 
-	err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain(&module.AuthContext{}, "user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -85,7 +85,7 @@ func TestPlainSplit_NoUser_MultiPass(t *testing.T) {
 		},
 	}
 
-	err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain(&module.AuthContext{}, "user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -114,7 +114,7 @@ func TestPlainSplit_UserPass(t *testing.T) {
 		},
 	}
 
-	err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain(&module.AuthContext{}, "user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -148,7 +148,7 @@ func TestPlainSplit_MultiUser_Pass(t *testing.T) {
 		},
 	}
 
-	err := a.AuthPlain("user1", "aaa")
+	err := a.AuthPlain(&module.AuthContext{}, "user1", "aaa")
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

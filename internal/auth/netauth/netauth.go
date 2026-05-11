@@ -91,7 +91,7 @@ func (a *Auth) Lookup(ctx context.Context, username string) (string, bool, error
 
 // AuthPlain attempts straightforward authentication of the entity on
 // the remote NetAuth server.
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	a.log.Debugf("attempting to auth user: %s", username)
 	if err := a.nacl.AuthEntity(context.Background(), username, password); err != nil {
 		return module.ErrUnknownCredentials

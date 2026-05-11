@@ -20,12 +20,23 @@ package tls
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
 
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
+
+var clientAuthMap = map[string]tls.ClientAuthType{
+	"none":            tls.NoClientCert,
+	"request":         tls.RequestClientCert,
+	"require_any":     tls.RequireAnyClientCert,
+	"verify_if_given": tls.VerifyClientCertIfGiven,
+	"require":         tls.RequireAndVerifyClientCert,
+}
 
 type TLSConfig struct {
 	loader  module.TLSLoader
@@ -74,6 +85,8 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 		SessionTicketsDisabled: true,
 	}
 
+	var clientCAPaths []string
+
 	var loader module.TLSLoader
 	if len(blockNode.Args) > 0 {
 		if blockNode.Args[0] == "off" {
@@ -109,8 +122,29 @@ func readTLSBlock(globals map[string]interface{}, blockNode config.Node) (*TLSCo
 		return nil, nil
 	}, TLSCurvesDirective, &baseCfg.CurvePreferences)
 
+	config.EnumMapped[tls.ClientAuthType](
+		childM, "client_auth", false, false,
+		clientAuthMap, tls.NoClientCert, &baseCfg.ClientAuth,
+	)
+
+	childM.StringList("client_ca", false, false, nil, &clientCAPaths)
+
 	if _, err := childM.Process(); err != nil {
 		return nil, err
+	}
+
+	if len(clientCAPaths) > 0 {
+		pool := x509.NewCertPool()
+		for _, path := range clientCAPaths {
+			blob, err := os.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
+			if !pool.AppendCertsFromPEM(blob) {
+				return nil, fmt.Errorf("no certificates was loaded from %s", path)
+			}
+		}
+		baseCfg.ClientCAs = pool
 	}
 
 	baseCfg.MinVersion = tlsVersions[0]

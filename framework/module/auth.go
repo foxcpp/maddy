@@ -18,19 +18,44 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package module
 
-import "errors"
+import (
+	"crypto/tls"
+	"errors"
+	"net"
+)
 
 // ErrUnknownCredentials should be returned by auth. provider if supplied
 // credentials are valid for it but are not recognized (e.g. not found in
 // used DB).
 var ErrUnknownCredentials = errors.New("unknown credentials")
 
+type ProxiedTLSContext struct {
+	ValidCert    bool
+	CertUsername string
+	Cipher       string
+	CipherBits   int
+	PFS          string
+	Version      uint16
+}
+
+type AuthContext struct {
+	Service    string
+	LocalAddr  net.Addr
+	RemoteAddr net.Addr
+	TLS        *tls.ConnectionState
+	ProxiedTLS *ProxiedTLSContext // populated instead of TLS if TLS is terminated by upstream and TLS info is available
+}
+
+type ExternalAuth interface {
+	AuthExternal(ctx *AuthContext, requestedIdentity string) (finalIdentity string, err error)
+}
+
 // PlainAuth is the interface implemented by modules providing authentication using
 // username:password pairs.
 //
 // Modules implementing this interface should be registered with "auth." prefix in name.
 type PlainAuth interface {
-	AuthPlain(username, password string) error
+	AuthPlain(ctx *AuthContext, username, password string) error
 }
 
 // PlainUserDB is a local credentials store that can be managed using maddy command

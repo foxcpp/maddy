@@ -22,7 +22,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 
 	"github.com/emersion/go-sasl"
 	"github.com/foxcpp/maddy/framework/config"
@@ -56,11 +55,16 @@ type SASLAuth struct {
 
 	ErrorMap func(err error) error
 
-	Plain []module.PlainAuth
+	External []module.ExternalAuth
+	Plain    []module.PlainAuth
 }
 
 func (s *SASLAuth) SASLMechanisms() []string {
 	var mechs []string
+
+	if len(s.External) != 0 {
+		mechs = append(mechs, sasl.External)
+	}
 
 	if len(s.Plain) != 0 {
 		mechs = append(mechs, sasl.Plain)
@@ -100,7 +104,26 @@ func (s *SASLAuth) usernameForAuth(ctx context.Context, saslUsername string) (st
 	return mapped, nil
 }
 
-func (s *SASLAuth) AuthPlain(username, password string) error {
+func (s *SASLAuth) AuthExternal(ctx *SASLContext, identity string) (string, error) {
+	if len(s.External) == 0 {
+		return "", ErrUnsupportedMech
+	}
+
+	var lastErr error
+	for _, e := range s.External {
+		s.Log.DebugMsg("attempting authentication", "module", e)
+
+		var finalIdentity string
+		finalIdentity, lastErr = e.AuthExternal((*module.AuthContext)(ctx), identity)
+		if lastErr == nil {
+			return finalIdentity, nil
+		}
+	}
+
+	return "", fmt.Errorf("no auth. provider succeeded, last err: %w", lastErr)
+}
+
+func (s *SASLAuth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	if len(s.Plain) == 0 {
 		return ErrUnsupportedMech
 	}
@@ -116,7 +139,7 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 			"mapped_username", mappedUsername, "original_username", username,
 			"module", p)
 
-		lastErr = p.AuthPlain(mappedUsername, password)
+		lastErr = p.AuthPlain(ctx, mappedUsername, password)
 		if lastErr == nil {
 			return nil
 		}
@@ -124,6 +147,8 @@ func (s *SASLAuth) AuthPlain(username, password string) error {
 
 	return fmt.Errorf("no auth. provider accepted creds, last err: %w", lastErr)
 }
+
+type SASLContext module.AuthContext
 
 type ContextData struct {
 	// Authentication username. May be different from identity.
@@ -135,10 +160,24 @@ type ContextData struct {
 
 // CreateSASL creates the sasl.Server instance for the corresponding mechanism.
 func (s *SASLAuth) CreateSASL(
-	mech string, remoteAddr net.Addr,
+	mech string, ctx *SASLContext,
 	successCb func(identity string, data ContextData) error,
 ) sasl.Server {
 	switch mech {
+	case sasl.External:
+		return sasl.NewExternalServer(func(identity string) error {
+			acceptedIdentity, err := s.AuthExternal(ctx, identity)
+			if err != nil {
+				s.Log.Error("authentication failed", err, "src_ip", ctx.RemoteAddr)
+				if s.ErrorMap != nil {
+					return s.ErrorMap(ErrInvalidAuthCred)
+				}
+				return ErrInvalidAuthCred
+			}
+			return successCb(acceptedIdentity, ContextData{
+				Username: acceptedIdentity,
+			})
+		})
 	case sasl.Plain:
 		return sasl.NewPlainServer(func(identity, username, password string) error {
 			if identity == "" {
@@ -151,9 +190,9 @@ func (s *SASLAuth) CreateSASL(
 				return ErrInvalidAuthCred
 			}
 
-			err := s.AuthPlain(username, password)
+			err := s.AuthPlain((*module.AuthContext)(ctx), username, password)
 			if err != nil {
-				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
+				s.Log.Error("authentication failed", err, "username", username, "src_ip", ctx.RemoteAddr)
 				if s.ErrorMap != nil {
 					return s.ErrorMap(ErrInvalidAuthCred)
 				}
@@ -179,9 +218,9 @@ func (s *SASLAuth) CreateSASL(
 				return err
 			}
 
-			err = s.AuthPlain(username, password)
+			err = s.AuthPlain((*module.AuthContext)(ctx), username, password)
 			if err != nil {
-				s.Log.Error("authentication failed", err, "username", username, "src_ip", remoteAddr)
+				s.Log.Error("authentication failed", err, "username", username, "src_ip", ctx.RemoteAddr)
 				if s.ErrorMap != nil {
 					return s.ErrorMap(ErrInvalidAuthCred)
 				}
@@ -208,6 +247,10 @@ func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 	hasAny := false
 	if plainAuth, ok := any.(module.PlainAuth); ok {
 		s.Plain = append(s.Plain, plainAuth)
+		hasAny = true
+	}
+	if externalAuth, ok := any.(module.ExternalAuth); ok {
+		s.External = append(s.External, externalAuth)
 		hasAny = true
 	}
 

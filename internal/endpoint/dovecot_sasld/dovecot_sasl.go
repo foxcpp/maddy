@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dovecotsasld
 
 import (
+	"crypto/tls"
 	"fmt"
 	stdlog "log"
 	"net"
@@ -31,6 +32,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/log"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -69,6 +71,31 @@ func (endp *Endpoint) InstanceName() string {
 	return modName
 }
 
+func proxiedTLSData(req *dovecotsasl.AuthReq) *module.ProxiedTLSContext {
+	var version uint16
+	switch req.TLSProtocol {
+	case "TLSv1.0":
+		version = tls.VersionTLS10
+	case "TLSv1.1":
+		version = tls.VersionTLS11
+	case "TLSv1.2":
+		version = tls.VersionTLS12
+	case "TLSv1.3":
+		version = tls.VersionTLS13
+	default:
+		version = tls.VersionTLS10
+	}
+
+	return &module.ProxiedTLSContext{
+		ValidCert:    req.ValidClientCert,
+		CertUsername: req.CertUsername,
+		Cipher:       req.TLSCipher,
+		CipherBits:   req.TLSCipherBits,
+		PFS:          req.TLSPFS,
+		Version:      version,
+	}
+}
+
 func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	cfg.Callback("auth", func(m *config.Map, node config.Node) error {
 		return endp.saslAuth.AddProvider(m, node)
@@ -92,7 +119,23 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 				remoteAddr = &net.TCPAddr{IP: req.RemoteIP, Port: int(req.RemotePort)}
 			}
 
-			return endp.saslAuth.CreateSASL(mech, remoteAddr, func(_ string, _ auth.ContextData) error { return nil })
+			var localAddr net.Addr
+			if req.LocalIP != nil && req.LocalPort != 0 {
+				localAddr = &net.TCPAddr{IP: req.LocalIP, Port: int(req.LocalPort)}
+			}
+
+			var proxiedTLS *module.ProxiedTLSContext
+			if (req.Secured && req.SecuredMethod == dovecotsasl.SecuredTLS) ||
+				req.Transport == string(dovecotsasl.TransportTLS) {
+				proxiedTLS = proxiedTLSData(req)
+			}
+
+			return endp.saslAuth.CreateSASL(mech, &auth.SASLContext{
+				Service:    req.Service,
+				LocalAddr:  localAddr,
+				RemoteAddr: remoteAddr,
+				ProxiedTLS: proxiedTLS,
+			}, func(_ string, _ auth.ContextData) error { return nil })
 		})
 	}
 

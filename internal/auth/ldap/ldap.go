@@ -245,7 +245,7 @@ func (a *Auth) Lookup(_ context.Context, username string) (string, bool, error) 
 	return userDN, true, nil
 }
 
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	conn, err := a.getConn()
 	if err != nil {
 		return err

@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dovecotsasl
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 
@@ -136,7 +138,94 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 	return nil
 }
 
-func (a *Auth) AuthPlain(username, password string) error {
+func (a *Auth) certUsername(cert *x509.Certificate) string {
+	if len(cert.EmailAddresses) > 0 {
+		return cert.EmailAddresses[0]
+	}
+	if cert.Subject.CommonName != "" {
+		return cert.Subject.CommonName
+	}
+	return ""
+}
+
+func (a *Auth) dovecotParams(ctx *module.AuthContext) []dovecotsasl.Parameter {
+	var result []dovecotsasl.Parameter
+	result = append(result, dovecotsasl.ParamNoPenalty)
+
+	if ctx.RemoteAddr != nil {
+		tcpAddr, ok := ctx.RemoteAddr.(*net.TCPAddr)
+		if ok {
+			result = append(
+				result,
+				dovecotsasl.ParamRemoteIP(tcpAddr.IP),
+				dovecotsasl.ParamRemotePort(uint16(tcpAddr.Port)),
+			)
+		}
+	}
+	if ctx.LocalAddr != nil {
+		tcpAddr, ok := ctx.LocalAddr.(*net.TCPAddr)
+		if ok {
+			result = append(
+				result,
+				dovecotsasl.ParamLocalIP(tcpAddr.IP),
+				dovecotsasl.ParamLocalPort(uint16(tcpAddr.Port)),
+			)
+		}
+	}
+	if ctx.TLS != nil && ctx.TLS.HandshakeComplete {
+		result = append(
+			result,
+			dovecotsasl.ParamSecured(dovecotsasl.SecuredTLS),
+			dovecotsasl.ParamTransport(dovecotsasl.TransportTLS),
+			dovecotsasl.ParamTLSCipher(tls.CipherSuiteName(ctx.TLS.CipherSuite)),
+			dovecotsasl.ParamTLSProtocol(ctx.TLS.Version),
+		)
+		if len(ctx.TLS.VerifiedChains) > 0 && ctx.TLS.VerifiedChains[0] != nil {
+			result = append(
+				result,
+				dovecotsasl.ParamValidClientCert,
+			)
+			username := a.certUsername(ctx.TLS.VerifiedChains[0][0])
+			if username != "" {
+				result = append(
+					result,
+					dovecotsasl.Parameter("cert_username="+username),
+				)
+			}
+		}
+	}
+	if ctx.ProxiedTLS != nil {
+		result = append(
+			result,
+			dovecotsasl.ParamSecured(dovecotsasl.SecuredTLS),
+			dovecotsasl.ParamTransport(dovecotsasl.TransportTLS),
+		)
+		if ctx.ProxiedTLS.Cipher != "" {
+			result = append(result, dovecotsasl.ParamTLSCipher(ctx.ProxiedTLS.Cipher))
+		}
+		if ctx.ProxiedTLS.Version != 0 {
+			result = append(result, dovecotsasl.ParamTLSProtocol(ctx.ProxiedTLS.Version))
+		}
+		if ctx.ProxiedTLS.PFS != "" {
+			result = append(result, dovecotsasl.ParamTLSPFS(ctx.ProxiedTLS.PFS))
+		}
+		if ctx.ProxiedTLS.CipherBits != 0 {
+			result = append(result, dovecotsasl.ParamTLSCipherBits(ctx.ProxiedTLS.CipherBits))
+		}
+		if ctx.ProxiedTLS.CertUsername != "" {
+			result = append(result, dovecotsasl.Parameter("cert_username="+ctx.ProxiedTLS.CertUsername))
+		}
+	}
+
+	return result
+}
+
+func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
+	service := "SMTP"
+	if ctx.Service != "" {
+		service = ctx.Service
+	}
+
 	if _, ok := a.mechanisms[sasl.Plain]; ok {
 		cl, err := a.getConn()
 		if err != nil {
@@ -144,10 +233,8 @@ func (a *Auth) AuthPlain(username, password string) error {
 		}
 		defer a.returnConn(cl)
 
-		// Pretend it is SMTPS even though we really don't know.
-		// We also have no connection information to pass to the server...
-		return cl.Do("SMTP", sasl.NewPlainClient("", username, password),
-			dovecotsasl.Secured, dovecotsasl.NoPenalty)
+		return cl.Do(service, sasl.NewPlainClient("", username, password),
+			a.dovecotParams(ctx)...)
 	}
 	if _, ok := a.mechanisms[sasl.Login]; ok {
 		cl, err := a.getConn()
@@ -156,8 +243,8 @@ func (a *Auth) AuthPlain(username, password string) error {
 		}
 		defer a.returnConn(cl)
 
-		return cl.Do("SMTP", sasl.NewLoginClient(username, password),
-			dovecotsasl.Secured, dovecotsasl.NoPenalty)
+		return cl.Do(service, sasl.NewLoginClient(username, password),
+			a.dovecotParams(ctx)...)
 	}
 
 	return auth.ErrUnsupportedMech

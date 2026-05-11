@@ -21,6 +21,8 @@ tls {
 	protocols tls1.2 tls1.3
 	curves X25519
 	ciphers ...
+	client_auth none
+	client_ca ...
 }
 ```
 
@@ -30,7 +32,7 @@ tls {
   E.g. `tls file certA.pem keyA.pem certB.pem keyB.pem`.
   If multiple certificates are listed, SNI will be used.
 - `acme` – Automatically obtains a certificate using ACME protocol (Let's Encrypt)
-- `off` – Not really a loader but a special value for tls directive, 
+- `off` – Not really a loader but a special value for tls directive,
   explicitly  disables TLS for endpoint(s).
 
 ## Advanced TLS configuration
@@ -49,7 +51,7 @@ Valid values are: `tls1.0`, `tls1.1`, `tls1.2`, `tls1.3`
 
 ---
 
-### ciphers _ciphers..._ 
+### ciphers _ciphers..._
 Default: Go version-defined set of 'secure ciphers', ordered by hardware
 performance
 
@@ -89,6 +91,29 @@ The elliptic curves that will be used in an ECDHE handshake, in preference
 order.
 
 Valid values: `p256`, `p384`, `p521`, `X25519`.
+
+### client_auth _mode_
+Default: `none`
+
+Client authentication mode. If set to `require`, client must present a valid certificate
+signed by one of the CAs specified in `client_ca` directive. If set to `verify_if_given`,
+client may present a certificate, but it is not required.
+
+Valid values: `none`, `request`, `require_any`, `verify_if_given`, `require`
+
+Note that only `require` and `verify_if_given` modes actually verify client certificates. `auth.tls` will
+work only with these two modes, so if you want to use client certificate authentication, you should choose
+one of them.
+
+TLS client authentication is not widely supported by email clients, so `require` mode should be used only
+if you are sure that all your clients support it and are configured to use it. `verify_if_given` mode is a
+good choice if you want to allow client authentication for clients that support it, but do not want to break
+compatibility with clients that do not support it.
+
+### client_ca _paths..._
+Default: none
+
+List of files with PEM-encoded CA certificates to use when verifying client certificates.
 
 ## Client
 

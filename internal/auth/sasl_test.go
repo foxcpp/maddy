@@ -20,7 +20,6 @@ package auth
 
 import (
 	"errors"
-	"net"
 	"testing"
 
 	"github.com/foxcpp/maddy/framework/module"
@@ -31,7 +30,7 @@ type mockAuth struct {
 	db map[string]bool
 }
 
-func (m mockAuth) AuthPlain(username, _ string) error {
+func (m mockAuth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	ok := m.db[username]
 	if !ok {
 		return errors.New("invalid creds")
@@ -52,7 +51,7 @@ func TestCreateSASL(t *testing.T) {
 	}
 
 	t.Run("XWHATEVER", func(t *testing.T) {
-		srv := a.CreateSASL("XWHATEVER", &net.TCPAddr{}, func(string, ContextData) error { return nil })
+		srv := a.CreateSASL("XWHATEVER", &SASLContext{}, func(string, ContextData) error { return nil })
 		_, _, err := srv.Next([]byte(""))
 		if err == nil {
 			t.Error("No error for XWHATEVER use")
@@ -60,7 +59,7 @@ func TestCreateSASL(t *testing.T) {
 	})
 
 	t.Run("PLAIN", func(t *testing.T) {
-		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string, data ContextData) error {
+		srv := a.CreateSASL("PLAIN", &SASLContext{}, func(id string, data ContextData) error {
 			if id != "user1" {
 				t.Fatal("Wrong auth. identities passed to callback:", id)
 			}
@@ -74,7 +73,7 @@ func TestCreateSASL(t *testing.T) {
 	})
 
 	t.Run("PLAIN with authorization identity", func(t *testing.T) {
-		srv := a.CreateSASL("PLAIN", &net.TCPAddr{}, func(id string, data ContextData) error {
+		srv := a.CreateSASL("PLAIN", &SASLContext{}, func(id string, data ContextData) error {
 			if id != "user1" {
 				t.Fatal("Wrong authorization identity passed:", id)
 			}

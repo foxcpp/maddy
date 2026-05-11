@@ -91,7 +91,7 @@ func (ea *ExternalAuth) Configure(inlineArgs []string, cfg *config.Map) error {
 	return nil
 }
 
-func (ea *ExternalAuth) AuthPlain(username, password string) error {
+func (ea *ExternalAuth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	accountName, ok := auth.CheckDomainAuth(username, ea.perDomain, ea.domains)
 	if !ok {
 		return module.ErrUnknownCredentials

@@ -145,7 +145,13 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
 		endp.serv.EnableAuth(mech, func(c imapserver.Conn) sasl.Server {
-			return endp.saslAuth.CreateSASL(mech, c.Info().RemoteAddr, func(identity string, data auth.ContextData) error {
+			info := c.Info()
+			return endp.saslAuth.CreateSASL(mech, &auth.SASLContext{
+				Service:    "IMAP",
+				LocalAddr:  info.LocalAddr,
+				RemoteAddr: info.RemoteAddr,
+				TLS:        info.TLS,
+			}, func(identity string, data auth.ContextData) error {
 				return endp.openAccount(c, identity)
 			})
 		})
@@ -280,7 +286,12 @@ func (endp *Endpoint) openAccount(c imapserver.Conn, identity string) error {
 
 func (endp *Endpoint) Login(connInfo *imap.ConnInfo, username, password string) (imapbackend.User, error) {
 	// saslAuth handles AuthMap calling.
-	err := endp.saslAuth.AuthPlain(username, password)
+	err := endp.saslAuth.AuthPlain(&module.AuthContext{
+		Service:    "IMAP",
+		LocalAddr:  connInfo.LocalAddr,
+		RemoteAddr: connInfo.RemoteAddr,
+		TLS:        connInfo.TLS,
+	}, username, password)
 	if err != nil {
 		endp.log.Error("authentication failed", err, "username", username, "src_ip", connInfo.RemoteAddr)
 		return nil, imapbackend.ErrInvalidCredentials

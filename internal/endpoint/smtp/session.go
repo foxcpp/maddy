@@ -21,6 +21,7 @@ package smtp
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -103,7 +104,17 @@ func (s *Session) AuthMechanisms() []string {
 }
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
-	return s.endp.saslAuth.CreateSASL(mech, s.connState.RemoteAddr, func(identity string, data auth.ContextData) error {
+	var tlsState *tls.ConnectionState
+	if s.connState.TLS.HandshakeComplete {
+		tlsState = &s.connState.TLS
+	}
+
+	return s.endp.saslAuth.CreateSASL(mech, &auth.SASLContext{
+		Service:    "SMTP",
+		LocalAddr:  s.connState.LocalAddr,
+		RemoteAddr: s.connState.RemoteAddr,
+		TLS:        tlsState,
+	}, func(identity string, data auth.ContextData) error {
 		s.connState.AuthUser = identity
 		s.connState.AuthPassword = data.Password
 		return nil
@@ -158,14 +169,14 @@ func (s *Session) cleanSession() {
 	s.msgTask.End()
 }
 
-func (s *Session) AuthPlain(username, password string) error {
+func (s *Session) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	// Executed before authentication and session initialization.
 	if err := s.endp.pipeline.RunEarlyChecks(context.TODO(), &s.connState); err != nil {
 		return s.endp.wrapErr("", true, "AUTH", err)
 	}
 
 	// saslAuth will handle AuthMap and AuthNormalize.
-	err := s.endp.saslAuth.AuthPlain(username, password)
+	err := s.endp.saslAuth.AuthPlain(ctx, username, password)
 	if err != nil {
 		s.endp.log.Error("authentication failed", err, "username", username, "src_ip", s.connState.RemoteAddr)
 
