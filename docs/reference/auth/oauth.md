@@ -115,7 +115,7 @@ valid. If not specified, the token is considered active if the `active_attribute
 
 ---
 
-### jwt_key_id_template _<template>_
+### jwt_key_id_template _<template\>_
 Default: `{kid}`
 
 The template used to determine the key for `jwt_key_table` lookup. The template can include placeholders
@@ -124,7 +124,7 @@ replaced with `default`.
 
 ---
 
-### jwt_key_table _<table>_
+### jwt_key_table _<table\>_
 Default: (none)
 
 The table to use for looking up the key to validate JWT tokens. The lookup key is determined by applying
@@ -135,7 +135,7 @@ all also implement the `table` interface.
 
 ---
 
-### jwt_valid_methods _<method>_
+### jwt_valid_methods _<method\>_
 Default: all supported methods.
 
 The allowed signing algorithms for JWT tokens. If specified, the token's `alg` header field must match
@@ -145,14 +145,14 @@ It is not possible to enable `none` algorithm for JWT tokens.
 
 ---
 
-### jwt_issuers _<issuer>_
+### jwt_issuers _<issuer\>_
 Default: (none)
 
 If specified, the token's `iss` claim must match one of these values to be considered valid.
 
 ---
 
-### jwt_expiry_leeway _<duration>_
+### jwt_expiry_leeway _<duration\>_
 Default: 30s
 
 The leeway to apply when validating the token's `exp` claim. This allows for some clock skew between the
@@ -161,7 +161,7 @@ before `exp` + `jwt_expiry_leeway`.
 
 ---
 
-### jwt_audience _<table>_
+### jwt_audience _<table\>_
 Default: (none)
 
 If specified, the token's `aud` claim must match one of the values in this table to be considered
