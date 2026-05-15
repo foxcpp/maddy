@@ -291,17 +291,30 @@ func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 		return err
 	}
 
+	var saslMechsMap map[string]bool
+
+	saslAuth, ok := any.(module.SASLAuth)
+	if ok {
+		mechsList := saslAuth.SASLMechanisms()
+		saslMechsMap = make(map[string]bool, len(mechsList))
+		for _, mech := range mechsList {
+			saslMechsMap[mech] = true
+		}
+	} else {
+		saslMechsMap = map[string]bool{
+			sasl.OAuthBearer: true,
+			sasl.Plain:       true,
+			sasl.External:    true,
+		}
+	}
+
 	hasAny := false
-	if plainAuth, ok := any.(module.PlainAuth); ok {
+	if plainAuth, ok := any.(module.PlainAuth); ok && saslMechsMap[sasl.Plain] {
 		s.Plain = append(s.Plain, plainAuth)
 		hasAny = true
 	}
-	if externalAuth, ok := any.(module.ExternalAuth); ok {
+	if externalAuth, ok := any.(module.ExternalAuth); ok && saslMechsMap[sasl.External] {
 		s.External = append(s.External, externalAuth)
-		hasAny = true
-	}
-	if bearerAuth, ok := any.(module.BearerTokenAuth); ok {
-		s.BearerToken = append(s.BearerToken, bearerAuth)
 		hasAny = true
 	}
 

@@ -220,6 +220,14 @@ func (a *Auth) dovecotParams(ctx *module.AuthContext) []dovecotsasl.Parameter {
 	return result
 }
 
+func (a *Auth) SASLMechanisms() []string {
+	list := make([]string, 0, len(a.mechanisms))
+	for mech := range a.mechanisms {
+		list = append(list, mech)
+	}
+	return list
+}
+
 func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) error {
 	service := "SMTP"
 	if ctx.Service != "" {

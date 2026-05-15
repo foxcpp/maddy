@@ -57,6 +57,12 @@ type BearerTokenError struct {
 func (e BearerTokenError) Error() string { return e.Err.Error() }
 func (e BearerTokenError) Unwrap() error { return e.Err }
 
+// SASLAuth is an authentication module that dynamically defines
+// supported mechanisms.
+type SASLAuth interface {
+	SASLMechanisms() []string
+}
+
 type BearerTokenAuth interface {
 	AuthBearerToken(ctx *AuthContext, username, token string) (identity string, err error)
 }
