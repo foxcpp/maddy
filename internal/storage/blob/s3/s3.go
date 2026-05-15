@@ -197,4 +197,5 @@ func (s *Store) Delete(ctx context.Context, keys []string) error {
 func init() {
 	var _ module.BlobStore = &Store{}
 	modules.Register(modName, New)
+	modules.Register("table.s3", New)
 }

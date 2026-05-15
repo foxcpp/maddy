@@ -6,7 +6,7 @@ You need C toolchain, Go toolchain and Make:
 
 On Debian-based system this should work:
 ```
-apt-get install golang-1.23 gcc libc6-dev make
+apt-get install golang-1.25 gcc libc6-dev make
 ```
 
 Additionally, if you want manual pages, you should also have scdoc installed.
@@ -23,8 +23,8 @@ toolchain to build maddy. It is necessary to run commands below only
 if you have `go` command version older than 1.21.
 
 ```
-wget "https://go.dev/dl/go1.23.5.linux-amd64.tar.gz"
-tar xf "go1.23.5.linux-amd64.tar.gz"
+wget "https://go.dev/dl/go1.25.10linux-amd64.tar.gz"
+tar xf "go1.25.10.linux-amd64.tar.gz"
 export GOROOT="$PWD/go"
 export PATH="$PWD/go/bin:$PATH"
 ```
@@ -39,7 +39,7 @@ $ cd maddy
 
 2. Select the appropriate version to build:
 ```
-$ git checkout v0.8.0      # a specific release
+$ git checkout v0.9.4      # a specific release
 $ git checkout master      # next bugfix release
 $ git checkout dev         # next feature release
 ```

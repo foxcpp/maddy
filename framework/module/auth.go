@@ -46,6 +46,21 @@ type AuthContext struct {
 	ProxiedTLS *ProxiedTLSContext // populated instead of TLS if TLS is terminated by upstream and TLS info is available
 }
 
+type BearerTokenError struct {
+	Err           error
+	Status        string
+	Schemes       string // probably, "bearer"
+	Scope         string
+	OIDCConfigURL string
+}
+
+func (e BearerTokenError) Error() string { return e.Err.Error() }
+func (e BearerTokenError) Unwrap() error { return e.Err }
+
+type BearerTokenAuth interface {
+	AuthBearerToken(ctx *AuthContext, username, token string) (identity string, err error)
+}
+
 type ExternalAuth interface {
 	AuthExternal(ctx *AuthContext, requestedIdentity string) (finalIdentity string, err error)
 }

@@ -72,6 +72,7 @@ nav:
           - reference/auth/plain_separate.md
           - reference/auth/netauth.md
           - reference/auth/tls.md
+          - reference/auth/oauth.md
       - reference/config-syntax.md
   - Integration with software:
       - third-party/dovecot.md

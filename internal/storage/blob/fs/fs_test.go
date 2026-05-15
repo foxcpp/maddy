@@ -13,8 +13,16 @@ import (
 func TestFS(t *testing.T) {
 	blob.TestStore(t, func() module.BlobStore {
 		dir := testutils.Dir(t)
-		return &FSStore{instName: "test", root: dir}
+
+		root, err := os.OpenRoot(dir)
+		require.NoError(t, err)
+
+		return &FSStore{
+			instName: "test",
+			rootPath: dir,
+			root:     root,
+		}
 	}, func(store module.BlobStore) {
-		require.NoError(t, os.RemoveAll(store.(*FSStore).root))
+		require.NoError(t, os.RemoveAll(store.(*FSStore).rootPath))
 	})
 }

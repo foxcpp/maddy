@@ -1,8 +1,6 @@
 module github.com/foxcpp/maddy
 
-go 1.23.1
-
-toolchain go1.23.5
+go 1.25
 
 require (
 	blitiri.com.ar/go/spf v1.5.1
@@ -27,8 +25,11 @@ require (
 	github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932
 	github.com/go-ldap/ldap/v3 v3.4.10
 	github.com/go-sql-driver/mysql v1.8.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-hclog v1.6.3
+	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/jimlambrt/gldap v0.1.14
 	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/lib/pq v1.10.9
 	github.com/libdns/acmedns v0.2.0
@@ -107,7 +108,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/jimlambrt/gldap v0.1.14 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
