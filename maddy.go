@@ -462,6 +462,23 @@ func moduleMain(configPath string) error {
 	return nil
 }
 
+// closeContainerLogOutput closes c.DefaultLogger.Out if it is set, mirroring
+// the nil-safe behaviour of the moduleMain shutdown path. When the
+// configuration has no `log` directive, defaultLogOutput returns (nil, nil)
+// and c.DefaultLogger.Out is left unset; closing it unconditionally panics.
+// errLogger receives any close failure (it must not be the logger of c,
+// which is being torn down).
+func closeContainerLogOutput(c *container.C, errLogger *log.Logger) {
+	if c == nil || c.DefaultLogger == nil || c.DefaultLogger.Out == nil {
+		return
+	}
+	if err := c.DefaultLogger.Out.Close(); err != nil {
+		if errLogger != nil {
+			errLogger.Error("failed to close old server log", err)
+		}
+	}
+}
+
 func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *sync.WaitGroup) *container.C {
 	oldContainer.DefaultLogger.Msg("reloading server...")
 	systemdStatus(SDReloading, "Reloading server...")
@@ -521,9 +538,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 			oldContainer.DefaultLogger.Error("moduleStop failed", err)
 		}
 		oldContainer.DefaultLogger.Msg("old server stopped")
-		if err := oldContainer.DefaultLogger.Out.Close(); err != nil {
-			newContainer.DefaultLogger.Error("failed to close old server log", err)
-		}
+		closeContainerLogOutput(oldContainer, newContainer.DefaultLogger)
 
 		systemdStatus(SDReloading, "Configuration running.")
 	}()
