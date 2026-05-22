@@ -51,6 +51,11 @@ type Logger struct {
 	// Additional fields that will be added
 	// to the Msg output.
 	Fields map[string]interface{}
+
+	// LogFields are rendered as [key=value ...] before the message text so
+	// that individual mail flows can be identified and filtered with grep.
+	// Use With() to populate this.
+	LogFields []string
 }
 
 func (l *Logger) Zap() *zap.Logger {
@@ -171,6 +176,17 @@ func fieldsToMap(fields []interface{}, out map[string]interface{}) {
 func (l *Logger) formatMsg(msg string, fields map[string]interface{}) string {
 	formatted := strings.Builder{}
 
+	if len(l.LogFields) > 0 {
+		formatted.WriteRune('[')
+		for i, f := range l.LogFields {
+			if i > 0 {
+				formatted.WriteRune(' ')
+			}
+			formatted.WriteString(f)
+		}
+		formatted.WriteString("] ")
+	}
+
 	formatted.WriteString(msg)
 	formatted.WriteRune('\t')
 
@@ -250,6 +266,21 @@ func (l *Logger) Sublogger(name string) *Logger {
 		Parent: l,
 		Name:   name,
 	}
+}
+
+// With returns a copy of the logger with additional key=value pairs prepended
+// to every log message as [key=value ...]. Multiple With calls accumulate.
+// Use this to attach identifiers like domain or message-ID so log lines can
+// be filtered with grep.
+func (l *Logger) With(kvpairs ...interface{}) *Logger {
+	inherited := make([]string, len(l.LogFields), len(l.LogFields)+len(kvpairs)/2)
+	copy(inherited, l.LogFields)
+	for i := 0; i+1 < len(kvpairs); i += 2 {
+		inherited = append(inherited, fmt.Sprintf("%v=%v", kvpairs[i], kvpairs[i+1]))
+	}
+	newL := *l
+	newL.LogFields = inherited
+	return &newL
 }
 
 // DefaultLogger is the global Logger object that is used by
