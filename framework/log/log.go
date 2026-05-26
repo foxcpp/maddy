@@ -205,6 +205,15 @@ func (l *Logger) Write(s []byte) (int, error) {
 	return len(s), nil
 }
 
+// Close closes underlying output in Out.
+func (l *Logger) Close() error {
+	if l.Out == nil {
+		return nil
+	}
+
+	return l.Out.Close()
+}
+
 // DebugWriter returns a writer that will act like Logger.Write
 // but will use debug flag on messages. If Logger.Debug is false,
 // Write method of returned object will be no-op.

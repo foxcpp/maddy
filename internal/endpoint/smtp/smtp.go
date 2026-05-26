@@ -274,7 +274,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
 	cfg.Custom("limits", false, false, func() (interface{}, error) {
-		return &limits.Group{}, nil
+		return limits.Empty(endp.log.Sublogger("limits")), nil
 	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
 		var g *limits.Group
 		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {

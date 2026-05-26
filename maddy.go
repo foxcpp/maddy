@@ -454,7 +454,7 @@ func moduleMain(configPath string) error {
 	c.DefaultLogger.Msg("server stopped")
 
 	if c.DefaultLogger.Out != nil {
-		if err := c.DefaultLogger.Out.Close(); err != nil {
+		if err := c.DefaultLogger.Close(); err != nil {
 			log.DefaultLogger.Error("failed to close output logger", err)
 		}
 	}
@@ -521,11 +521,11 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 			oldContainer.DefaultLogger.Error("moduleStop failed", err)
 		}
 		oldContainer.DefaultLogger.Msg("old server stopped")
-		if err := oldContainer.DefaultLogger.Out.Close(); err != nil {
+		if err := oldContainer.DefaultLogger.Close(); err != nil {
 			newContainer.DefaultLogger.Error("failed to close old server log", err)
 		}
 
-		systemdStatus(SDReloading, "Configuration running.")
+		systemdStatus(SDReady, "Configuration running.")
 	}()
 
 	return newContainer

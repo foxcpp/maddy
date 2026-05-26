@@ -62,7 +62,7 @@ func testTarget(t *testing.T, zones map[string]mockdns.Zone, extResolver *dns.Ex
 		tlsConfig:   &tls.Config{},
 		log:         testutils.Logger(t, "remote"),
 		policies:    extraPolicies,
-		limits:      &limits.Group{},
+		limits:      limits.Empty(testutils.Logger(t, "limits")),
 		pool: pool.New(pool.Config{
 			MaxKeys:             5000,
 			MaxConnsPerKey:      5,      // basically, max. amount of idle connections in cache

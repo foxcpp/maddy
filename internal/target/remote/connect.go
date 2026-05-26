@@ -45,6 +45,7 @@ type mxConn struct {
 	errored bool
 
 	reuseLimit int
+	takeDest   bool
 
 	// Amount of times connection was used for an SMTP transaction.
 	transactions int
@@ -207,6 +208,10 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *n
 }
 
 func (rd *remoteDelivery) closeConn(c *mxConn) {
+	if c.takeDest {
+		rd.rt.limits.ReleaseDest(c.domain)
+	}
+
 	if err := c.Close(); err != nil {
 		rd.log.Error("client connection close failed", err)
 	}
@@ -270,6 +275,7 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 		return nil, err
 	}
 	region.End()
+	conn.takeDest = true
 
 	// Relaxed REQUIRETLS mode is not conforming to the specification strictly
 	// but allows to start deploying client support for REQUIRETLS without the

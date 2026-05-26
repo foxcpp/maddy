@@ -239,7 +239,7 @@ func (c *C) attemptConnect(ctx context.Context, lmtp bool, endp config.Endpoint,
 	conn, err = c.Dialer(dialCtx, endp.Network(), endp.Address())
 	cancel()
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, nil, fmt.Errorf("dialer: %w", err)
 	}
 
 	if endp.IsTLS() {

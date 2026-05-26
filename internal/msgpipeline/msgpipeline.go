@@ -90,6 +90,7 @@ func New(globals map[string]interface{}, cfg []config.Node) (*MsgPipeline, error
 	return &MsgPipeline{
 		msgpipelineCfg: parsedCfg,
 		Resolver:       dns.DefaultResolver(),
+		Log:            log.DefaultLogger.Sublogger("msgpipeline"),
 	}, err
 }
 
