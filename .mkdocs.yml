@@ -53,6 +53,7 @@ nav:
       - SMTP modifiers:
           - reference/modifiers/dkim.md
           - reference/modifiers/envelope.md
+          - reference/modifiers/header.md
       - Lookup tables (string translation):
           - reference/table/static.md
           - reference/table/regexp.md
