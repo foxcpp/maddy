@@ -130,7 +130,7 @@ func (rt *Target) Configure(inlineArgs []string, cfg *config.Map) error {
 		return p.L, nil
 	}, &rt.policies)
 	cfg.Custom("limits", false, false, func() (interface{}, error) {
-		return &limits.Group{}, nil
+		return limits.Empty(rt.log.Sublogger("limits")), nil
 	}, func(cfg *config.Map, n config.Node) (interface{}, error) {
 		var g *limits.Group
 		if err := modconfig.GroupFromNode("limits", n.Args, n, cfg.Globals, &g); err != nil {
@@ -455,6 +455,7 @@ func (rd *remoteDelivery) Commit(ctx context.Context) error {
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
 		rd.rt.limits.ReleaseDest(conn.domain)
+		conn.takeDest = false
 		conn.transactions++
 
 		if !conn.Usable() {

@@ -144,7 +144,7 @@ jobs:
         id: docker
         with:
           context: .
-          platforms: linux/amd64 #,linux/arm64  Temporary disabled due to SIGSEGV in gcc.
+          platforms: linux/amd64,linux/arm64
           file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

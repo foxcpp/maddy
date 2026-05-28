@@ -454,7 +454,7 @@ func moduleMain(configPath string) error {
 	c.DefaultLogger.Msg("server stopped")
 
 	if c.DefaultLogger.Out != nil {
-		if err := c.DefaultLogger.Out.Close(); err != nil {
+		if err := c.DefaultLogger.Close(); err != nil {
 			log.DefaultLogger.Error("failed to close output logger", err)
 		}
 	}
@@ -462,7 +462,7 @@ func moduleMain(configPath string) error {
 	return nil
 }
 
-// closeContainerLogOutput closes c.DefaultLogger.Out if it is set, mirroring
+// closeContainerLogOutput closes c.DefaultLogger if its Out is set, mirroring
 // the nil-safe behaviour of the moduleMain shutdown path. When the
 // configuration has no `log` directive, defaultLogOutput returns (nil, nil)
 // and c.DefaultLogger.Out is left unset; closing it unconditionally panics.
@@ -472,7 +472,7 @@ func closeContainerLogOutput(c *container.C, errLogger *log.Logger) {
 	if c == nil || c.DefaultLogger == nil || c.DefaultLogger.Out == nil {
 		return
 	}
-	if err := c.DefaultLogger.Out.Close(); err != nil {
+	if err := c.DefaultLogger.Close(); err != nil {
 		if errLogger != nil {
 			errLogger.Error("failed to close old server log", err)
 		}
@@ -540,7 +540,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 		oldContainer.DefaultLogger.Msg("old server stopped")
 		closeContainerLogOutput(oldContainer, newContainer.DefaultLogger)
 
-		systemdStatus(SDReloading, "Configuration running.")
+		systemdStatus(SDReady, "Configuration running.")
 	}()
 
 	return newContainer

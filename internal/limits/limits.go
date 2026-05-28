@@ -28,18 +28,21 @@ package limits
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/internal/limits/limiters"
 )
 
 type Group struct {
+	log      *log.Logger
 	instName string
 
 	global limiters.MultiLimit
@@ -48,8 +51,15 @@ type Group struct {
 	dest   *limiters.BucketSet // BucketSet of MultiLimit
 }
 
+func Empty(log *log.Logger) *Group {
+	return &Group{
+		log: log,
+	}
+}
+
 func New(c *container.C, _, instName string) (module.Module, error) {
 	return &Group{
+		log:      c.DefaultLogger.Sublogger("limits"),
 		instName: instName,
 	}, nil
 }
@@ -177,22 +187,28 @@ func (g *Group) TakeMsg(ctx context.Context, addr net.IP, sourceDomain string) e
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	g.log.DebugMsg("global TakeContext")
 	if err := g.global.TakeContext(ctx); err != nil {
-		return err
+		return fmt.Errorf("TakeMsg: global: %w", err)
 	}
+	g.log.DebugMsg("global TakeContext done")
 
 	if g.ip != nil {
+		g.log.DebugMsg("ip TakeContext", "ip", addr.String())
 		if err := g.ip.TakeContext(ctx, addr.String()); err != nil {
 			g.global.Release()
-			return err
+			return fmt.Errorf("TakeMsg: ip: %w", err)
 		}
+		g.log.DebugMsg("ip TakeContext done", "ip", addr.String())
 	}
 	if g.source != nil {
+		g.log.DebugMsg("source TakeContext", "domain", sourceDomain)
 		if err := g.source.TakeContext(ctx, sourceDomain); err != nil {
 			g.global.Release()
 			g.ip.Release(addr.String())
-			return err
+			return fmt.Errorf("TakeMSg: source: %w", err)
 		}
+		g.log.DebugMsg("source TakeContext done", "domain", sourceDomain)
 	}
 	return nil
 }
@@ -201,17 +217,27 @@ func (g *Group) TakeDest(ctx context.Context, domain string) error {
 	if g.dest == nil {
 		return nil
 	}
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	return g.dest.TakeContext(ctx, domain)
+
+	g.log.DebugMsg("TakeDest", "domain", domain)
+	if err := g.dest.TakeContext(ctx, domain); err != nil {
+		return fmt.Errorf("TakeDest: dest: %w", err)
+	}
+	g.log.DebugMsg("TakeDest done", "domain", domain)
+	return nil
 }
 
 func (g *Group) ReleaseMsg(addr net.IP, sourceDomain string) {
+	g.log.DebugMsg("global ReleaseMsg")
 	g.global.Release()
 	if g.ip != nil {
+		g.log.DebugMsg("ip ReleaseMsg", "ip", addr.String())
 		g.ip.Release(addr.String())
 	}
 	if g.source != nil {
+		g.log.DebugMsg("source ReleaseMsg", "domain", sourceDomain)
 		g.source.Release(sourceDomain)
 	}
 }
@@ -220,7 +246,10 @@ func (g *Group) ReleaseDest(domain string) {
 	if g.dest == nil {
 		return
 	}
+
+	g.log.DebugMsg("ReleaseDest", "domain", domain)
 	g.dest.Release(domain)
+	g.log.DebugMsg("ReleaseDest done", "domain", domain)
 }
 
 func (g *Group) Name() string {
