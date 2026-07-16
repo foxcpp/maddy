@@ -21,6 +21,7 @@ package maddy
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -53,13 +54,33 @@ func logOutput(_ *config.Map, node config.Node) (interface{}, error) {
 
 func LogOutputOption(args []string) (log.Output, error) {
 	outs := make([]log.Output, 0, len(args))
-	for i, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "stderr":
 			outs = append(outs, log.WriterOutput(os.Stderr, false))
 		case "stderr_ts":
 			outs = append(outs, log.WriterOutput(os.Stderr, true))
-		case "syslog":
+		case "syslog", "syslog+tcp", "syslog+udp":
+			network := "udp"
+			if arg == "syslog+tcp" {
+				network = "tcp"
+			}
+			// Optional next arg: remote address in host:port form.
+			if i+1 < len(args) {
+				if _, _, err := net.SplitHostPort(args[i+1]); err == nil {
+					i++
+					syslogOut, err := log.RemoteSyslogOutput(network, args[i])
+					if err != nil {
+						return nil, fmt.Errorf("failed to connect to remote syslog at %s: %v", args[i], err)
+					}
+					outs = append(outs, syslogOut)
+					break
+				}
+			}
+			if arg != "syslog" {
+				return nil, fmt.Errorf("'%s' requires a remote address (host:port)", arg)
+			}
 			syslogOut, err := log.SyslogOutput()
 			if err != nil {
 				return nil, fmt.Errorf("failed to connect to syslog daemon: %v", err)

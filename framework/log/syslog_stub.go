@@ -35,3 +35,7 @@ import (
 func SyslogOutput() (Output, error) {
 	return nil, errors.New("log: syslog output is not supported on windows")
 }
+
+func RemoteSyslogOutput(network, addr string) (Output, error) {
+	return nil, errors.New("log: syslog output is not supported on windows")
+}
