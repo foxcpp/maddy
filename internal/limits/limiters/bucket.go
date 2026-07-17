@@ -20,9 +20,12 @@ package limiters
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
+
+var ErrBucketSetFull = errors.New("limiters: Bucket set is full")
 
 // BucketSet combines a group of Ls into a single key-indexed structure.
 // Basically, each unique key gets its own counter. The main use case for
@@ -125,6 +128,9 @@ func (r *BucketSet) Take(key string) bool {
 	}
 
 	bucket := r.take(key)
+	for bucket == nil {
+		return false
+	}
 	return bucket.Take()
 }
 
@@ -149,5 +155,9 @@ func (r *BucketSet) TakeContext(ctx context.Context, key string) error {
 	}
 
 	bucket := r.take(key)
+	if bucket == nil {
+		return ErrBucketSetFull
+	}
+
 	return bucket.TakeContext(ctx)
 }
