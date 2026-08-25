@@ -77,6 +77,7 @@ import (
 	_ "github.com/foxcpp/maddy/internal/table"
 	_ "github.com/foxcpp/maddy/internal/table/file"
 	_ "github.com/foxcpp/maddy/internal/table/sql"
+	_ "github.com/foxcpp/maddy/internal/target/ignore_error"
 	_ "github.com/foxcpp/maddy/internal/target/queue"
 	_ "github.com/foxcpp/maddy/internal/target/remote"
 	_ "github.com/foxcpp/maddy/internal/target/smtp"
