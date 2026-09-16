@@ -50,7 +50,6 @@ var (
 	oversignDefault = []string{
 		// Directly visible to the user.
 		"Subject",
-		"Sender",
 		"To",
 		"Cc",
 		"From",
@@ -80,6 +79,7 @@ var (
 		"List-Post",
 		"List-Owner",
 		"List-Archive",
+		"Sender",
 
 		// Not oversigned since it can be prepended by intermediate relays.
 		"Resent-To",
