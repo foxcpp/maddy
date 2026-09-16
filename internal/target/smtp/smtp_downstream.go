@@ -224,6 +224,7 @@ func (d *delivery) connect(ctx context.Context) error {
 	conn.Log = d.log
 	conn.Hostname = d.u.hostname
 	conn.AddrInSMTPMsg = false
+	conn.DNSErrorsTemporary = true
 	if d.u.connectTimeout != 0 {
 		conn.ConnectTimeout = d.u.connectTimeout
 	}

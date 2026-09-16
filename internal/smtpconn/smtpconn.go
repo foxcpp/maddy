@@ -79,6 +79,13 @@ type C struct {
 	// "ADDRESS said: ..."
 	AddrInSMTPMsg bool
 
+	// Treat DNS resolution errors returned while connecting to the configured
+	// endpoint as temporary delivery errors.
+	//
+	// This is useful for explicitly configured downstream SMTP/LMTP targets where
+	// the endpoint is mail infrastructure, not recipient-domain DNS.
+	DNSErrorsTemporary bool
+
 	conn       net.Conn
 	serverName string
 	cl         *smtp.Client
@@ -135,9 +142,17 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 			reason, misc := exterrors.UnwrapDNSErr(err)
 			misc["remote_server"] = err.Addr
 			misc["io_op"] = err.Op
+
+			code := exterrors.SMTPCode(err, 450, 550)
+			enhancedCode := exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4})
+			if c.DNSErrorsTemporary {
+				code = 451
+				enhancedCode = exterrors.EnhancedCode{4, 4, 4}
+			}
+
 			return &exterrors.SMTPError{
-				Code:         exterrors.SMTPCode(err, 450, 550),
-				EnhancedCode: exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4}),
+				Code:         code,
+				EnhancedCode: enhancedCode,
 				Message:      "DNS error",
 				Err:          err,
 				Reason:       reason,
