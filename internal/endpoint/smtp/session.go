@@ -95,7 +95,8 @@ type Session struct {
 	delivery    module.Delivery
 	deliveryErr error
 
-	log *log.Logger
+	log     *log.Logger
+	connLog *log.Logger // connection-scoped logger; log is temporarily replaced per message
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -149,6 +150,9 @@ func (s *Session) abort(ctx context.Context) {
 func (s *Session) cleanSession() {
 	s.releaseLimits()
 
+	if s.connLog != nil {
+		s.log = s.connLog
+	}
 	s.mailFrom = ""
 	s.opts = smtp.MailOptions{}
 	s.msgMeta = nil
@@ -270,6 +274,14 @@ func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.Mail
 	s.msgMeta = msgMeta
 	s.mailFrom = cleanFrom
 	s.delivery = delivery
+
+	if s.connLog != nil {
+		if domain != "" {
+			s.log = s.connLog.With("msg_id", msgMeta.ID, "from_domain", domain)
+		} else {
+			s.log = s.connLog.With("msg_id", msgMeta.ID)
+		}
+	}
 
 	return msgMeta.ID, nil
 }

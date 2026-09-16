@@ -60,3 +60,11 @@ func SyslogOutput() (Output, error) {
 	w, err := syslog.New(syslog.LOG_MAIL|syslog.LOG_INFO, "maddy")
 	return syslogOut{w}, err
 }
+
+// RemoteSyslogOutput returns a log.Output implementation that sends
+// messages to a remote syslog daemon at addr (host:port) using network
+// ("udp" or "tcp").
+func RemoteSyslogOutput(network, addr string) (Output, error) {
+	w, err := syslog.Dial(network, addr, syslog.LOG_MAIL|syslog.LOG_INFO, "maddy")
+	return syslogOut{w}, err
+}
