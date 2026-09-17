@@ -20,13 +20,10 @@ package limiters
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	"golang.org/x/time/rate"
-	"time"
 )
-
-var ErrClosed = errors.New("limiters: Rate bucket is closed")
 
 // Rate structure implements a basic rate-limiter for requests using the token
 // bucket approach.
