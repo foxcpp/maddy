@@ -20,7 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // of resources consumed by the server.
 package limiters
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // The L interface represents a blocking limiter that has some upper bound of
 // resource use and blocks when it is exceeded until enough resources are
@@ -33,3 +36,5 @@ type L interface {
 	// Close frees any resources used internally by Limiter for book-keeping.
 	Close()
 }
+
+var ErrClosed = errors.New("limiters: Bucket is closed")

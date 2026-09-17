@@ -18,7 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package limiters
 
-import "context"
+import (
+	"context"
+
+	"golang.org/x/sync/semaphore"
+)
 
 // Semaphore is a convenience wrapper for a channel that implements
 // semaphore-kind synchronization.
@@ -26,43 +30,63 @@ import "context"
 // If the argument given to the NewSemaphore is negative or zero,
 // all methods are no-op.
 type Semaphore struct {
-	c chan struct{}
+	weighted *semaphore.Weighted
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func NewSemaphore(max int) Semaphore {
-	return Semaphore{c: make(chan struct{}, max)}
+	ctx, cancel := context.WithCancel(context.TODO())
+	s := Semaphore{weighted: nil, ctx: ctx, cancel: cancel}
+	if max > 0 {
+		s.weighted = semaphore.NewWeighted(int64(max))
+	}
+	return s
 }
 
 func (s Semaphore) Take() bool {
-	if cap(s.c) <= 0 {
+	if s.weighted == nil {
 		return true
 	}
-	s.c <- struct{}{}
+
+	if err := s.weighted.Acquire(s.ctx, 1); err != nil {
+		return false
+	}
 	return true
 }
 
 func (s Semaphore) TakeContext(ctx context.Context) error {
-	if cap(s.c) <= 0 {
+	if s.weighted == nil {
 		return nil
 	}
 	select {
-	case s.c <- struct{}{}:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-s.ctx.Done():
+		return ErrClosed
+	default:
 	}
+	reqCtx, reqCancel := context.WithCancel(ctx)
+	defer reqCancel()
+
+	stop := context.AfterFunc(s.ctx, func() {
+		reqCancel()
+	})
+	defer stop()
+
+	return s.weighted.Acquire(reqCtx, 1)
 }
 
 func (s Semaphore) Release() {
-	if cap(s.c) <= 0 {
+	if s.weighted == nil {
 		return
 	}
 	select {
-	case <-s.c:
+	case <-s.ctx.Done():
+		return
 	default:
-		panic("limiters: mismatched Release call")
+		s.weighted.Release(1)
 	}
 }
 
 func (s Semaphore) Close() {
+	s.cancel()
 }
