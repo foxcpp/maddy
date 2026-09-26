@@ -1,8 +1,6 @@
 module github.com/foxcpp/maddy
 
-go 1.23.1
-
-toolchain go1.23.5
+go 1.25.0
 
 require (
 	blitiri.com.ar/go/spf v1.5.1
@@ -29,6 +27,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-hclog v1.6.3
+	github.com/jimlambrt/gldap v0.1.14
 	github.com/johannesboyne/gofakes3 v0.0.0-20210704111953-6a9f95c2941c
 	github.com/lib/pq v1.10.9
 	github.com/libdns/acmedns v0.2.0
@@ -55,10 +54,10 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.5
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.32.0
-	golang.org/x/net v0.34.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/text v0.21.0
+	golang.org/x/crypto v0.52.0
+	golang.org/x/net v0.54.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/text v0.37.0
 	modernc.org/sqlite v1.34.5
 )
 
@@ -107,7 +106,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/jimlambrt/gldap v0.1.14 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -153,11 +151,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
-	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/api v0.218.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
