@@ -35,7 +35,7 @@ after translating them via aliases map:
 ```
 table.chain {
     optional_step file /etc/maddy/aliases
-    step regexp "(.+)@(.+)" "$1"
+    step email_localpart
 }
 ```
 
