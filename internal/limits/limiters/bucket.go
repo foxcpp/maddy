@@ -89,7 +89,7 @@ func (r *BucketSet) take(key string) L {
 		now := time.Now()
 		// Attempt to get rid of stale buckets.
 		for k, v := range r.m {
-			if v.lastUse.Sub(now) > r.ReapInterval {
+			if now.Sub(v.lastUse) > r.ReapInterval {
 				// Drop the bucket, if there happen to be any waiting Take for it.
 				// It will return 'false', but this is fine for us since this
 				// whole 'reaping' process will run only when we are under a
