@@ -119,6 +119,22 @@ type state struct {
 func (c *Check) CheckStateForMsg(ctx context.Context, msgMeta *module.MsgMetadata) (module.CheckState, error) {
 	session, err := c.cl.Session()
 	if err != nil {
+		// fail_open is meant to apply to any I/O failure talking to the
+		// milter, but a failure to even establish the session (e.g. the
+		// milter is down or unreachable) happens before a *state exists to
+		// route through ioError, so it has to be handled here explicitly -
+		// otherwise fail_open is silently ineffective for this specific
+		// failure mode and the message is hard-rejected regardless of the
+		// directive.
+		if c.failOpen {
+			c.log.Error("I/O error, skipping checks", err)
+			return &state{
+				c:          c,
+				msgMeta:    msgMeta,
+				skipChecks: true,
+				log:        target.DeliveryLogger(c.log, msgMeta),
+			}, nil
+		}
 		return nil, err
 	}
 	return &state{
@@ -226,6 +242,10 @@ func (s *state) apply(modifyActs []milter.ModifyAction, res module.CheckResult) 
 }
 
 func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
+	if s.skipChecks {
+		return module.CheckResult{}
+	}
+
 	if s.msgMeta.Conn == nil {
 		// Submit some dummy values as the message is likely generated locally.
 
@@ -437,6 +457,9 @@ func (s *state) CheckBody(ctx context.Context, header textproto.Header, body buf
 }
 
 func (s *state) Close() error {
+	if s.session == nil {
+		return nil
+	}
 	return s.session.Close()
 }
 
