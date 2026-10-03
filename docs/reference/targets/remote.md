@@ -102,6 +102,9 @@ sent messages. Note that the field has no effect if transparent forwarding is
 used, message body should be processed before outbound delivery starts for it
 to take effect (e.g. message should be queued using 'queue' module).
 
+If `true` - all policies in `mx_auth` are no-op for a message with
+`TLS-Required: No` in message header.
+
 ---
 
 ### relaxed_requiretls _boolean_
@@ -195,6 +198,10 @@ deliver_to remote {
 	tls_client { ... }
 }
 ```
+
+Note: If `requiretls_override` is true (default) - authenticated Submission sender
+can disable entire `mx_auth` directive for a message by specifying
+`TLS-Required: No` header field.
 
 ---
 

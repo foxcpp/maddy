@@ -477,10 +477,6 @@ func (s *Session) Data(r io.Reader) error {
 		return wrapErr(err)
 	}
 
-	if strings.EqualFold(header.Get("TLS-Required"), "No") {
-		s.msgMeta.TLSRequireOverride = true
-	}
-
 	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
 		return wrapErr(err)
 	}
