@@ -336,6 +336,8 @@ github.com/foxcpp/go-imap-sql v0.5.1-0.20261003122348-9e8acb0253ee/go.mod h1:LMl
 github.com/foxcpp/go-mockdns v0.0.0-20191216195825-5eabd8dbfe1f/go.mod h1:tPg4cp4nseejPd+UKxtCVQ2hUxNTZ7qQZJa7CLriIeo=
 github.com/foxcpp/go-mockdns v1.2.0 h1:omK3OrHRD1IWJz1FuFBCFquhXslXoF17OvBS6JPzZF0=
 github.com/foxcpp/go-mockdns v1.2.0/go.mod h1:IhLeSFGed3mJIAXPH2aiRQB+kqz7oqu8ld2qVbOu7Wk=
+github.com/foxcpp/go-mockdns v1.3.0 h1:p4PKLZnM1Ii78JzsxJxcYQ5sQT3lIdiPM/vT1SaL9S8=
+github.com/foxcpp/go-mockdns v1.3.0/go.mod h1:IhLeSFGed3mJIAXPH2aiRQB+kqz7oqu8ld2qVbOu7Wk=
 github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932 h1:p04U/s8IZEc+PVWIDWGUgdqGq3xsixI7XRZ6Bp/xZbQ=
 github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932/go.mod h1:RtHIZCsScdjIzXpTTjmEljtUrIjQbPBTvw7F1tKQbKk=
 github.com/foxcpp/go-smtp v1.21.4-0.20250124171104-c8519ae4fb23 h1:JSnsCrRrHNBlgfKVFBxFzp3fN/wS21t8fAHcZ9B1uWI=
