@@ -265,7 +265,6 @@ func (l *Logger) logNameOverwrite(loggerName string, debug bool, s string) {
 	// Logging is disabled - do nothing.
 }
 
-
 func (l *Logger) Sublogger(name string) *Logger {
 	if l.Name != "" && name != "" {
 		name = l.Name + "/" + name
