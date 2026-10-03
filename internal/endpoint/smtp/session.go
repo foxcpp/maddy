@@ -524,10 +524,6 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		s.cleanSession()
 	}()
 
-	if strings.EqualFold(header.Get("TLS-Required"), "No") {
-		s.msgMeta.TLSRequireOverride = true
-	}
-
 	if err := s.checkRoutingLoops(header); err != nil {
 		return wrapErr(err)
 	}
