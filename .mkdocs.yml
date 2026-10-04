@@ -37,6 +37,7 @@ nav:
             - reference/blob/s3.md
       - reference/smtp-pipeline.md
       - SMTP targets:
+          - reference/targets/ignore_error.md
           - reference/targets/queue.md
           - reference/targets/remote.md
           - reference/targets/smtp.md
