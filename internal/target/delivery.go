@@ -19,17 +19,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package target
 
 import (
+	"strings"
+
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 )
 
+// DeliveryLogger returns a logger annotated with msg_id and from_domain so
+// every log line can be filtered by message ID or sender domain.
 func DeliveryLogger(parent *log.Logger, msgMeta *module.MsgMetadata) *log.Logger {
-	l := parent.Sublogger("")
-	fields := make(map[string]interface{}, len(l.Fields)+1)
-	for k, v := range l.Fields {
-		fields[k] = v
+	kvpairs := []interface{}{"msg_id", msgMeta.ID}
+	if msgMeta.OriginalFrom != "" {
+		if _, domain, ok := strings.Cut(msgMeta.OriginalFrom, "@"); ok && domain != "" {
+			kvpairs = append(kvpairs, "from_domain", domain)
+		}
 	}
-	fields["msg_id"] = msgMeta.ID
-	l.Fields = fields
-	return l
+	return parent.Sublogger("").With(kvpairs...)
 }
