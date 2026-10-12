@@ -87,18 +87,21 @@ var (
 	enableDebugFlags = false
 )
 
-func BuildInfo() string {
+func GetVersion() string {
 	version := Version
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" {
 		version = strings.TrimPrefix(info.Main.Version, "v")
 	}
+	return version
+}
 
+func BuildInfo() string {
 	return fmt.Sprintf(`%s %s/%s %s
 
 default config: %s
 default state_dir: %s
 default runtime_dir: %s`,
-		version, runtime.GOOS, runtime.GOARCH, runtime.Version(),
+		GetVersion(), runtime.GOOS, runtime.GOARCH, runtime.Version(),
 		filepath.Join(ConfigDirectory, "maddy.conf"),
 		DefaultStateDirectory,
 		DefaultRuntimeDirectory)
@@ -182,7 +185,7 @@ func init() {
 // logging initialization, directives setup, configuration reading. After all that, it
 // calls moduleMain to initialize and run modules.
 func Run(c *cli.Context) error {
-	certmagic.UserAgent = "maddy/" + Version
+	certmagic.UserAgent = "maddy/" + GetVersion()
 
 	if c.NArg() != 0 {
 		return cli.Exit(fmt.Sprintln("usage:", os.Args[0], "[options]"), 2)
@@ -429,7 +432,7 @@ func moduleMain(configPath string) error {
 	if err := moduleStart(c); err != nil {
 		return err
 	}
-	c.DefaultLogger.Msg("server started", "version", Version)
+	c.DefaultLogger.Msg("server started", "version", GetVersion())
 
 	systemdStatus(SDReady, "Configuration running.")
 	asyncStopWg := sync.WaitGroup{} // Some containers might still be waiting on moduleStop
@@ -500,7 +503,7 @@ func moduleReload(oldContainer *container.C, configPath string, asyncStopWg *syn
 		return oldContainer
 	}
 
-	newContainer.DefaultLogger.Msg("new server started", "version", Version)
+	newContainer.DefaultLogger.Msg("new server started", "version", GetVersion())
 
 	systemdStatus(SDReloading, "New configuration running. Waiting for old connections and transactions to finish...")
 
