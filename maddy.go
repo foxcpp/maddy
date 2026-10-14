@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 
 	"github.com/caddyserver/certmagic"
@@ -93,7 +94,7 @@ var (
 func BuildInfo() string {
 	version := Version
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" {
-		version = info.Main.Version
+		version = strings.TrimPrefix(info.Main.Version, "v")
 	}
 
 	return fmt.Sprintf(`%s %s/%s %s

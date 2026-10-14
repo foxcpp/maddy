@@ -20,9 +20,12 @@ package limiters
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
+
+var ErrBucketSetFull = errors.New("limiters: Bucket set is full")
 
 // BucketSet combines a group of Ls into a single key-indexed structure.
 // Basically, each unique key gets its own counter. The main use case for
@@ -86,7 +89,7 @@ func (r *BucketSet) take(key string) L {
 		now := time.Now()
 		// Attempt to get rid of stale buckets.
 		for k, v := range r.m {
-			if v.lastUse.Sub(now) > r.ReapInterval {
+			if now.Sub(v.lastUse) > r.ReapInterval {
 				// Drop the bucket, if there happen to be any waiting Take for it.
 				// It will return 'false', but this is fine for us since this
 				// whole 'reaping' process will run only when we are under a
@@ -125,6 +128,9 @@ func (r *BucketSet) Take(key string) bool {
 	}
 
 	bucket := r.take(key)
+	for bucket == nil {
+		return false
+	}
 	return bucket.Take()
 }
 
@@ -149,5 +155,9 @@ func (r *BucketSet) TakeContext(ctx context.Context, key string) error {
 	}
 
 	bucket := r.take(key)
+	if bucket == nil {
+		return ErrBucketSetFull
+	}
+
 	return bucket.TakeContext(ctx)
 }

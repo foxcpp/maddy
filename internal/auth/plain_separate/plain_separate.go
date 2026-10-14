@@ -67,7 +67,10 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("plain_separate: inline arguments are not used")
 	}
 
+	var noPass bool
+
 	cfg.Bool("debug", false, false, &a.log.Debug)
+	cfg.Bool("no_pass", false, false, &noPass)
 	cfg.Callback("user", func(m *config.Map, node config.Node) error {
 		var tbl module.Table
 		err := modconfig.ModuleFromNode("table", node.Args, node, m.Globals, &tbl)
@@ -91,6 +94,17 @@ func (a *Auth) Configure(inlineArgs []string, cfg *config.Map) error {
 
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+
+	if len(a.userTbls) == 0 && len(a.passwd) == 0 {
+		return errors.New("no 'user' or 'pass' specified, use 'dummy' instead if you need no-op auth")
+	}
+	if len(a.passwd) == 0 {
+		if noPass {
+			a.log.Msg("WARNING: plain_separate skips password verification as no 'pass' directive was specified")
+		} else {
+			return errors.New("plain_separate requires at least one 'pass' directive or 'no_pass'")
+		}
 	}
 
 	return nil

@@ -317,6 +317,10 @@ func (s *SASLAuth) AddProvider(m *config.Map, node config.Node) error {
 		s.External = append(s.External, externalAuth)
 		hasAny = true
 	}
+	if bearerAuth, ok := any.(module.BearerTokenAuth); ok && saslMechsMap[sasl.OAuthBearer] {
+		s.BearerToken = append(s.BearerToken, bearerAuth)
+		hasAny = true
+	}
 
 	if !hasAny {
 		return config.NodeErr(node, "auth: specified module does not provide any SASL mechanism")

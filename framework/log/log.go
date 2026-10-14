@@ -251,6 +251,20 @@ func (l *Logger) log(debug bool, s string) {
 	// Logging is disabled - do nothing.
 }
 
+func (l *Logger) logNameOverwrite(loggerName string, debug bool, s string) {
+	if loggerName == "" {
+		loggerName = l.Name
+	}
+	if loggerName != "" {
+		s = loggerName + ": " + s
+	}
+
+	out := l.output()
+	out.Write(time.Now(), debug, s)
+
+	// Logging is disabled - do nothing.
+}
+
 func (l *Logger) Sublogger(name string) *Logger {
 	if l.Name != "" && name != "" {
 		name = l.Name + "/" + name

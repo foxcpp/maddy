@@ -2,6 +2,7 @@ package proxy_protocol
 
 import (
 	"crypto/tls"
+	"errors"
 	"net"
 	"strings"
 
@@ -13,14 +14,15 @@ import (
 
 type ProxyProtocol struct {
 	trust     []net.IPNet
+	trustAll  bool
 	tlsConfig *tls.Config
 }
 
 func ProxyProtocolDirective(_ *config.Map, node config.Node) (interface{}, error) {
 	p := ProxyProtocol{}
+	var trustList []string
 
 	childM := config.NewMap(nil, node)
-	var trustList []string
 
 	childM.StringList("trust", false, false, nil, &trustList)
 	childM.Custom("tls", true, false, nil, tls2.TLSDirective, &p.tlsConfig)
@@ -37,6 +39,10 @@ func ProxyProtocolDirective(_ *config.Map, node config.Node) (interface{}, error
 	}
 
 	for _, trust := range trustList {
+		if strings.EqualFold(trust, "all") {
+			p.trustAll = true
+			continue
+		}
 		if !strings.Contains(trust, "/") {
 			trust += "/32"
 		}
@@ -47,6 +53,10 @@ func ProxyProtocolDirective(_ *config.Map, node config.Node) (interface{}, error
 		p.trust = append(p.trust, *ipNet)
 	}
 
+	if len(p.trust) == 0 && !p.trustAll {
+		return nil, errors.New("proxy_protocol requires explicit 'trust all' to allow any client to use PROXY")
+	}
+
 	return &p, nil
 }
 
@@ -54,6 +64,10 @@ func NewListener(inner net.Listener, p *ProxyProtocol, logger *log.Logger) net.L
 	var listener net.Listener
 
 	sourceChecker := func(upstream net.Addr) (bool, error) {
+		if p.trustAll {
+			return true, nil
+		}
+
 		if tcpAddr, ok := upstream.(*net.TCPAddr); ok {
 			if len(p.trust) == 0 {
 				return true, nil
@@ -70,6 +84,10 @@ func NewListener(inner net.Listener, p *ProxyProtocol, logger *log.Logger) net.L
 
 		logger.Printf("connection from untrusted source %s", upstream)
 		return false, nil
+	}
+
+	if p.trustAll {
+		logger.Msg("WARNING: proxy_protocol allows any IP to use PROXY - this is potentially unsafe")
 	}
 
 	proxyListener := proxyprotocol.NewDefaultListener(inner).

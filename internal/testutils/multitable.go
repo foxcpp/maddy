@@ -25,6 +25,14 @@ type MultiTable struct {
 	Err error
 }
 
+func (m MultiTable) Lookup(_ context.Context, a string) (string, bool, error) {
+	b, ok := m.M[a]
+	if !ok || len(b) == 0 {
+		return "", false, m.Err
+	}
+	return b[0], true, m.Err
+}
+
 func (m MultiTable) LookupMulti(_ context.Context, a string) ([]string, error) {
 	b, ok := m.M[a]
 	if ok {

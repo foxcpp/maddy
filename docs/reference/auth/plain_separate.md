@@ -39,7 +39,14 @@ user file /etc/maddy/allowed_users
 ### pass _auth-provider_
 
 Configuration block for any auth. provider module can be used here, even
-'plain_split' itself.
+'plain_separate' itself.
 
 The used auth. provider must provide username:password pair-based
 authentication.
+
+---
+
+### no_pass _boolean_
+
+Allow not specifying 'pass' directive. This disables password checks altogether
+and is generally unsafe.

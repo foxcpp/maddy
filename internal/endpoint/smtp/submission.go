@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -44,6 +45,10 @@ var (
 
 func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textproto.Header) error {
 	msgMeta.DontTraceSender = true
+
+	if strings.EqualFold(header.Get("TLS-Required"), "No") {
+		s.msgMeta.TLSRequireOverride = true
+	}
 
 	if header.Get("Message-ID") == "" {
 		msgId, err := msgIDField()
