@@ -7,10 +7,13 @@ to specify 1:N mappings. This allows, for example, implementing mailing lists.
 The address is normalized before lookup (Punycode in domain-part is decoded,
 Unicode is normalized to NFC, the whole string is case-folded).
 
-First, the whole address is looked up. If there is no replacement, local-part
-of the address is looked up separately and is replaced in the address while
-keeping the domain part intact. Replacements are not applied recursively, that
-is, lookup is not repeated for the replacement.
+First, the whole address is looked up. If there is no replacement, or the
+lookup returns exactly one value equal to that normalized address, the
+local-part is looked up separately and replaced while the domain part is kept
+intact. An explicit identity mapping of the whole address is that same
+unchanged result, so it cannot suppress a relative alias. Any other exact
+result is used as-is. Replacements are not applied recursively, that is,
+lookup is not repeated for the replacement.
 
 Recipients are not deduplicated after expansion, so message may be delivered
 multiple times to a single recipient. However, used delivery target can apply
