@@ -138,41 +138,54 @@ func (c *C) wrapClientErr(err error, serverName string) error {
 			Err: err,
 		}
 	case *net.OpError:
-		if _, ok := err.Err.(*net.DNSError); ok {
-			reason, misc := exterrors.UnwrapDNSErr(err)
-			misc["remote_server"] = err.Addr
-			misc["io_op"] = err.Op
-
-			code := exterrors.SMTPCode(err, 450, 550)
-			enhancedCode := exterrors.SMTPEnchCode(err, exterrors.EnhancedCode{0, 4, 4})
-			if c.DNSErrorsTemporary {
-				code = 451
-				enhancedCode = exterrors.EnhancedCode{4, 4, 4}
-			}
-
-			return &exterrors.SMTPError{
-				Code:         code,
-				EnhancedCode: enhancedCode,
-				Message:      "DNS error",
-				Err:          err,
-				Reason:       reason,
-				Misc:         misc,
-			}
-		}
-		return &exterrors.SMTPError{
-			Code:         450,
-			EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
-			Message:      "Network I/O error",
-			Err:          err,
-			Misc: map[string]interface{}{
-				"remote_addr": err.Addr,
-				"io_op":       err.Op,
-			},
-		}
+		return c.wrapNetErr(err, err)
 	default:
+		// Dial errors are wrapped by attemptConnect, so they need to be
+		// unwrapped to be recognized as (temporary) network errors.
+		var opErr *net.OpError
+		if errors.As(err, &opErr) {
+			return c.wrapNetErr(err, opErr)
+		}
 		return exterrors.WithFields(err, map[string]interface{}{
 			"remote_server": serverName,
 		})
+	}
+}
+
+// wrapNetErr converts a network error into an SMTP error. err is the error to
+// wrap (it may contain additional context) and opErr is the *net.OpError
+// found in it.
+func (c *C) wrapNetErr(err error, opErr *net.OpError) error {
+	if _, ok := opErr.Err.(*net.DNSError); ok {
+		reason, misc := exterrors.UnwrapDNSErr(opErr)
+		misc["remote_server"] = opErr.Addr
+		misc["io_op"] = opErr.Op
+
+		code := exterrors.SMTPCode(opErr, 450, 550)
+		enhancedCode := exterrors.SMTPEnchCode(opErr, exterrors.EnhancedCode{0, 4, 4})
+		if c.DNSErrorsTemporary {
+			code = 451
+			enhancedCode = exterrors.EnhancedCode{4, 4, 4}
+		}
+
+		return &exterrors.SMTPError{
+			Code:         code,
+			EnhancedCode: enhancedCode,
+			Message:      "DNS error",
+			Err:          err,
+			Reason:       reason,
+			Misc:         misc,
+		}
+	}
+	return &exterrors.SMTPError{
+		Code:         450,
+		EnhancedCode: exterrors.EnhancedCode{4, 4, 2},
+		Message:      "Network I/O error",
+		Err:          err,
+		Misc: map[string]interface{}{
+			"remote_addr": opErr.Addr,
+			"io_op":       opErr.Op,
+		},
 	}
 }
 
