@@ -340,6 +340,8 @@ github.com/foxcpp/go-mockdns v1.3.0 h1:p4PKLZnM1Ii78JzsxJxcYQ5sQT3lIdiPM/vT1SaL9
 github.com/foxcpp/go-mockdns v1.3.0/go.mod h1:IhLeSFGed3mJIAXPH2aiRQB+kqz7oqu8ld2qVbOu7Wk=
 github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932 h1:p04U/s8IZEc+PVWIDWGUgdqGq3xsixI7XRZ6Bp/xZbQ=
 github.com/foxcpp/go-mtasts v0.0.0-20240130093538-1438da2e5932/go.mod h1:RtHIZCsScdjIzXpTTjmEljtUrIjQbPBTvw7F1tKQbKk=
+github.com/foxcpp/go-mtasts v0.0.0-20261026071820-d380f1fa8aa1 h1:gXFK1gaWwY0Iy6/dzVuayJHVsj93gYy0XQObl1/3ee4=
+github.com/foxcpp/go-mtasts v0.0.0-20261026071820-d380f1fa8aa1/go.mod h1:RtHIZCsScdjIzXpTTjmEljtUrIjQbPBTvw7F1tKQbKk=
 github.com/foxcpp/go-smtp v1.21.4-0.20250124171104-c8519ae4fb23 h1:JSnsCrRrHNBlgfKVFBxFzp3fN/wS21t8fAHcZ9B1uWI=
 github.com/foxcpp/go-smtp v1.21.4-0.20250124171104-c8519ae4fb23/go.mod h1:qm27SGYgoIPRot6ubfQ/GpiPy/g3PaZAVRxiO/sDUgQ=
 github.com/foxcpp/libdns-gandi v1.0.4-0.20240127130558-4782f9d5ce3e h1:hKk+CGUtwnKDGKINPEojeo91kx0tnV6V4tlzHehJPfg=
