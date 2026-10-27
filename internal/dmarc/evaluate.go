@@ -37,6 +37,8 @@ import (
 // It returns the record and the domain it was found with (may not be
 // equal to the RFC5322.From domain).
 func FetchRecord(ctx context.Context, r Resolver, fromDomain string) (policyDomain string, rec *Record, err error) {
+	fromDomain, _ = dns.ForLookupASCII(fromDomain)
+
 	policyDomain = fromDomain
 
 	// 1. Lookup using From Domain.
@@ -115,6 +117,9 @@ type EvalResult struct {
 // a bunch of other trace information that can be useful for troubleshooting
 // (and also report generation).
 func EvaluateAlignment(fromDomain string, record *Record, results []authres.Result) EvalResult {
+	// RFC 7489 6.6.1 Requires A-labels for any matching or comparisons.
+	fromDomain, _ = dns.ForLookupASCII(fromDomain)
+
 	var (
 		spfAligned   = false
 		spfResult    = authres.SPFResult{}
@@ -144,12 +149,17 @@ func EvaluateAlignment(fromDomain string, record *Record, results []authres.Resu
 		}
 		if spfRes, ok := res.(*authres.SPFResult); ok {
 			spfResult = *spfRes
-			var aligned bool
+
+			var spfDomain string
+			// Should be in A-labels already, but normalize just in case.
 			if spfRes.From == "" {
-				aligned = isAligned(fromDomain, spfRes.Helo, record.SPFAlignment)
+				spfDomain, _ = dns.ForLookupASCII(spfRes.Helo)
 			} else {
-				aligned = isAligned(fromDomain, spfRes.From, record.SPFAlignment)
+				spfDomain, _ = dns.ForLookupASCII(spfRes.From)
 			}
+
+			aligned := isAligned(fromDomain, spfDomain, record.SPFAlignment)
+
 			if aligned && spfRes.Value == authres.ResultPass {
 				spfAligned = true
 			}
