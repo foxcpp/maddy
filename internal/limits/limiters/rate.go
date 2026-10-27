@@ -20,11 +20,10 @@ package limiters
 
 import (
 	"context"
-	"errors"
 	"time"
-)
 
-var ErrClosed = errors.New("limiters: Rate bucket is closed")
+	"golang.org/x/time/rate"
+)
 
 // Rate structure implements a basic rate-limiter for requests using the token
 // bucket approach.
@@ -37,81 +36,54 @@ var ErrClosed = errors.New("limiters: Rate bucket is closed")
 //
 // If burstSize = 0, all methods are no-op and always succeed.
 type Rate struct {
-	bucket chan struct{}
-	stop   chan struct{}
+	limiter *rate.Limiter
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewRate(burstSize int, interval time.Duration) Rate {
-	r := Rate{
-		bucket: make(chan struct{}, burstSize),
-		stop:   make(chan struct{}),
+	ctx, cancel := context.WithCancel(context.TODO())
+	r := Rate{limiter: nil, ctx: ctx, cancel: cancel}
+	if burstSize > 0 {
+		r.limiter = rate.NewLimiter(rate.Every(interval), burstSize)
 	}
-
-	if burstSize == 0 {
-		return r
-	}
-
-	for i := 0; i < burstSize; i++ {
-		r.bucket <- struct{}{}
-	}
-
-	go r.fill(burstSize, interval)
 	return r
 }
 
-func (r Rate) fill(burstSize int, interval time.Duration) {
-	t := time.NewTimer(interval)
-	defer t.Stop()
-	for {
-		t.Reset(interval)
-		select {
-		case <-t.C:
-		case <-r.stop:
-			close(r.bucket)
-			return
-		}
-
-	fill:
-		for i := 0; i < burstSize; i++ {
-			select {
-			case r.bucket <- struct{}{}:
-			default:
-				// If there are no Take pending and the bucket is already
-				// full - don't block.
-				break fill
-			}
-		}
-	}
-}
-
 func (r Rate) Take() bool {
-	if cap(r.bucket) == 0 {
+	if r.limiter == nil {
 		return true
 	}
 
-	_, ok := <-r.bucket
-	return ok
+	if err := r.limiter.Wait(r.ctx); err != nil {
+		return false
+	}
+	return true
 }
 
 func (r Rate) TakeContext(ctx context.Context) error {
-	if cap(r.bucket) == 0 {
+	if r.limiter == nil {
 		return nil
 	}
-
 	select {
-	case _, ok := <-r.bucket:
-		if !ok {
-			return ErrClosed
-		}
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-r.ctx.Done():
+		return ErrClosed
+	default:
 	}
+	reqCtx, reqCancel := context.WithCancel(ctx)
+	defer reqCancel()
+
+	stop := context.AfterFunc(r.ctx, func() {
+		reqCancel()
+	})
+	defer stop()
+
+	return r.limiter.Wait(reqCtx)
 }
 
 func (r Rate) Release() {
 }
 
 func (r Rate) Close() {
-	close(r.stop)
+	r.cancel()
 }
