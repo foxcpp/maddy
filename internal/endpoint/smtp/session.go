@@ -493,55 +493,35 @@ func (s *Session) Data(r io.Reader) error {
 		return wrapErr(err)
 	}
 
+	if err := s.checkRoutingLoops(header); err != nil {
+		return wrapErr(err)
+	}
+
 	if streamDelivery, ok := s.delivery.(module.StreamingDelivery); ok && streamDelivery.CanStreamBody() {
-		return s.streamBody(bodyCtx, streamDelivery, header, body, wrapErr)
-	}
-
-	buf, err := s.bufferBody(body)
-	if err != nil {
-		return wrapErr(err)
-	}
-	defer func() {
-		if err := buf.Remove(); err != nil {
-			s.log.Error("failed to remove buffered body", err)
+		err = streamDelivery.BodyStream(bodyCtx, header, body)
+	} else {
+		var buf buffer.Buffer
+		buf, err = s.bufferBody(body)
+		if err != nil {
+			return wrapErr(err)
 		}
+		defer func() {
+			if err := buf.Remove(); err != nil {
+				s.log.Error("failed to remove buffered body", err)
+			}
+		}()
 
-		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.cleanSession()
-	}()
-
-	if err := s.checkRoutingLoops(header); err != nil {
-		return wrapErr(err)
+		err = s.delivery.Body(bodyCtx, header, buf)
 	}
-
-	if err := s.delivery.Body(bodyCtx, header, buf); err != nil {
-		return wrapErr(err)
-	}
-
-	if err := s.delivery.Commit(bodyCtx); err != nil {
-		return wrapErr(err)
-	}
-
-	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
-
-	return nil
-}
-
-// streamBody passes the body to the delivery while it is being read from the
-// client. On failure, s.delivery is kept so that Reset aborts it.
-func (s *Session) streamBody(ctx context.Context, delivery module.StreamingDelivery, header textproto.Header, body io.Reader, wrapErr func(error) error) error {
-	if err := s.checkRoutingLoops(header); err != nil {
-		return wrapErr(err)
-	}
-
-	if err := delivery.BodyStream(ctx, header, body); err != nil {
+	if err != nil {
+		// s.delivery is kept so that Reset aborts it.
 		return wrapErr(err)
 	}
 
 	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
 	defer s.cleanSession()
 
-	if err := s.delivery.Commit(ctx); err != nil {
+	if err := s.delivery.Commit(bodyCtx); err != nil {
 		return wrapErr(err)
 	}
 
