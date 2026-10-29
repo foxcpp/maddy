@@ -428,7 +428,7 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
+func (s *Session) readHeader(r io.Reader) (textproto.Header, io.Reader, error) {
 	limitr := limitReader(r, s.endp.maxHeaderBytes, &exterrors.SMTPError{
 		Code:         552,
 		EnhancedCode: exterrors.EnhancedCode{5, 3, 4},
@@ -451,9 +451,26 @@ func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, err
 	// the header size check is done. The message size will be checked by go-smtp
 	limitr.Enabled = false
 
-	buf, err := s.endp.buffer(bufr)
+	return header, bufr, nil
+}
+
+func (s *Session) bufferBody(body io.Reader) (buffer.Buffer, error) {
+	buf, err := s.endp.buffer(body)
 	if err != nil {
-		return textproto.Header{}, nil, fmt.Errorf("I/O error while writing buffer: %w", err)
+		return nil, fmt.Errorf("I/O error while writing buffer: %w", err)
+	}
+	return buf, nil
+}
+
+func (s *Session) prepareBody(r io.Reader) (textproto.Header, buffer.Buffer, error) {
+	header, body, err := s.readHeader(r)
+	if err != nil {
+		return textproto.Header{}, nil, err
+	}
+
+	buf, err := s.bufferBody(body)
+	if err != nil {
+		return textproto.Header{}, nil, err
 	}
 
 	return header, buf, nil
@@ -471,7 +488,16 @@ func (s *Session) Data(r io.Reader) error {
 		return s.endp.wrapErr(s.msgMeta.ID, !s.opts.UTF8, "DATA", err)
 	}
 
-	header, buf, err := s.prepareBody(r)
+	header, body, err := s.readHeader(r)
+	if err != nil {
+		return wrapErr(err)
+	}
+
+	if streamDelivery, ok := s.delivery.(module.StreamingDelivery); ok && streamDelivery.CanStreamBody() {
+		return s.streamBody(bodyCtx, streamDelivery, header, body, wrapErr)
+	}
+
+	buf, err := s.bufferBody(body)
 	if err != nil {
 		return wrapErr(err)
 	}
@@ -493,6 +519,29 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	if err := s.delivery.Commit(bodyCtx); err != nil {
+		return wrapErr(err)
+	}
+
+	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	return nil
+}
+
+// streamBody passes the body to the delivery while it is being read from the
+// client. On failure, s.delivery is kept so that Reset aborts it.
+func (s *Session) streamBody(ctx context.Context, delivery module.StreamingDelivery, header textproto.Header, body io.Reader, wrapErr func(error) error) error {
+	if err := s.checkRoutingLoops(header); err != nil {
+		return wrapErr(err)
+	}
+
+	if err := delivery.BodyStream(ctx, header, body); err != nil {
+		return wrapErr(err)
+	}
+
+	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
+	defer s.cleanSession()
+
+	if err := s.delivery.Commit(ctx); err != nil {
 		return wrapErr(err)
 	}
 
