@@ -128,6 +128,7 @@ func (d *MsgPipeline) StartDelivery(ctx context.Context, msgMeta *module.MsgMeta
 	}
 	dd.checkRunner = newCheckRunner(msgMeta, dd.log, d.Resolver)
 	dd.checkRunner.doDMARC = d.doDMARC
+	dd.checkRunner.dmarcVerify.SetRejectInvalidFrom(d.rejectInvalidFrom)
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}

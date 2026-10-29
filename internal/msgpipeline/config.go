@@ -38,12 +38,13 @@ type sourceIn struct {
 }
 
 type msgpipelineCfg struct {
-	globalChecks    []module.Check
-	globalModifiers modify.Group
-	sourceIn        []sourceIn
-	perSource       map[string]sourceBlock
-	defaultSource   sourceBlock
-	doDMARC         bool
+	globalChecks      []module.Check
+	globalModifiers   modify.Group
+	sourceIn          []sourceIn
+	perSource         map[string]sourceBlock
+	defaultSource     sourceBlock
+	doDMARC           bool
+	rejectInvalidFrom bool
 }
 
 func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node) (msgpipelineCfg, error) {
@@ -128,6 +129,21 @@ func parseMsgPipelineRootCfg(globals map[string]interface{}, nodes []config.Node
 				}
 			case 0:
 				cfg.doDMARC = true
+			}
+		case "dmarc_reject_invalid_from":
+			switch len(node.Args) {
+			case 1:
+				switch node.Args[0] {
+				case "yes":
+					cfg.rejectInvalidFrom = true
+				case "no":
+				default:
+					return msgpipelineCfg{}, config.NodeErr(node, "invalid argument for dmarc_reject_invalid_from")
+				}
+			case 0:
+				cfg.rejectInvalidFrom = true
+			default:
+				return msgpipelineCfg{}, config.NodeErr(node, "invalid argument for dmarc_reject_invalid_from")
 			}
 		case "deliver_to", "reroute", "destination_in", "destination", "default_destination", "reject":
 			othersRaw = append(othersRaw, node)

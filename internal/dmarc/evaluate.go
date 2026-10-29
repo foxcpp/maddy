@@ -20,7 +20,6 @@ package dmarc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/mail"
@@ -230,26 +229,26 @@ func ExtractFromDomain(hdr textproto.Header) (string, error) {
 		if firstFrom == "" {
 			firstFrom = fields.Value()
 		} else {
-			return "", errors.New("dmarc: multiple From header fields are not allowed")
+			return "", fmt.Errorf("%w: multiple From header fields are not allowed", ErrNoAuthorDomain)
 		}
 	}
 	if firstFrom == "" {
-		return "", errors.New("dmarc: missing From header field")
+		return "", fmt.Errorf("%w: missing From header field", ErrNoAuthorDomain)
 	}
 
 	hdrFromList, err := mail.ParseAddressList(firstFrom)
 	if err != nil {
-		return "", fmt.Errorf("dmarc: malformed From header field: %s", strings.TrimPrefix(err.Error(), "mail: "))
+		return "", fmt.Errorf("%w: malformed From header field: %s", ErrNoAuthorDomain, strings.TrimPrefix(err.Error(), "mail: "))
 	}
 	if len(hdrFromList) > 1 {
-		return "", errors.New("dmarc: multiple addresses in From field are not allowed")
+		return "", fmt.Errorf("%w: multiple addresses in From field are not allowed", ErrNoAuthorDomain)
 	}
 	if len(hdrFromList) == 0 {
-		return "", errors.New("dmarc: missing address in From field")
+		return "", fmt.Errorf("%w: missing address in From field", ErrNoAuthorDomain)
 	}
 	_, domain, err := address.Split(hdrFromList[0].Address)
 	if err != nil {
-		return "", fmt.Errorf("dmarc: malformed From header field: %w", err)
+		return "", fmt.Errorf("%w: malformed From header field: %w", ErrNoAuthorDomain, err)
 	}
 
 	return domain, nil

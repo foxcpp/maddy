@@ -224,6 +224,15 @@ Without these, DMARC check will not run.
 
 ---
 
+### dmarc_reject_invalid_from _boolean_
+Default: `no`
+
+Reject messages when the `From` header does not contain a single valid author
+domain, instead of treating the message as having no applicable DMARC policy.
+This directive has no effect unless `dmarc` is enabled.
+
+---
+
 ## Rate & concurrency limiting
 
 ### limits { ... }
@@ -318,4 +327,3 @@ lmtp unix://lmtp.sock {
 - Can't be used with TCP.
 - Delivery to 'sql' module storage is always atomic, either all recipients will
   succeed or none of them will.
-
