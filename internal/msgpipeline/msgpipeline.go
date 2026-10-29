@@ -20,6 +20,7 @@ package msgpipeline
 
 import (
 	"context"
+	"io"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -393,19 +394,7 @@ func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header
 		}
 	}
 
-	if dd.d.FirstPipeline {
-		// Add Received *after* checks to make sure they see the message literally
-		// how we received it BUT place it below any other field that might be
-		// added by applyResults (including Authentication-Results)
-		// per recommendation in RFC 7001, Section 4 (see GH issue #135).
-		received, err := target.GenerateReceived(ctx, dd.msgMeta, dd.d.Hostname, dd.msgMeta.OriginalFrom)
-		if err != nil {
-			return err
-		}
-		header.Add("Received", received)
-	}
-
-	if err := dd.checkRunner.applyResults(dd.d.Hostname, &header); err != nil {
+	if err := dd.addTraceFields(ctx, &header); err != nil {
 		return err
 	}
 
@@ -428,6 +417,67 @@ func (dd *msgpipelineDelivery) Body(ctx context.Context, header textproto.Header
 			return err
 		}
 		dd.log.Debugf("delivery.Body ok, Delivery object = %T", delivery)
+	}
+	return nil
+}
+
+func (dd *msgpipelineDelivery) addTraceFields(ctx context.Context, header *textproto.Header) error {
+	if dd.d.FirstPipeline {
+		// Add Received *after* checks to make sure they see the message literally
+		// how we received it BUT place it below any other field that might be
+		// added by applyResults (including Authentication-Results)
+		// per recommendation in RFC 7001, Section 4 (see GH issue #135).
+		received, err := target.GenerateReceived(ctx, dd.msgMeta, dd.d.Hostname, dd.msgMeta.OriginalFrom)
+		if err != nil {
+			return err
+		}
+		header.Add("Received", received)
+	}
+
+	return dd.checkRunner.applyResults(dd.d.Hostname, header)
+}
+
+// CanStreamBody implements module.StreamingDelivery.
+//
+// The body can be streamed only if nothing in the pipeline needs to read it
+// before the target does, and there is exactly one target to read it.
+func (dd *msgpipelineDelivery) CanStreamBody() bool {
+	if dd.checkRunner.doDMARC {
+		return false
+	}
+	if len(dd.d.globalChecks) != 0 || len(dd.sourceBlock.checks) != 0 {
+		return false
+	}
+	if len(dd.d.globalModifiers.Modifiers) != 0 || len(dd.sourceBlock.modifiers.Modifiers) != 0 {
+		return false
+	}
+	for blk := range dd.rcptModifiersState {
+		if len(blk.checks) != 0 || len(blk.modifiers.Modifiers) != 0 {
+			return false
+		}
+	}
+
+	if len(dd.deliveries) != 1 {
+		return false
+	}
+	var streamDelivery module.StreamingDelivery
+	for _, delivery := range dd.deliveries {
+		streamDelivery, _ = delivery.Delivery.(module.StreamingDelivery)
+	}
+	return streamDelivery != nil && streamDelivery.CanStreamBody()
+}
+
+// BodyStream implements module.StreamingDelivery.
+func (dd *msgpipelineDelivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	if err := dd.addTraceFields(ctx, &header); err != nil {
+		return err
+	}
+
+	for _, delivery := range dd.deliveries {
+		if err := delivery.Delivery.(module.StreamingDelivery).BodyStream(ctx, header, body); err != nil {
+			return err
+		}
+		dd.log.Debugf("delivery.BodyStream ok, Delivery object = %T", delivery.Delivery)
 	}
 	return nil
 }
