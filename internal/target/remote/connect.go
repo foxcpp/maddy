@@ -212,6 +212,10 @@ func (rd *remoteDelivery) closeConn(c *mxConn) {
 		rd.rt.limits.ReleaseDest(c.domain)
 	}
 
+	// Client is nil if the connection was already dropped.
+	if c.Client() == nil {
+		return
+	}
 	if err := c.Close(); err != nil {
 		rd.log.Error("client connection close failed", err)
 	}

@@ -600,8 +600,32 @@ func (qd *queueDelivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.Rcpt
 func (qd *queueDelivery) Body(ctx context.Context, header textproto.Header, body buffer.Buffer) error {
 	defer trace.StartRegion(ctx, "queue/Body").End()
 
+	bodyReader, err := body.Open()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := bodyReader.Close(); err != nil {
+			qd.q.log.Error("bodyReader close failed", err)
+		}
+	}()
+
 	// Body buffer initially passed to us may not be valid after "delivery" to queue completes.
 	// storeNewMessage returns a new buffer object created from message blob stored on disk.
+	return qd.store(header, bodyReader)
+}
+
+func (qd *queueDelivery) CanStreamBody() bool {
+	return true
+}
+
+func (qd *queueDelivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	defer trace.StartRegion(ctx, "queue/BodyStream").End()
+
+	return qd.store(header, body)
+}
+
+func (qd *queueDelivery) store(header textproto.Header, body io.Reader) error {
 	storedBody, err := qd.q.storeNewMessage(qd.meta, header, body)
 	if err != nil {
 		return err
@@ -752,7 +776,7 @@ func (q *Queue) readDiskQueue() error {
 	return nil
 }
 
-func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, body buffer.Buffer) (buffer.Buffer, error) {
+func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, body io.Reader) (buffer.Buffer, error) {
 	id := meta.MsgMeta.ID
 
 	headerPath := filepath.Join(q.location, id+".header")
@@ -771,17 +795,6 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		return nil, err
 	}
 
-	bodyReader, err := body.Open()
-	if err != nil {
-		q.tryRemoveDanglingFile(id + ".header")
-		return nil, err
-	}
-	defer func() {
-		if err := bodyReader.Close(); err != nil {
-			q.log.Error("bodyReader close failed", err)
-		}
-	}()
-
 	bodyPath := filepath.Join(q.location, id+".body")
 	bodyFile, err := os.Create(bodyPath)
 	if err != nil {
@@ -793,7 +806,8 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 		}
 	}()
 
-	if _, err := io.Copy(bodyFile, bodyReader); err != nil {
+	bodyLen, err := io.Copy(bodyFile, body)
+	if err != nil {
 		q.tryRemoveDanglingFile(id + ".body")
 		q.tryRemoveDanglingFile(id + ".header")
 		return nil, err
@@ -815,7 +829,7 @@ func (q *Queue) storeNewMessage(meta *QueueMetadata, header textproto.Header, bo
 
 	queuedMsgs.WithLabelValues(q.name, q.location).Inc()
 
-	return buffer.FileBuffer{Path: bodyPath, LenHint: body.Len()}, nil
+	return buffer.FileBuffer{Path: bodyPath, LenHint: int(bodyLen)}, nil
 }
 
 func (q *Queue) updateMetadataOnDisk(meta *QueueMetadata) error {

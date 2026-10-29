@@ -451,6 +451,78 @@ func TestSMTPDelivery_AbortData(t *testing.T) {
 	}
 }
 
+func TestSMTPDelivery_StreamBody(t *testing.T) {
+	tgt := testutils.Target{Streaming: true}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+
+	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, testMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tgt.Messages) != 1 {
+		t.Fatal("Expected a message, got", len(tgt.Messages))
+	}
+	msg := tgt.Messages[0]
+	if !msg.Streamed {
+		t.Error("Message body was not streamed")
+	}
+	testutils.CheckMsgID(t, &msg, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, "")
+	if msg.Header.Get("Received") == "" {
+		t.Error("Missing Received field")
+	}
+}
+
+func TestSMTPDelivery_StreamBody_AbortData(t *testing.T) {
+	tgt := testutils.Target{Streaming: true}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	conn, err := net.Dial("tcp", "127.0.0.1:"+testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := smtp.NewClient(conn)
+
+	if err := cl.Hello("mx.example.org"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Mail("sender@example.org", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Rcpt("test@example.com", &smtp.RcptOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cl.Data(); err != nil {
+		t.Fatal(err)
+	}
+	// Send the header and a part of the body, then close the connection
+	// without sending the final dot.
+	if _, err := conn.Write([]byte(testMsg)); err != nil {
+		t.Fatal(err)
+	}
+	require.NoError(t, conn.Close())
+
+	time.Sleep(250 * time.Millisecond)
+
+	if len(tgt.Messages) != 0 {
+		t.Fatal("Expected no messages, got", len(tgt.Messages))
+	}
+}
+
 func TestSMTPDelivery_EmptyMessage(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)

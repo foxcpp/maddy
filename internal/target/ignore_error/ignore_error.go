@@ -33,6 +33,7 @@ package ignore_error
 
 import (
 	"context"
+	"io"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -114,6 +115,34 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 		d.log.Error("ignored error from wrapped target", err)
 	}
 	return nil
+}
+
+func (d *delivery) CanStreamBody() bool {
+	if d.wrapped == nil {
+		return true
+	}
+	streamDelivery, ok := d.wrapped.(module.StreamingDelivery)
+	return ok && streamDelivery.CanStreamBody()
+}
+
+// BodyStream implements module.StreamingDelivery.
+//
+// Errors from the wrapped delivery are ignored as in Body, but errors from
+// reading the body are not, since they come from the message source.
+func (d *delivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	r := target.NewSourceReader(body)
+	if d.wrapped != nil {
+		if err := d.wrapped.(module.StreamingDelivery).BodyStream(ctx, header, r); err != nil && r.Err() == nil {
+			d.log.Error("ignored error from wrapped target", err)
+		}
+	}
+
+	// Consume the rest of the body, as the buffered path does, so that
+	// the message source can still report a read error.
+	if r.Err() == nil {
+		_, _ = io.Copy(io.Discard, r)
+	}
+	return r.Err()
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
