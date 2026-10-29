@@ -308,30 +308,17 @@ func (d *delivery) CanStreamBody() bool {
 	return true
 }
 
-type errorRecordingReader struct {
-	r   io.Reader
-	err error
-}
-
-func (r *errorRecordingReader) Read(b []byte) (int, error) {
-	n, err := r.r.Read(b)
-	if err != nil && err != io.EOF {
-		r.err = err
-	}
-	return n, err
-}
-
 func (d *delivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
-	r := &errorRecordingReader{r: body}
+	r := target.NewSourceReader(body)
 	err := d.conn.Data(ctx, header, r)
-	if r.err != nil {
+	if r.Err() != nil {
 		// Sending QUIT would first terminate the DATA command and make the
 		// server accept the partial message. Drop the connection instead.
 		d.connDropped = true
 		if err := d.conn.DirectClose(); err != nil {
 			d.log.Error("failed to close SMTP connection", err)
 		}
-		return r.err
+		return r.Err()
 	}
 	return d.u.moduleError(err)
 }
