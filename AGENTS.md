@@ -20,6 +20,9 @@ Modules are wired together at runtime via `maddy.conf` configuration. Top-level 
 # Build with specific tags (e.g. for Docker):
 ./build.sh --tags "docker" build
 
+# Linters.
+golangci-lint run
+
 # Unit tests (standard Go):
 go test ./...
 
@@ -54,3 +57,36 @@ Keep SMTP error messages generic (no server config details). Use `exterrors.With
 - **Configuration parsing** — modules receive config via `config.Map` in their `Configure` method. See `framework/config/` and existing modules for the pattern.
 - **Logging** — use `framework/log.Logger`, not `log` stdlib. Per-delivery loggers via `target.DeliveryLogger(...)`.
 
+## Running server for manual testing
+
+If you ever need to run the server for testing, do this:
+
+1. Build server executable: go build ./cmd/maddy (no need to use build.sh for test builds).
+2. Populate configuration.
+    1. Determine test state directory to use, if test configuration needs persistent state (e.g. IMAP storage) - create a temporary subdirectory in /tmp, otherwise just use /tmp as is.
+    2. Prefer to use minimal focused config file instead of entire default config to reduce noise unless task explicitly relates to default config.
+    3. Put test state directory as both `state_dir` and `runtime_dir` in config.
+    4. Use > 1024 ports for test endpoints as they do not require
+    5. Be mindful of required directives - you need `hostname` and `tls` for smtp, other modules may need other directives.
+4. Run the server as: `./maddy --config path-to-test-config run` (runs in foreground).
+
+Example of test config:
+```
+state_dir /tmp
+runtime_dir /tmp
+hostname maddy.test
+
+table.chain local_rewrites {
+        optional_step file aliases
+}
+
+smtp tcp://127.0.0.1:5555 {
+        modify {
+                replace_rcpt &local_rewrites
+        }
+
+        tls off
+
+        deliver_to lmtp tcp://127.0.0.1:6666
+}
+```
