@@ -269,9 +269,16 @@ func (a *Auth) AuthPlain(username, password string) error {
 			return fmt.Errorf("auth.ldap: too manu entries returned (%d)", len(res.Entries))
 		}
 		if len(res.Entries) == 0 {
-			return module.ErrUnknownCredentials
+			// Perform the same kind of LDAP operation as for a matching
+			// username so that authentication failures do not reveal whether
+			// the username exists. Use fixed invalid credentials instead of
+			// the supplied password to avoid authenticating against an
+			// arbitrary directory entry.
+			userDN = "CN=__maddy_invalid__," + a.baseDN
+			password = "__maddy_invalid__"
+		} else {
+			userDN = res.Entries[0].DN
 		}
-		userDN = res.Entries[0].DN
 	}
 
 	if err := conn.Bind(userDN, password); err != nil {
