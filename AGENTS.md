@@ -11,6 +11,11 @@ Maddy is a composable all-in-one mail server (MTA/MX/IMAP) written in Go. The co
 
 Modules are wired together at runtime via `maddy.conf` configuration. Top-level blocks are lazily initialized through `module.Registry`. The **message pipeline** (`internal/msgpipeline/`) routes messages from endpoints through checks, modifiers, and to delivery targets based on sender/recipient matching rules.
 
+## RFC cross-verification
+
+- Changes that affect standard protocol inputs or outputs, change observable semantics of protocol commands or interpretation of supplied values must be cross-verified for correctness against represtive RFC specifications. If unsure - ask the user for RFC reference. Use either tool available to fetch RFC text (RFC MCP, or Web Fetch from http://www.rfc-editor.org/info/rfcNNNN).
+- maddy has the list of implemented specifications in docs/internals/specifications.md. Keep the list updated if implementing new specifications.
+
 ## Build & Test
 
 ```sh
