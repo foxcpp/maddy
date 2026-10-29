@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/emersion/go-message/textproto"
@@ -252,6 +253,50 @@ func TestQueueDelivery(t *testing.T) {
 	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
 
 	// There should be no queued messages.
+	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDelivery_BodyStream(t *testing.T) {
+	t.Parallel()
+
+	dt := unreliableTarget{committed: make(chan testutils.Msg, 10)}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	testutils.DoTestDeliveryStream(t, q, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"})
+
+	msg := readMsgChanTimeout(t, dt.committed, 5*time.Second)
+	require.NoError(t, q.Stop())
+
+	testutils.CheckMsgID(t, msg, "tester@example.com", []string{"tester1@example.org", "tester2@example.org"}, "")
+
+	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDelivery_BodyStream_ReadErr(t *testing.T) {
+	t.Parallel()
+
+	dt := unreliableTarget{
+		committed: make(chan testutils.Msg, 10),
+		aborted:   make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	ctx := context.Background()
+	delivery, err := q.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "tester@example.com")
+	require.NoError(t, err)
+	require.NoError(t, delivery.AddRcpt(ctx, "tester1@example.org", smtp.RcptOptions{}))
+
+	readErr := errors.New("client went away")
+	body := io.MultiReader(strings.NewReader("foo"), iotest.ErrReader(readErr))
+	err = delivery.(module.StreamingDelivery).BodyStream(ctx, textproto.Header{}, body)
+	require.ErrorIs(t, err, readErr)
+	require.NoError(t, delivery.Abort(ctx))
+
+	require.NoError(t, q.Stop())
+	require.Empty(t, dt.committed)
+	require.Empty(t, dt.aborted)
 	checkQueueDir(t, q, []string{})
 }
 
