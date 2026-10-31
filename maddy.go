@@ -35,6 +35,7 @@ import (
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/config/tls"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/hooks"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module/modules"
@@ -363,6 +364,15 @@ func ReadConfig(path string) ([]config.Node, error) {
 	return parser.Read(f, path)
 }
 
+// InitExtResolver initializes the shared DNSSEC resolver when available.
+func InitExtResolver(c *container.C) {
+	var err error
+	c.ExtResolver, err = dns.NewExtResolver(dns.WithLogger(c.DefaultLogger.Sublogger("dns")))
+	if err != nil {
+		c.DefaultLogger.Error("cannot initialize DNSSEC-aware resolver", err)
+	}
+}
+
 func moduleConfigure(configPath string) (*container.C, error) {
 	c := container.New()
 	container.Global = c
@@ -385,6 +395,7 @@ func moduleConfigure(configPath string) (*container.C, error) {
 	if err := InitDirs(c); err != nil {
 		return nil, err
 	}
+	InitExtResolver(c)
 
 	err = RegisterModules(c, globals, modBlocks)
 	if err != nil {

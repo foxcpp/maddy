@@ -358,8 +358,9 @@ type (
 
 func NewDANEPolicy(c *container.C, modName, instName string) (module.Module, error) {
 	return &danePolicy{
-		instName: instName,
-		log:      c.DefaultLogger.Sublogger(modName),
+		instName:    instName,
+		extResolver: c.ExtResolver,
+		log:         c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -376,15 +377,13 @@ func (c *danePolicy) Weight() int {
 }
 
 func (c *danePolicy) Configure(inlineArgs []string, cfg *config.Map) error {
-	var err error
-	c.extResolver, err = dns.NewExtResolver()
-	if err != nil {
-		c.log.Error("DANE support is no-op: unable to init EDNS resolver", err)
+	if c.extResolver == nil {
+		c.log.Msg("DANE support is no-op: DNSSEC-aware resolver unavailable")
 	}
 
 	cfg.Bool("debug", true, log.DefaultLogger.Debug, &c.log.Debug)
 
-	_, err = cfg.Process()
+	_, err := cfg.Process()
 	return err
 }
 

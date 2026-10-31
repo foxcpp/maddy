@@ -128,13 +128,6 @@ func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
 	// lookups that return the best-effort result and also has some nuanced in
 	// AD flag handling for use in DANE algorithms.
 
-	// Silence log messages about disregarded I/O errors.
-	oldLog := log.DefaultLogger
-	log.DefaultLogger = log.NopLogger
-	t.Cleanup(func() {
-		log.DefaultLogger = oldLog
-	})
-
 	test := func(aAct, aaaaAct TestSrvAction, aAD, aaaaAD, ad bool, addrs []net.IP, err bool) {
 		t.Helper()
 		t.Run(fmt.Sprintln(aAct, aaaaAct, aAD, aaaaAD), func(t *testing.T) {
@@ -149,14 +142,12 @@ func TestExtResolver_AuthLookupIPAddr(t *testing.T) {
 			defer func() {
 				require.NoError(t, s.Close())
 			}()
-			res := ExtResolver{
-				cl: new(dns.Client),
-				Cfg: &dns.ClientConfig{
-					Servers: []string{"127.0.0.1"},
-					Port:    strconv.Itoa(s.Addr().Port),
-					Timeout: 1,
-				},
-			}
+			res, initErr := NewFromConfig(&ClientConfig{
+				Servers: []string{"127.0.0.1"},
+				Port:    strconv.Itoa(s.Addr().Port),
+				Timeout: 1,
+			}, WithLogger(&log.NopLogger))
+			require.NoError(t, initErr)
 			res.cl.Dialer = &net.Dialer{
 				Timeout: 500 * time.Millisecond,
 			}

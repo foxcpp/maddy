@@ -96,6 +96,7 @@ func getCfgBlockModule(ctx *cli.Context) (*container.C, module.Module, error) {
 	if err := maddy.InitDirs(c); err != nil {
 		return nil, nil, err
 	}
+	maddy.InitExtResolver(c)
 
 	err = maddy.RegisterModules(c, globals, cfgNodes)
 	if err != nil {

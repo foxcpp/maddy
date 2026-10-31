@@ -92,10 +92,11 @@ var _ module.DeliveryTarget = &Target{}
 func New(c *container.C, modName, instName string) (module.Module, error) {
 	// Keep this synchronized with testTarget.
 	return &Target{
-		name:     instName,
-		resolver: dns.DefaultResolver(),
-		dialer:   (&net.Dialer{}).DialContext,
-		log:      c.DefaultLogger.Sublogger(modName),
+		name:        instName,
+		resolver:    dns.DefaultResolver(),
+		extResolver: c.ExtResolver,
+		dialer:      (&net.Dialer{}).DialContext,
+		log:         c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -104,11 +105,10 @@ func (rt *Target) Configure(inlineArgs []string, cfg *config.Map) error {
 		return errors.New("remote: inline arguments are not used")
 	}
 
-	var err error
-	rt.extResolver, err = dns.NewExtResolver()
-	if err != nil {
-		rt.log.Error("cannot initialize DNSSEC-aware resolver, DNSSEC and DANE are not available", err)
+	if rt.extResolver == nil {
+		rt.log.Msg("DNSSEC-aware resolver unavailable; falling back to standard library DNS")
 	}
+	var err error
 
 	cfg.String("hostname", true, true, "", &rt.hostname)
 	cfg.String("local_ip", false, false, "", &rt.localIP)
