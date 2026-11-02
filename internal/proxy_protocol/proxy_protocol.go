@@ -44,7 +44,11 @@ func ProxyProtocolDirective(_ *config.Map, node config.Node) (interface{}, error
 			continue
 		}
 		if !strings.Contains(trust, "/") {
-			trust += "/32"
+			if strings.Contains(trust, ":") {
+				trust += "/128"
+			} else {
+				trust += "/32"
+			}
 		}
 		_, ipNet, err := net.ParseCIDR(trust)
 		if err != nil {
