@@ -601,7 +601,8 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, command string, err
 		res.Message = ctxMsg
 	}
 
-	if smtpErr, ok := err.(*smtp.SMTPError); ok {
+	var smtpErr *smtp.SMTPError
+	if errors.As(err, &smtpErr) {
 		endp.log.Printf("plain SMTP error returned, this is deprecated")
 		res.Code = smtpErr.Code
 		res.EnhancedCode = smtpErr.EnhancedCode

@@ -634,6 +634,58 @@ func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	}
 }
 
+func TestSMTPDelivery_SubmissionConfiguredLargeMessageSize(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "submission", &modules.Dummy{}, &tgt, nil, []config.Node{
+		{Name: "max_message_size", Args: []string{"50M"}},
+	})
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+	gotSize, sizeParam := cl.Extension("SIZE")
+	require.True(t, gotSize, "server did not advertise the SIZE extension")
+	assert.Equal(t, "52428800", sizeParam)
+	require.NoError(t, cl.Auth(sasl.NewPlainClient("", "user", "password")))
+
+	// An attachment around 30 MiB is sent as roughly 40 MiB of base64 data.
+	// Use short lines so the test exercises the message-size limit, not the
+	// independent SMTP line-length limit.
+	line := strings.Repeat("x", 3998) + "\r\n"
+	msg := testMsg + strings.Repeat(line, (40*1024*1024)/len(line))
+	require.NoError(t, submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.org"}, msg))
+	require.Len(t, tgt.Messages, 1)
+}
+
+func TestSMTPDelivery_MaxMessageSizeError(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, []config.Node{
+		{Name: "max_message_size", Args: []string{"128b"}},
+	})
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+
+	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.org"}, testMsg+strings.Repeat("x", 128))
+	require.Error(t, err)
+
+	smtpErr, ok := err.(*smtp.SMTPError)
+	require.True(t, ok, "expected an SMTP error, got %T: %v", err, err)
+	assert.Equal(t, 552, smtpErr.Code)
+	assert.True(t, strings.HasPrefix(smtpErr.Message, "Maximum message size exceeded"), smtpErr.Message)
+}
+
 func TestMain(m *testing.M) {
 	remoteSmtpPort := flag.String("test.smtpport", "random", "(maddy) SMTP port to use for connections in tests")
 	flag.Parse()
