@@ -23,3 +23,8 @@ can handle message delivery business.
 
 * [IRC channel](https://webchat.oftc.net/?channels=maddy&uio=MT11bmRlZmluZWQb1)
 * [Mailing list](https://lists.sr.ht/~foxcpp/maddy)
+
+One-Click Deploy
+----------------
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/maddy/)
