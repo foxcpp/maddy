@@ -149,11 +149,27 @@ func TestSubmissionPrepare(t *testing.T) {
 		"Message-Id": {"<A@mx.example.com>"},
 	})
 
-	// Malformed Date.
+	// Malformed Date is replaced with the current date instead of rejecting
+	// the message.
 	test(map[string][]string{
 		"From": {"<hello@example.org>"},
 		"Date": {"not a date"},
-	}, nil)
+	}, map[string][]string{
+		"From":       {"<hello@example.org>"},
+		"Date":       {"Thu, 1 Jan 1970 00:00:00 +0000"},
+		"Message-Id": {"<A@mx.example.com>"},
+	})
+
+	// Date with a numeric zone missing the sign (issue #518). It is not
+	// valid RFC 5322 syntax, so it is replaced as well.
+	test(map[string][]string{
+		"From": {"<hello@example.org>"},
+		"Date": {"Tue, 26 Jul 2022 17:52:00 0000"},
+	}, map[string][]string{
+		"From":       {"<hello@example.org>"},
+		"Date":       {"Thu, 1 Jan 1970 00:00:00 +0000"},
+		"Message-Id": {"<A@mx.example.com>"},
+	})
 
 	// Add missing Date.
 	test(map[string][]string{

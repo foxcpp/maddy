@@ -63,7 +63,7 @@ func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textpro
 		return &exterrors.SMTPError{
 			Code:         554,
 			EnhancedCode: exterrors.EnhancedCode{5, 6, 0},
-			Message:      "Message does not contains a From header field",
+			Message:      "Message does not contain a From header field",
 			Misc: map[string]interface{}{
 				"modifier": "submission_prepare",
 			},
@@ -131,22 +131,13 @@ func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textpro
 		}
 	}
 
-	if dateHdr := header.Get("Date"); dateHdr != "" {
-		_, err := parseMessageDateTime(dateHdr)
-		if err != nil {
-			return &exterrors.SMTPError{
-				Code:    554,
-				Message: "Malformed Date header",
-				Misc: map[string]interface{}{
-					"modifier": "submission_prepare",
-					"date":     dateHdr,
-				},
-				Err: err,
-			}
-		}
-	} else {
+	dateHdr := header.Get("Date")
+	if dateHdr == "" {
 		s.log.Msg("adding missing Date header")
-		header.Set("Date", now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700"))
+		header.Set("Date", now().UTC().Format(dateHeaderLayout))
+	} else if _, err := parseMessageDateTime(dateHdr); err != nil {
+		s.log.Msg("replacing malformed Date header", "date", dateHdr, "reason", err)
+		header.Set("Date", now().UTC().Format(dateHeaderLayout))
 	}
 
 	return nil
