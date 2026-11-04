@@ -72,7 +72,18 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 
 	t := tests.NewT(tt)
 	t.DNS(nil)
+
 	smtpPort := t.Port("smtp")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Env("TEST_LMTP_ADDR=" + listener.Addr().String())
+	server := smtp.NewServer(forwardingLMTP{smtpAddr: "127.0.0.1:" + strconv.Itoa(int(smtpPort))})
+	server.LMTP = true
+	go func() { _ = server.Serve(listener) }()
+	defer server.Close()
+
 	t.Port("imap")
 	t.Config(`
 		hostname maddy.test
@@ -101,16 +112,6 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 		}
 	`)
 	t.Run(2)
-
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Env("TEST_LMTP_ADDR=" + listener.Addr().String())
-	server := smtp.NewServer(forwardingLMTP{smtpAddr: "127.0.0.1:" + strconv.Itoa(int(smtpPort))})
-	server.LMTP = true
-	go func() { _ = server.Serve(listener) }()
-	defer server.Close()
 
 	imapConn := t.Conn("imap")
 	defer imapConn.Close()
