@@ -64,9 +64,9 @@ Attempt delivery up to _integer_ times. Note that no more attempts will be done
 is permanent error occurred during previous attempt.
 
 Delay before the next attempt will be increased exponentially using the
-following formula: 15mins * 1.2 ^ (n - 1) where n is the attempt number.
+following formula: 15mins * 1.25 ^ (n - 1) where n is the attempt number.
 This gives you approximately the following sequence of delays:
-18mins, 21mins, 25mins, 31mins, 37mins, 44mins, 53mins, 64mins, ...
+15mins, 19mins, 23mins, 29mins, 37mins, 46mins, 57mins, 72mins, ...
 
 ---
 
