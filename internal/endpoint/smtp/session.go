@@ -103,11 +103,28 @@ func (s *Session) AuthMechanisms() []string {
 }
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
-	return s.endp.saslAuth.CreateSASL(mech, s.connState.RemoteAddr, func(identity string, data auth.ContextData) error {
-		s.connState.AuthUser = identity
-		s.connState.AuthPassword = data.Password
-		return nil
-	}), nil
+	return &authSASLServer{
+		Server: s.endp.saslAuth.CreateSASL(mech, s.connState.RemoteAddr, func(identity string, data auth.ContextData) error {
+			s.connState.AuthUser = identity
+			s.connState.AuthPassword = data.Password
+			return nil
+		}),
+		endp: s.endp,
+	}, nil
+}
+
+// authSASLServer counts AUTH failures reported by the wrapped sasl.Server.
+type authSASLServer struct {
+	sasl.Server
+	endp *Endpoint
+}
+
+func (s *authSASLServer) Next(response []byte) (challenge []byte, done bool, err error) {
+	challenge, done, err = s.Server.Next(response)
+	if err != nil {
+		failedLogins.WithLabelValues(s.endp.name).Inc()
+	}
+	return
 }
 
 func (s *Session) Reset() {
