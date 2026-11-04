@@ -18,9 +18,9 @@ require (
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20260303144336-f7632c6ec0ba
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
-	github.com/foxcpp/go-imap-mess v0.0.0-20230108134257-b7ec3a649613
+	github.com/foxcpp/go-imap-mess v0.0.0-20261103192234-6bb314614a44
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
-	github.com/foxcpp/go-imap-sql v0.5.1-0.20261101125950-3c5930407b6c
+	github.com/foxcpp/go-imap-sql v0.5.1-0.20261104133243-24e3306c6504
 	github.com/foxcpp/go-mockdns v1.3.0
 	github.com/foxcpp/go-mtasts v0.0.0-20261026071820-d380f1fa8aa1
 	github.com/go-ldap/ldap/v3 v3.4.14
@@ -56,8 +56,8 @@ require (
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/net v0.59.0
-	golang.org/x/sync v0.23.0
-	golang.org/x/text v0.42.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.60.1
 )
 
@@ -104,7 +104,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.20.1 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mailru/easyjson v0.9.2 // indirect
