@@ -468,9 +468,6 @@ func (s *Session) Data(r io.Reader) error {
 		if err := buf.Remove(); err != nil {
 			s.log.Error("failed to remove buffered body", err)
 		}
-
-		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
@@ -486,6 +483,8 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	s.cleanSession()
 
 	return nil
 }
@@ -519,9 +518,6 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		if err := buf.Remove(); err != nil {
 			s.log.Error("failed to remove buffered body", err)
 		}
-
-		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
@@ -537,6 +533,8 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	s.cleanSession()
 
 	return nil
 }

@@ -21,6 +21,10 @@ package msgpipeline
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
@@ -30,6 +34,109 @@ import (
 	"github.com/foxcpp/maddy/internal/modify"
 	"github.com/foxcpp/maddy/internal/testutils"
 )
+
+type commitFailureState struct {
+	dir       string
+	count     int
+	failAbort bool
+}
+
+type commitFailureTarget struct {
+	state *commitFailureState
+	id    int
+}
+
+func (tgt *commitFailureTarget) StartDelivery(context.Context, *module.MsgMetadata, string) (module.Delivery, error) {
+	return &commitFailureDelivery{target: tgt}, nil
+}
+
+type commitFailureDelivery struct{ target *commitFailureTarget }
+
+func (d *commitFailureDelivery) path() string {
+	return filepath.Join(d.target.state.dir, strconv.Itoa(d.target.id))
+}
+func (*commitFailureDelivery) AddRcpt(context.Context, string, smtp.RcptOptions) error { return nil }
+func (d *commitFailureDelivery) Body(context.Context, textproto.Header, buffer.Buffer) error {
+	return os.WriteFile(d.path(), []byte("staged"), 0600)
+}
+func (d *commitFailureDelivery) Commit(context.Context) error {
+	d.target.state.count++
+	if d.target.state.count == 2 {
+		return errors.New("commit failed")
+	}
+	return os.Rename(d.path(), d.path()+"-committed")
+}
+func (d *commitFailureDelivery) Abort(context.Context) error {
+	if d.target.state.failAbort {
+		d.target.state.failAbort = false
+		return errors.New("temporary abort failure")
+	}
+	return os.Remove(d.path())
+}
+
+func TestAbortCanRetryFailedCleanup(t *testing.T) {
+	state := &commitFailureState{dir: t.TempDir(), failAbort: true}
+	target := &commitFailureTarget{state: state, id: 1}
+	p := Mock(target, nil)
+	p.Log = testutils.Logger(t, "pipeline")
+	ctx := context.Background()
+	d, err := p.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "sender@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.AddRcpt(ctx, "user@example.com", smtp.RcptOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Body(ctx, textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("body")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Abort(ctx); err == nil {
+		t.Fatal("expected first abort to fail")
+	}
+	if err := d.Abort(ctx); err != nil {
+		t.Fatalf("retry abort: %v", err)
+	}
+	entries, err := os.ReadDir(state.dir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("retry did not clean staged data: %v, %v", entries, err)
+	}
+}
+
+func TestCommitFailureAbortsOnlyUncommittedTargets(t *testing.T) {
+	state := &commitFailureState{dir: t.TempDir()}
+	targets := []module.DeliveryTarget{
+		&commitFailureTarget{state: state, id: 1},
+		&commitFailureTarget{state: state, id: 2},
+	}
+	p := MsgPipeline{
+		msgpipelineCfg: msgpipelineCfg{defaultSource: sourceBlock{defaultRcpt: &rcptBlock{targets: targets}}},
+		Log:            testutils.Logger(t, "pipeline"),
+	}
+	ctx := context.Background()
+	d, err := p.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "sender@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.AddRcpt(ctx, "user@example.com", smtp.RcptOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Body(ctx, textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("body")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Commit(ctx); err == nil {
+		t.Fatal("expected second commit to fail")
+	}
+	if err := d.Abort(ctx); err != nil {
+		t.Fatalf("abort after commit failure: %v", err)
+	}
+	entries, err := os.ReadDir(state.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || !strings.HasSuffix(entries[0].Name(), "-committed") {
+		t.Fatalf("unexpected committed and staged data: %v", entries)
+	}
+}
 
 func TestMsgPipeline_AllToTarget(t *testing.T) {
 	target := testutils.Target{}
