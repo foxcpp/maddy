@@ -200,13 +200,11 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 		}
 
 		endp.listeners = append(endp.listeners, l)
-		endp.listenersWg.Add(1)
-		go func() {
-			defer endp.listenersWg.Done()
-			if err := endp.serv.Serve(l); err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+		endp.listenersWg.Go(func() {
+			if err := endp.serv.Serve(l); err != nil && !errors.Is(err, net.ErrClosed) {
 				endp.log.Printf("imap: failed to serve %s: %s", addr, err)
 			}
-		}()
+		})
 	}
 
 	return nil

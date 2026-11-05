@@ -480,7 +480,7 @@ func TestQueueDelivery_RetryDelayIncreases(t *testing.T) {
 	header := textproto.Header{}
 	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
 
-	var delays []time.Duration
+	delays := make([]time.Duration, 0, attempts)
 	for i := range attempts {
 		q.tryDelivery(context.Background(), meta, header, body)
 

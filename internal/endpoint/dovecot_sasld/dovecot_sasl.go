@@ -19,10 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dovecotsasld
 
 import (
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/emersion/go-sasl"
@@ -116,15 +116,12 @@ func (endp *Endpoint) Start() error {
 		}
 
 		endp.log.Printf("listening on %v", l.Addr())
-		endp.listenersWg.Add(1)
-		go func() {
-			defer endp.listenersWg.Done()
-			if err := endp.srv.Serve(l); err != nil {
-				if !strings.HasSuffix(err.Error(), "use of closed network connection") {
-					endp.log.Printf("failed to serve %v: %v", l.Addr(), err)
-				}
+		endp.listenersWg.Go(func() {
+			//nolint:staticcheck // SA4023: Serve always returns err.
+			if err := endp.srv.Serve(l); err != nil && !errors.Is(err, net.ErrClosed) {
+				endp.log.Printf("failed to serve %v: %v", l.Addr(), err)
 			}
-		}()
+		})
 	}
 	return nil
 }
