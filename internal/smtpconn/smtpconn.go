@@ -192,25 +192,17 @@ func (c *C) wrapNetErr(err error, opErr *net.OpError) error {
 // Connect actually estabilishes the network connection with the remote host,
 // executes HELO/EHLO and optionally STARTTLS command.
 func (c *C) Connect(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
-	didTLS, cl, conn, err := c.attemptConnect(ctx, false, endp, starttls, tlsConfig)
-	if err != nil {
-		return false, c.wrapClientErr(err, endp.Host)
-	}
-
-	c.serverName = endp.Host
-	c.cl = cl
-	c.conn = conn
-
-	c.Log.DebugMsg("connected", "remote_server", c.serverName,
-		"local_addr", c.LocalAddr(), "remote_addr", c.RemoteAddr())
-
-	return didTLS, nil
+	return c.connect(ctx, endp, false, starttls, tlsConfig)
 }
 
 // ConnectLMTP estabilishes the network connection with the remote host and
 // sends LHLO command, negotiating LMTP use.
 func (c *C) ConnectLMTP(ctx context.Context, endp config.Endpoint, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
-	didTLS, cl, conn, err := c.attemptConnect(ctx, true, endp, starttls, tlsConfig)
+	return c.connect(ctx, endp, true, starttls, tlsConfig)
+}
+
+func (c *C) connect(ctx context.Context, endp config.Endpoint, lmtp, starttls bool, tlsConfig *tls.Config) (didTLS bool, err error) {
+	didTLS, cl, conn, err := c.attemptConnect(ctx, lmtp, endp, starttls, tlsConfig)
 	if err != nil {
 		return false, c.wrapClientErr(err, endp.Host)
 	}
@@ -490,6 +482,25 @@ func (c *C) smtpToLMTPData(ctx context.Context, hdr textproto.Header, body io.Re
 	return nil
 }
 
+func (c *C) lmtpToSMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, statusCb func(string, *smtp.SMTPError)) error {
+	err := c.Data(ctx, hdr, body)
+	if err != nil {
+		var smtpErr *smtp.SMTPError
+		if errors.As(err, &smtpErr) {
+			for _, rcpt := range c.rcpts {
+				statusCb(rcpt, smtpErr)
+			}
+		} else {
+			return c.wrapClientErr(err, c.serverName)
+		}
+	}
+
+	for _, rcpt := range c.rcpts {
+		statusCb(rcpt, nil)
+	}
+	return nil
+}
+
 // Data sends the DATA command to the remote server and then sends the message header
 // and body.
 //
@@ -502,44 +513,61 @@ func (c *C) Data(ctx context.Context, hdr textproto.Header, body io.Reader) erro
 		return c.smtpToLMTPData(ctx, hdr, body)
 	}
 
-	wc, err := c.cl.Data()
+	cmd, err := c.cl.Data()
 	if err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if err := textproto.WriteHeader(wc, hdr); err != nil {
+	if err := textproto.WriteHeader(cmd, hdr); err != nil {
+		return c.wrapClientErr(err, c.serverName)
+	}
+	if _, err := io.Copy(cmd, body); err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if _, err := io.Copy(wc, body); err != nil {
+	status, err := cmd.CloseWithResponse()
+	if err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if err := wc.Close(); err != nil {
-		return c.wrapClientErr(err, c.serverName)
-	}
-
+	c.Log.Msg("SMTP accepted", "status_text", status.StatusText)
 	return nil
 }
 
 func (c *C) LMTPData(ctx context.Context, hdr textproto.Header, body io.Reader, statusCb func(string, *smtp.SMTPError)) error {
 	defer trace.StartRegion(ctx, "smtpconn/LMTPDATA").End()
 
-	wc, err := c.cl.LMTPData(statusCb)
+	if !c.IsLMTP() {
+		return c.lmtpToSMTPData(ctx, hdr, body, statusCb)
+	}
+
+	cmd, err := c.cl.Data()
 	if err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if err := textproto.WriteHeader(wc, hdr); err != nil {
+	if err := textproto.WriteHeader(cmd, hdr); err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if _, err := io.Copy(wc, body); err != nil {
+	if _, err := io.Copy(cmd, body); err != nil {
 		return c.wrapClientErr(err, c.serverName)
 	}
 
-	if err := wc.Close(); err != nil {
-		return c.wrapClientErr(err, c.serverName)
+	statuses, err := cmd.CloseWithLMTPResponse()
+	if err != nil {
+		var lmtpErr smtp.LMTPDataError
+		if errors.As(err, &lmtpErr) {
+			for rcpt, rcptErr := range lmtpErr {
+				statusCb(rcpt, rcptErr)
+			}
+		} else {
+			return c.wrapClientErr(err, c.serverName)
+		}
+	}
+	for rcpt, status := range statuses {
+		c.Log.Msg("LMTP accepted", "rcpt", rcpt, "status_text", status)
+		statusCb(rcpt, nil)
 	}
 
 	return nil

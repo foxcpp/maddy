@@ -800,19 +800,15 @@ func TestLMTPFailedDeliveryCleansStagedData(t *testing.T) {
 	if err := cl.Rcpt("rcpt@example.com", nil); err != nil {
 		t.Fatal(err)
 	}
-	var status *smtp.SMTPError
-	w, err := cl.LMTPData(func(_ string, err *smtp.SMTPError) { status = err })
+	w, err := cl.Data()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := w.Write([]byte(testMsg)); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if status == nil {
-		t.Fatal("expected LMTP delivery failure")
+	if err := w.Close(); err == nil {
+		t.Fatal("expected DATA failure")
 	}
 	if err := cl.Noop(); err != nil {
 		t.Fatal(err)

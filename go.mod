@@ -14,7 +14,7 @@ require (
 	github.com/emersion/go-milter v0.5.0
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
-	github.com/emersion/go-smtp v0.25.0
+	github.com/emersion/go-smtp v0.25.1
 	github.com/foxcpp/go-dovecot-sasl v0.0.0-20260517233401-20345a80f5bc
 	github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
@@ -167,7 +167,7 @@ require (
 
 replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20220623182312-df940c324887
 
-replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v1.21.4-0.20250124171104-c8519ae4fb23 // v1.21.3+maddy.1
+replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v0.25.2-0.20261105091848-78665b3182cc // v0.25.1+maddy.1
 
 replace github.com/libdns/gandi => github.com/foxcpp/libdns-gandi v1.2.2-0.20261105062312-a1407be551a8 // v1.2.1+maddy.1
 
