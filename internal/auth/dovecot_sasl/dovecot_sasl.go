@@ -146,8 +146,19 @@ func (a *Auth) AuthPlain(username, password string) error {
 
 		// Pretend it is SMTPS even though we really don't know.
 		// We also have no connection information to pass to the server...
-		return cl.Do("SMTP", sasl.NewPlainClient("", username, password),
-			dovecotsasl.Secured, dovecotsasl.NoPenalty)
+		resp, err := cl.Do("SMTP", sasl.NewPlainClient("", username, password),
+			dovecotsasl.ParamSecured(dovecotsasl.SecuredTLS),
+			dovecotsasl.ParamNoPenalty,
+		)
+		if err != nil {
+			return err
+		}
+		a.log.DebugMsg("authentication data from dovecot",
+			"userid", resp.UserID,
+			"req_id", resp.RequestID,
+			"extra", resp.Extra,
+		)
+		return nil
 	}
 	if _, ok := a.mechanisms[sasl.Login]; ok {
 		cl, err := a.getConn()
@@ -156,8 +167,16 @@ func (a *Auth) AuthPlain(username, password string) error {
 		}
 		defer a.returnConn(cl)
 
-		return cl.Do("SMTP", sasl.NewLoginClient(username, password),
-			dovecotsasl.Secured, dovecotsasl.NoPenalty)
+		resp, err := cl.Do("SMTP", sasl.NewLoginClient(username, password),
+			dovecotsasl.ParamSecured(dovecotsasl.SecuredTLS), dovecotsasl.ParamNoPenalty)
+		if err != nil {
+			return err
+		}
+		a.log.DebugMsg("authentication data from dovecot",
+			"userid", resp.UserID,
+			"req_id", resp.RequestID,
+			"extra", resp.Extra,
+		)
 	}
 
 	return auth.ErrUnsupportedMech

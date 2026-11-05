@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -370,13 +371,11 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 
 		endp.listeners = append(endp.listeners, l)
 
-		endp.listenersWg.Add(1)
-		go func() {
-			if err := endp.serv.Serve(l); err != nil {
+		endp.listenersWg.Go(func() {
+			if err := endp.serv.Serve(l); err != nil && errors.Is(err, net.ErrClosed) {
 				endp.log.Printf("failed to serve %s: %s", addr, err)
 			}
-			endp.listenersWg.Done()
-		}()
+		})
 	}
 
 	return nil

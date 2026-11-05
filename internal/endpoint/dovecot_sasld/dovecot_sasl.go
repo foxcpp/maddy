@@ -86,13 +86,16 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
+		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq, cb dovecotsasl.FuncSASLCallback) sasl.Server {
 			var remoteAddr net.Addr
 			if req.RemoteIP != nil && req.RemotePort != 0 {
 				remoteAddr = &net.TCPAddr{IP: req.RemoteIP, Port: int(req.RemotePort)}
 			}
 
-			return endp.saslAuth.CreateSASL(mech, remoteAddr, func(_ string, _ auth.ContextData) error { return nil })
+			return endp.saslAuth.CreateSASL(mech, remoteAddr, func(identity string, _ auth.ContextData) error {
+				cb(identity, nil)
+				return nil
+			})
 		})
 	}
 
