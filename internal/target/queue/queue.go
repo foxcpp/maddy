@@ -192,7 +192,7 @@ type queueSlot struct {
 func New(c *container.C, modName, instName string) (module.Module, error) {
 	q := &Queue{
 		name:             instName,
-		initialRetryTime: 15 * time.Minute,
+		initialRetryTime: 5 * time.Minute,
 		retryTimeScale:   1.25,
 		postInitDelay:    10 * time.Second,
 		log:              c.DefaultLogger.Sublogger(modName),

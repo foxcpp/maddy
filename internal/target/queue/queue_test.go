@@ -472,7 +472,7 @@ func TestQueueDelivery_RetryDelayIncreases(t *testing.T) {
 	q := newTestQueue(t, &dt)
 	defer cleanQueue(t, q)
 
-	q.initialRetryTime = 15 * time.Minute
+	q.initialRetryTime = 5 * time.Minute
 	q.retryTimeScale = 1.25
 	q.maxTries = 20
 
