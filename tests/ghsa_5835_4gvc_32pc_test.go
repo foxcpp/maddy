@@ -4,6 +4,7 @@ package tests_test
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +22,8 @@ type MockLDAP struct {
 	T             *testing.T
 	SearchEntries map[string][]searchEntry
 	AllowedBinds  map[string]string
+	bindMu        sync.Mutex
+	bindUsers     []string
 }
 
 func (ml *MockLDAP) HandleBind(w *gldap.ResponseWriter, r *gldap.Request) {
@@ -33,6 +36,9 @@ func (ml *MockLDAP) HandleBind(w *gldap.ResponseWriter, r *gldap.Request) {
 		require.NoError(ml.T, w.Write(resp))
 		return
 	}
+	ml.bindMu.Lock()
+	ml.bindUsers = append(ml.bindUsers, m.UserName)
+	ml.bindMu.Unlock()
 
 	pass, ok := ml.AllowedBinds[m.UserName]
 	if ok && pass == string(m.Password) {
@@ -41,6 +47,12 @@ func (ml *MockLDAP) HandleBind(w *gldap.ResponseWriter, r *gldap.Request) {
 	}
 
 	require.NoError(ml.T, w.Write(resp))
+}
+
+func (ml *MockLDAP) BindCount() int {
+	ml.bindMu.Lock()
+	defer ml.bindMu.Unlock()
+	return len(ml.bindUsers)
 }
 
 func (ml *MockLDAP) HandleSearch(w *gldap.ResponseWriter, r *gldap.Request) {

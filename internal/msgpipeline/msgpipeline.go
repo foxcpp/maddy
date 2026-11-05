@@ -128,6 +128,7 @@ func (d *MsgPipeline) StartDelivery(ctx context.Context, msgMeta *module.MsgMeta
 	}
 	dd.checkRunner = newCheckRunner(msgMeta, dd.log, d.Resolver)
 	dd.checkRunner.doDMARC = d.doDMARC
+	dd.checkRunner.dmarcVerify.SetRejectInvalidFrom(d.rejectInvalidFrom)
 
 	if msgMeta.OriginalRcpts == nil {
 		msgMeta.OriginalRcpts = map[string]string{}
@@ -278,6 +279,7 @@ type msgpipelineDelivery struct {
 	deliveries  map[module.DeliveryTarget]*delivery
 	msgMeta     *module.MsgMetadata
 	checkRunner *checkRunner
+	closed      bool
 }
 
 func (dd *msgpipelineDelivery) AddRcpt(ctx context.Context, to string, opts smtp.RcptOptions) error {
@@ -507,18 +509,28 @@ func (dd *msgpipelineDelivery) BodyNonAtomic(ctx context.Context, c module.Statu
 }
 
 func (dd *msgpipelineDelivery) Commit(ctx context.Context) error {
-	dd.close()
-
-	for _, delivery := range dd.deliveries {
+	for tgt, delivery := range dd.deliveries {
 		if err := delivery.Commit(ctx); err != nil {
-			// No point in Committing remaining deliveries, everything is broken already.
+			// A failed commit leaves this and remaining targets uncommitted.
+			// Previously committed targets must not be aborted.
+			if abortErr := dd.Abort(ctx); abortErr != nil {
+				dd.log.Error("failed to abort delivery after commit failure", abortErr)
+			}
 			return err
 		}
+		delete(dd.deliveries, tgt)
 	}
+
+	dd.close()
+
 	return nil
 }
 
 func (dd *msgpipelineDelivery) close() {
+	if dd.closed {
+		return
+	}
+	dd.closed = true
 	dd.checkRunner.close()
 
 	if dd.globalModifiersState != nil {
@@ -542,12 +554,14 @@ func (dd *msgpipelineDelivery) Abort(ctx context.Context) error {
 	dd.close()
 
 	var lastErr error
-	for _, delivery := range dd.deliveries {
+	for tgt, delivery := range dd.deliveries {
 		if err := delivery.Abort(ctx); err != nil {
 			dd.log.Debugf("delivery.Abort failure, Delivery object = %T: %v", delivery, err)
 			lastErr = err
 			// Continue anyway and try to Abort all remaining delivery objects.
+			continue
 		}
+		delete(dd.deliveries, tgt)
 	}
 	return lastErr
 }

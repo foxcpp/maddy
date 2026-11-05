@@ -20,7 +20,6 @@ package dmarc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/mail"
@@ -38,6 +37,8 @@ import (
 // It returns the record and the domain it was found with (may not be
 // equal to the RFC5322.From domain).
 func FetchRecord(ctx context.Context, r Resolver, fromDomain string) (policyDomain string, rec *Record, err error) {
+	fromDomain, _ = dns.ForLookupASCII(fromDomain)
+
 	policyDomain = fromDomain
 
 	// 1. Lookup using From Domain.
@@ -116,6 +117,9 @@ type EvalResult struct {
 // a bunch of other trace information that can be useful for troubleshooting
 // (and also report generation).
 func EvaluateAlignment(fromDomain string, record *Record, results []authres.Result) EvalResult {
+	// RFC 7489 6.6.1 Requires A-labels for any matching or comparisons.
+	fromDomain, _ = dns.ForLookupASCII(fromDomain)
+
 	var (
 		spfAligned   = false
 		spfResult    = authres.SPFResult{}
@@ -145,12 +149,17 @@ func EvaluateAlignment(fromDomain string, record *Record, results []authres.Resu
 		}
 		if spfRes, ok := res.(*authres.SPFResult); ok {
 			spfResult = *spfRes
-			var aligned bool
+
+			var spfDomain string
+			// Should be in A-labels already, but normalize just in case.
 			if spfRes.From == "" {
-				aligned = isAligned(fromDomain, spfRes.Helo, record.SPFAlignment)
+				spfDomain, _ = dns.ForLookupASCII(spfRes.Helo)
 			} else {
-				aligned = isAligned(fromDomain, spfRes.From, record.SPFAlignment)
+				spfDomain, _ = dns.ForLookupASCII(spfRes.From)
 			}
+
+			aligned := isAligned(fromDomain, spfDomain, record.SPFAlignment)
+
 			if aligned && spfRes.Value == authres.ResultPass {
 				spfAligned = true
 			}
@@ -230,26 +239,26 @@ func ExtractFromDomain(hdr textproto.Header) (string, error) {
 		if firstFrom == "" {
 			firstFrom = fields.Value()
 		} else {
-			return "", errors.New("dmarc: multiple From header fields are not allowed")
+			return "", fmt.Errorf("%w: multiple From header fields are not allowed", ErrNoAuthorDomain)
 		}
 	}
 	if firstFrom == "" {
-		return "", errors.New("dmarc: missing From header field")
+		return "", fmt.Errorf("%w: missing From header field", ErrNoAuthorDomain)
 	}
 
 	hdrFromList, err := mail.ParseAddressList(firstFrom)
 	if err != nil {
-		return "", fmt.Errorf("dmarc: malformed From header field: %s", strings.TrimPrefix(err.Error(), "mail: "))
+		return "", fmt.Errorf("%w: malformed From header field: %s", ErrNoAuthorDomain, strings.TrimPrefix(err.Error(), "mail: "))
 	}
 	if len(hdrFromList) > 1 {
-		return "", errors.New("dmarc: multiple addresses in From field are not allowed")
+		return "", fmt.Errorf("%w: multiple addresses in From field are not allowed", ErrNoAuthorDomain)
 	}
 	if len(hdrFromList) == 0 {
-		return "", errors.New("dmarc: missing address in From field")
+		return "", fmt.Errorf("%w: missing address in From field", ErrNoAuthorDomain)
 	}
 	_, domain, err := address.Split(hdrFromList[0].Address)
 	if err != nil {
-		return "", fmt.Errorf("dmarc: malformed From header field: %w", err)
+		return "", fmt.Errorf("%w: malformed From header field: %w", ErrNoAuthorDomain, err)
 	}
 
 	return domain, nil

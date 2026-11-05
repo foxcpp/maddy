@@ -60,6 +60,20 @@ func userDoesNotExist(actual error) error {
 	}
 }
 
+func (d *delivery) wrapErr(err error) error {
+	var serializationError imapsql.SerializationError
+	if errors.Is(err, imapsql.ErrDeliveryInterrupted) || errors.As(err, &serializationError) {
+		return &exterrors.SMTPError{
+			Code:         453,
+			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
+			Message:      "Internal server error, try again later",
+			TargetName:   "imapsql",
+			Err:          err,
+		}
+	}
+	return err
+}
+
 func (d *delivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOptions) error {
 	defer trace.StartRegion(ctx, "sql/AddRcpt").End()
 
@@ -82,17 +96,7 @@ func (d *delivery) AddRcpt(ctx context.Context, rcptTo string, _ smtp.RcptOption
 		if errors.Is(err, imapsql.ErrUserDoesntExists) || errors.Is(err, backend.ErrNoSuchMailbox) {
 			return userDoesNotExist(err)
 		}
-		var serializationError imapsql.SerializationError
-		if errors.As(err, &serializationError) {
-			return &exterrors.SMTPError{
-				Code:         453,
-				EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-				Message:      "Internal server error, try again later",
-				TargetName:   "imapsql",
-				Err:          err,
-			}
-		}
-		return err
+		return d.wrapErr(err)
 	}
 
 	d.addedRcpts[accountName] = addedRcpt{
@@ -117,46 +121,27 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 
 	if d.msgMeta.Quarantine {
 		if err := d.d.SpecialMailbox(imap.JunkAttr, d.store.junkMbox); err != nil {
-			var serializationError imapsql.SerializationError
-			if errors.As(err, &serializationError) {
-				return &exterrors.SMTPError{
-					Code:         453,
-					EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-					Message:      "Internal server error, try again later",
-					TargetName:   "imapsql",
-					Err:          err,
-				}
-			}
-			return err
+			return d.wrapErr(err)
 		}
 	}
 
 	header = header.Copy()
 	header.Add("Return-Path", "<"+target.SanitizeForHeader(d.mailFrom)+">")
 	err := d.d.BodyParsed(header, body.Len(), body)
-	var serializationError imapsql.SerializationError
-	if errors.As(err, &serializationError) {
-		return &exterrors.SMTPError{
-			Code:         453,
-			EnhancedCode: exterrors.EnhancedCode{4, 3, 2},
-			Message:      "Internal server error, try again later",
-			TargetName:   "imapsql",
-			Err:          err,
-		}
-	}
-	return err
+
+	return d.wrapErr(err)
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
 	defer trace.StartRegion(ctx, "sql/Abort").End()
 
-	return d.d.Abort()
+	return d.wrapErr(d.d.Abort())
 }
 
 func (d *delivery) Commit(ctx context.Context) error {
 	defer trace.StartRegion(ctx, "sql/Commit").End()
 
-	return d.d.Commit()
+	return d.wrapErr(d.d.Commit())
 }
 
 func (store *Storage) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {

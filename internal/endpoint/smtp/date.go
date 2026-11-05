@@ -20,47 +20,52 @@ package smtp
 
 import (
 	"fmt"
+	"net/mail"
 	"regexp"
+	"strings"
 	"time"
 )
 
-// Taken from https://github.com/emersion/go-imap/blob/09c1d69/date.go.
+// dateHeaderLayout is the format used when maddy generates a Date header
+// field. It matches RFC 5322, section 3.3.
+const dateHeaderLayout = "Mon, 2 Jan 2006 15:04:05 -0700"
 
-var dateTimeLayouts = [...]string{
-	// Defined in RFC 5322 section 3.3, mentioned as env-date in RFC 3501 page 84.
-	"Mon, 02 Jan 2006 15:04:05 -0700",
-	"_2 Jan 2006 15:04:05 -0700",
-	"_2 Jan 2006 15:04:05 MST",
-	"_2 Jan 2006 15:04 -0700",
-	"_2 Jan 2006 15:04 MST",
-	"_2 Jan 06 15:04:05 -0700",
-	"_2 Jan 06 15:04:05 MST",
-	"_2 Jan 06 15:04 -0700",
-	"_2 Jan 06 15:04 MST",
-	"Mon, _2 Jan 2006 15:04:05 -0700",
-	"Mon, _2 Jan 2006 15:04:05 MST",
-	"Mon, _2 Jan 2006 15:04 -0700",
-	"Mon, _2 Jan 2006 15:04 MST",
-	"Mon, _2 Jan 06 15:04:05 -0700",
-	"Mon, _2 Jan 06 15:04:05 MST",
-	"Mon, _2 Jan 06 15:04 -0700",
-	"Mon, _2 Jan 06 15:04 MST",
-}
+// RFC 5322, section 4.3 permits a single letter military time zone in
+// // obsolete messages.
+var militaryZoneRE = regexp.MustCompile(`(?i)\s([A-IK-Z])(\s*\(.*\))?$`)
 
-// TODO: this is a blunt way to strip any trailing CFWS (comment). A sharper
-// one would strip multiple CFWS, and only if really valid according to
-// RFC5322.
-var commentRE = regexp.MustCompile(`[ \t]+\(.*\)$`)
+// RFC 5322, section 3.3 permits a leap second (60).
+var leapSecondRE = regexp.MustCompile(`(\d{2}:\d{2}):60(\s|$)`)
 
-// Try parsing the date based on the layouts defined in RFC 5322, section 3.3.
+// parseMessageDateTime tries parsing the date based on the formats defined
+// in RFC 5322, section 3.3 and the obsolete syntax from section 4.3.
 // Inspired by https://github.com/golang/go/blob/master/src/net/mail/message.go
 func parseMessageDateTime(maybeDate string) (time.Time, error) {
-	maybeDate = commentRE.ReplaceAllString(maybeDate, "")
-	for _, layout := range dateTimeLayouts {
-		parsed, err := time.Parse(layout, maybeDate)
-		if err == nil {
-			return parsed, nil
-		}
+	if parsed, err := mail.ParseDate(maybeDate); err == nil {
+		return parsed, nil
 	}
+
+	// net/mail.ParseDate does not implement every obsolete form that RFC 5322
+	// requires parsers to accept. Normalize the missing pieces and retry.
+	if parsed, err := mail.ParseDate(normalizeObsoleteDate(maybeDate)); err == nil {
+		return parsed, nil
+	}
+
 	return time.Time{}, fmt.Errorf("date %s could not be parsed", maybeDate)
+}
+
+func normalizeObsoleteDate(date string) string {
+	// RFC 5322 syntax is case-insensitive, but net/mail only recognizes
+	// upper-case zone abbreviations.
+	date = strings.ToUpper(date)
+
+	// time.Time cannot represent a leap second, so parse it as the last
+	// representable second of the minute.
+	date = leapSecondRE.ReplaceAllString(date, "${1}:59${2}")
+
+	// Military time zones SHOULD be treated as -0000 unless there is
+	// out-of-band information about their meaning (RFC 5322, section 4.3).
+	date = militaryZoneRE.ReplaceAllString(date, " -0000${2}")
+
+	return date
 }

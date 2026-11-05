@@ -192,7 +192,7 @@ type queueSlot struct {
 func New(c *container.C, modName, instName string) (module.Module, error) {
 	q := &Queue{
 		name:             instName,
-		initialRetryTime: 15 * time.Minute,
+		initialRetryTime: 5 * time.Minute,
 		retryTimeScale:   1.25,
 		postInitDelay:    10 * time.Second,
 		log:              c.DefaultLogger.Sublogger(modName),
@@ -383,6 +383,12 @@ func toSMTPErr(err error) *smtp.SMTPError {
 	return res
 }
 
+// retryDelay returns the delay before the next delivery attempt after the
+// given number of attempts were made.
+func (q *Queue) retryDelay(triesCount int) time.Duration {
+	return time.Duration(float64(q.initialRetryTime) * math.Pow(q.retryTimeScale, float64(triesCount-1)))
+}
+
 func (q *Queue) tryDelivery(ctx context.Context, meta *QueueMetadata, header textproto.Header, body buffer.Buffer) {
 	dl := target.DeliveryLogger(q.log, meta.MsgMeta)
 
@@ -448,12 +454,10 @@ func (q *Queue) tryDelivery(ctx context.Context, meta *QueueMetadata, header tex
 		dl.Error("meta-data update", err)
 	}
 
-	nextTryTime := time.Now()
-	// Delay between retries grows exponentally, the formula is:
+	// Delay between retries grows exponentially, the formula is:
 	// initialRetryTime * retryTimeScale ^ (smallestTriesCount - 1)
 	dl.Debugf("delay: %v * %v ^ (%v - 1)", q.initialRetryTime, q.retryTimeScale, smallestTriesCount)
-	scaleFactor := time.Duration(math.Pow(q.retryTimeScale, float64(smallestTriesCount-1)))
-	nextTryTime = nextTryTime.Add(q.initialRetryTime * scaleFactor)
+	nextTryTime := time.Now().Add(q.retryDelay(smallestTriesCount))
 	dl.Msg("will retry",
 		"attempts_count", meta.TriesCount,
 		"next_try_delay", time.Until(nextTryTime),
@@ -728,9 +732,7 @@ func (q *Queue) readDiskQueue() error {
 				smallestTriesCount = count
 			}
 		}
-		nextTryTime := meta.LastAttempt
-		scaleFactor := time.Duration(math.Pow(q.retryTimeScale, float64(smallestTriesCount-1)))
-		nextTryTime = nextTryTime.Add(q.initialRetryTime * scaleFactor)
+		nextTryTime := meta.LastAttempt.Add(q.retryDelay(smallestTriesCount))
 
 		if time.Until(nextTryTime) < q.postInitDelay {
 			nextTryTime = time.Now().Add(q.postInitDelay)

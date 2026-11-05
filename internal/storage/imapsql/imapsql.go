@@ -237,7 +237,7 @@ func (store *Storage) Configure(inlineArgs []string, cfg *config.Map) error {
 	opts.Log = store.log
 
 	if appendlimitVal == -1 {
-		opts.MaxMsgBytes = nil
+		return errors.New("imapsql: disabling appendlimit is no longer supported for legacy v1 backends")
 	} else {
 		// int is 32-bit on some platforms, so cut off values we can't actually
 		// use.

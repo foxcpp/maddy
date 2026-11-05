@@ -6,7 +6,6 @@ package libdns
 import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/container"
-	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/libdns/namedotcom"
@@ -21,7 +20,6 @@ func init() {
 			RecordDeleter:  &p,
 			RecordAppender: &p,
 			setConfig: func(c *config.Map) {
-				log.DefaultLogger.Println("WARNING: maddy 0.10.0 will drop libdns.namedotcom, see https://github.com/foxcpp/maddy/issues/807 for details")
 				c.String("user", false, false, "", &p.User)
 				c.String("token", false, false, "", &p.Token)
 			},

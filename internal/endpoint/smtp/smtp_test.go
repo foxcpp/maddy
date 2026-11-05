@@ -19,18 +19,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package smtp
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/exterrors"
@@ -634,6 +639,58 @@ func TestSMTPDelivery_SubmissionAuthOK(t *testing.T) {
 	}
 }
 
+func TestSMTPDelivery_SubmissionConfiguredLargeMessageSize(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "submission", &modules.Dummy{}, &tgt, nil, []config.Node{
+		{Name: "max_message_size", Args: []string{"50M"}},
+	})
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+	gotSize, sizeParam := cl.Extension("SIZE")
+	require.True(t, gotSize, "server did not advertise the SIZE extension")
+	assert.Equal(t, "52428800", sizeParam)
+	require.NoError(t, cl.Auth(sasl.NewPlainClient("", "user", "password")))
+
+	// An attachment around 30 MiB is sent as roughly 40 MiB of base64 data.
+	// Use short lines so the test exercises the message-size limit, not the
+	// independent SMTP line-length limit.
+	line := strings.Repeat("x", 3998) + "\r\n"
+	msg := testMsg + strings.Repeat(line, (40*1024*1024)/len(line))
+	require.NoError(t, submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.org"}, msg))
+	require.Len(t, tgt.Messages, 1)
+}
+
+func TestSMTPDelivery_MaxMessageSizeError(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, []config.Node{
+		{Name: "max_message_size", Args: []string{"128b"}},
+	})
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+
+	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.org"}, testMsg+strings.Repeat("x", 128))
+	require.Error(t, err)
+
+	smtpErr, ok := err.(*smtp.SMTPError)
+	require.True(t, ok, "expected an SMTP error, got %T: %v", err, err)
+	assert.Equal(t, 552, smtpErr.Code)
+	assert.True(t, strings.HasPrefix(smtpErr.Message, "Maximum message size exceeded"), smtpErr.Message)
+}
+
 func TestMain(m *testing.M) {
 	remoteSmtpPort := flag.String("test.smtpport", "random", "(maddy) SMTP port to use for connections in tests")
 	flag.Parse()
@@ -644,4 +701,139 @@ func TestMain(m *testing.M) {
 
 	testPort = *remoteSmtpPort
 	os.Exit(m.Run())
+}
+
+type stagedFailureTarget struct {
+	hasUncleanData atomic.Bool
+	stage          string
+}
+
+func (tgt *stagedFailureTarget) StartDelivery(_ context.Context, _ *module.MsgMetadata, _ string) (module.Delivery, error) {
+	return &stagedFailureDelivery{target: tgt}, nil
+}
+
+type stagedFailureDelivery struct{ target *stagedFailureTarget }
+
+func (d *stagedFailureDelivery) AddRcpt(context.Context, string, smtp.RcptOptions) error { return nil }
+func (d *stagedFailureDelivery) Body(_ context.Context, _ textproto.Header, _ buffer.Buffer) error {
+	d.target.hasUncleanData.Store(true)
+	if d.target.stage == "body" {
+		return errors.New("body failed")
+	}
+	return nil
+}
+func (d *stagedFailureDelivery) Commit(context.Context) error {
+	if d.target.stage == "commit" {
+		return errors.New("commit failed")
+	}
+	return nil
+}
+func (d *stagedFailureDelivery) Abort(context.Context) error {
+	d.target.hasUncleanData.Store(false)
+	return nil
+}
+
+func TestSMTPFailedDeliveryCleansStagedData(t *testing.T) {
+	for _, stage := range []string{"body", "commit"} {
+		t.Run(stage, func(t *testing.T) {
+			tgt := &stagedFailureTarget{stage: stage}
+			endp := testEndpoint(t, "smtp", nil, tgt, nil, nil)
+			defer func() { assert.NoError(t, endp.Stop()) }()
+			cl, err := smtp.Dial("127.0.0.1:" + testPort)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { assert.NoError(t, cl.Close()) }()
+			if err := submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.com"}, testMsg); err == nil {
+				t.Fatal("expected delivery to fail")
+			}
+			// go-smtp resets the transaction after writing the DATA reply.
+			// A subsequent command ensures that reset has completed.
+			if err := cl.Noop(); err != nil {
+				t.Fatal(err)
+			}
+			if tgt.hasUncleanData.Load() {
+				t.Fatalf("unclean data still exists after failure: %v", err)
+			}
+		})
+	}
+}
+
+func TestSMTPFailedDataRemainsPendingUntilReset(t *testing.T) {
+	tgt := &stagedFailureTarget{stage: "body"}
+	endp := testEndpoint(t, "smtp", nil, tgt, nil, nil)
+	defer func() { assert.NoError(t, endp.Stop()) }()
+	endp.pipeline.FirstPipeline = false
+	s := endp.newSession(nil)
+	s.connState.RemoteAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	if err := s.Mail("sender@example.org", &smtp.MailOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Rcpt("rcpt@example.com", &smtp.RcptOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Data(strings.NewReader(testMsg)); err == nil {
+		t.Fatal("expected DATA failure")
+	}
+	if !tgt.hasUncleanData.Load() {
+		t.Fatal("failed DATA cleaned up before Reset")
+	}
+	s.Reset()
+	if tgt.hasUncleanData.Load() {
+		t.Fatal("Reset did not abort the failed delivery")
+	}
+}
+
+func TestLMTPFailedDeliveryCleansStagedData(t *testing.T) {
+	tgt := &stagedFailureTarget{stage: "commit"}
+	endp := testEndpoint(t, "lmtp", nil, tgt, nil, nil)
+	defer func() { assert.NoError(t, endp.Stop()) }()
+	conn, err := net.Dial("tcp", "127.0.0.1:"+testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := smtp.NewClientLMTP(conn)
+	defer func() { assert.NoError(t, cl.Close()) }()
+	if err := cl.Mail("sender@example.org", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Rcpt("rcpt@example.com", nil); err != nil {
+		t.Fatal(err)
+	}
+	w, err := cl.Data()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte(testMsg)); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err == nil {
+		t.Fatal("expected DATA failure")
+	}
+	if err := cl.Noop(); err != nil {
+		t.Fatal(err)
+	}
+	if tgt.hasUncleanData.Load() {
+		t.Fatal("LMTP reset did not clean staged data")
+	}
+}
+
+func TestSMTPResetDoesNotAbortCommittedDelivery(t *testing.T) {
+	tgt := &stagedFailureTarget{}
+	endp := testEndpoint(t, "smtp", nil, tgt, nil, nil)
+	defer func() { assert.NoError(t, endp.Stop()) }()
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { assert.NoError(t, cl.Close()) }()
+	if err := submitMsg(t, cl, "sender@example.org", []string{"rcpt@example.com"}, testMsg); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Noop(); err != nil {
+		t.Fatal(err)
+	}
+	if !tgt.hasUncleanData.Load() {
+		t.Fatal("Reset aborted the committed delivery")
+	}
 }

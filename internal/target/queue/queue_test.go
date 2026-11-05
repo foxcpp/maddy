@@ -236,6 +236,30 @@ func checkQueueDir(t *testing.T, q *Queue, expectedIDs []string) {
 	}
 }
 
+func newTestQueueMetadata(rcpts ...string) *QueueMetadata {
+	return &QueueMetadata{
+		MsgMeta:      &module.MsgMetadata{ID: "test-msg"},
+		From:         "tester@example.com",
+		To:           rcpts,
+		RcptErrs:     map[string]*smtp.SMTPError{},
+		TriesCount:   map[string]int{},
+		FirstAttempt: time.Now(),
+		LastAttempt:  time.Now(),
+	}
+}
+
+// pendingRetries returns all deliveries scheduled in the time wheel.
+func pendingRetries(q *Queue) []TimeSlot[queueSlot] {
+	q.wheel.slotsLock.Lock()
+	defer q.wheel.slotsLock.Unlock()
+
+	slots := make([]TimeSlot[queueSlot], 0, q.wheel.slots.Len())
+	for el := q.wheel.slots.Front(); el != nil; el = el.Next() {
+		slots = append(slots, el.Value.(TimeSlot[queueSlot]))
+	}
+	return slots
+}
+
 func TestQueueDelivery(t *testing.T) {
 	t.Parallel()
 
@@ -400,6 +424,76 @@ func TestQueueDelivery_MultipleAttempts(t *testing.T) {
 	require.NoError(t, q.Stop())
 	// No more retries should be scheduled.
 	checkQueueDir(t, q, []string{})
+}
+
+func TestQueueDelivery_MaxTriesReduced(t *testing.T) {
+	t.Parallel()
+
+	dt := unreliableTarget{
+		bodyFailures: []error{
+			exterrors.WithTemporary(errors.New("still unreachable"), true),
+		},
+		aborted: make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	// Keep the retry far enough in the future so the time wheel does not
+	// dispatch it before we can inspect the scheduled retries.
+	q.initialRetryTime = time.Hour
+	q.maxTries = 8
+
+	// Simulate a message that already had 10 attempts before max_tries was
+	// reduced to 8.
+	meta := newTestQueueMetadata("tester1@example.org")
+	meta.TriesCount["tester1@example.org"] = 10
+
+	q.tryDelivery(context.Background(), meta, textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("foobar\r\n")})
+
+	// The failure must be treated as permanent instead of scheduling an
+	// endless stream of retries.
+	require.Empty(t, pendingRetries(q))
+}
+
+func TestQueueDelivery_RetryDelayIncreases(t *testing.T) {
+	t.Parallel()
+
+	const attempts = 5
+	dt := unreliableTarget{
+		bodyFailures: []error{
+			exterrors.WithTemporary(errors.New("fail 1"), true),
+			exterrors.WithTemporary(errors.New("fail 2"), true),
+			exterrors.WithTemporary(errors.New("fail 3"), true),
+			exterrors.WithTemporary(errors.New("fail 4"), true),
+			exterrors.WithTemporary(errors.New("fail 5"), true),
+		},
+		aborted: make(chan testutils.Msg, 10),
+	}
+	q := newTestQueue(t, &dt)
+	defer cleanQueue(t, q)
+
+	q.initialRetryTime = 5 * time.Minute
+	q.retryTimeScale = 1.25
+	q.maxTries = 20
+
+	meta := newTestQueueMetadata("tester1@example.org")
+	header := textproto.Header{}
+	body := buffer.MemoryBuffer{Slice: []byte("foobar\r\n")}
+
+	delays := make([]time.Duration, 0, attempts)
+	for i := range attempts {
+		q.tryDelivery(context.Background(), meta, header, body)
+
+		slots := pendingRetries(q)
+		require.Len(t, slots, i+1)
+		delays = append(delays, time.Until(slots[i].Time))
+	}
+
+	for i := 1; i < len(delays); i++ {
+		require.Greater(t, delays[i], delays[i-1],
+			"retry delay after attempt %d (%v) should be greater than after attempt %d (%v)",
+			i+1, delays[i], i, delays[i-1])
+	}
 }
 
 func TestQueueDelivery_PermanentRcptReject(t *testing.T) {

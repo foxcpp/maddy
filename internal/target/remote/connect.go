@@ -164,12 +164,25 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *n
 	// Cancel async policy lookups if rd.connect fails.
 	defer cancel()
 
-	for _, p := range rd.policies {
+	for i, p := range rd.policies {
 		policyLevel, err := p.CheckMX(connCtx, mxLevel, conn.domain, record.Host, conn.dnssecOk)
 		if err != nil {
+			rd.log.Error("mx_auth policy rejected MX", err,
+				"policy", module.DisplayName(rd.rt.policies[i]),
+				"domain", conn.domain,
+				"remote_server", record.Host,
+				"effective_mx_level", mxLevel.String())
+
 			return err
 		}
 		if policyLevel > mxLevel {
+			rd.log.Msg("MX security level increased by policy",
+				"policy", module.DisplayName(rd.rt.policies[i]),
+				"domain", conn.domain,
+				"remote_server", record.Host,
+				"previous_mx_level", mxLevel.String(),
+				"mx_level", policyLevel.String())
+
 			mxLevel = policyLevel
 		}
 
@@ -187,13 +200,29 @@ func (rd *remoteDelivery) attemptMX(ctx context.Context, conn *mxConn, record *n
 	// chance to troubleshoot them without losing messages.
 
 	tlsState, _ := conn.Client().TLSConnectionState()
-	for _, p := range rd.policies {
+	for i, p := range rd.policies {
 		policyLevel, err := p.CheckConn(connCtx, mxLevel, tlsLevel, conn.domain, record.Host, tlsState)
 		if err != nil {
+			err = exterrors.WithFields(err, map[string]any{"tls_err": tlsErr})
+			rd.log.DebugMsg("mx_auth policy rejected connection",
+				"err", err,
+				"policy", module.DisplayName(rd.rt.policies[i]),
+				"domain", conn.domain,
+				"remote_server", record.Host,
+				"effective_mx_level", mxLevel.String(),
+				"effective_tls_level", tlsLevel.String())
+
 			rd.closeConn(conn)
-			return exterrors.WithFields(err, map[string]interface{}{"tls_err": tlsErr})
+			return err
 		}
 		if policyLevel > tlsLevel {
+			rd.log.Msg("TLS security level increased by mx_auth policy",
+				"policy", module.DisplayName(rd.rt.policies[i]),
+				"domain", conn.domain,
+				"remote_server", record.Host,
+				"previous_tls_level", tlsLevel.String(),
+				"tls_level", policyLevel.String())
+
 			tlsLevel = policyLevel
 		}
 	}
@@ -250,8 +279,10 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
 				Message:      "TLS it not available or unauthenticated but required (REQUIRETLS)",
-				Misc: map[string]interface{}{
-					"tls_level": conn.tlsLevel,
+				Misc: map[string]any{
+					"tls_level":     conn.tlsLevel,
+					"domain":        domain,
+					"remote_server": conn.ServerName(),
 				},
 			}
 		}
@@ -261,8 +292,10 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 				Code:         550,
 				EnhancedCode: exterrors.EnhancedCode{5, 7, 30},
 				Message:      "Failed to establish the MX record authenticity (REQUIRETLS)",
-				Misc: map[string]interface{}{
-					"mx_level": conn.mxLevel,
+				Misc: map[string]any{
+					"mx_level":      conn.mxLevel,
+					"domain":        domain,
+					"remote_server": conn.ServerName(),
 				},
 			}
 		}
@@ -286,6 +319,9 @@ func (rd *remoteDelivery) connectionForDomain(ctx context.Context, domain string
 	// the path to the MX even if it does not support the REQUIRETLS to propagate
 	// this requirement further.
 	if ok, _ := conn.Client().Extension("REQUIRETLS"); rd.rt.relaxedREQUIRETLS && !ok {
+		rd.log.Msg("reset REQUIRETLS due to relaxed_requiretls and missing extension support",
+			"domain", domain, "remote_server", conn.ServerName())
+
 		rd.msgMeta.SMTPOpts.RequireTLS = false
 	}
 

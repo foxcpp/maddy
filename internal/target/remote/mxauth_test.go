@@ -350,12 +350,12 @@ func TestRemoteDelivery_AuthMX_DNSSEC(t *testing.T) {
 	dnsSrv.PatchNet(dialer.Resolver)
 	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
 
-	extResolver, err := dns.NewExtResolver()
+	extResolver, err := dns.NewFromConfig(&dns.ClientConfig{
+		Servers: []string{addr.IP.String()}, Port: strconv.Itoa(addr.Port), Timeout: 1,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	extResolver.Cfg.Servers = []string{addr.IP.String()}
-	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, nil)
 	defer func() {
@@ -396,12 +396,12 @@ func TestRemoteDelivery_AuthMX_DNSSEC_Fail(t *testing.T) {
 	dnsSrv.PatchNet(dialer.Resolver)
 	addr := dnsSrv.LocalAddr().(*net.UDPAddr)
 
-	extResolver, err := dns.NewExtResolver()
+	extResolver, err := dns.NewFromConfig(&dns.ClientConfig{
+		Servers: []string{addr.IP.String()}, Port: strconv.Itoa(addr.Port), Timeout: 1,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	extResolver.Cfg.Servers = []string{addr.IP.String()}
-	extResolver.Cfg.Port = strconv.Itoa(addr.Port)
 
 	tgt := testTarget(t, zones, extResolver, []module.MXAuthPolicy{
 		&localPolicy{minMXLevel: module.MX_DNSSEC},

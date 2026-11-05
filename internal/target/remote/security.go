@@ -358,8 +358,9 @@ type (
 
 func NewDANEPolicy(c *container.C, modName, instName string) (module.Module, error) {
 	return &danePolicy{
-		instName: instName,
-		log:      c.DefaultLogger.Sublogger(modName),
+		instName:    instName,
+		extResolver: c.ExtResolver,
+		log:         c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -376,15 +377,13 @@ func (c *danePolicy) Weight() int {
 }
 
 func (c *danePolicy) Configure(inlineArgs []string, cfg *config.Map) error {
-	var err error
-	c.extResolver, err = dns.NewExtResolver()
-	if err != nil {
-		c.log.Error("DANE support is no-op: unable to init EDNS resolver", err)
+	if c.extResolver == nil {
+		c.log.Msg("DANE support is no-op: DNSSEC-aware resolver unavailable")
 	}
 
 	cfg.Bool("debug", true, log.DefaultLogger.Debug, &c.log.Debug)
 
-	_, err = cfg.Process()
+	_, err := cfg.Process()
 	return err
 }
 
@@ -526,14 +525,16 @@ func (c *daneDelivery) Reset(*module.MsgMetadata) {}
 type (
 	localPolicy struct {
 		instName    string
+		log         *log.Logger
 		minTLSLevel module.TLSLevel
 		minMXLevel  module.MXLevel
 	}
 )
 
-func NewLocalPolicy(_ *container.C, _, instName string) (module.Module, error) {
+func NewLocalPolicy(c *container.C, modName, instName string) (module.Module, error) {
 	return &localPolicy{
 		instName: instName,
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -581,6 +582,11 @@ func (c *localPolicy) Configure(inlineArgs []string, cfg *config.Map) error {
 		c.minMXLevel = module.MX_DNSSEC
 	}
 
+	c.log.DebugMsg("local MX authentication policy configured",
+		"policy", module.DisplayName(c),
+		"min_tls_level", c.minTLSLevel.String(),
+		"min_mx_level", c.minMXLevel.String())
+
 	return nil
 }
 
@@ -614,8 +620,8 @@ func (l *localPolicy) CheckConn(ctx context.Context, mxLevel module.MXLevel, tls
 		return module.TLSNone, &exterrors.SMTPError{
 			Code:         451,
 			EnhancedCode: exterrors.EnhancedCode{4, 7, 1},
-			Message:      "TLS it not available or unauthenticated but required",
-			Misc: map[string]interface{}{
+			Message:      "TLS it not available or unauthenticated but required (local policy)",
+			Misc: map[string]any{
 				"tls_level":          tlsLevel,
 				"required_tls_level": l.minTLSLevel,
 			},

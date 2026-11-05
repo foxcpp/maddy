@@ -34,6 +34,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package module
 
 import (
+	"fmt"
+
 	"github.com/foxcpp/maddy/framework/config"
 )
 
@@ -49,4 +51,19 @@ type Module interface {
 	// InstanceName method reports unique name of this module instance or empty
 	// string if module instance is unnamed.
 	InstanceName() string
+}
+
+// DisplayName returns a name that describes the provided module instance to the user.
+func DisplayName(mod any) string {
+	switch mod := mod.(type) {
+	case Module:
+		if mod.InstanceName() == "" {
+			return mod.Name()
+		}
+		return fmt.Sprintf("%s (%s)", mod.Name(), mod.InstanceName())
+	case fmt.Stringer:
+		return mod.String()
+	default:
+		return fmt.Sprintf("%T", mod)
+	}
 }

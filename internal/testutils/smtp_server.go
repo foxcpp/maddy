@@ -44,6 +44,7 @@ type SMTPMessage struct {
 	Conn     *smtp.Conn
 	AuthUser string
 	AuthPass string
+	TLS      *tls.ConnectionState
 }
 
 type SMTPBackend struct {
@@ -78,15 +79,20 @@ func (be *SMTPBackend) ConnectionCount() int {
 	return int(be.ActiveSessionsCounter.Load())
 }
 
-func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) {
+func (be *SMTPBackend) Msg(t *testing.T, indx int) *SMTPMessage {
 	t.Helper()
 
 	if len(be.Messages) <= indx {
-		t.Errorf("Expected at least %d messages in mailbox, got %d", indx+1, len(be.Messages))
-		return
+		t.Fatalf("Expected at least %d messages in mailbox, got %d", indx+1, len(be.Messages))
 	}
 
-	msg := be.Messages[indx]
+	return be.Messages[indx]
+}
+
+func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []string) *SMTPMessage {
+	t.Helper()
+	msg := be.Msg(t, indx)
+
 	if msg.From != from {
 		t.Errorf("Wrong MAIL FROM: %v", msg.From)
 	}
@@ -100,6 +106,8 @@ func (be *SMTPBackend) CheckMsg(t *testing.T, indx int, from string, rcptTo []st
 	if string(msg.Data) != DeliveryData {
 		t.Errorf("Wrong DATA payload: %v (%v)", string(msg.Data), msg.Data)
 	}
+
+	return msg
 }
 
 type session struct {
@@ -172,6 +180,9 @@ func (s *session) Data(r io.Reader) error {
 	s.msg.Conn = s.conn
 	s.msg.AuthUser = s.user
 	s.msg.AuthPass = s.password
+	if tlsState, ok := s.conn.TLSConnectionState(); ok {
+		s.msg.TLS = &tlsState
+	}
 	s.backend.Messages = append(s.backend.Messages, s.msg)
 	return nil
 }

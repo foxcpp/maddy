@@ -20,9 +20,14 @@ package dmarc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/emersion/go-msgauth/dmarc"
 )
+
+// ErrNoAuthorDomain indicates that the message's From header does not contain
+// a single author domain that can be used for DMARC evaluation.
+var ErrNoAuthorDomain = errors.New("dmarc: unable to extract author domain")
 
 type (
 	Resolver interface {

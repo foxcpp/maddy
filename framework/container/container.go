@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package container
 
 import (
+	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/log"
 )
 
@@ -53,6 +54,7 @@ type GlobalConfig struct {
 type C struct {
 	Config        GlobalConfig
 	DefaultLogger *log.Logger
+	ExtResolver   *dns.ExtResolver
 	Modules       *Registry
 	Lifetime      *LifetimeTracker
 }

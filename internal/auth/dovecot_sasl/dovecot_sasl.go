@@ -241,8 +241,19 @@ func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) err
 		}
 		defer a.returnConn(cl)
 
-		return cl.Do(service, sasl.NewPlainClient("", username, password),
+		// Pretend it is SMTPS even though we really don't know.
+		// We also have no connection information to pass to the server...
+		resp, err := cl.Do(service, sasl.NewPlainClient("", username, password),
 			a.dovecotParams(ctx)...)
+		if err != nil {
+			return err
+		}
+		a.log.DebugMsg("authentication data from dovecot",
+			"userid", resp.UserID,
+			"req_id", resp.RequestID,
+			"extra", resp.Extra,
+		)
+		return nil
 	}
 	if _, ok := a.mechanisms[sasl.Login]; ok {
 		cl, err := a.getConn()
@@ -251,8 +262,16 @@ func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) err
 		}
 		defer a.returnConn(cl)
 
-		return cl.Do(service, sasl.NewLoginClient(username, password),
+		resp, err := cl.Do("SMTP", sasl.NewLoginClient(username, password),
 			a.dovecotParams(ctx)...)
+		if err != nil {
+			return err
+		}
+		a.log.DebugMsg("authentication data from dovecot",
+			"userid", resp.UserID,
+			"req_id", resp.RequestID,
+			"extra", resp.Extra,
+		)
 	}
 
 	return auth.ErrUnsupportedMech

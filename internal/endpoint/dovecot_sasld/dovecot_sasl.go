@@ -20,10 +20,10 @@ package dovecotsasld
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/emersion/go-sasl"
@@ -113,7 +113,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	endp.srv.Log = stdlog.New(endp.log, "", 0)
 
 	for _, mech := range endp.saslAuth.SASLMechanisms() {
-		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq) sasl.Server {
+		endp.srv.AddMechanism(mech, mechInfo[mech], func(req *dovecotsasl.AuthReq, cb dovecotsasl.FuncSASLCallback) sasl.Server {
 			var remoteAddr net.Addr
 			if req.RemoteIP != nil && req.RemotePort != 0 {
 				remoteAddr = &net.TCPAddr{IP: req.RemoteIP, Port: int(req.RemotePort)}
@@ -135,7 +135,10 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 				LocalAddr:  localAddr,
 				RemoteAddr: remoteAddr,
 				ProxiedTLS: proxiedTLS,
-			}, func(_ string, _ auth.ContextData) error { return nil })
+			}, func(identity string, _ auth.ContextData) error {
+				cb(identity, nil)
+				return nil
+			})
 		})
 	}
 
@@ -159,15 +162,12 @@ func (endp *Endpoint) Start() error {
 		}
 
 		endp.log.Printf("listening on %v", l.Addr())
-		endp.listenersWg.Add(1)
-		go func() {
-			defer endp.listenersWg.Done()
-			if err := endp.srv.Serve(l); err != nil {
-				if !strings.HasSuffix(err.Error(), "use of closed network connection") {
-					endp.log.Printf("failed to serve %v: %v", l.Addr(), err)
-				}
+		endp.listenersWg.Go(func() {
+			//nolint:staticcheck // SA4023: Serve always returns err.
+			if err := endp.srv.Serve(l); err != nil && !errors.Is(err, net.ErrClosed) {
+				endp.log.Printf("failed to serve %v: %v", l.Addr(), err)
 			}
-		}()
+		})
 	}
 	return nil
 }
