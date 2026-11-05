@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests_test
 
 import (
@@ -12,7 +14,7 @@ func TestGHSA_QH5C_2MRX_4PPJ_DMARC_MixedCaseBypass(tt *testing.T) {
 		f1AttackerSPF = "v=spf1 +all"
 		f1VictimDMARC = "v=DMARC1; p=reject; adkim=r; aspf=r"
 	)
-	
+
 	tt.Parallel()
 	t := tests.NewT(tt)
 	t.DNS(map[string]mockdns.Zone{
