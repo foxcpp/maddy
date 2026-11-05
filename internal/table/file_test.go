@@ -124,17 +124,16 @@ func TestFileReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
-	if err := m.Start(); err != nil {
-		t.Fatal(err)
-	}
 	m.log = testutils.Logger(t, "file_map")
-	defer func() {
-		assert.NoError(t, m.Stop())
-	}()
-
 	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
 		t.Fatal(err)
 	}
+	if err := m.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		assert.NoError(t, m.Stop())
+	}()
 
 	// ensure it is correctly loaded at first time.
 	m.mLck.RLock()
@@ -185,20 +184,19 @@ func TestFileReload_Broken(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
+	m.log = testutils.Logger(t, FileModName)
+	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
 	if err := m.Start(); err != nil {
 		t.Fatal(err)
 	}
-	m.log = testutils.Logger(t, FileModName)
 	defer func(m *File) {
 		err := m.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}(m)
-
-	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
-		t.Fatal(err)
-	}
 
 	f2, err := os.OpenFile(f.Name(), os.O_WRONLY|os.O_SYNC, os.ModePerm)
 	if err != nil {
@@ -246,20 +244,19 @@ func TestFileReload_Removed(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := mod.(*File)
+	m.log = testutils.Logger(t, FileModName)
+	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
+		t.Fatal(err)
+	}
 	if err := m.Start(); err != nil {
 		t.Fatal(err)
 	}
-	m.log = testutils.Logger(t, FileModName)
 	defer func(m *File) {
 		err := m.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}(m)
-
-	if err := mod.Configure([]string{f.Name()}, &config.Map{Block: config.Node{}}); err != nil {
-		t.Fatal(err)
-	}
 
 	err = os.Remove(f.Name())
 	if err != nil {
