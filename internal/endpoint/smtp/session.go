@@ -37,6 +37,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -72,6 +73,7 @@ func (l *limitedReader) Read(p []byte) (n int, err error) {
 
 type Session struct {
 	endp *Endpoint
+	conn *smtp.Conn
 
 	// Specific for this session.
 	// sessionCtx is not used for cancellation or timeouts, only for tracing.
@@ -96,6 +98,46 @@ type Session struct {
 	deliveryErr error
 
 	log *log.Logger
+}
+
+func (s *Session) initFromConn(conn *smtp.Conn) {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
+	s.conn = conn
+
+	var prevRemoteAddr net.Addr
+	if s.connState.RemoteAddr != nil {
+		prevRemoteAddr = s.connState.RemoteAddr
+	}
+
+	s.connState = module.ConnState{
+		Hostname:   conn.Hostname(),
+		LocalAddr:  conn.Conn().LocalAddr(),
+		RemoteAddr: conn.Conn().RemoteAddr(),
+	}
+	if tlsState, ok := conn.TLSConnectionState(); ok {
+		s.connState.TLS = tlsState
+	}
+
+	if s.endp.serv.LMTP {
+		s.connState.Proto = "LMTP"
+	} else {
+		// Check if TLS connection conn struct is poplated.
+		// If it is - we are ssing TLS.
+		if s.connState.TLS.HandshakeComplete {
+			s.connState.Proto = "ESMTPS"
+		} else {
+			s.connState.Proto = "ESMTP"
+		}
+	}
+
+	if s.endp.resolver != nil && (prevRemoteAddr == nil || s.connState.RemoteAddr.String() == prevRemoteAddr.String()) {
+		rdnsCtx, cancelRDNS := context.WithCancel(s.sessionCtx)
+		s.connState.RDNSName = future.New()
+		s.cancelRDNS = cancelRDNS
+		go s.fetchRDNSName(rdnsCtx)
+	}
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -134,7 +176,14 @@ func (s *Session) Reset() {
 	if s.delivery != nil {
 		s.abort(s.msgCtx)
 	}
+
 	s.endp.log.DebugMsg("reset")
+
+	// go-smtp calls Reset on existing Session on repeated EHLO
+	// we need to check if Hostname is the same and update if needed.
+	if s.conn != nil {
+		s.connState.Hostname = s.conn.Hostname()
+	}
 }
 
 func (s *Session) releaseLimits() {

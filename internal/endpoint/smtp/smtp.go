@@ -41,9 +41,7 @@ import (
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
-	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -409,33 +407,7 @@ func (endp *Endpoint) newSession(conn *smtp.Conn) *Session {
 		return s
 	}
 
-	s.connState = module.ConnState{
-		Hostname:   conn.Hostname(),
-		LocalAddr:  conn.Conn().LocalAddr(),
-		RemoteAddr: conn.Conn().RemoteAddr(),
-	}
-	if tlsState, ok := conn.TLSConnectionState(); ok {
-		s.connState.TLS = tlsState
-	}
-
-	if endp.serv.LMTP {
-		s.connState.Proto = "LMTP"
-	} else {
-		// Check if TLS connection conn struct is poplated.
-		// If it is - we are ssing TLS.
-		if s.connState.TLS.HandshakeComplete {
-			s.connState.Proto = "ESMTPS"
-		} else {
-			s.connState.Proto = "ESMTP"
-		}
-	}
-
-	if endp.resolver != nil {
-		rdnsCtx, cancelRDNS := context.WithCancel(s.sessionCtx)
-		s.connState.RDNSName = future.New()
-		s.cancelRDNS = cancelRDNS
-		go s.fetchRDNSName(rdnsCtx)
-	}
+	s.initFromConn(conn)
 
 	return s
 }
