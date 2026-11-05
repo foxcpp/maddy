@@ -20,6 +20,7 @@ smtp tcp://0.0.0.0:25 {
     auth pam
     defer_sender_reject yes
     dmarc yes
+    dmarc_reject_invalid_from no
     smtp_max_line_length 4000
     limits {
         endpoint rate 10
