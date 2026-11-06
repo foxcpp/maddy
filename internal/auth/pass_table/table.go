@@ -26,6 +26,7 @@ import (
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"golang.org/x/crypto/bcrypt"
@@ -80,11 +81,16 @@ func (a *Auth) AuthPlain(username, password string) error {
 	}
 
 	hash, ok, err := a.table.Lookup(context.TODO(), key)
-	if !ok {
-		return module.ErrUnknownCredentials
-	}
 	if err != nil {
 		return err
+	}
+	if !ok {
+		return exterrors.WithFields(module.ErrUnknownCredentials, map[string]interface{}{
+			"reason":          "username not found in credentials table",
+			"module":          a.modName,
+			"instance":        a.instName,
+			"mapped_username": key,
+		})
 	}
 
 	parts := strings.SplitN(hash, ":", 2)
