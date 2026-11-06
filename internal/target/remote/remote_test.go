@@ -21,12 +21,16 @@ package remote
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
+	"io"
 	"math/rand"
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
@@ -139,6 +143,103 @@ func TestRemoteDelivery(t *testing.T) {
 	}()
 	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
+}
+
+func TestRemoteDelivery_BodyStream(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
+	testutils.DoTestDeliveryStream(t, tgt, "test@example.com", []string{"test@example.invalid", "test2@example.invalid"})
+
+	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid", "test2@example.invalid"})
+}
+
+func TestRemoteDelivery_BodyStream_MultipleConns(t *testing.T) {
+	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"example2.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
+
+	ctx := context.Background()
+	delivery, err := tgt.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "test@example.com")
+	require.NoError(t, err)
+	require.NoError(t, delivery.AddRcpt(ctx, "test@example.invalid", smtp.RcptOptions{}))
+	require.True(t, delivery.(module.StreamingDelivery).CanStreamBody())
+	require.NoError(t, delivery.AddRcpt(ctx, "test@example2.invalid", smtp.RcptOptions{}))
+	require.False(t, delivery.(module.StreamingDelivery).CanStreamBody())
+	require.NoError(t, delivery.Abort(ctx))
+}
+
+func TestRemoteDelivery_BodyStream_ReadErr(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+
+	tgt := testTarget(t, zones, nil, nil)
+	tgt.connReuseLimit = 5
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
+
+	ctx := context.Background()
+	delivery, err := tgt.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "test@example.com")
+	require.NoError(t, err)
+	require.NoError(t, delivery.AddRcpt(ctx, "test@example.invalid", smtp.RcptOptions{}))
+
+	readErr := errors.New("client went away")
+	body := io.MultiReader(strings.NewReader("foo"), iotest.ErrReader(readErr))
+	err = delivery.(module.StreamingDelivery).BodyStream(ctx, textproto.Header{}, body)
+	require.ErrorIs(t, err, readErr)
+	require.NoError(t, delivery.Abort(ctx))
+
+	testutils.WaitForConnsClose(t, srv)
+	require.Empty(t, be.Messages)
+
+	// The dropped connection must not be returned to the pool.
+	testutils.DoTestDelivery(t, tgt, "test@example.com", []string{"test@example.invalid"})
 	be.CheckMsg(t, 0, "test@example.com", []string{"test@example.invalid"})
 }
 

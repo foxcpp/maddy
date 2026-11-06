@@ -19,16 +19,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package smtp_downstream
 
 import (
+	"context"
 	"errors"
 	"flag"
+	"io"
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
@@ -274,6 +280,64 @@ func TestDownstreamDelivery_StartTLS_NoFallback(t *testing.T) {
 	if err == nil {
 		t.Error("Expected an error, got none")
 	}
+}
+
+func TestDownstreamDelivery_BodyStream(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		log: testutils.Logger(t, "target.smtp"),
+	}
+
+	testutils.DoTestDeliveryStream(t, mod, "test@example.invalid", []string{"rcpt@example.invalid"})
+	be.CheckMsg(t, 0, "test@example.invalid", []string{"rcpt@example.invalid"})
+}
+
+func TestDownstreamDelivery_BodyStream_ReadErr(t *testing.T) {
+	be, srv := testutils.SMTPServer(t, "127.0.0.1:"+testPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	mod := &Downstream{
+		hostname: "mx.example.invalid",
+		endpoints: []config.Endpoint{
+			{
+				Scheme: "tcp",
+				Host:   "127.0.0.1",
+				Port:   testPort,
+			},
+		},
+		log: testutils.Logger(t, "target.smtp"),
+	}
+
+	ctx := context.Background()
+	delivery, err := mod.StartDelivery(ctx, &module.MsgMetadata{ID: "test"}, "test@example.invalid")
+	require.NoError(t, err)
+	require.NoError(t, delivery.AddRcpt(ctx, "rcpt@example.invalid", smtp.RcptOptions{}))
+
+	readErr := errors.New("client went away")
+	body := io.MultiReader(strings.NewReader("foo"), iotest.ErrReader(readErr))
+	err = delivery.(module.StreamingDelivery).BodyStream(ctx, textproto.Header{}, body)
+	require.ErrorIs(t, err, readErr)
+
+	require.NoError(t, delivery.Abort(ctx))
+
+	testutils.WaitForConnsClose(t, srv)
+	require.Empty(t, be.Messages)
 }
 
 func TestMain(m *testing.M) {

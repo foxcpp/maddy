@@ -30,6 +30,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"runtime/trace"
 	"time"
@@ -176,6 +177,8 @@ type delivery struct {
 	rcpts    []string
 
 	conn *smtpconn.C
+
+	connDropped bool
 }
 
 // lmtpDelivery implements module.PartialDelivery
@@ -301,6 +304,25 @@ func (d *delivery) Body(ctx context.Context, header textproto.Header, body buffe
 	return d.u.moduleError(d.conn.Data(ctx, header, r))
 }
 
+func (d *delivery) CanStreamBody() bool {
+	return true
+}
+
+func (d *delivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	r := target.NewSourceReader(body)
+	err := d.conn.Data(ctx, header, r)
+	if r.Err() != nil {
+		// Sending QUIT would first terminate the DATA command and make the
+		// server accept the partial message. Drop the connection instead.
+		d.connDropped = true
+		if err := d.conn.DirectClose(); err != nil {
+			d.log.Error("failed to close SMTP connection", err)
+		}
+		return r.Err()
+	}
+	return d.u.moduleError(err)
+}
+
 func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollector, header textproto.Header, body buffer.Buffer) {
 	r, err := body.Open()
 	if err != nil {
@@ -339,10 +361,16 @@ func (d *lmtpDelivery) BodyNonAtomic(ctx context.Context, sc module.StatusCollec
 }
 
 func (d *delivery) Abort(ctx context.Context) error {
+	if d.connDropped {
+		return nil
+	}
 	return d.conn.Close()
 }
 
 func (d *delivery) Commit(ctx context.Context) error {
+	if d.connDropped {
+		return nil
+	}
 	return d.conn.Close()
 }
 

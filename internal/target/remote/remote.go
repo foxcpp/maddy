@@ -28,6 +28,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"runtime/trace"
 	"strings"
@@ -440,6 +441,47 @@ func (rd *remoteDelivery) BodyNonAtomic(ctx context.Context, c module.StatusColl
 	}
 
 	wg.Wait()
+}
+
+// CanStreamBody implements module.StreamingDelivery.
+//
+// The body can be streamed only if it is sent over a single connection,
+// that is, all recipients are in one domain.
+func (rd *remoteDelivery) CanStreamBody() bool {
+	return len(rd.connections) == 1
+}
+
+// BodyStream implements module.StreamingDelivery.
+func (rd *remoteDelivery) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	defer trace.StartRegion(ctx, "remote/BodyStream").End()
+
+	if rd.msgMeta.Quarantine {
+		return &exterrors.SMTPError{
+			Code:         550,
+			EnhancedCode: exterrors.EnhancedCode{5, 7, 0},
+			Message:      "Refusing to deliver quarantined message",
+			TargetName:   "remote",
+		}
+	}
+
+	for _, conn := range rd.connections {
+		r := target.NewSourceReader(body)
+		err := conn.Data(ctx, header, r)
+		conn.errored = err != nil
+		conn.lastUseAt = time.Now()
+		if r.Err() != nil {
+			// Sending QUIT would first terminate the DATA command and make the
+			// server accept the partial message. Drop the connection instead.
+			if err := conn.DirectClose(); err != nil {
+				rd.log.Error("failed to close SMTP connection", err)
+			}
+			return r.Err()
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (rd *remoteDelivery) Abort(ctx context.Context) error {

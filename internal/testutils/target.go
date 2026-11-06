@@ -26,6 +26,7 @@ import (
 	"io"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/emersion/go-message/textproto"
@@ -42,6 +43,7 @@ type Msg struct {
 	RcptTo   []string
 	Body     []byte
 	Header   textproto.Header
+	Streamed bool
 }
 
 type Target struct {
@@ -54,6 +56,9 @@ type Target struct {
 	PartialBodyErr map[string]error
 	AbortErr       error
 	CommitErr      error
+
+	// Streaming makes deliveries implement module.StreamingDelivery.
+	Streaming bool
 
 	InstName string
 }
@@ -86,9 +91,21 @@ type testTargetDeliveryPartial struct {
 	testTargetDelivery
 }
 
+type testTargetDeliveryStreaming struct {
+	testTargetDelivery
+}
+
 func (dt *Target) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	if dt.PartialBodyErr != nil {
 		return &testTargetDeliveryPartial{
+			testTargetDelivery: testTargetDelivery{
+				tgt: dt,
+				msg: Msg{MsgMeta: msgMeta, MailFrom: mailFrom},
+			},
+		}, dt.StartErr
+	}
+	if dt.Streaming {
+		return &testTargetDeliveryStreaming{
 			testTargetDelivery: testTargetDelivery{
 				tgt: dt,
 				msg: Msg{MsgMeta: msgMeta, MailFrom: mailFrom},
@@ -173,6 +190,23 @@ func (dtd *testTargetDelivery) Body(ctx context.Context, header textproto.Header
 	return err
 }
 
+func (dtd *testTargetDeliveryStreaming) CanStreamBody() bool {
+	return true
+}
+
+func (dtd *testTargetDeliveryStreaming) BodyStream(ctx context.Context, header textproto.Header, body io.Reader) error {
+	if dtd.tgt.BodyErr != nil {
+		return dtd.tgt.BodyErr
+	}
+
+	dtd.msg.Header = header
+	dtd.msg.Streamed = true
+
+	var err error
+	dtd.msg.Body, err = io.ReadAll(body)
+	return err
+}
+
 func (dtd *testTargetDelivery) Abort(ctx context.Context) error {
 	return dtd.tgt.AbortErr
 }
@@ -244,6 +278,54 @@ func DoTestDeliveryNonAtomic(t *testing.T, c module.StatusCollector, tgt module.
 	hdr.Add("A", "1")
 	delivery.(module.PartialDelivery).BodyNonAtomic(testCtx, c, hdr, body)
 	t.Log("-- delivery.Commit")
+	if err := delivery.Commit(testCtx); err != nil {
+		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+	}
+
+	return encodedID
+}
+
+// DoTestDeliveryStream is similar to DoTestDelivery but passes the body using
+// module.StreamingDelivery.
+func DoTestDeliveryStream(t *testing.T, tgt module.DeliveryTarget, from string, to []string) string {
+	t.Helper()
+
+	IDRaw := sha1.Sum([]byte(t.Name()))
+	encodedID := hex.EncodeToString(IDRaw[:])
+	testCtx := context.Background()
+
+	msgMeta := module.MsgMetadata{
+		DontTraceSender: true,
+		ID:              encodedID,
+		OriginalFrom:    from,
+	}
+	delivery, err := tgt.StartDelivery(testCtx, &msgMeta, from)
+	if err != nil {
+		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+	}
+	for _, rcpt := range to {
+		if err := delivery.AddRcpt(testCtx, rcpt, smtp.RcptOptions{}); err != nil {
+			if err := delivery.Abort(testCtx); err != nil {
+				t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
+			}
+			t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+		}
+	}
+
+	streamDelivery, ok := delivery.(module.StreamingDelivery)
+	if !ok || !streamDelivery.CanStreamBody() {
+		t.Fatalf("Delivery object %T can't stream the body", delivery)
+	}
+
+	hdr := textproto.Header{}
+	hdr.Add("B", "2")
+	hdr.Add("A", "1")
+	if err := streamDelivery.BodyStream(testCtx, hdr, strings.NewReader("foobar\r\n")); err != nil {
+		if err := delivery.Abort(testCtx); err != nil {
+			t.Log("-- delivery.Abort:", err, exterrors.Fields(err))
+		}
+		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
+	}
 	if err := delivery.Commit(testCtx); err != nil {
 		t.Fatalf("Unexpected err: %v %+v", err, exterrors.Fields(err))
 	}
