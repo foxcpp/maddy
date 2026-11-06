@@ -166,6 +166,16 @@ clients that don't expect an error early in session.
 
 ---
 
+### rdns_lookup _boolean_
+Default: `yes`
+
+Perform a reverse DNS lookup for the IP address of each connecting client.
+The result is used in the `Received` header and by checks such as
+`require_matching_rdns`. If disabled, no PTR query is sent and checks that
+depend on it are skipped.
+
+---
+
 ### max_logged_rcpt_errors _integer_
 Default: `5`
 
