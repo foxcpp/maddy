@@ -52,6 +52,23 @@ func ForLookup(domain string) (string, error) {
 	return uDomain, nil
 }
 
+// ForLookupASCII converts the domain into a canonical form suitable for
+// table lookups and other comparisons.
+//
+// As compared to ForLookup (returning U-labels), this function returns
+// A-labels representation.
+func ForLookupASCII(domain string) (string, error) {
+	domain = norm.NFC.String(domain)
+	domain = strings.ToLower(domain)
+	domain = strings.TrimSuffix(domain, ".")
+
+	aDomain, err := idna.Lookup.ToASCII(domain)
+	if err != nil {
+		return strings.ToLower(domain), err
+	}
+	return aDomain, nil
+}
+
 // Equal reports whether domain1 and domain2 are equivalent as defined by
 // IDNA2008 (RFC 5890).
 //

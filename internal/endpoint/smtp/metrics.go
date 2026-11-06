@@ -83,5 +83,6 @@ func init() {
 	prometheus.MustRegister(completedSMTPTransactions)
 	prometheus.MustRegister(abortedSMTPTransactions)
 	prometheus.MustRegister(ratelimitDefers)
+	prometheus.MustRegister(failedLogins)
 	prometheus.MustRegister(failedCmds)
 }

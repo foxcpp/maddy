@@ -42,10 +42,13 @@ tls {
 ---
 
 ### protocols _min-version_ _max-version_ | _version_
-Default: `tls1.0 tls1.3`
+Default: `tls1.2 tls1.3`
 
 Minimum/maximum accepted TLS version. If only one value is specified, it will
 be the only one usable version.
+
+Default value depends on Go toolchain version, Go 1.22+ disables TLS 1.0-1.1 by
+default.
 
 Valid values are: `tls1.0`, `tls1.1`, `tls1.2`, `tls1.3`
 
@@ -56,6 +59,18 @@ Default: Go version-defined set of 'secure ciphers', ordered by hardware
 performance
 
 List of supported cipher suites, in preference order. Not used with TLS 1.3.
+
+Note that Go 1.22 removed RSA KEX ciphers from default list, Go 1.23 removed
+3DES ciphers. This can lead to delivery issues when talking to legacy servers
+(e.g. older MS Exchange versions).
+
+If legacy compatibility is required, you can re-enable legacy ciphers by explicitly
+listing them, for example:
+```
+tls {
+  ciphers "ECDHE-RSA-WITH-AES128-GCM-SHA256 RSA-WITH-AES128-CBC-SHA"
+}
+```
 
 Valid values:
 

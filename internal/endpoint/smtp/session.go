@@ -38,6 +38,7 @@ import (
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
+	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -73,6 +74,7 @@ func (l *limitedReader) Read(p []byte) (n int, err error) {
 
 type Session struct {
 	endp *Endpoint
+	conn *smtp.Conn
 
 	// Specific for this session.
 	// sessionCtx is not used for cancellation or timeouts, only for tracing.
@@ -99,6 +101,46 @@ type Session struct {
 	log *log.Logger
 }
 
+func (s *Session) initFromConn(conn *smtp.Conn) {
+	s.msgLock.Lock()
+	defer s.msgLock.Unlock()
+
+	s.conn = conn
+
+	var prevRemoteAddr net.Addr
+	if s.connState.RemoteAddr != nil {
+		prevRemoteAddr = s.connState.RemoteAddr
+	}
+
+	s.connState = module.ConnState{
+		Hostname:   conn.Hostname(),
+		LocalAddr:  conn.Conn().LocalAddr(),
+		RemoteAddr: conn.Conn().RemoteAddr(),
+	}
+	if tlsState, ok := conn.TLSConnectionState(); ok {
+		s.connState.TLS = tlsState
+	}
+
+	if s.endp.serv.LMTP {
+		s.connState.Proto = "LMTP"
+	} else {
+		// Check if TLS connection conn struct is poplated.
+		// If it is - we are ssing TLS.
+		if s.connState.TLS.HandshakeComplete {
+			s.connState.Proto = "ESMTPS"
+		} else {
+			s.connState.Proto = "ESMTP"
+		}
+	}
+
+	if s.endp.resolver != nil && (prevRemoteAddr == nil || s.connState.RemoteAddr.String() == prevRemoteAddr.String()) {
+		rdnsCtx, cancelRDNS := context.WithCancel(s.sessionCtx)
+		s.connState.RDNSName = future.New()
+		s.cancelRDNS = cancelRDNS
+		go s.fetchRDNSName(rdnsCtx)
+	}
+}
+
 func (s *Session) AuthMechanisms() []string {
 	return s.endp.saslAuth.SASLMechanisms()
 }
@@ -109,16 +151,33 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		tlsState = &s.connState.TLS
 	}
 
-	return s.endp.saslAuth.CreateSASL(mech, &auth.SASLContext{
-		Service:    "SMTP",
-		LocalAddr:  s.connState.LocalAddr,
-		RemoteAddr: s.connState.RemoteAddr,
-		TLS:        tlsState,
-	}, func(identity string, data auth.ContextData) error {
-		s.connState.AuthUser = identity
-		s.connState.AuthPassword = data.Password
-		return nil
-	}), nil
+	return &authSASLServer{
+		Server: s.endp.saslAuth.CreateSASL(mech, &auth.SASLContext{
+			Service:    "SMTP",
+			LocalAddr:  s.connState.LocalAddr,
+			RemoteAddr: s.connState.RemoteAddr,
+			TLS:        tlsState,
+		}, func(identity string, data auth.ContextData) error {
+			s.connState.AuthUser = identity
+			s.connState.AuthPassword = data.Password
+			return nil
+		}),
+		endp: s.endp,
+	}, nil
+}
+
+// authSASLServer counts AUTH failures reported by the wrapped sasl.Server.
+type authSASLServer struct {
+	sasl.Server
+	endp *Endpoint
+}
+
+func (s *authSASLServer) Next(response []byte) (challenge []byte, done bool, err error) {
+	challenge, done, err = s.Server.Next(response)
+	if err != nil {
+		failedLogins.WithLabelValues(s.endp.name).Inc()
+	}
+	return
 }
 
 func (s *Session) Reset() {
@@ -128,7 +187,14 @@ func (s *Session) Reset() {
 	if s.delivery != nil {
 		s.abort(s.msgCtx)
 	}
+
 	s.endp.log.DebugMsg("reset")
+
+	// go-smtp calls Reset on existing Session on repeated EHLO
+	// we need to check if Hostname is the same and update if needed.
+	if s.conn != nil {
+		s.connState.Hostname = s.conn.Hostname()
+	}
 }
 
 func (s *Session) releaseLimits() {
@@ -514,18 +580,16 @@ func (s *Session) Data(r io.Reader) error {
 		err = s.delivery.Body(bodyCtx, header, buf)
 	}
 	if err != nil {
-		// s.delivery is kept so that Reset aborts it.
 		return wrapErr(err)
 	}
-
-	// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-	defer s.cleanSession()
 
 	if err := s.delivery.Commit(bodyCtx); err != nil {
 		return wrapErr(err)
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	s.cleanSession()
 
 	return nil
 }
@@ -559,9 +623,6 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 		if err := buf.Remove(); err != nil {
 			s.log.Error("failed to remove buffered body", err)
 		}
-
-		// go-smtp will call Reset, but it will call Abort if delivery is non-nil.
-		s.cleanSession()
 	}()
 
 	if err := s.checkRoutingLoops(header); err != nil {
@@ -577,6 +638,8 @@ func (s *Session) LMTPData(r io.Reader, sc smtp.StatusCollector) error {
 	}
 
 	s.log.Msg("accepted", "msg_id", s.msgMeta.ID)
+
+	s.cleanSession()
 
 	return nil
 }
@@ -641,7 +704,8 @@ func (endp *Endpoint) wrapErr(msgId string, mangleUTF8 bool, command string, err
 		res.Message = ctxMsg
 	}
 
-	if smtpErr, ok := err.(*smtp.SMTPError); ok {
+	var smtpErr *smtp.SMTPError
+	if errors.As(err, &smtpErr) {
 		endp.log.Printf("plain SMTP error returned, this is deprecated")
 		res.Code = smtpErr.Code
 		res.EnhancedCode = smtpErr.EnhancedCode

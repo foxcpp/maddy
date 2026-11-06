@@ -205,7 +205,9 @@ func (g *Group) TakeMsg(ctx context.Context, addr net.IP, sourceDomain string) e
 		g.log.DebugMsg("source TakeContext", "domain", sourceDomain)
 		if err := g.source.TakeContext(ctx, sourceDomain); err != nil {
 			g.global.Release()
-			g.ip.Release(addr.String())
+			if g.ip != nil {
+				g.ip.Release(addr.String())
+			}
 			return fmt.Errorf("TakeMSg: source: %w", err)
 		}
 		g.log.DebugMsg("source TakeContext done", "domain", sourceDomain)

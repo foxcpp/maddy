@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -40,9 +41,7 @@ import (
 	"github.com/foxcpp/maddy/framework/container"
 	"github.com/foxcpp/maddy/framework/dns"
 	"github.com/foxcpp/maddy/framework/exterrors"
-	"github.com/foxcpp/maddy/framework/future"
 	"github.com/foxcpp/maddy/framework/log"
-	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 	"github.com/foxcpp/maddy/framework/resource/netresource"
 	"github.com/foxcpp/maddy/internal/auth"
@@ -370,13 +369,11 @@ func (endp *Endpoint) setupListeners(addresses []config.Endpoint) error {
 
 		endp.listeners = append(endp.listeners, l)
 
-		endp.listenersWg.Add(1)
-		go func() {
-			if err := endp.serv.Serve(l); err != nil {
+		endp.listenersWg.Go(func() {
+			if err := endp.serv.Serve(l); err != nil && !errors.Is(err, net.ErrClosed) {
 				endp.log.Printf("failed to serve %s: %s", addr, err)
 			}
-			endp.listenersWg.Done()
-		}()
+		})
 	}
 
 	return nil
@@ -410,33 +407,7 @@ func (endp *Endpoint) newSession(conn *smtp.Conn) *Session {
 		return s
 	}
 
-	s.connState = module.ConnState{
-		Hostname:   conn.Hostname(),
-		LocalAddr:  conn.Conn().LocalAddr(),
-		RemoteAddr: conn.Conn().RemoteAddr(),
-	}
-	if tlsState, ok := conn.TLSConnectionState(); ok {
-		s.connState.TLS = tlsState
-	}
-
-	if endp.serv.LMTP {
-		s.connState.Proto = "LMTP"
-	} else {
-		// Check if TLS connection conn struct is poplated.
-		// If it is - we are ssing TLS.
-		if s.connState.TLS.HandshakeComplete {
-			s.connState.Proto = "ESMTPS"
-		} else {
-			s.connState.Proto = "ESMTP"
-		}
-	}
-
-	if endp.resolver != nil {
-		rdnsCtx, cancelRDNS := context.WithCancel(s.sessionCtx)
-		s.connState.RDNSName = future.New()
-		s.cancelRDNS = cancelRDNS
-		go s.fetchRDNSName(rdnsCtx)
-	}
+	s.initFromConn(conn)
 
 	return s
 }
@@ -446,14 +417,27 @@ func (endp *Endpoint) ConnectionCount() int {
 }
 
 func (endp *Endpoint) Stop() error {
+	// Close listeners and wait for Serve to return before calling Shutdown.
+	// go-smtp's Shutdown waits on an internal WaitGroup that Serve adds to
+	// after accepting a connection. If a connection is accepted concurrently
+	// with Shutdown closing the listeners, that Add races with Wait. Waiting
+	// for the Serve goroutines first guarantees no Add can happen after
+	// Shutdown starts waiting.
+	for _, l := range endp.listeners {
+		if err := l.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			endp.log.Error("listener close failed", err)
+		}
+	}
+	endp.listenersWg.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), endp.shutdownTimeout)
 	defer cancel()
 
-	if err := endp.serv.Shutdown(ctx); err != nil {
+	// Shutdown tries to close listeners we have already closed above, so
+	// net.ErrClosed is expected here.
+	if err := endp.serv.Shutdown(ctx); err != nil && !errors.Is(err, net.ErrClosed) {
 		return err
 	}
-
-	endp.listenersWg.Wait()
 
 	return nil
 }

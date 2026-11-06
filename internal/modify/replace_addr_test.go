@@ -97,6 +97,13 @@ func testReplaceAddr(t *testing.T, modName string) {
 			"\u00E9@foo.example.com": []string{"rcpt@foo.example.com"},
 		})
 
+	// An unchanged exact result still allows a relative alias.
+	test("cat@example.org", []string{"dog@example.org"},
+		map[string][]string{
+			"cat@example.org": []string{"cat@example.org"},
+			"cat":             []string{"dog"},
+		})
+
 	if modName == "modify.replace_rcpt" {
 		//multiple aliases
 		test("test@example.com", []string{"test@example.org", "test@example.net"},

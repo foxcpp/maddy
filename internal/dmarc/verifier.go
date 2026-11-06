@@ -20,6 +20,7 @@ package dmarc
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"net"
 	"runtime/trace"
@@ -52,8 +53,9 @@ func (errPanic) Error() string {
 //
 // It cannot be reused.
 type Verifier struct {
-	fetchCh     chan verifyData
-	fetchCancel context.CancelFunc
+	fetchCh           chan verifyData
+	fetchCancel       context.CancelFunc
+	rejectInvalidFrom bool
 
 	resolver Resolver
 
@@ -68,6 +70,12 @@ func NewVerifier(r Resolver) *Verifier {
 		fetchCh:  make(chan verifyData, 1),
 		resolver: r,
 	}
+}
+
+// SetRejectInvalidFrom controls whether messages without a single valid author
+// domain are rejected instead of treated as having no applicable DMARC policy.
+func (v *Verifier) SetRejectInvalidFrom(reject bool) {
+	v.rejectInvalidFrom = reject
 }
 
 func (v *Verifier) Close() error {
@@ -139,6 +147,11 @@ func (v *Verifier) Apply(authRes []authres.Result) (EvalResult, Policy) {
 			result.Value = authres.ResultTempError
 			// 'fail closed' behavior, reject the message if a temporary error
 			// occurs.
+			return EvalResult{
+				Authres: result,
+			}, dmarc.PolicyReject
+		}
+		if v.rejectInvalidFrom && errors.Is(data.recordErr, ErrNoAuthorDomain) {
 			return EvalResult{
 				Authres: result,
 			}, dmarc.PolicyReject

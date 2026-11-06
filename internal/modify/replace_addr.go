@@ -110,6 +110,17 @@ func (r *replaceAddr) rewrite(ctx context.Context, val string) ([]string, error)
 	if err != nil {
 		return []string{val}, err
 	}
+
+	mbox, domain, splitErr := address.Split(normAddr)
+	// An unchanged singleton is not an exact replacement. table.chain optional
+	// steps echo the lookup key on a miss, and an explicit identity mapping of
+	// the whole address is the same result; either way a relative alias still
+	// applies. Any other exact result is returned as-is and is not rewritten
+	// again. Domain-less postmaster is its own local-part, so that echo stays
+	// on the exact path instead of being joined with an empty domain.
+	if splitErr == nil && domain != "" && len(replacements) == 1 && replacements[0] == normAddr {
+		replacements = nil
+	}
 	if len(replacements) > 0 {
 		for _, replacement := range replacements {
 			if !address.Valid(replacement) {
@@ -119,8 +130,7 @@ func (r *replaceAddr) rewrite(ctx context.Context, val string) ([]string, error)
 		return replacements, nil
 	}
 
-	mbox, domain, err := address.Split(normAddr)
-	if err != nil {
+	if splitErr != nil {
 		// If we have malformed address here, something is really wrong, but let's
 		// ignore it silently then anyway.
 		return []string{val}, nil

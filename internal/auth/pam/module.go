@@ -85,11 +85,7 @@ func (a *Auth) AuthPlain(ctx *module.AuthContext, username, password string) err
 			return err
 		}
 	}
-	err := runPAMAuth(username, password)
-	if err != nil {
-		return err
-	}
-	return nil
+	return runPAMAuth(username, password)
 }
 
 func init() {
