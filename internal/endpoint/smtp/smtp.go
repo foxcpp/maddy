@@ -70,6 +70,7 @@ type Endpoint struct {
 	submission          bool
 	lmtp                bool
 	deferServerReject   bool
+	rdnsLookup          bool
 	maxLoggedRcptErrors int
 	maxReceived         int
 	maxHeaderBytes      int64
@@ -271,6 +272,7 @@ func (endp *Endpoint) setConfig(cfg *config.Map) error {
 	cfg.Bool("io_debug", false, false, &ioDebug)
 	cfg.Bool("debug", true, false, &endp.log.Debug)
 	cfg.Bool("defer_sender_reject", false, true, &endp.deferServerReject)
+	cfg.Bool("rdns_lookup", false, true, &endp.rdnsLookup)
 	cfg.Int("max_logged_rcpt_errors", false, false, 5, &endp.maxLoggedRcptErrors)
 	cfg.Custom("limits", false, false, func() (interface{}, error) {
 		return limits.Empty(endp.log.Sublogger("limits")), nil

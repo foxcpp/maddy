@@ -194,6 +194,36 @@ func TestSMTPDelivery(t *testing.T) {
 	}
 }
 
+func TestSMTPDelivery_rDNSLookupDisabled(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, []config.Node{
+		{Name: "rdns_lookup", Args: []string{"no"}},
+	})
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	cl, err := smtp.Dial("127.0.0.1:" + testPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		assert.NoError(t, cl.Close())
+	}()
+
+	err = submitMsg(t, cl, "sender@example.org", []string{"rcpt1@example.com"}, testMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tgt.Messages) != 1 {
+		t.Fatal("Expected a message, got", len(tgt.Messages))
+	}
+	if tgt.Messages[0].MsgMeta.Conn.RDNSName != nil {
+		t.Error("rDNS lookup was performed")
+	}
+}
+
 func TestSMTPDelivery_rDNSError(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
