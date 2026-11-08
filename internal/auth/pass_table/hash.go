@@ -97,6 +97,9 @@ func computeArgon2(opts HashOpts, pass string) (string, error) {
 
 func verifyArgon2(pass, hashSalt string) error {
 	parts := strings.SplitN(hashSalt, ":", 5)
+	if len(parts) != 5 {
+		return fmt.Errorf("pass_table: malformed hash string: expected 5 fields, got %d", len(parts))
+	}
 
 	time, err := strconv.ParseUint(parts[0], 10, 32)
 	if err != nil {
@@ -117,6 +120,10 @@ func verifyArgon2(pass, hashSalt string) error {
 	hash, err := base64.StdEncoding.DecodeString(parts[4])
 	if err != nil {
 		return fmt.Errorf("pass_table: malformed hash string: %w", err)
+	}
+
+	if time == 0 || threads == 0 {
+		return fmt.Errorf("pass_table: malformed hash string: time and threads must be non-zero")
 	}
 
 	passHash := argon2.IDKey([]byte(pass), salt, uint32(time), uint32(memory), uint8(threads), Argon2Size)
