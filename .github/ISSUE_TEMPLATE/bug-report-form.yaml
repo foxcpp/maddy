@@ -12,7 +12,7 @@ body:
     label: Description
     description: Provide short summary of what do you think is wrong.
     placeholder: Some messages are silently discarded.
-  validatiosn:
+  validations:
     required: true
 - type: textarea
   id: reproduction
