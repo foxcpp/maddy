@@ -1,0 +1,67 @@
+name: Bug report (new form)
+description: If you think something is broken.
+
+assignees: foxcpp
+labels: bug
+title: Bug report
+
+body:
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: Provide short summary of what do you think is wrong.
+    placeholder: Some messages are silently discarded.
+  validation:
+    required: true
+- type: textarea
+  id: reproduction
+  attributes:
+    label: Reproduction steps
+    description: Provide exact steps (user actions) that reproduce the issue.
+    value: |
+      1. ...
+      2. ...
+      ...
+  validation:
+    required: true
+- type: textarea
+  id: expected
+  attributes:
+    label: Expected behavior
+    description: What did you expect to happen?
+    placeholder: The is message is delivered successfully.
+  validation:
+    required: true
+- type: textarea
+  id: actual
+  attributes:
+    label: Expected behavior
+    description: What did actually happen?
+  validation:
+    required: true
+- type: textarea
+  id: config
+  attributes:
+    label: Used configuration (maddy.email)
+    description: Provide used configuration file. Recommended even if it is the default since default configuration changes between releases and may be stale.
+    render: bash
+  validation:
+    required: true
+- type: input
+  id: version
+  attributes:
+    label: Used maddy version
+    description: Server version you encountered the bug on.
+    value: 0.9.7
+  validation:
+    required: true
+- type: textarea
+  id: additional
+  attributes:
+    label: Additional information
+    description: Anything else you think is worth mentioning.
+- type: checkboxes
+  id: checklist
+  options:
+    - label: The issue is reproducible on the latest release.
