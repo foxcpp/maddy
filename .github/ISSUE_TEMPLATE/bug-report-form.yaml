@@ -12,7 +12,7 @@ body:
     label: Description
     description: Provide short summary of what do you think is wrong.
     placeholder: Some messages are silently discarded.
-  validation:
+  validatiosn:
     required: true
 - type: textarea
   id: reproduction
@@ -23,7 +23,7 @@ body:
       1. ...
       2. ...
       ...
-  validation:
+  validations:
     required: true
 - type: textarea
   id: expected
@@ -31,14 +31,14 @@ body:
     label: Expected behavior
     description: What did you expect to happen?
     placeholder: The is message is delivered successfully.
-  validation:
+  validations:
     required: true
 - type: textarea
   id: actual
   attributes:
     label: Expected behavior
     description: What did actually happen?
-  validation:
+  validations:
     required: true
 - type: textarea
   id: config
@@ -46,7 +46,7 @@ body:
     label: Used configuration (maddy.email)
     description: Provide used configuration file. Recommended even if it is the default since default configuration changes between releases and may be stale.
     render: bash
-  validation:
+  validations:
     required: true
 - type: input
   id: version
@@ -54,14 +54,10 @@ body:
     label: Used maddy version
     description: Server version you encountered the bug on.
     value: 0.9.7
-  validation:
+  validations:
     required: true
 - type: textarea
   id: additional
   attributes:
     label: Additional information
     description: Anything else you think is worth mentioning.
-- type: checkboxes
-  id: checklist
-  options:
-    - label: The issue is reproducible on the latest release.
