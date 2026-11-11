@@ -165,7 +165,7 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 )
 
-replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261107155816-2d90459171a1
+replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261108165746-3b5264836ed8
 
 replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v0.25.2-0.20261105091848-78665b3182cc // v0.25.1+maddy.1
 

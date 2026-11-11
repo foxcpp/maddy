@@ -142,8 +142,8 @@ github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeO
 github.com/felixge/httpsnoop v1.1.0/go.mod h1:Zqxgdd+1Rkcz8euOqdr7lqgCRJztwr5hp9vDSi5UZCE=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20260517233401-20345a80f5bc h1:IAurIbk27Dyrpm1kQwTScaB/IzANKxiPuCPZhCEIFgk=
 github.com/foxcpp/go-dovecot-sasl v0.0.0-20260517233401-20345a80f5bc/go.mod h1:5yZUmwr851vgjyAfN7OEfnrmKOh/qLA5dbGelXYsu1E=
-github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261107155816-2d90459171a1 h1:ENZQCY94SOQYZHmfwc6l0pqZwv6hwYyeCacZ0K6Fx90=
-github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261107155816-2d90459171a1/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
+github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261108165746-3b5264836ed8 h1:JCneg9ppjlBMXq6Z0i+Ca3LFOgx5khee2X07iVvfmnc=
+github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261108165746-3b5264836ed8/go.mod h1:Qlx1FSx2FTxjnjWpIlVNEuX+ylerZQNFE5NsmKFSejY=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16 h1:qheFPDpteiUy7Ym18R68OYenpk85UyKYGkhYTmddSBg=
 github.com/foxcpp/go-imap-backend-tests v0.0.0-20220105184719-e80aa29a5e16/go.mod h1:OPP1AgKxMPo3aHX5pcEZLQhhh5sllFcB8aUN9f6a6X8=
 github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005 h1:pfoFtkTTQ473qStSN79jhCFBWqMQt/3DQ3NGuXvT+50=
