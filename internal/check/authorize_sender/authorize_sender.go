@@ -24,6 +24,7 @@ import (
 	"net/mail"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/buffer"
 	"github.com/foxcpp/maddy/framework/config"
 	modconfig "github.com/foxcpp/maddy/framework/config/module"
@@ -243,7 +244,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, _ buffer.Bu
 				CheckName:    modName,
 			}})
 	}
-	list, err := mail.ParseAddressList(fromHdr)
+	list, err := address.ParseList(fromHdr)
 	if err != nil || len(list) == 0 {
 		return s.c.errAction.Apply(module.CheckResult{
 			Reason: &exterrors.SMTPError{

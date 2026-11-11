@@ -484,6 +484,10 @@ func TestExtractDomains(t *testing.T) {
 
 	cases := []tCase{
 		{
+			hdr:        `From: =?koi8-r?B?9MXT1A==?= <test@example.org>`,
+			fromDomain: "example.org",
+		},
+		{
 			hdr:        `From: <test@example.org>`,
 			fromDomain: "example.org",
 		},

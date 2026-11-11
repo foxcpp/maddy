@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-message/textproto"
+	"github.com/foxcpp/maddy/framework/address"
 	"github.com/foxcpp/maddy/framework/exterrors"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/google/uuid"
@@ -88,7 +89,7 @@ func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textpro
 	}
 	for _, hdr := range [...]string{"To", "Cc", "Bcc", "Reply-To"} {
 		if value := header.Get(hdr); value != "" {
-			if _, err := mail.ParseAddressList(value); err != nil {
+			if _, err := address.ParseList(value); err != nil {
 				return &exterrors.SMTPError{
 					Code:         554,
 					EnhancedCode: exterrors.EnhancedCode{5, 6, 0},
@@ -103,7 +104,7 @@ func (s *Session) submissionPrepare(msgMeta *module.MsgMetadata, header *textpro
 		}
 	}
 
-	addrs, err := mail.ParseAddressList(header.Get("From"))
+	addrs, err := address.ParseList(header.Get("From"))
 	if err != nil {
 		return &exterrors.SMTPError{
 			Code:         554,

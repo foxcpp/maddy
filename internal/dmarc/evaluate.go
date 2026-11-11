@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/mail"
 	"strings"
 
 	"github.com/emersion/go-message/textproto"
@@ -246,7 +245,7 @@ func ExtractFromDomain(hdr textproto.Header) (string, error) {
 		return "", fmt.Errorf("%w: missing From header field", ErrNoAuthorDomain)
 	}
 
-	hdrFromList, err := mail.ParseAddressList(firstFrom)
+	hdrFromList, err := address.ParseList(firstFrom)
 	if err != nil {
 		return "", fmt.Errorf("%w: malformed From header field: %s", ErrNoAuthorDomain, strings.TrimPrefix(err.Error(), "mail: "))
 	}

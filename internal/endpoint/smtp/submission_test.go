@@ -139,6 +139,17 @@ func TestSubmissionPrepare(t *testing.T) {
 		"Message-Id": {"<foobar@example.org>"},
 	})
 
+	// Encoded display names with legacy charsets are accepted.
+	test(map[string][]string{
+		"From":       {`=?koi8-r?B?9MXT1A==?= <hello@example.org>`},
+		"Date":       {"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"Message-Id": {"<foobar@example.org>"},
+	}, map[string][]string{
+		"From":       {`=?koi8-r?B?9MXT1A==?= <hello@example.org>`},
+		"Date":       {"Fri, 22 Nov 2019 20:51:31 +0800"},
+		"Message-Id": {"<foobar@example.org>"},
+	})
+
 	// Add missing Message-Id.
 	test(map[string][]string{
 		"From": {"<hello@example.org>"},
