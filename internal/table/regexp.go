@@ -26,6 +26,7 @@ import (
 
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/container"
+	"github.com/foxcpp/maddy/framework/log"
 	"github.com/foxcpp/maddy/framework/module"
 	"github.com/foxcpp/maddy/framework/module/modules"
 )
@@ -38,12 +39,15 @@ type Regexp struct {
 	replacements []string
 
 	expandPlaceholders bool
+
+	log *log.Logger
 }
 
-func NewRegexp(_ *container.C, modName, instName string) (module.Module, error) {
+func NewRegexp(c *container.C, modName, instName string) (module.Module, error) {
 	return &Regexp{
 		modName:  modName,
 		instName: instName,
+		log:      c.DefaultLogger.Sublogger(modName),
 	}, nil
 }
 
@@ -51,12 +55,40 @@ func (r *Regexp) Configure(inlineArgs []string, cfg *config.Map) error {
 	var (
 		fullMatch       bool
 		caseInsensitive bool
+		oldExpand       *bool
 	)
 	cfg.Bool("full_match", false, true, &fullMatch)
 	cfg.Bool("case_insensitive", false, true, &caseInsensitive)
-	cfg.Bool("expand_replaceholders", false, true, &r.expandPlaceholders)
+	cfg.Bool("expand_placeholders", false, true, &r.expandPlaceholders)
+	// Old misspelled name, kept for compatibility.
+	cfg.Callback("expand_replaceholders", func(_ *config.Map, node config.Node) error {
+		r.log.Msg("expand_replaceholders is deprecated, use expand_placeholders instead")
+		if oldExpand != nil {
+			return config.NodeErr(node, "duplicate directive: %s", node.Name)
+		}
+		if len(node.Children) != 0 {
+			return config.NodeErr(node, "can't declare block here")
+		}
+		val := true
+		switch len(node.Args) {
+		case 0:
+		case 1:
+			b, err := config.ParseBool(node.Args[0])
+			if err != nil {
+				return config.NodeErr(node, "bool argument should be 'yes' or 'no'")
+			}
+			val = b
+		default:
+			return config.NodeErr(node, "expected exactly 1 argument")
+		}
+		oldExpand = &val
+		return nil
+	})
 	if _, err := cfg.Process(); err != nil {
 		return err
+	}
+	if oldExpand != nil {
+		r.expandPlaceholders = *oldExpand
 	}
 
 	regex := inlineArgs[0]
