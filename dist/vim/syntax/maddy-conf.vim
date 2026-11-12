@@ -134,7 +134,7 @@ syn keyword maddyModDir
 	\ enforce_testing
 	\ entry
 	\ error_resp_action
-	\ expand_replaceholders
+	\ expand_placeholders
 	\ fail_action
 	\ fail_open
 	\ file
