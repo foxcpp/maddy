@@ -87,3 +87,41 @@ func TestCreateSASL(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateSASLLoginAuthMap(t *testing.T) {
+	a := SASLAuth{
+		Log:         testutils.Logger(t, "saslauth"),
+		EnableLogin: true,
+		AuthMap: testutils.Table{M: map[string]string{
+			"login-name":    "provider-name",
+			"provider-name": "DUPLICATE-LOOKUP",
+		}},
+		Plain: []module.PlainAuth{
+			mockAuth{db: map[string]bool{"provider-name": true}},
+		},
+	}
+
+	var gotIdentity string
+	var gotData ContextData
+	srv := a.CreateSASL("LOGIN", &net.TCPAddr{}, func(identity string, data ContextData) error {
+		gotIdentity = identity
+		gotData = data
+		return nil
+	})
+	if _, _, err := srv.Next(nil); err != nil {
+		t.Fatal("username challenge:", err)
+	}
+	if _, _, err := srv.Next([]byte("login-name")); err != nil {
+		t.Fatal("password challenge:", err)
+	}
+	if _, _, err := srv.Next([]byte("password")); err != nil {
+		t.Fatalf("authentication failed: %v", err)
+	}
+
+	if gotIdentity != "login-name" {
+		t.Errorf("callback identity = %q, want login-name", gotIdentity)
+	}
+	if gotData.Username != "login-name" || gotData.Password != "password" {
+		t.Errorf("callback data = %#v, want original username and password", gotData)
+	}
+}
