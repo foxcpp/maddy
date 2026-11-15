@@ -32,6 +32,7 @@ import (
 	"runtime/trace"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
@@ -66,6 +67,9 @@ type Check struct {
 	actions map[int]modconfig.FailAction
 	cmd     string
 	cmdArgs []string
+
+	timeout          time.Duration
+	interruptTimeout time.Duration
 }
 
 func New(c *container.C, modName, instName string) (module.Module, error) {
@@ -109,6 +113,8 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	cfg.Enum("run_on", false, false,
 		[]string{StageConnection, StageSender, StageRcpt, StageBody}, StageBody,
 		(*string)(&c.stage))
+	cfg.Duration("timeout", false, false, time.Minute, &c.timeout)
+	cfg.Duration("interrupt_timeout", false, false, time.Minute, &c.interruptTimeout)
 
 	cfg.AllowUnknown()
 	unknown, err := cfg.Process()
@@ -210,8 +216,11 @@ func (s *state) expandCommand(address string) (string, []string) {
 	return s.c.cmd, expArgs
 }
 
-func (s *state) run(cmdName string, args []string, stdin io.Reader) module.CheckResult {
-	cmd := exec.Command(cmdName, args...)
+func (s *state) run(ctx context.Context, cmdName string, args []string, stdin io.Reader) module.CheckResult {
+	ctx, cancel := context.WithTimeout(ctx, s.c.timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cmdName, args...)
 	cmd.Stdin = stdin
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -221,13 +230,18 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 				Message:   "Internal server error",
 				CheckName: "command",
 				Err:       err,
-				Misc: map[string]interface{}{
+				Misc: map[string]any{
 					"cmd": cmd.String(),
 				},
 			},
 			Reject: true,
 		}
 	}
+
+	cmd.Cancel = func() error {
+		return cmd.Process.Signal(os.Interrupt)
+	}
+	cmd.WaitDelay = s.c.interruptTimeout
 
 	if err := cmd.Start(); err != nil {
 		return module.CheckResult{
@@ -236,7 +250,7 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 				Message:   "Internal server error",
 				CheckName: "command",
 				Err:       err,
-				Misc: map[string]interface{}{
+				Misc: map[string]any{
 					"cmd": cmd.String(),
 				},
 			},
@@ -247,17 +261,13 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 	bufOut := bufio.NewReader(stdout)
 	hdr, err := textproto.ReadHeader(bufOut)
 	if err != nil && !errors.Is(err, io.EOF) {
-		if err := cmd.Process.Signal(os.Interrupt); err != nil {
-			s.log.Error("failed to kill process", err)
-		}
-
 		return module.CheckResult{
 			Reason: &exterrors.SMTPError{
 				Code:      450,
 				Message:   "Internal server error",
 				CheckName: "command",
 				Err:       err,
-				Misc: map[string]interface{}{
+				Misc: map[string]any{
 					"cmd": cmd.String(),
 				},
 			},
@@ -270,13 +280,6 @@ func (s *state) run(cmdName string, args []string, stdin io.Reader) module.Check
 
 	err = cmd.Wait()
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); !ok {
-			// If that's not ExitError, the process may still be running. We do
-			// not want this.
-			if err := cmd.Process.Signal(os.Interrupt); err != nil {
-				s.log.Error("failed to kill process", err)
-			}
-		}
 		return s.errorRes(err, res, cmd.String())
 	}
 	return res
@@ -290,7 +293,7 @@ func (s *state) errorRes(err error, res module.CheckResult, cmdLine string) modu
 			Message:   "Internal server error",
 			CheckName: "command",
 			Err:       err,
-			Misc: map[string]interface{}{
+			Misc: map[string]any{
 				"cmd": cmdLine,
 			},
 		}
@@ -306,7 +309,7 @@ func (s *state) errorRes(err error, res module.CheckResult, cmdLine string) modu
 			CheckName: "command",
 			Err:       err,
 			Reason:    "unexpected exit code",
-			Misc: map[string]interface{}{
+			Misc: map[string]any{
 				"cmd":       cmdLine,
 				"exit_code": exitErr.ExitCode(),
 			},
@@ -320,7 +323,7 @@ func (s *state) errorRes(err error, res module.CheckResult, cmdLine string) modu
 		EnhancedCode: exterrors.EnhancedCode{5, 7, 1},
 		Message:      "Message rejected for due to a local policy",
 		CheckName:    "command",
-		Misc: map[string]interface{}{
+		Misc: map[string]any{
 			"cmd":       cmdLine,
 			"exit_code": exitErr.ExitCode(),
 		},
@@ -337,7 +340,7 @@ func (s *state) CheckConnection(ctx context.Context) module.CheckResult {
 	defer trace.StartRegion(ctx, "command/CheckConnection-"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand("")
-	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
+	return s.run(ctx, cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
 func (s *state) CheckSender(ctx context.Context, addr string) module.CheckResult {
@@ -350,7 +353,7 @@ func (s *state) CheckSender(ctx context.Context, addr string) module.CheckResult
 	defer trace.StartRegion(ctx, "command/CheckSender"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand(addr)
-	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
+	return s.run(ctx, cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
 func (s *state) CheckRcpt(ctx context.Context, addr string) module.CheckResult {
@@ -362,7 +365,7 @@ func (s *state) CheckRcpt(ctx context.Context, addr string) module.CheckResult {
 	defer trace.StartRegion(ctx, "command/CheckRcpt"+s.c.cmd).End()
 
 	cmdName, cmdArgs := s.expandCommand(addr)
-	return s.run(cmdName, cmdArgs, bytes.NewReader(nil))
+	return s.run(ctx, cmdName, cmdArgs, bytes.NewReader(nil))
 }
 
 func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer.Buffer) module.CheckResult {
@@ -384,7 +387,7 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 				Message:   "Internal server error",
 				CheckName: "command",
 				Err:       err,
-				Misc: map[string]interface{}{
+				Misc: map[string]any{
 					"cmd": cmdName + " " + strings.Join(cmdArgs, " "),
 				},
 			},
@@ -392,7 +395,13 @@ func (s *state) CheckBody(ctx context.Context, hdr textproto.Header, body buffer
 		}
 	}
 
-	return s.run(cmdName, cmdArgs, io.MultiReader(bytes.NewReader(buf.Bytes()), bR))
+	defer func() {
+		if err := bR.Close(); err != nil {
+			s.log.Error("failed to close message body buffer", err)
+		}
+	}()
+
+	return s.run(ctx, cmdName, cmdArgs, io.MultiReader(bytes.NewReader(buf.Bytes()), bR))
 }
 
 func (s *state) Close() error {

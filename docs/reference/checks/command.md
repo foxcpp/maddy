@@ -94,3 +94,19 @@ Two codes are defined implicitly, exit code 1 causes the message to be rejected
 with a permanent error, exit code 2 causes the message to be quarantined. Both
 actions can be overridden using the 'code' directive.
 
+### `timeout` _duration_
+**Default:** 1 minute.
+
+The time to wait for the command to complete. If command is still running after
+`timeout` passes - it gets stopped by `SIGINT` signal.
+
+---
+
+### `interrupt_timeout` _duration_
+**Default:** 1 minute.
+
+The time to wait for the command to stop after it receives `SIGINT` signal. If
+command is still running after `interrupt_timeout` passes - it gets killed by
+`SIGKILL` signal.
+
+---
