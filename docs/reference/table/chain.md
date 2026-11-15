@@ -7,7 +7,7 @@ table.
 Example:
 ```
 table.chain {
-	step regexp "(.+)(\\+[^+"@]+)?@example.org" "$1@example.org"
+	step regexp "([^+@]+)(\+[^@]*)?@example\.org" "$1@example.org"
 	step file /etc/maddy/emails
 }
 ```
