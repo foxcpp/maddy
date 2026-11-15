@@ -214,15 +214,19 @@ type remoteDelivery struct {
 	recipients  []string
 	connections map[string]*mxConn
 
-	policies []module.DeliveryMXAuthPolicy
+	policies    []module.DeliveryMXAuthPolicy
+	secOverride bool
 }
 
 func (rt *Target) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata, mailFrom string) (module.Delivery, error) {
 	policies := make([]module.DeliveryMXAuthPolicy, 0, len(rt.policies))
+	secOverride := false
 	if !msgMeta.TLSRequireOverride || !rt.allowSecOverride {
 		for _, p := range rt.policies {
 			policies = append(policies, p.StartDelivery(msgMeta))
 		}
+	} else {
+		secOverride = true
 	}
 
 	var (
@@ -274,6 +278,7 @@ func (rt *Target) StartDelivery(ctx context.Context, msgMeta *module.MsgMetadata
 		log:         target.DeliveryLogger(rt.log, msgMeta),
 		connections: map[string]*mxConn{},
 		policies:    policies,
+		secOverride: secOverride,
 	}, nil
 }
 
@@ -452,15 +457,22 @@ func (rd *remoteDelivery) Commit(ctx context.Context) error {
 	return rd.Close()
 }
 
+func (rd *remoteDelivery) IsPolicyBypassed() bool {
+	// A TLS-Required override skips MX authentication policies. Do not let
+	// a connection established under that override reach deliveries that
+	// require those policies to be enforced.
+	return rd.secOverride
+}
+
 func (rd *remoteDelivery) Close() error {
 	for _, conn := range rd.connections {
 		rd.rt.limits.ReleaseDest(conn.domain)
 		conn.takeDest = false
 		conn.transactions++
 
-		if !conn.Usable() {
-			rd.log.Debugf("disconnected %v from %s (errored=%v,transactions=%v,disconnected before=%v)",
-				conn.LocalAddr(), conn.ServerName(), conn.errored, conn.transactions, conn.Client() == nil)
+		if !conn.Usable() || rd.IsPolicyBypassed() {
+			rd.log.Debugf("disconnected %v from %s (errored=%v,transactions=%v,policy_bypassed=%v,disconnected before=%v)",
+				conn.LocalAddr(), conn.ServerName(), conn.errored, conn.transactions, rd.IsPolicyBypassed(), conn.Client() == nil)
 			rd.closeConn(conn)
 		} else {
 			rd.log.Debugf("returning connection %v for %s to pool", conn.LocalAddr(), conn.ServerName())

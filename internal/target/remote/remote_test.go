@@ -1005,6 +1005,58 @@ func TestRemoteDelivery_RequireTLS_Missing(t *testing.T) {
 	}
 }
 
+func TestRemoteDelivery_TLSRequireOverrideDoesNotPoolConnection(t *testing.T) {
+	_, srv := testutils.SMTPServer(t, "127.0.0.1:"+smtpPort)
+	defer func() {
+		require.NoError(t, srv.Close())
+	}()
+	defer testutils.CheckSMTPConnLeak(t, srv)
+
+	zones := map[string]mockdns.Zone{
+		"example.invalid.": {
+			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
+		},
+		"mx.example.invalid.": {
+			A: []string{"127.0.0.1"},
+		},
+	}
+	tgt := testTarget(t, zones, nil, []module.MXAuthPolicy{
+		&localPolicy{minTLSLevel: module.TLSEncrypted},
+	})
+	tgt.allowSecOverride = true
+	tgt.connReuseLimit = 5
+	defer func() {
+		assert.NoError(t, tgt.Stop())
+	}()
+
+	delivery, err := tgt.StartDelivery(context.Background(), &module.MsgMetadata{
+		ID:                 "override",
+		TLSRequireOverride: true,
+	}, "sender@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := delivery.AddRcpt(context.Background(), "recipient@example.invalid", smtp.RcptOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := delivery.Body(context.Background(), textproto.Header{}, buffer.MemoryBuffer{Slice: []byte("body")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := delivery.Commit(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	conn, err := tgt.pool.Get(context.Background(), "example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conn != nil {
+		_ = conn.Close()
+		t.Fatal("TLS policy override connection was returned to the pool")
+	}
+}
+
 func TestRemoteDelivery_RequireTLS_Present(t *testing.T) {
 	clientCfg, be, srv := testutils.SMTPServerSTARTTLS(t, "127.0.0.1:"+smtpPort)
 	defer func() {
