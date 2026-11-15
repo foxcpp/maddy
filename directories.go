@@ -1,5 +1,5 @@
-//go:build !docker
-// +build !docker
+//go:build !windows && !darwin && !dragonfly && !freebsd && !netbsd && !openbsd && !docker
+// +build !windows,!darwin,!dragonfly,!freebsd,!netbsd,!openbsd,!docker
 
 package maddy
 
