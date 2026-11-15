@@ -248,8 +248,9 @@ func (s *Session) AuthPlain(username, password string) error {
 
 func (s *Session) startDelivery(ctx context.Context, from string, opts smtp.MailOptions) (string, error) {
 	var err error
+	connState := s.connState.DeepCopy()
 	msgMeta := &module.MsgMetadata{
-		Conn:     &s.connState,
+		Conn:     connState,
 		SMTPOpts: opts,
 	}
 	msgMeta.ID, err = module.GenerateMsgID()

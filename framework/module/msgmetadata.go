@@ -150,6 +150,23 @@ func (msgMeta *MsgMetadata) DeepCopy() *MsgMetadata {
 	return &cpy
 }
 
+// DeepCopy creates an independent copy of the connection state. Referenced
+// values such as net.Addr and RDNSName are not copied.
+func (state *ConnState) DeepCopy() *ConnState {
+	cpy := &ConnState{
+		Proto:        state.Proto,
+		Hostname:     state.Hostname,
+		LocalAddr:    state.LocalAddr,
+		RemoteAddr:   state.RemoteAddr,
+		TLS:          state.TLS,
+		RDNSName:     state.RDNSName,
+		AuthUser:     state.AuthUser,
+		AuthPassword: state.AuthPassword,
+	}
+	cpy.ModData.copyFrom(&state.ModData)
+	return cpy
+}
+
 // GenerateMsgID generates a string usable as MsgID field in module.MsgMeta.
 func GenerateMsgID() (string, error) {
 	rawID := make([]byte, 4)

@@ -3,6 +3,7 @@ package module
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -19,7 +20,7 @@ import (
 // e.g. when message is stored in a on-disk queue.
 type ModSpecificData struct {
 	modDataLck sync.RWMutex
-	modData    map[string]interface{}
+	modData    map[string]any
 }
 
 func (msd *ModSpecificData) modKey(m Module, perInstance bool) string {
@@ -45,19 +46,38 @@ func (msd *ModSpecificData) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &msd.modData)
 }
 
-func (msd *ModSpecificData) Set(m Module, perInstance bool, value interface{}) {
+func (msd *ModSpecificData) Set(m Module, perInstance bool, value any) {
 	key := msd.modKey(m, perInstance)
 	msd.modDataLck.Lock()
 	defer msd.modDataLck.Unlock()
 	if msd.modData == nil {
-		msd.modData = make(map[string]interface{})
+		msd.modData = make(map[string]any)
 	}
 	msd.modData[key] = value
 }
 
-func (msd *ModSpecificData) Get(m Module, perInstance bool) interface{} {
+func (msd *ModSpecificData) Get(m Module, perInstance bool) any {
 	key := msd.modKey(m, perInstance)
 	msd.modDataLck.RLock()
 	defer msd.modDataLck.RUnlock()
 	return msd.modData[key]
+}
+
+// CopyFrom replaces msd's data with a copy of other. Values are copied by
+// reference, but the map itself is independent.
+func (msd *ModSpecificData) copyFrom(other *ModSpecificData) {
+	if msd == other {
+		return
+	}
+
+	other.modDataLck.RLock()
+	var modData map[string]any
+	if other.modData != nil {
+		modData = maps.Clone(other.modData)
+	}
+	other.modDataLck.RUnlock()
+
+	msd.modDataLck.Lock()
+	msd.modData = modData
+	msd.modDataLck.Unlock()
 }

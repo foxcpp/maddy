@@ -603,6 +603,44 @@ func TestSMTPDelivery_Reset(t *testing.T) {
 	testutils.CheckMsgID(t, &msg, "sender@example.org", []string{"rcpt1@example.com", "rcpt2@example.com"}, "")
 }
 
+func TestSMTPMessageConnStateIsSnapshot(t *testing.T) {
+	tgt := testutils.Target{}
+	endp := testEndpoint(t, "smtp", nil, &tgt, nil, nil)
+	defer func() {
+		assert.NoError(t, endp.Stop())
+	}()
+
+	s := endp.newSession(nil)
+	s.connState.Hostname = "client-one.example.org"
+	s.connState.RemoteAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)}
+	mod := &modules.Dummy{}
+	s.connState.ModData.Set(mod, true, "first")
+	defer func() {
+		if s.delivery != nil {
+			s.Reset()
+		}
+	}()
+
+	_, err := s.startDelivery(context.Background(), "sender@example.org", smtp.MailOptions{})
+	require.NoError(t, err)
+	firstMeta := s.msgMeta
+	require.NotSame(t, &s.connState, firstMeta.Conn)
+	assert.Equal(t, "first", firstMeta.Conn.ModData.Get(mod, true))
+
+	s.connState.Hostname = "client-two.example.org"
+	s.connState.ModData.Set(mod, true, "second")
+	assert.Equal(t, "client-one.example.org", firstMeta.Conn.Hostname)
+	assert.Equal(t, "first", firstMeta.Conn.ModData.Get(mod, true))
+
+	s.Reset()
+	_, err = s.startDelivery(context.Background(), "sender@example.org", smtp.MailOptions{})
+	require.NoError(t, err)
+	secondMeta := s.msgMeta
+	require.NotSame(t, firstMeta.Conn, secondMeta.Conn)
+	assert.Equal(t, "client-two.example.org", secondMeta.Conn.Hostname)
+	assert.Equal(t, "second", secondMeta.Conn.ModData.Get(mod, true))
+}
+
 func TestSMTPDelivery_SubmissionAuthRequire(t *testing.T) {
 	tgt := testutils.Target{}
 	endp := testEndpoint(t, "submission", &modules.Dummy{}, &tgt, nil, nil)
