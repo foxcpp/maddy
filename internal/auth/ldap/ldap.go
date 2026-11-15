@@ -204,6 +204,7 @@ func (a *Auth) returnConn(conn *ldap.Conn) {
 			a.log.Error("Connection close failed", err)
 		}
 		a.conn = nil
+		return
 	}
 	if a.conn != conn {
 		if err := a.conn.Close(); err != nil {
