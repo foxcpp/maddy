@@ -58,6 +58,18 @@ func cleanQueue(t *testing.T, q *Queue) {
 	}
 }
 
+func TestToSMTPErrPreservesEnhancedCode(t *testing.T) {
+	want := exterrors.EnhancedCode{5, 7, 1}
+	err := exterrors.WithFields(errors.New("delivery failed"), map[string]interface{}{
+		"smtp_enchcode": want,
+	})
+
+	got := toSMTPErr(err)
+	if got.EnhancedCode != smtp.EnhancedCode(want) {
+		t.Errorf("enhanced code = %v, want %v", got.EnhancedCode, want)
+	}
+}
+
 func newTestQueueDir(t *testing.T, target module.DeliveryTarget, dir string) *Queue {
 	mod, _ := New(container.New(), "", "queue")
 	q := mod.(*Queue)

@@ -364,9 +364,9 @@ func toSMTPErr(err error) *smtp.SMTPError {
 	if ok {
 		res.Code = ctxCode
 	}
-	ctxEnchCode, ok := ctxInfo["smtp_enchcode"].(smtp.EnhancedCode)
+	ctxEnchCode, ok := ctxInfo["smtp_enchcode"].(exterrors.EnhancedCode)
 	if ok {
-		res.EnhancedCode = ctxEnchCode
+		res.EnhancedCode = smtp.EnhancedCode(ctxEnchCode)
 	}
 	ctxMsg, ok := ctxInfo["smtp_msg"].(string)
 	if ok {
