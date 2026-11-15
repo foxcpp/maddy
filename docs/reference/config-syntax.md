@@ -87,6 +87,38 @@ directive0 {env:VAR}
 Parse is forgiving and incomplete variable placeholder (e.g. '{env:VAR') will
 be left as-is. Variables are expanded inside quotes too.
 
+## Configuration macros (variables)
+
+Macros let you reuse one or more configuration arguments. Declare a macro at
+the top level, before the directive that references it. If a snippet contains
+a macro reference, declare the macro before the snippet. Put `=` after the macro
+name and list its value or values after that:
+
+```
+$(mail_domains) = example.org example.net
+$(mailbox) = "Example User"
+
+some_directive $(mail_domains)
+mailbox_directive $(mailbox)
+another_directive mail/$(mailbox)/Inbox
+```
+
+When a macro reference is a complete argument, it expands to all of the
+arguments in its definition. In this example, `some_directive` receives two
+arguments: `example.org` and `example.net`. Quoting follows the normal
+configuration rules, so `mailbox_directive` receives one argument,
+`Example User`.
+
+A macro can also be embedded in a larger argument, as in
+`mail/$(mailbox)/Inbox`. In this form, the macro must have exactly one value;
+using a macro with multiple values inside another argument is an error. An
+undefined macro used as a complete argument contributes no arguments, while an
+undefined macro embedded in an argument is replaced with an empty string.
+
+Macro declarations are only allowed at the top level, and macro references
+cannot be used as directive names. Macros use `$(name)` syntax and are separate
+from the `{env:NAME}` environment-variable expansion described above.
+
 ## Snippets & imports
 
 You can reuse blocks of configuration by defining them as "snippets". Snippet
