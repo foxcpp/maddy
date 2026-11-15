@@ -28,6 +28,7 @@ nav:
       - Endpoints configuration:
           - reference/endpoints/imap.md
           - reference/endpoints/smtp.md
+          - reference/endpoints/dovecot_sasld.md
           - reference/endpoints/openmetrics.md
       - IMAP storage:
           - reference/storage/imap-filters.md
