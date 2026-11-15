@@ -15,7 +15,7 @@ used storage backend, like this:
 ```
 storage.imapsql local_mailboxes {
    ...
-   
+
    imap_filter {
        command /etc/maddy/sieve.sh {account_name}
    }
@@ -68,3 +68,20 @@ $Label1
 ```
 In this case, message will be placed in inbox and will have
 '$Label1' added.
+
+### Configuration directives
+
+`imap.filter.command` supports following additional configuration parameters (specified in `{}`).
+
+#### `timeout` _duration_
+**Default:** 1 minute.
+
+The time to wait for the command to complete. If command is still running after
+`timeout` passes - it gets stopped by `SIGINT` signal.
+
+#### `interrupt_timeout` _duration_
+**Default:** 1 minute.
+
+The time to wait for the command to stop after it receives `SIGINT` signal. If
+command is still running after `interrupt_timeout` passes - it gets killed by
+`SIGKILL` signal.

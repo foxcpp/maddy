@@ -21,6 +21,7 @@ package command
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/foxcpp/maddy/framework/buffer"
@@ -48,6 +50,9 @@ type Check struct {
 
 	cmd     string
 	cmdArgs []string
+
+	timeout          time.Duration
+	interruptTimeout time.Duration
 }
 
 func (c *Check) IMAPFilter(accountName string, rcptTo string, msgMeta *module.MsgMetadata, hdr textproto.Header, body buffer.Buffer) (folder string, flags []string, err error) {
@@ -59,6 +64,11 @@ func (c *Check) IMAPFilter(accountName string, rcptTo string, msgMeta *module.Ms
 	if err != nil {
 		return "", nil, err
 	}
+	defer func() {
+		if err := bR.Close(); err != nil {
+			c.log.Error("failed to close message body buffer", err)
+		}
+	}()
 
 	return c.run(cmd, args, io.MultiReader(bytes.NewReader(buf.Bytes()), bR))
 }
@@ -92,6 +102,9 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	if _, err := exec.LookPath(c.cmd); err != nil {
 		return fmt.Errorf("command: %w", err)
 	}
+
+	cfg.Duration("timeout", false, false, time.Minute, &c.timeout)
+	cfg.Duration("interrupt_timeout ", false, false, time.Minute, &c.interruptTimeout)
 
 	_, err := cfg.Process()
 	return err
@@ -161,12 +174,20 @@ func (c *Check) expandCommand(msgMeta *module.MsgMetadata, accountName string, r
 func (c *Check) run(cmdName string, args []string, stdin io.Reader) (string, []string, error) {
 	c.log.Debugln("running", cmdName, args)
 
-	cmd := exec.Command(cmdName, args...)
+	ctx, cancel := context.WithTimeout(context.TODO(), c.timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cmdName, args...)
 	cmd.Stdin = stdin
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", nil, err
 	}
+
+	cmd.Cancel = func() error {
+		return cmd.Process.Signal(os.Interrupt)
+	}
+	cmd.WaitDelay = c.interruptTimeout
 
 	if err := cmd.Start(); err != nil {
 		return "", nil, err
@@ -189,13 +210,6 @@ func (c *Check) run(cmdName string, args []string, stdin io.Reader) (string, []s
 
 	err = cmd.Wait()
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); !ok {
-			// If that's not ExitError, the process may still be running. We do
-			// not want this.
-			if err := cmd.Process.Signal(os.Interrupt); err != nil {
-				c.log.Error("failed to kill process", err)
-			}
-		}
 		return "", nil, err
 	}
 
