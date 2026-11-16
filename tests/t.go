@@ -26,6 +26,8 @@ package tests
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -228,7 +230,12 @@ func (t *T) buildCmd(additionalArgs ...string) *exec.Cmd {
 
 	args = append(args, additionalArgs...)
 
-	cmd := exec.Command(TestBinary, args...)
+	cmd := exec.CommandContext(t.Context(), TestBinary, args...)
+
+	cmd.WaitDelay = 5 * time.Second
+	cmd.Cancel = func() error {
+		return cmd.Process.Signal(os.Interrupt)
+	}
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -255,16 +262,14 @@ func (t *T) MustRunCLIGroup(args ...[]string) {
 
 	wg := sync.WaitGroup{}
 	for _, arg := range args {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			_, err := t.RunCLI(arg...)
 			if err != nil {
 				t.Printf("maddy %v: %v", arg, err)
 				t.Fail()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -365,22 +370,11 @@ func (t *T) RuntimeDir() string {
 }
 
 func (t *T) killServer() {
-	if err := t.servProc.Process.Signal(os.Interrupt); err != nil {
-		t.Log("Unable to kill the server process:", err)
-		assert.NoError(t, os.RemoveAll(t.testDir))
-		return // Return, as now it is pointless to wait for it.
-	}
+	// exec.Command will handle interrupt-wait-then-kill via WaitDelay, Cancel and test context
+	// cancellation.
 
-	go func() {
-		time.Sleep(5 * time.Second)
-		if t.servProc != nil {
-			t.Log("Killing possibly hung server process")
-			t.servProc.Process.Kill() //nolint:errcheck
-		}
-	}()
-
-	if err := t.servProc.Wait(); err != nil {
-		t.Error("The server did not stop cleanly, deadlock?")
+	if err := t.servProc.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		t.Error("Unclean server process shutdown:", err)
 	}
 
 	t.servProc = nil
@@ -396,7 +390,7 @@ func (t *T) Close() {
 }
 
 // Printf implements Logger interfaces used by some libraries.
-func (t *T) Printf(f string, a ...interface{}) {
+func (t *T) Printf(f string, a ...any) {
 	t.Logf(f, a...)
 }
 
