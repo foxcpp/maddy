@@ -122,7 +122,7 @@ func (endp *Endpoint) Configure(_ []string, cfg *config.Map) error {
 	for _, addr := range endp.addrs {
 		saddr, err := config.ParseEndpoint(addr)
 		if err != nil {
-			return fmt.Errorf("%s: invalid address: %s", addr, endp.name)
+			return fmt.Errorf("%s: invalid address (%s): %w", endp.name, addr, err)
 		}
 
 		addresses = append(addresses, saddr)
