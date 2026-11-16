@@ -299,7 +299,6 @@ func (t *T) MustRunCLIGroup(args ...[]string) {
 	wg := sync.WaitGroup{}
 	for _, arg := range args {
 		wg.Go(func() {
-
 			_, err := t.RunCLI(arg...)
 			if err != nil {
 				t.Printf("maddy %v: %v", arg, err)
