@@ -90,9 +90,12 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	}
 
 	switch endp.Scheme {
-	case "tcp", "unix":
+	case "tcp", "unix", "tcp4", "tcp6":
 	default:
 		return fmt.Errorf("%s: scheme unsupported: %v", modName, endp.Scheme)
+	}
+	if endp.IsTLS() {
+		return fmt.Errorf("%s: tls is not supported", modName)
 	}
 
 	c.cl = milter.NewClientWithOptions(endp.Network(), endp.Address(), milter.ClientOptions{
