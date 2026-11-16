@@ -14,8 +14,13 @@ import (
 func TestLDAPAuthenticationDoesNotRevealUserExistence(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
-	ldapPort := t.Port("ldap")
+	// Randomly generated since gldap does not support reporting
+	// effective port.
+	ldapPort := tests.RandomPort()
+	t.Env("TEST_LDAP_PORT=" + strconv.Itoa(int(ldapPort)))
+
 	ldapSrv := &MockLDAP{
 		T: tt,
 		AllowedBinds: map[string]string{
@@ -44,13 +49,13 @@ func TestLDAPAuthenticationDoesNotRevealUserExistence(tt *testing.T) {
 		tls off
 
 		auth.ldap ldap_auth {
-			urls ldap://127.0.0.1:{env:TEST_PORT_ldap}
+			urls ldap://127.0.0.1:{env:TEST_LDAP_PORT}
 			bind plain "DC=com,CN=service" "service_pass"
 			base_dn "DC=com"
 			filter "(&(objectClass=inetOrgPerson)(uid={username}))"
 		}
 
-		submission tcp://0.0.0.0:{env:TEST_PORT_smtp} {
+		submission {env:TEST_ENDPOINT_smtp} {
 			auth &ldap_auth
 			deliver_to dummy
 		}

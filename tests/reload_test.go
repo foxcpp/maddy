@@ -37,11 +37,12 @@ func TestSmtpPipelineSwitch(tt *testing.T) {
 
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 
@@ -62,7 +63,7 @@ func TestSmtpPipelineSwitch(tt *testing.T) {
 	conn1.ExpectPattern("2*")
 
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 
@@ -102,6 +103,7 @@ func TestImapStorageSwitch(tt *testing.T) {
 
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("smtp")
@@ -112,14 +114,14 @@ func TestImapStorageSwitch(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 
@@ -166,14 +168,14 @@ func TestImapStorageSwitch(tt *testing.T) {
 			dsn imapsql2.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 

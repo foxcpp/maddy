@@ -31,7 +31,10 @@ func TestIssue717OutboundPolicy(t *testing.T) {
 		{name: "failed TLS falls back to plaintext", localPolicy: "min_tls_level none", protocols: "tls1.2 tls1.3", legacyTLS: true},
 	} {
 		t.Run(tc.name, func(tt *testing.T) {
+			tt.Parallel()
+
 			test := tests.NewT(tt)
+			test.AllowFDSharing()
 			test.DNS(map[string]mockdns.Zone{
 				"example.invalid.":    {MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}}},
 				"mx.example.invalid.": {A: []string{"127.0.0.1"}},
@@ -64,7 +67,7 @@ func TestIssue717OutboundPolicy(t *testing.T) {
 					}
 					tls_client { protocols ` + tc.protocols + ` }
 				}
-				smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+				smtp {env:TEST_ENDPOINT_smtp} {
 					deliver_to &outbound_delivery
 				}`)
 

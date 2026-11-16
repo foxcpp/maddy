@@ -70,7 +70,10 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 	// mailbox in storage.imapsql. We check that all messages
 	// are successfully delivered without temporary failures.
 
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 
 	smtpPort := t.Port("smtp")
@@ -79,6 +82,7 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 		t.Fatal(err)
 	}
 	t.Env("TEST_LMTP_ADDR=" + listener.Addr().String())
+
 	server := smtp.NewServer(forwardingLMTP{smtpAddr: "127.0.0.1:" + strconv.Itoa(int(smtpPort))})
 	server.LMTP = true
 	go func() { _ = server.Serve(listener) }()
@@ -94,13 +98,13 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 			sqlite3_busy_timeout 100
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			tls off
 			destination list@maddy.test {
 				deliver_to lmtp tcp://{env:TEST_LMTP_ADDR}
@@ -149,7 +153,9 @@ func TestImapsqlSynchronousLMTPForwarding(tt *testing.T) {
 
 func TestImapsqlDelivery(tt *testing.T) {
 	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("imap")
@@ -160,14 +166,14 @@ func TestImapsqlDelivery(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 
@@ -236,6 +242,7 @@ func TestImapsqlDelivery(tt *testing.T) {
 func TestImapsqlRerouteAndDirectDelivery(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("imap")
 	t.Port("smtp")
@@ -245,7 +252,7 @@ func TestImapsqlRerouteAndDirectDelivery(tt *testing.T) {
 			driver sqlite3
 			dsn imapsql.db
 		}
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 			auth dummy
 			storage &test_store
@@ -273,7 +280,7 @@ func TestImapsqlRerouteAndDirectDelivery(tt *testing.T) {
 				reject
 			}
 		}
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 			deliver_to &local_routing
@@ -322,6 +329,7 @@ func TestImapsqlRerouteAndDirectDelivery(tt *testing.T) {
 func TestImapsqlDeliveryMap(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("imap")
@@ -335,14 +343,14 @@ func TestImapsqlDeliveryMap(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 
@@ -394,6 +402,7 @@ func TestImapsqlDeliveryMap(tt *testing.T) {
 func TestImapsqlAuthMap(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("imap")
@@ -407,14 +416,14 @@ func TestImapsqlAuthMap(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy
 			storage &test_store
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname maddy.test
 			tls off
 

@@ -172,6 +172,7 @@ func TestSASLServerWithChasquid(tt *testing.T) {
 	}
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`

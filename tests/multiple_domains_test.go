@@ -31,6 +31,7 @@ import (
 func TestMultipleDomains_SeparateNamespace(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("submission")
 	t.Port("imap")
@@ -50,11 +51,11 @@ func TestMultipleDomains_SeparateNamespace(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		submission tcp://0.0.0.0:{env:TEST_PORT_submission} {
+		submission {env:TEST_ENDPOINT_submission} {
 			auth &local_authdb
 			reject
 		}
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			auth &local_authdb
 			storage &local_mailboxes
 		}
@@ -128,6 +129,7 @@ func TestMultipleDomains_SeparateNamespace(tt *testing.T) {
 func TestMultipleDomains_SharedCredentials_DistinctMailboxes(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("submission")
 	t.Port("imap")
@@ -148,11 +150,11 @@ func TestMultipleDomains_SharedCredentials_DistinctMailboxes(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		submission tcp://0.0.0.0:{env:TEST_PORT_submission} {
+		submission {env:TEST_ENDPOINT_submission} {
 			auth &local_authdb
 			reject
 		}
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			auth &local_authdb
 			storage &local_mailboxes
 		}
@@ -225,6 +227,7 @@ func TestMultipleDomains_SharedCredentials_DistinctMailboxes(tt *testing.T) {
 func TestMultipleDomains_SharedCredentials_SharedMailboxes(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("submission")
 	t.Port("imap")
@@ -247,11 +250,11 @@ func TestMultipleDomains_SharedCredentials_SharedMailboxes(tt *testing.T) {
 			delivery_map email_localpart_optional
 		}
 
-		submission tcp://0.0.0.0:{env:TEST_PORT_submission} {
+		submission {env:TEST_ENDPOINT_submission} {
 			auth &local_authdb
 			reject
 		}
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			auth &local_authdb
 			storage &local_mailboxes
 

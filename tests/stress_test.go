@@ -44,10 +44,11 @@ func TestSMTPFlood_FullMsg_NoLimits_1Conn(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -82,10 +83,11 @@ func TestSMTPFlood_FullMsg_NoLimits_10Conns(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -130,10 +132,11 @@ func TestSMTPFlood_EnvelopeAbort_NoLimits_10Conns(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -170,10 +173,11 @@ func TestSMTPFlood_EnvelopeAbort_Ratelimited(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -231,10 +235,11 @@ func TestSMTPFlood_FullMsg_Ratelimited_PerSource(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -330,10 +335,11 @@ func TestSMTPFlood_EnvelopeAbort_Ratelimited_PerIP(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 

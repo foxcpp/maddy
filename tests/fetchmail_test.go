@@ -52,6 +52,7 @@ func TestFetchmailIMAPDownload(tt *testing.T) {
 	}
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	imapPort := t.Port("imap")
 	t.Config(`
@@ -60,7 +61,7 @@ func TestFetchmailIMAPDownload(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth dummy

@@ -4,7 +4,6 @@ package tests
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"os/exec"
 	"strings"
@@ -21,7 +20,7 @@ func (t *T) allocateNamedTCPPort(name string) uint16 {
 
 	if NoFDSharing || !t.allowFDSharing {
 		t.Log("FD sharing disabled, using randomly generated port")
-		return uint16(rand.Int31n(45536) + 20000)
+		return RandomPort()
 	}
 
 	l, err := net.ListenTCP("tcp", &net.TCPAddr{

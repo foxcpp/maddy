@@ -12,6 +12,7 @@ import (
 func TestIMAPEndpointAuthMap(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("imap")
@@ -21,7 +22,7 @@ func TestIMAPEndpointAuthMap(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			auth_map email_localpart
@@ -52,6 +53,7 @@ func TestIMAPEndpointAuthMap(tt *testing.T) {
 func TestIMAPEndpointStorageMap(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 
 	t.DNS(nil)
 	t.Port("imap")
@@ -61,7 +63,7 @@ func TestIMAPEndpointStorageMap(tt *testing.T) {
 			dsn imapsql.db
 		}
 
-		imap tcp://127.0.0.1:{env:TEST_PORT_imap} {
+		imap {env:TEST_ENDPOINT_imap} {
 			tls off
 
 			storage_map email_localpart

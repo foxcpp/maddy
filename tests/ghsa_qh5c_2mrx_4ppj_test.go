@@ -17,6 +17,7 @@ func TestGHSA_QH5C_2MRX_4PPJ_DMARC_MixedCaseBypass(tt *testing.T) {
 
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"attacker.co.uk.":        {TXT: []string{f1AttackerSPF}},
 		"attacker.co.UK.":        {TXT: []string{f1AttackerSPF}},
@@ -25,7 +26,7 @@ func TestGHSA_QH5C_2MRX_4PPJ_DMARC_MixedCaseBypass(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 

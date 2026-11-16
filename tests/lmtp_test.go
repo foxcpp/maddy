@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/emersion/go-smtp"
 	"github.com/foxcpp/maddy/internal/testutils"
 	"github.com/foxcpp/maddy/tests"
 )
@@ -34,10 +35,11 @@ func TestLMTPServer_Is_Actually_LMTP(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("lmtp")
 	t.Config(`
-		lmtp tcp://127.0.0.1:{env:TEST_PORT_lmtp} {
+		lmtp {env:TEST_ENDPOINT_lmtp} {
 			hostname mx.maddy.test
 			tls off
 			deliver_to dummy
@@ -86,23 +88,29 @@ capsloop:
 }
 
 func TestLMTPClient_Is_Actually_LMTP(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
+
 	t.Port("smtp")
-	tgtPort := t.Port("target")
+
+	be, s := testutils.SMTPServer(tt, "127.0.0.1:0", func(s *smtp.Server) {
+		s.LMTP = true
+	})
+	be.LMTPDataErr = []error{nil, nil}
+	defer s.Close()
+	t.Env("TEST_TARGET_PORT=" + strconv.Itoa(int(testutils.EffectiveSMTPServerPort(tt, s))))
+
 	t.Config(`
 		hostname mx.maddy.test
 		tls off
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
-			deliver_to lmtp tcp://127.0.0.1:{env:TEST_PORT_target}
+		smtp {env:TEST_ENDPOINT_smtp} {
+			deliver_to lmtp tcp://127.0.0.1:{env:TEST_TARGET_PORT}
 		}`)
 	t.Run(1)
 	defer t.Close()
-
-	be, s := testutils.SMTPServer(tt, "127.0.0.1:"+strconv.Itoa(int(tgtPort)))
-	s.LMTP = true
-	be.LMTPDataErr = []error{nil, nil}
-	defer s.Close()
 
 	c := t.Conn("smtp")
 	defer c.Close()
@@ -131,28 +139,32 @@ func TestLMTPClient_Is_Actually_LMTP(tt *testing.T) {
 }
 
 func TestLMTPClient_Issue308(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
-	tgtPort := t.Port("target")
+
+	be, s := testutils.SMTPServer(tt, "127.0.0.1:0")
+	s.LMTP = true
+	be.LMTPDataErr = []error{nil, nil}
+	defer s.Close()
+	t.Env("TEST_TARGET_PORT=" + strconv.Itoa(int(testutils.EffectiveSMTPServerPort(tt, s))))
+
 	t.Config(`
 		hostname mx.maddy.test
 		tls off
 
 		target.lmtp local_mailboxes {
-			targets tcp://127.0.0.1:{env:TEST_PORT_target}
+			targets tcp://127.0.0.1:{env:TEST_TARGET_PORT}
 		}
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			deliver_to &local_mailboxes
 		}`)
 	t.Run(1)
 	defer t.Close()
-
-	be, s := testutils.SMTPServer(tt, "127.0.0.1:"+strconv.Itoa(int(tgtPort)))
-	s.LMTP = true
-	be.LMTPDataErr = []error{nil, nil}
-	defer s.Close()
 
 	c := t.Conn("smtp")
 	defer c.Close()

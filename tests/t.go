@@ -127,7 +127,6 @@ func (t *T) DNS(zones map[string]mockdns.Zone) {
 	if err != nil {
 		t.Fatal("Test configuration failed:", err)
 	}
-	dnsServ.Log = t
 	t.dnsServ = dnsServ
 
 	t.Cleanup(func() {
@@ -164,6 +163,10 @@ func (t *T) Port(name string) uint16 {
 
 const remoteSMTPPortName = "remote_smtp"
 
+func RandomPort() uint16 {
+	return uint16(rand.Int31n(45536) + 20000)
+}
+
 // RemoteSMTPPort defines a special port named remote_smtp. It does not use
 // FD sharing and will be passed to -debug.smtpport.
 //
@@ -172,7 +175,7 @@ const remoteSMTPPortName = "remote_smtp"
 // pass effective port to this method.
 func (t *T) RemoteSMTPPort(port uint16) uint16 {
 	if port == 0 {
-		port = uint16(rand.Int31n(45536) + 20000)
+		port = RandomPort()
 	}
 
 	t.ports[remoteSMTPPortName] = port

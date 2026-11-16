@@ -164,6 +164,11 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 	}
 
 	tempDir := t.TempDir()
+	t.Cleanup(func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Log(err)
+		}
+	})
 
 	curUser, err := user.Current()
 	if err != nil {
@@ -192,11 +197,16 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(dovecotExec, "-F", "-c", filepath.Join(tempDir, "dovecot.conf"))
+	cmd := exec.CommandContext(t.Context(), dovecotExec, "-F", "-c", filepath.Join(tempDir, "dovecot.conf"))
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	cmd.Cancel = func() error {
+		return cmd.Process.Signal(syscall.SIGTERM)
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -234,25 +244,20 @@ func runDovecot(t *testing.T) (string, *exec.Cmd) {
 
 func cleanDovecot(t *testing.T, tempDir string, cmd *exec.Cmd) {
 	cmd.Process.Signal(syscall.SIGTERM)
-	if !t.Failed() {
-		os.RemoveAll(tempDir)
-	} else {
-		t.Log("Dovecot directory is not deleted:", tempDir)
-	}
 }
 
 func TestDovecotSASLClient(tt *testing.T) {
 	tt.Parallel()
 
-	dovecotDir, cmd := runDovecot(tt)
-	defer cleanDovecot(tt, dovecotDir, cmd)
+	dovecotDir, _ := runDovecot(tt)
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Env("DOVECOT_SASL_SOCK=" + filepath.Join(dovecotDir, "run", "auth-client"))
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 			auth dovecot_sasl unix://{env:DOVECOT_SASL_SOCK}

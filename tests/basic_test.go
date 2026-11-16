@@ -34,6 +34,7 @@ func TestBasic(tt *testing.T) {
 	// library is working as expected.
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.AllowFDSharing()
 	t.Port("smtp")

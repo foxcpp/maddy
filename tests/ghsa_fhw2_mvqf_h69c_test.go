@@ -11,7 +11,10 @@ import (
 )
 
 func TestGHSAFHW2MVQFH69CMalformedFromDefaultAccepted(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"_dmarc.bank.example.": {
 			TXT: []string{"v=DMARC1; p=reject"},
@@ -22,7 +25,7 @@ func TestGHSAFHW2MVQFH69CMalformedFromDefaultAccepted(tt *testing.T) {
 		hostname mx.maddy.test
 		tls off
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			dmarc yes
 			deliver_to dummy
 		}`)
@@ -50,14 +53,17 @@ func TestGHSAFHW2MVQFH69CMalformedFromDefaultAccepted(tt *testing.T) {
 }
 
 func TestGHSAFHW2MVQFH69CMalformedFromRejectedWhenEnabled(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{})
 	t.Port("smtp")
 	t.Config(`
 		hostname mx.maddy.test
 		tls off
 
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			dmarc yes
 			dmarc_reject_invalid_from yes
 			deliver_to dummy

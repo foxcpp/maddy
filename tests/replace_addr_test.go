@@ -30,7 +30,10 @@ import (
 func TestReplaceAddr_Rcpt(tt *testing.T) {
 	test := func(name, cfg string) {
 		tt.Run(name, func(tt *testing.T) {
+			tt.Parallel()
+
 			t := tests.NewT(tt)
+			t.AllowFDSharing()
 			t.DNS(nil)
 			t.Port("smtp")
 			t.Config(cfg)
@@ -62,7 +65,7 @@ func TestReplaceAddr_Rcpt(tt *testing.T) {
 			hostname mx.maddy.test
 			tls off
 
-			smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			smtp {env:TEST_ENDPOINT_smtp} {
 				modify {
 					replace_rcpt static {
 						entry a@maddy.test b@maddy.test
@@ -82,7 +85,7 @@ func TestReplaceAddr_Rcpt(tt *testing.T) {
 			hostname mx.maddy.test
 			tls off
 
-			smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			smtp {env:TEST_ENDPOINT_smtp} {
 				modify {
 					modify.replace_rcpt static {
 						entry a@maddy.test b@maddy.test
@@ -110,7 +113,7 @@ func TestReplaceAddr_Rcpt(tt *testing.T) {
 	//			}
 	//		}
 
-	//		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+	//		smtp {env:TEST_ENDPOINT_smtp} {
 	//			modify {
 	//				&local_aliases
 	//			}
@@ -135,6 +138,7 @@ func TestReplaceAddr_Sender(tt *testing.T) {
 	test := func(name, cfg string) {
 		tt.Run(name, func(tt *testing.T) {
 			t := tests.NewT(tt)
+			t.AllowFDSharing()
 			t.DNS(nil)
 			t.Port("smtp")
 			t.Config(cfg)
@@ -166,7 +170,7 @@ func TestReplaceAddr_Sender(tt *testing.T) {
 			hostname mx.maddy.test
 			tls off
 
-			smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			smtp {env:TEST_ENDPOINT_smtp} {
 				modify {
 					replace_sender static {
 						entry a@maddy.test b@maddy.test
@@ -191,7 +195,7 @@ func TestReplaceAddr_Sender(tt *testing.T) {
 			hostname mx.maddy.test
 			tls off
 
-			smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+			smtp {env:TEST_ENDPOINT_smtp} {
 				modify {
 					modify.replace_sender static {
 						entry a@maddy.test b@maddy.test
@@ -223,7 +227,7 @@ func TestReplaceAddr_Sender(tt *testing.T) {
 	//			}
 	//		}
 
-	//		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+	//		smtp {env:TEST_ENDPOINT_smtp} {
 	//			modify {
 	//				&local_aliases
 	//			}

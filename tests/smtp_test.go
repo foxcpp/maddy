@@ -36,10 +36,11 @@ import (
 func TestCheckRequireTLS(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls self_signed
 
@@ -72,6 +73,7 @@ func TestCheckRequireTLS(tt *testing.T) {
 func TestProxyProtocolTrustedSource(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"one.maddy.test.": {
 			TXT: []string{"v=spf1 ip4:127.0.0.17 -all"},
@@ -79,7 +81,7 @@ func TestProxyProtocolTrustedSource(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -116,6 +118,7 @@ func TestProxyProtocolTrustedSource(tt *testing.T) {
 func TestProxyProtocolUntrustedSource(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"one.maddy.test.": {
 			TXT: []string{"v=spf1 ip4:127.0.0.17 -all"},
@@ -123,7 +126,7 @@ func TestProxyProtocolUntrustedSource(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -160,6 +163,7 @@ func TestProxyProtocolUntrustedSource(tt *testing.T) {
 func TestCheckSPF(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"none.maddy.test.": {
 			TXT: []string{},
@@ -185,7 +189,7 @@ func TestCheckSPF(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -253,6 +257,7 @@ func TestCheckSPF(tt *testing.T) {
 func TestSPF_DMARCDefer(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"subdomain.maddy-dmarc.test.": {
 			TXT: []string{"v=spf1 -all"},
@@ -284,7 +289,7 @@ func TestSPF_DMARCDefer(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -348,6 +353,7 @@ func TestSPF_DMARCDefer(tt *testing.T) {
 func TestDNSBLConfig(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		tests.DefaultSourceIPRev + ".dnsbl.test.": {
 			A: []string{"127.0.0.127"},
@@ -358,7 +364,7 @@ func TestDNSBLConfig(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -397,6 +403,7 @@ func TestDNSBLConfig(tt *testing.T) {
 func TestDNSBLConfig2(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		tests.DefaultSourceIPRev + ".dnsbl2.test.": {
 			A: []string{"127.0.0.127"},
@@ -407,7 +414,7 @@ func TestDNSBLConfig2(tt *testing.T) {
 	})
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -446,10 +453,11 @@ func TestDNSBLConfig2(tt *testing.T) {
 func TestCheckAuthorizeSender(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -517,10 +525,11 @@ func TestCheckAuthorizeSender(tt *testing.T) {
 func TestCheckCommand(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 
@@ -631,10 +640,11 @@ func TestCheckCommand(tt *testing.T) {
 func TestHeaderSizeConstraint(tt *testing.T) {
 	tt.Parallel()
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 			deliver_to dummy

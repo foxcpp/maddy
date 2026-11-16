@@ -30,6 +30,7 @@ func TestConfigCycle(tt *testing.T) {
 	tt.Parallel()
 
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(nil)
 	t.Config(`
 		hostname mx.maddy.test

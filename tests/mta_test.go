@@ -31,7 +31,10 @@ import (
 )
 
 func TestMTA_Outbound(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"example.invalid.": {
 			MX: []net.MX{{Host: "mx.example.invalid.", Pref: 10}},
@@ -82,7 +85,10 @@ func TestMTA_Outbound(tt *testing.T) {
 }
 
 func TestIssue321(tt *testing.T) {
+	tt.Parallel()
+
 	t := tests.NewT(tt)
+	t.AllowFDSharing()
 	t.DNS(map[string]mockdns.Zone{
 		"example.invalid.": {
 			AD: true,

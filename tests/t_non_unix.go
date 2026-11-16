@@ -2,10 +2,13 @@
 
 package tests
 
-import "fmt"
+import (
+	"fmt"
+	"os/exec"
+)
 
 func (t *T) allocateNamedTCPPort(name string) uint16 {
-	return uint16(rand.Int31n(45536) + 20000)
+	return RandomPort()
 }
 
 func (t *T) addNamedTCPEnv(cmd *exec.Cmd) {
