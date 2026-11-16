@@ -35,9 +35,10 @@ func TestBasic(tt *testing.T) {
 
 	t := tests.NewT(tt)
 	t.DNS(nil)
+	t.AllowFDSharing()
 	t.Port("smtp")
 	t.Config(`
-		smtp tcp://127.0.0.1:{env:TEST_PORT_smtp} {
+		smtp {env:TEST_ENDPOINT_smtp} {
 			hostname mx.maddy.test
 			tls off
 

@@ -26,6 +26,7 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -211,6 +212,20 @@ func (s *session) LMTPData(r io.Reader, status smtp.StatusCollector) error {
 
 type SMTPServerConfigureFunc func(*smtp.Server)
 
+func EffectiveSMTPServerPort(t *testing.T, s *smtp.Server) uint16 {
+	_, portStr, err := net.SplitHostPort(s.Addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return uint16(port)
+}
+
 func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTPBackend, *smtp.Server) {
 	t.Helper()
 
@@ -226,6 +241,8 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 	for _, f := range fn {
 		f(s)
 	}
+	s.Addr = l.Addr().String()
+	s.Network = "tcp"
 
 	go func() {
 		if err := s.Serve(l); err != nil {
@@ -238,7 +255,7 @@ func SMTPServer(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*SMTP
 	// it will call Server.Close which will call Server.listener.Close with a
 	// nil Server.listener (Serve sets it to a non-nil value, so it is racy and
 	// happens only sometimes).
-	testConn, err := net.Dial("tcp", addr)
+	testConn, err := net.Dial(s.Network, s.Addr)
 	require.NoError(t, err)
 	require.NoError(t, testConn.Close())
 
@@ -307,6 +324,8 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 	for _, f := range fn {
 		f(s)
 	}
+	s.Addr = l.Addr().String()
+	s.Network = "tcp"
 
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM([]byte(testServerCert))
@@ -330,7 +349,7 @@ func SMTPServerSTARTTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc
 	// it will call Server.Close which will call Server.listener.Close with a
 	// nil Server.listener (Serve sets it to a non-nil value, so it is racy and
 	// happens only sometimes).
-	testConn, err := net.Dial("tcp", addr)
+	testConn, err := net.Dial(s.Network, s.Addr)
 	require.NoError(t, err)
 	require.NoError(t, testConn.Close())
 
@@ -383,7 +402,7 @@ func SMTPServerTLS(t *testing.T, addr string, fn ...SMTPServerConfigureFunc) (*t
 	// it will call Server.Close which will call Server.listener.Close with a
 	// nil Server.listener (Serve sets it to a non-nil value, so it is racy and
 	// happens only sometimes).
-	testConn, err := net.Dial("tcp", addr)
+	testConn, err := net.Dial(s.Network, s.Addr)
 	if err != nil {
 		t.Fatal(err)
 	}

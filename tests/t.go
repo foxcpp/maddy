@@ -50,6 +50,7 @@ var (
 	TestBinary  = "./maddy"
 	CoverageOut string
 	DebugLog    bool
+	NoFDSharing bool
 )
 
 type T struct {
@@ -66,6 +67,10 @@ type T struct {
 	servProc *exec.Cmd
 
 	reloadedChan chan struct{}
+
+	allowFDSharing bool
+	extraFD        []*os.File
+	fdNames        []string
 }
 
 func NewT(t *testing.T) *T {
@@ -150,11 +155,38 @@ func (t *T) Port(name string) uint16 {
 		return port
 	}
 
-	// TODO: Try to bind on port to test its usability.
-	port := rand.Int31n(45536) + 20000
-	t.ports[name] = uint16(port)
-	t.portsRev[uint16(port)] = name
-	return uint16(port)
+	port := t.allocateNamedTCPPort(name)
+
+	t.ports[name] = port
+	t.portsRev[port] = name
+	return port
+}
+
+const remoteSMTPPortName = "remote_smtp"
+
+// RemoteSMTPPort defines a special port named remote_smtp. It does not use
+// FD sharing and will be passed to -debug.smtpport.
+//
+// If passed value is 0, the port is randomly generated though this is not
+// recommended - instead you should start a receiver using 0 port first and
+// pass effective port to this method.
+func (t *T) RemoteSMTPPort(port uint16) uint16 {
+	if port == 0 {
+		port = uint16(rand.Int31n(45536) + 20000)
+	}
+
+	t.ports[remoteSMTPPortName] = port
+	t.portsRev[port] = remoteSMTPPortName
+
+	return port
+}
+
+// AllowFDSharing enables the use of Unix FD sharing for Port to ensure the
+// selected port number is usable without races.
+//
+// It must be called at least once before Port is used to enable FD sharing.
+func (t *T) AllowFDSharing() {
+	t.allowFDSharing = true
 }
 
 func (t *T) Env(kv string) {
@@ -212,7 +244,7 @@ func (t *T) ensureCanRun() {
 func (t *T) buildCmd(additionalArgs ...string) *exec.Cmd {
 	// Assigning 0 by default will make outbound SMTP unusable.
 	remoteSmtp := "0"
-	if port := t.ports["remote_smtp"]; port != 0 {
+	if port := t.ports[remoteSMTPPortName]; port != 0 {
 		remoteSmtp = strconv.Itoa(int(port))
 	}
 
@@ -252,6 +284,7 @@ func (t *T) buildCmd(additionalArgs ...string) *exec.Cmd {
 	for name, port := range t.ports {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TEST_PORT_%s=%d", name, port))
 	}
+	t.addNamedTCPEnv(cmd)
 	cmd.Env = append(cmd.Env, t.env...)
 
 	return cmd
@@ -498,4 +531,5 @@ func init() {
 	flag.StringVar(&TestBinary, "integration.executable", "./maddy", "executable to test")
 	flag.StringVar(&CoverageOut, "integration.coverprofile", "", "write coverage stats to file (requires special maddy executable)")
 	flag.BoolVar(&DebugLog, "integration.debug", false, "pass -debug to maddy executable")
+	flag.BoolVar(&NoFDSharing, "integration.no-fd-sharing", false, "do not use FD sharing to reserve test ports")
 }

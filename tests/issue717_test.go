@@ -5,7 +5,6 @@ package tests_test
 import (
 	"crypto/tls"
 	"net"
-	"strconv"
 	"testing"
 
 	"github.com/emersion/go-smtp"
@@ -38,7 +37,20 @@ func TestIssue717OutboundPolicy(t *testing.T) {
 				"mx.example.invalid.": {A: []string{"127.0.0.1"}},
 			})
 			test.Port("smtp")
-			port := test.Port("remote_smtp")
+
+			var server *smtp.Server
+			var be *testutils.SMTPBackend
+			if tc.legacyTLS {
+				_, be, server = testutils.SMTPServerSTARTTLS(tt, "127.0.0.1:0", func(s *smtp.Server) {
+					s.TLSConfig.MinVersion = tls.VersionTLS10
+					s.TLSConfig.MaxVersion = tls.VersionTLS10
+				})
+			} else {
+				be, server = testutils.SMTPServer(tt, "127.0.0.1:0")
+			}
+			defer server.Close()
+
+			test.RemoteSMTPPort(testutils.EffectiveSMTPServerPort(tt, server))
 
 			test.Config(`
 				hostname mx.maddy.test
@@ -56,18 +68,6 @@ func TestIssue717OutboundPolicy(t *testing.T) {
 					deliver_to &outbound_delivery
 				}`)
 
-			addr := "127.0.0.1:" + strconv.Itoa(int(port))
-			var server *smtp.Server
-			var be *testutils.SMTPBackend
-			if tc.legacyTLS {
-				_, be, server = testutils.SMTPServerSTARTTLS(tt, addr, func(s *smtp.Server) {
-					s.TLSConfig.MinVersion = tls.VersionTLS10
-					s.TLSConfig.MaxVersion = tls.VersionTLS10
-				})
-			} else {
-				be, server = testutils.SMTPServer(tt, addr)
-			}
-			defer server.Close()
 			test.Run(1)
 			defer test.Close()
 
