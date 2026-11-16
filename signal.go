@@ -30,15 +30,21 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 )
 
-// handleSignals function creates and listens on OS signals channel.
+// listenSignals creates signal handler channel but does not listen to them.
+func listenSignals() chan os.Signal {
+	sig := make(chan os.Signal, 5)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1, syscall.SIGUSR2)
+	return sig
+}
+
+// handleSignals function listens on OS signals channel. It will stop
+// signal handling after it exits.
 //
 // OS-specific signals that correspond to the program termination
 // (SIGTERM, SIGHUP, SIGINT) will cause this function to return.
 //
 // SIGUSR1 will call reinitLogging without returning.
-func handleSignals() (reload bool) {
-	sig := make(chan os.Signal, 5)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGUSR1, syscall.SIGUSR2)
+func handleSignals(sig chan os.Signal) (reload bool) {
 	defer signal.Stop(sig)
 
 	for {
@@ -53,7 +59,7 @@ func handleSignals() (reload bool) {
 			return true
 		default:
 			go func() {
-				s := handleSignals()
+				s := handleSignals(sig)
 				log.Printf("forced shutdown due to signal (%v)!", s)
 				os.Exit(1)
 			}()

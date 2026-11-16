@@ -440,14 +440,20 @@ func moduleMain(configPath string) error {
 
 	c.DefaultLogger.Msg("configuration loaded")
 
+	// Attach signal handler BEFORE logging "server started" to properly
+	// synchronize integration tests startup. Also do that before moduleStart
+	// to ensure clean shutdown in case signal arrives during moduleStart.
+	sig := listenSignals()
+
 	if err := moduleStart(c); err != nil {
 		return err
 	}
+
 	c.DefaultLogger.Msg("server started", "version", GetVersion())
 
 	systemdStatus(SDReady, "Configuration running.")
 	asyncStopWg := sync.WaitGroup{} // Some containers might still be waiting on moduleStop
-	for handleSignals() {
+	for handleSignals(sig) {
 		hooks.RunHooks(hooks.EventReload)
 
 		c = moduleReload(c, configPath, &asyncStopWg)

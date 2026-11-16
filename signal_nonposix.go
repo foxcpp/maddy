@@ -29,9 +29,14 @@ import (
 	"github.com/foxcpp/maddy/framework/log"
 )
 
-func handleSignals() (reload bool) {
+func listenSignals() chan os.Signal {
 	sig := make(chan os.Signal, 5)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
+	return sig
+}
+
+func handleSignals(sig os.Signal) (reload bool) {
+	defer signal.Stop(sig)
 
 	s := <-sig
 	go func() {
