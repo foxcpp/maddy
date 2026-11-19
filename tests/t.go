@@ -47,10 +47,11 @@ import (
 )
 
 var (
-	TestBinary  = "./maddy"
-	CoverageOut string
-	DebugLog    bool
-	NoFDSharing bool
+	TestBinary   = "./maddy"
+	CoverageOut  string
+	DebugLog     bool
+	NoFDSharing  bool
+	ReleaseBuild bool
 )
 
 type T struct {
@@ -110,6 +111,10 @@ func (t *T) Config(cfg string) {
 // mockdns server respond with NXDOMAIN to all queries.
 func (t *T) DNS(zones map[string]mockdns.Zone) {
 	t.Helper()
+
+	if zones != nil && ReleaseBuild {
+		t.Skip("DNS mocking is not available for release builds")
+	}
 
 	if zones == nil {
 		zones = map[string]mockdns.Zone{}
@@ -174,6 +179,10 @@ func RandomPort() uint16 {
 // recommended - instead you should start a receiver using 0 port first and
 // pass effective port to this method.
 func (t *T) RemoteSMTPPort(port uint16) uint16 {
+	if ReleaseBuild {
+		t.Skip("Remote SMTP mocking is not available for release builds")
+	}
+
 	if port == 0 {
 		port = RandomPort()
 	}
@@ -251,9 +260,12 @@ func (t *T) buildCmd(additionalArgs ...string) *exec.Cmd {
 		remoteSmtp = strconv.Itoa(int(port))
 	}
 
-	args := []string{"-config", filepath.Join(t.testDir, "maddy.conf"),
-		"-debug.smtpport", remoteSmtp,
-		"-debug.dnsoverride", t.dnsServ.LocalAddr().String(),
+	args := []string{"-config", filepath.Join(t.testDir, "maddy.conf")}
+	if !ReleaseBuild {
+		args = append(args,
+			"-debug.smtpport", remoteSmtp,
+			"-debug.dnsoverride", t.dnsServ.LocalAddr().String(),
+		)
 	}
 
 	if CoverageOut != "" {
@@ -534,4 +546,5 @@ func init() {
 	flag.StringVar(&CoverageOut, "integration.coverprofile", "", "write coverage stats to file (requires special maddy executable)")
 	flag.BoolVar(&DebugLog, "integration.debug", false, "pass -debug to maddy executable")
 	flag.BoolVar(&NoFDSharing, "integration.no-fd-sharing", false, "do not use FD sharing to reserve test ports")
+	flag.BoolVar(&ReleaseBuild, "integration.release", false, "executable is a release build without debugflags")
 }

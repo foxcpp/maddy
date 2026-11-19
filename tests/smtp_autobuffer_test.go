@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/tests"
 )
 
@@ -38,7 +39,9 @@ func TestSMTPEndpoint_LargeMessage(tt *testing.T) {
 
 	t := tests.NewT(tt)
 	t.AllowFDSharing()
-	t.DNS(nil)
+	t.DNS(map[string]mockdns.Zone{
+		"100.97.109.127.in-addr.arpa.": {PTR: []string{"client.maddy.test."}},
+	})
 	t.Port("imap")
 	t.Port("smtp")
 	t.Config(`
@@ -128,7 +131,9 @@ func TestSMTPEndpoint_FileBuffer(tt *testing.T) {
 		t := tests.NewT(tt)
 		t.AllowFDSharing()
 
-		t.DNS(nil)
+		t.DNS(map[string]mockdns.Zone{
+			"100.97.109.127.in-addr.arpa.": {PTR: []string{"client.maddy.test."}},
+		})
 		t.Port("imap")
 		t.Port("smtp")
 		t.Config(`
@@ -218,7 +223,9 @@ func TestSMTPEndpoint_Autobuffer(tt *testing.T) {
 	t := tests.NewT(tt)
 	t.AllowFDSharing()
 
-	t.DNS(nil)
+	t.DNS(map[string]mockdns.Zone{
+		"100.97.109.127.in-addr.arpa.": {PTR: []string{"client.maddy.test."}},
+	})
 	t.Port("imap")
 	t.Port("smtp")
 	t.Config(`

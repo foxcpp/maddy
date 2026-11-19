@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-smtp"
+	"github.com/foxcpp/go-mockdns"
 	"github.com/foxcpp/maddy/tests"
 )
 
@@ -157,7 +158,9 @@ func TestImapsqlDelivery(tt *testing.T) {
 	t := tests.NewT(tt)
 	t.AllowFDSharing()
 
-	t.DNS(nil)
+	t.DNS(map[string]mockdns.Zone{
+		"100.97.109.127.in-addr.arpa.": {PTR: []string{"client.maddy.test."}},
+	})
 	t.Port("imap")
 	t.Port("smtp")
 	t.Config(`
