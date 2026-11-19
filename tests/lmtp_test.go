@@ -146,8 +146,9 @@ func TestLMTPClient_Issue308(tt *testing.T) {
 	t.DNS(nil)
 	t.Port("smtp")
 
-	be, s := testutils.SMTPServer(tt, "127.0.0.1:0")
-	s.LMTP = true
+	be, s := testutils.SMTPServer(tt, "127.0.0.1:0", func(s *smtp.Server) {
+		s.LMTP = true
+	})
 	be.LMTPDataErr = []error{nil, nil}
 	defer s.Close()
 	t.Env("TEST_TARGET_PORT=" + strconv.Itoa(int(testutils.EffectiveSMTPServerPort(tt, s))))
