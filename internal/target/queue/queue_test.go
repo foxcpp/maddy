@@ -658,7 +658,6 @@ func TestQueueDelivery_DeserlizationCleanUp(t *testing.T) {
 	}
 
 	t.Run("NoMeta", func(t *testing.T) {
-		t.Skip("Not implemented")
 		test(t, ".meta")
 	})
 	t.Run("NoBody", func(t *testing.T) {
