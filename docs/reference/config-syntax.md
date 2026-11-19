@@ -221,6 +221,24 @@ Maddy configuration uses URL-like syntax to specify network addresses.
 - `unix://file_path` – Unix domain socket. Relative paths are relative to runtime directory (`/run/maddy`).
 - `tcp://ADDRESS:PORT` – TCP/IP socket.
 - `tls://ADDRESS:PORT` – TCP/IP socket using TLS.
+- `tcp4://ADDRESS:PORT` - TCP/IP socket, only IPv4 allowed.
+- `tcp6://ADDRESS:PORT` - TCP/IP socket, only IPv6 allowed.
+- `tcp4+tls://ADDRESS:PORT` - TCP/IP socket using TLS, only IPv4 allowed.
+- `tcp6+tls://ADDRESS:PORT` - TCP/IP socket using TLS, only IPv6 allowed.
+- `unix+tls://file_path` - Unix domain socket with TLS.
+
+Additionally, when FD sharing (e.g. via systemd socket activation) is used, the
+following syntax can be used to refernce passed file descriptors:
+- `fd://3` - file descriptor #3.
+- `fdname://passed-name` - named file descriptor `passed-name`.
+
+For both `fd` and `fdname` to work, either `LISTEN_PID` environment variable
+must be defined and match current process PID or `LISTEN_PID_ANY` environment
+variable should be equal to `1`. `fdname` requires `LISTEN_FDNAMES` environment
+variable defined with a colon-separated names list. This is compatible with
+systemd socket activation protocol with `Accept=no`, maddy does not support
+systemd socket activation with `Accept=yes` where passed FDs are accepted
+connections.
 
 ## Dummy Module
 
