@@ -20,7 +20,7 @@ require (
 	github.com/foxcpp/go-imap-i18nlevel v0.0.0-20200208001533-d6ec88553005
 	github.com/foxcpp/go-imap-mess v0.0.0-20261103192234-6bb314614a44
 	github.com/foxcpp/go-imap-namespace v0.0.0-20200802091432-08496dd8e0ed
-	github.com/foxcpp/go-imap-sql v0.5.1-0.20261104133243-24e3306c6504
+	github.com/foxcpp/go-imap-sql v0.5.1-0.20261119174242-5c81a59c5465
 	github.com/foxcpp/go-mockdns v1.3.0
 	github.com/foxcpp/go-mtasts v0.0.0-20261026071820-d380f1fa8aa1
 	github.com/go-ldap/ldap/v3 v3.4.15
@@ -165,7 +165,7 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 )
 
-replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261108165746-3b5264836ed8
+replace github.com/emersion/go-imap => github.com/foxcpp/go-imap v1.0.0-beta.1.0.20261119174003-aef814d47e41
 
 replace github.com/emersion/go-smtp => github.com/foxcpp/go-smtp v0.25.2-0.20261105091848-78665b3182cc // v0.25.1+maddy.1
 
