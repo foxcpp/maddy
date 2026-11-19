@@ -104,7 +104,7 @@ func (c *Check) Configure(inlineArgs []string, cfg *config.Map) error {
 	}
 
 	cfg.Duration("timeout", false, false, time.Minute, &c.timeout)
-	cfg.Duration("interrupt_timeout ", false, false, time.Minute, &c.interruptTimeout)
+	cfg.Duration("interrupt_timeout", false, false, time.Minute, &c.interruptTimeout)
 
 	_, err := cfg.Process()
 	return err
