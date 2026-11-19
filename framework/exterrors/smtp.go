@@ -140,7 +140,8 @@ func SMTPCode(err error, temporaryCode, permanentCode int) int {
 func SMTPEnchCode(err error, code EnhancedCode) EnhancedCode {
 	if IsTemporary(err) {
 		code[0] = 4
+	} else {
+		code[0] = 5
 	}
-	code[0] = 5
 	return code
 }
